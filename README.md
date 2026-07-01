@@ -1,10 +1,20 @@
-# Reading insights (KOReader plugin)
+### 📊 Reading Insights
 
-Converted from the original `2-reading-insights-popup.lua` **user patch**
-into a proper KOReader **plugin**. Same feature set, same behaviour — just
-packaged so it (a) shows up as a real menu entry instead of relying on a
-gesture/shortcut, and (b) keeps its translated strings in plain `.po`
-files instead of a Lua table.
+<img width="384" height="512" alt="FileManager_2026-06-30_074746" src="https://github.com/user-attachments/assets/cf248698-75d0-4948-8d9c-70ea5c69fd5e" />
+
+A full-screen scrollable overlay with a comprehensive overview of your reading history, powered by KOReader's statistics database.
+
+**Highlights:**
+- **Today** — reading time and pages read so far today
+- **Last week** — 7-day average time and pages per day; (tap a value to see an 8-week trend popup)
+- **Streaks** — current and best daily & weekly reading streaks
+- **Yearly view** — hours or days read + pages, navigable by year
+- **Monthly chart** — bar chart of reading activity per month (tappable to see books)
+- **All-time totals** — cumulative hours and pages across all years
+
+**Controls:** swipe left/right to change year, tap bars to open book lists, tap the chart header to toggle hours/days mode, long-press to force-reload data.
+
+**Caching:** uses a stale-while-revalidate strategy — the popup opens instantly with cached data while fresh values load in the background.
 
 ## Install
 
@@ -28,21 +38,3 @@ files instead of a Lua table.
 `l10n/en.po` and `l10n/hu.po` hold the ~80 short UI strings (month
 names, "Total read", streak labels, etc.) as plain `msgid`/`msgstr`
 pairs, e.g.:
-
-```
-msgid "TOTAL READ"
-msgstr "Összes olvasás"
-```
-
-To add another language, copy `l10n/en.po` to `l10n/<lang>.po` (use the
-two-letter code KOReader uses for that language, e.g. `de.po`, `fr.po`)
-and translate the `msgstr` lines. No code changes needed — the plugin
-picks the file matching KOReader's current UI language automatically at
-runtime, and falls back to the string itself (English) if a translation
-is missing or the file doesn't exist.
-
-Note: this is a small custom loader, not KOReader's central Weblate
-translation pipeline — that only covers strings that live in
-`koreader/l10n/`. Since this is a standalone plugin, `.po` files
-shipped next to it are the closest equivalent without needing to touch
-KOReader core.
