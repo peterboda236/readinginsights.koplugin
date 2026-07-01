@@ -1,6 +1,6 @@
 --[[
 Reading Insights Popup
-Version 1.3.1
+Version 1.3.2
 Based on: https://github.com/quanganhdo/koreader-user-patches/blob/main/2-reading-insights-popup.lua
 
 Full-screen scrollable popup showing reading history from statistics.sqlite3.
@@ -2620,7 +2620,7 @@ function ReadingInsightsPopup:showAllBooks()
     showBooksForPeriod(
         self, books,
         _("No books read"),
-        T(_("ALL BOOKS READ %1"), formatCount(#books)) .. " (" .. formatHHMMSS(total_secs) .. ")")
+        T(_("All books read %1"), formatCount(#books)) .. " (" .. formatHHMMSS(total_secs) .. ")")
 end
 
 function ReadingInsightsPopup:showBooksForYear(year)
