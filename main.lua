@@ -1,6 +1,5 @@
 --[[
 Reading Insights Popup
-Version 1.3.2
 Based on: https://github.com/quanganhdo/koreader-user-patches/blob/main/2-reading-insights-popup.lua
 
 Full-screen scrollable popup showing reading history from statistics.sqlite3.
