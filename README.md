@@ -1,4 +1,4 @@
-### 📊 Reading Insights
+### 📊 Reading insights
 
 <img width="384" height="512" alt="FileManager_2026-06-30_074746" src="https://github.com/user-attachments/assets/cf248698-75d0-4948-8d9c-70ea5c69fd5e" />
 
