@@ -138,19 +138,19 @@ msgstr "Nincs heti sorozat"
 msgid "No daily streak"
 msgstr "Nincs napi sorozat"
 
-msgid "CURRENT STREAK"
+msgid "Current streak"
 msgstr "Aktuális sorozat"
 
-msgid "BEST STREAK"
+msgid "Best streak"
 msgstr "Leghosszabb sorozat"
 
-msgid "DAYS READ PER MONTH"
+msgid "Days read per month"
 msgstr "Havonta olvasott napok"
 
-msgid "TIME READ PER MONTH"
+msgid "Time read per month"
 msgstr "Havi olvasási idő"
 
-msgid "BOOKS READ PER MONTH"
+msgid "Books read per month"
 msgstr "Havonta olvasott könyvek"
 
 msgid "Unknown"
@@ -177,13 +177,13 @@ msgstr "Adatok újraolvasása..."
 msgid "Reading insights"
 msgstr "Olvasási áttekintés"
 
-msgid "ALL BOOKS READ %1"
+msgid "All books read %1"
 msgstr "Összesen: %1 könyv olvasva"
 
-msgid "TOTAL READ"
+msgid "Total read"
 msgstr "Összes olvasás"
 
-msgid "LAST WEEK"
+msgid "Last week"
 msgstr "Legutóbbi hét"
 
 msgid "avg/day"
@@ -242,4 +242,3 @@ msgstr "Elmúlt 8 hét átlagos napi oldalszáma"
 
 msgid "No reading data in the last 8 weeks"
 msgstr "Nincs olvasási adat az elmúlt 8 héten"
-
