@@ -18,7 +18,7 @@ A full-screen scrollable overlay with a comprehensive overview of your reading h
 
 ## Install
 
-1. Copy the whole `readinginsights.koplugin` folder into your KOReader
+1. Copy the whole Unpack the latest zip and copy the `readinginsights.koplugin` folder into your KOReader
    `plugins/` directory, so you end up with:
 2. Restart KOReader.
 3. If you still have `2-reading-insights-popup.lua` in your `patches/`
