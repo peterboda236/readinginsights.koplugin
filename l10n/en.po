@@ -138,19 +138,19 @@ msgstr "No weekly streak"
 msgid "No daily streak"
 msgstr "No daily streak"
 
-msgid "CURRENT STREAK"
+msgid "Current streak"
 msgstr "Current streak"
 
-msgid "BEST STREAK"
+msgid "Best streak"
 msgstr "Best streak"
 
-msgid "DAYS READ PER MONTH"
+msgid "Days read per month"
 msgstr "Days read per month"
 
-msgid "TIME READ PER MONTH"
+msgid "Time read per month"
 msgstr "Time read per month"
 
-msgid "BOOKS READ PER MONTH"
+msgid "Books read per month"
 msgstr "Books read per month"
 
 msgid "Unknown"
@@ -177,7 +177,7 @@ msgstr "Reloading data..."
 msgid "Reading insights"
 msgstr "Reading insights"
 
-msgid "ALL BOOKS READ %1"
+msgid "All books read %1"
 msgstr "All books read %1"
 
 msgid "TOTAL READ"
