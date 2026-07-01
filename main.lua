@@ -1,6 +1,6 @@
 --[[
 Reading Insights Popup
-Version 1.3
+Version 1.3.1
 Based on: https://github.com/quanganhdo/koreader-user-patches/blob/main/2-reading-insights-popup.lua
 
 Full-screen scrollable popup showing reading history from statistics.sqlite3.
@@ -1360,7 +1360,7 @@ local function showStreakDatePopup(dates, is_weekly, is_current)
     end
     local msg = start_str .. " – " .. end_str
     if is_current ~= nil then
-        local label = is_current and _("CURRENT STREAK") or _("BEST STREAK")
+        local label = is_current and _("Current streak") or _("Best streak")
         msg = label .. "\n" .. msg
     end
     UIManager:show(InfoMessage:new{ text = msg })
@@ -1439,7 +1439,7 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
             end
 
             addSectionWithRow(sections,
-                buildSectionHeader(fonts.section, _("LAST WEEK"), layout.full_width),
+                buildSectionHeader(fonts.section, _("Last week"), layout.full_width),
                 last_week_content, layout, { pad_row = false })
         end
     end
@@ -1459,8 +1459,8 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
         function(n) return N_("week in a row", "weeks in a row", n) end, _("No weekly streak"))
 
     -- Two-column streak header (tappable: shows date range for that streak).
-    local streak_header_left  = buildSectionHeader(fonts.section, _("CURRENT STREAK"), layout.col_width, 0)
-    local streak_header_right = buildSectionHeader(fonts.section, _("BEST STREAK"),    layout.col_width, 0)
+    local streak_header_left  = buildSectionHeader(fonts.section, _("Current streak"), layout.col_width, 0)
+    local streak_header_right = buildSectionHeader(fonts.section, _("Best streak"),    layout.col_width, 0)
     local sep_h = streak_header_left:getSize().h
 
     local tap_current_header = InputContainer:new{
@@ -1560,10 +1560,10 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
 
     if chart then
         local chart_header_text = (popup_self.mode == INSIGHTS_MODE_HOURS
-            and _("TIME READ PER MONTH"))
+            and _("Time read per month"))
             or (popup_self.mode == INSIGHTS_MODE_BOOKS
-            and _("BOOKS READ PER MONTH"))
-            or _("DAYS READ PER MONTH")
+            and _("Books read per month"))
+            or _("Days read per month")
         chart_header_text = chart_header_text .. " \xe2\x80\xba"
         local chart_header = buildSectionHeader(fonts.section, chart_header_text, layout.full_width)
         local tappable_chart_header = InputContainer:new{
@@ -1623,7 +1623,7 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
         local all_time_row = buildTwoColRow(left_cell, right_cell, layout)
 
         local all_book_count = all_time_stats and all_time_stats.book_count or 0
-        local header_text = _("TOTAL READ")
+        local header_text = _("Total read")
 
         addSectionWithRow(sections,
             buildSectionHeader(fonts.section, header_text, layout.full_width),
