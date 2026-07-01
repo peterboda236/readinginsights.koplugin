@@ -1,0 +1,245 @@
+# Reading Insights plugin translation (en)
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+
+msgid "Jan"
+msgstr "Jan"
+
+msgid "Feb"
+msgstr "Feb"
+
+msgid "Mar"
+msgstr "Mar"
+
+msgid "Apr"
+msgstr "Apr"
+
+msgid "May"
+msgstr "May"
+
+msgid "Jun"
+msgstr "Jun"
+
+msgid "Jul"
+msgstr "Jul"
+
+msgid "Aug"
+msgstr "Aug"
+
+msgid "Sep"
+msgstr "Sep"
+
+msgid "Oct"
+msgstr "Oct"
+
+msgid "Nov"
+msgstr "Nov"
+
+msgid "Dec"
+msgstr "Dec"
+
+msgid "January"
+msgstr "January"
+
+msgid "February"
+msgstr "February"
+
+msgid "March"
+msgstr "March"
+
+msgid "April"
+msgstr "April"
+
+msgid "May "
+msgstr "May"
+
+msgid "June"
+msgstr "June"
+
+msgid "July"
+msgstr "July"
+
+msgid "August"
+msgstr "August"
+
+msgid "September"
+msgstr "September"
+
+msgid "October"
+msgstr "October"
+
+msgid "November"
+msgstr "November"
+
+msgid "December"
+msgstr "December"
+
+msgid "second read"
+msgstr "second read"
+
+msgid "seconds read"
+msgstr "seconds read"
+
+msgid "minute read"
+msgstr "minute read"
+
+msgid "minutes read"
+msgstr "minutes read"
+
+msgid "hour read"
+msgstr "hour read"
+
+msgid "hours read"
+msgstr "hours read"
+
+msgid "day read"
+msgstr "day read"
+
+msgid "days read"
+msgstr "days read"
+
+msgid "book read"
+msgstr "book read"
+
+msgid "books read"
+msgstr "books read"
+
+msgid "day/book avg"
+msgstr "day/book avg"
+
+msgid "days/book avg"
+msgstr "days/book avg"
+
+msgid "of days read"
+msgstr "of days read"
+
+msgid "page read"
+msgstr "page read"
+
+msgid "pages read"
+msgstr "pages read"
+
+msgid "week in a row"
+msgstr "week in a row"
+
+msgid "weeks in a row"
+msgstr "weeks in a row"
+
+msgid "day in a row"
+msgstr "day in a row"
+
+msgid "days in a row"
+msgstr "days in a row"
+
+msgid "No weekly streak"
+msgstr "No weekly streak"
+
+msgid "No daily streak"
+msgstr "No daily streak"
+
+msgid "CURRENT STREAK"
+msgstr "Current streak"
+
+msgid "BEST STREAK"
+msgstr "Best streak"
+
+msgid "DAYS READ PER MONTH"
+msgstr "Days read per month"
+
+msgid "TIME READ PER MONTH"
+msgstr "Time read per month"
+
+msgid "BOOKS READ PER MONTH"
+msgstr "Books read per month"
+
+msgid "Unknown"
+msgstr "Unknown"
+
+msgid "No books read"
+msgstr "No books read"
+
+msgid "No books read in %1"
+msgstr "No books read in %1"
+
+msgid "No books read in "
+msgstr "No books read in "
+
+msgid "%1 - book read %2"
+msgstr "%1 - book read %2"
+
+msgid "%1 - books read %2"
+msgstr "%1 - books read %2"
+
+msgid "Reloading data..."
+msgstr "Reloading data..."
+
+msgid "Reading insights"
+msgstr "Reading insights"
+
+msgid "ALL BOOKS READ %1"
+msgstr "All books read %1"
+
+msgid "TOTAL READ"
+msgstr "Total read"
+
+msgid "LAST WEEK"
+msgstr "Last week"
+
+msgid "avg/day"
+msgstr "avg/day"
+
+msgid "Today"
+msgstr "Today"
+
+msgid "Yesterday"
+msgstr "Yesterday"
+
+msgid "Mon"
+msgstr "Mon"
+
+msgid "Tue"
+msgstr "Tue"
+
+msgid "Wed"
+msgstr "Wed"
+
+msgid "Thu"
+msgstr "Thu"
+
+msgid "Fri"
+msgstr "Fri"
+
+msgid "Sat"
+msgstr "Sat"
+
+msgid "Sun"
+msgstr "Sun"
+
+msgid "read time avg/day"
+msgstr "read time avg/day"
+
+msgid "reading time"
+msgstr "reading time"
+
+msgid "No streak dates"
+msgstr "No streak dates"
+
+msgid "CalendarView not available"
+msgstr "CalendarView not available"
+
+msgid "Reading time over the last 8 weeks"
+msgstr "Reading time over the last 8 weeks"
+
+msgid "Pages read over the last 8 weeks"
+msgstr "Pages read over the last 8 weeks"
+
+msgid "Average daily reading time, last 8 weeks"
+msgstr "Average daily reading time, last 8 weeks"
+
+msgid "Average daily pages, last 8 weeks"
+msgstr "Average daily pages, last 8 weeks"
+
+msgid "No reading data in the last 8 weeks"
+msgstr "No reading data in the last 8 weeks"
+

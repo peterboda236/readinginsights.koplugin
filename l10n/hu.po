@@ -1,0 +1,245 @@
+# Reading Insights plugin translation (hu)
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+
+msgid "Jan"
+msgstr "Jan."
+
+msgid "Feb"
+msgstr "Febr."
+
+msgid "Mar"
+msgstr "Márc."
+
+msgid "Apr"
+msgstr "Ápr."
+
+msgid "May"
+msgstr "Máj."
+
+msgid "Jun"
+msgstr "Jún."
+
+msgid "Jul"
+msgstr "Júl."
+
+msgid "Aug"
+msgstr "Aug."
+
+msgid "Sep"
+msgstr "Szept."
+
+msgid "Oct"
+msgstr "Okt."
+
+msgid "Nov"
+msgstr "Nov."
+
+msgid "Dec"
+msgstr "Dec."
+
+msgid "January"
+msgstr "Január"
+
+msgid "February"
+msgstr "Február"
+
+msgid "March"
+msgstr "Március"
+
+msgid "April"
+msgstr "Április"
+
+msgid "May "
+msgstr "Május"
+
+msgid "June"
+msgstr "Június"
+
+msgid "July"
+msgstr "Július"
+
+msgid "August"
+msgstr "Augusztus"
+
+msgid "September"
+msgstr "Szeptember"
+
+msgid "October"
+msgstr "Október"
+
+msgid "November"
+msgstr "November"
+
+msgid "December"
+msgstr "December"
+
+msgid "second read"
+msgstr "olvasott mp"
+
+msgid "seconds read"
+msgstr "olvasott mp"
+
+msgid "minute read"
+msgstr "olvasott perc"
+
+msgid "minutes read"
+msgstr "olvasott perc"
+
+msgid "hour read"
+msgstr "olvasott óra"
+
+msgid "hours read"
+msgstr "olvasott óra"
+
+msgid "day read"
+msgstr "olvasással töltött nap"
+
+msgid "days read"
+msgstr "olvasással töltött nap"
+
+msgid "book read"
+msgstr "olvasott könyv"
+
+msgid "books read"
+msgstr "olvasott könyv"
+
+msgid "day/book avg"
+msgstr "átlag nap/könyv"
+
+msgid "days/book avg"
+msgstr "átlag nap/könyv"
+
+msgid "of days read"
+msgstr "olvasott nap"
+
+msgid "page read"
+msgstr "olvasott oldal"
+
+msgid "pages read"
+msgstr "olvasott oldal"
+
+msgid "week in a row"
+msgstr "egymást követő hét"
+
+msgid "weeks in a row"
+msgstr "egymást követő hét"
+
+msgid "day in a row"
+msgstr "egymást követő nap"
+
+msgid "days in a row"
+msgstr "egymást követő nap"
+
+msgid "No weekly streak"
+msgstr "Nincs heti sorozat"
+
+msgid "No daily streak"
+msgstr "Nincs napi sorozat"
+
+msgid "CURRENT STREAK"
+msgstr "Aktuális sorozat"
+
+msgid "BEST STREAK"
+msgstr "Leghosszabb sorozat"
+
+msgid "DAYS READ PER MONTH"
+msgstr "Havonta olvasott napok"
+
+msgid "TIME READ PER MONTH"
+msgstr "Havi olvasási idő"
+
+msgid "BOOKS READ PER MONTH"
+msgstr "Havonta olvasott könyvek"
+
+msgid "Unknown"
+msgstr "Ismeretlen"
+
+msgid "No books read"
+msgstr "Nincs olvasott könyv"
+
+msgid "No books read in %1"
+msgstr "Nincs olvasott könyv: %1"
+
+msgid "No books read in "
+msgstr "Nincs olvasott könyv: "
+
+msgid "%1 - book read %2"
+msgstr "%1: %2 könyv olvasva"
+
+msgid "%1 - books read %2"
+msgstr "%1: %2 könyv olvasva"
+
+msgid "Reloading data..."
+msgstr "Adatok újraolvasása..."
+
+msgid "Reading insights"
+msgstr "Olvasási áttekintés"
+
+msgid "ALL BOOKS READ %1"
+msgstr "Összesen: %1 könyv olvasva"
+
+msgid "TOTAL READ"
+msgstr "Összes olvasás"
+
+msgid "LAST WEEK"
+msgstr "Legutóbbi hét"
+
+msgid "avg/day"
+msgstr "átlag oldal/nap"
+
+msgid "Today"
+msgstr "Ma"
+
+msgid "Yesterday"
+msgstr "Tegnap"
+
+msgid "Mon"
+msgstr "Hét."
+
+msgid "Tue"
+msgstr "Kedd"
+
+msgid "Wed"
+msgstr "Sze."
+
+msgid "Thu"
+msgstr "Csüt."
+
+msgid "Fri"
+msgstr "Pén."
+
+msgid "Sat"
+msgstr "Szo."
+
+msgid "Sun"
+msgstr "Vas."
+
+msgid "read time avg/day"
+msgstr "átlag idő/nap"
+
+msgid "reading time"
+msgstr "olvasási idő"
+
+msgid "No streak dates"
+msgstr "Nincs megjeleníthető dátum"
+
+msgid "CalendarView not available"
+msgstr "CalendarView nem elérhető"
+
+msgid "Reading time over the last 8 weeks"
+msgstr "Elmúlt 8 hét olvasási ideje"
+
+msgid "Pages read over the last 8 weeks"
+msgstr "Elmúlt 8 hét olvasott oldalainak száma"
+
+msgid "Average daily reading time, last 8 weeks"
+msgstr "Elmúlt 8 hét átlagos napi olvasási ideje"
+
+msgid "Average daily pages, last 8 weeks"
+msgstr "Elmúlt 8 hét átlagos napi oldalszáma"
+
+msgid "No reading data in the last 8 weeks"
+msgstr "Nincs olvasási adat az elmúlt 8 héten"
+

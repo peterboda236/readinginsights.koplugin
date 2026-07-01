@@ -1,0 +1,3123 @@
+--[[
+Reading Insights Popup
+Version 1.3
+Based on: https://github.com/quanganhdo/koreader-user-patches/blob/main/2-reading-insights-popup.lua
+
+Full-screen scrollable popup showing reading history from statistics.sqlite3.
+
+Sections:
+  - Last week     7-day total and average time/pages + daily bar chart
+                  (tap a value to see an 8-week trend popup)
+  - Streaks       current and best daily/weekly streaks
+  - Year          time, days read, or books read + pages, navigable by year
+  - Monthly chart bar chart per month (hours, days, or books mode, tappable)
+  - Total read    all-time totals
+
+Gestures:
+  - Tap yearly value or monthly bar    open book list for that period
+  - Tap monthly chart header           cycle hours/days/books mode
+  - Tap on Streak                      show the streak period date
+  - Long press title bar               force-reload all data from DB
+  - Swipe left/right                   change year
+  - Swipe down / any key               close
+  - Tap on book list element           show book stats
+  - Tap value in Last week section     show 8-week trend popup (line chart)
+  - Tap on Today in Last week          open Today Timeline
+  - Long Press on Current month        open Calendar View
+
+Monthly chart modes (cycle by tapping header):
+  hours  – reading time per month (HH:MM bars)
+  days   – reading days per month
+  books  – distinct books with reading data per month (getMonthlyBookCounts)
+
+Caching:
+  Streaks cached per minute; year range cached per day; last-week stats per minute;
+  yearly and monthly stats per year per day. Monthly book counts cached under
+  "books:<year>:<date>" keys, mirrored to _stale_monthly. Stale-while-revalidate:
+  the popup opens immediately with cached data while fresh values load
+  in the background.
+
+  CalendarView: when closed, the popup reopens with the same year, mode,
+  and cached data — no extra DB queries needed on return. If CalendarView
+  is not available the long press is silently ignored.
+]]--
+
+local Blitbuffer = require("ffi/blitbuffer")
+local BottomContainer = require("ui/widget/container/bottomcontainer")
+local Button = require("ui/widget/button")
+local CenterContainer = require("ui/widget/container/centercontainer")
+local DataStorage = require("datastorage")
+local Device = require("device")
+local Dispatcher = require("dispatcher")
+local Font = require("ui/font")
+local FrameContainer = require("ui/widget/container/framecontainer")
+local Geom = require("ui/geometry")
+local GestureRange = require("ui/gesturerange")
+local HorizontalGroup = require("ui/widget/horizontalgroup")
+local HorizontalSpan = require("ui/widget/horizontalspan")
+local InfoMessage = require("ui/widget/infomessage")
+local InputContainer = require("ui/widget/container/inputcontainer")
+local LeftContainer = require("ui/widget/container/leftcontainer")
+local LineWidget = require("ui/widget/linewidget")
+local OverlapGroup = require("ui/widget/overlapgroup")
+local Size = require("ui/size")
+local SQ3 = require("lua-ljsqlite3/init")
+local TextBoxWidget = require("ui/widget/textboxwidget")
+local TextWidget = require("ui/widget/textwidget")
+local TitleBar = require("ui/widget/titlebar")
+local UIManager = require("ui/uimanager")
+local VerticalGroup = require("ui/widget/verticalgroup")
+local VerticalSpan = require("ui/widget/verticalspan")
+local Widget = require("ui/widget/widget")
+local WidgetContainer = require("ui/widget/container/widgetcontainer")
+local Screen = Device.screen
+local gettext = require("gettext")
+local T = require("ffi/util").template
+local util = require("util")
+
+-- true: cache DB results (streaks/year_range per day, last-week per minute, yearly/monthly per day).
+-- false: always query DB fresh on open.
+local ENABLE_CACHE = true
+
+-- true: full-screen refresh on open/close. false: partial refresh only.
+local FULL_SCREEN_REFRESH_ON_OPEN_CLOSE = true
+
+-- true: today's bar in the weekly chart is black. false: all bars gray.
+local WEEKLY_CHART_HIGHLIGHT_TODAY = true
+
+local _cache = {
+    streaks      = nil,
+    streaks_date = nil,
+    year_range      = nil,
+    year_range_date = nil,
+    all_time      = nil,
+    all_time_date = nil,
+    last_week        = nil,
+    last_week_minute = nil,
+    last_week_daily        = nil,
+    last_week_daily_minute = nil,
+    last8weeks        = nil,
+    last8weeks_minute = nil,
+}
+
+local _yearly_cache  = {}
+local _monthly_cache = {}
+
+-- Stale cache: holds expired values for immediate display on the next open.
+-- _stale_cache is read-only in init(); writes go to the primary cache tables.
+local _stale_cache   = {}
+local _stale_yearly  = {}
+local _stale_monthly = {}
+
+local function clearAllCache()
+    _cache.streaks         = nil
+    _cache.streaks_date    = nil
+    _cache.year_range      = nil
+    _cache.year_range_date = nil
+    _cache.all_time        = nil
+    _cache.all_time_date   = nil
+    _cache.last_week        = nil
+    _cache.last_week_minute = nil
+    _cache.last_week_daily        = nil
+    _cache.last_week_daily_minute = nil
+    _cache.last8weeks        = nil
+    _cache.last8weeks_minute = nil
+    _yearly_cache          = {}
+    _monthly_cache         = {}
+    -- Stale cache is wiped on force-reload so stale data is not shown after a manual refresh.
+    _stale_cache           = {}
+    _stale_yearly          = {}
+    _stale_monthly         = {}
+end
+
+local function todayDateStr()
+    return os.date("%Y-%m-%d")
+end
+
+local function currentMinute()
+    return math.floor(os.time() / 60)
+end
+
+-- Localisation loader: reads l10n/<lang>.po (simple "msgid"/"msgstr" pairs,
+-- one entry per line) shipped next to this file. Add a new l10n/<lang>.po
+-- to support another language; no code changes needed.
+local function pluginDir()
+    local src = debug.getinfo(1, "S").source
+    local dir = src:match("^@(.*/)")
+    return dir or "./"
+end
+
+local function unescapePO(s)
+    return (s:gsub("\\n", "\n"):gsub('\\"', '"'):gsub("\\\\", "\\"))
+end
+
+local function loadPOFile(path)
+    local map = {}
+    local f = io.open(path, "r")
+    if not f then return map end
+    local pending_key = nil
+    for line in f:lines() do
+        local msgid = line:match('^msgid%s+"(.*)"%s*$')
+        local msgstr = line:match('^msgstr%s+"(.*)"%s*$')
+        if msgid ~= nil then
+            pending_key = unescapePO(msgid)
+        elseif msgstr ~= nil and pending_key ~= nil then
+            if pending_key ~= "" then
+                map[pending_key] = unescapePO(msgstr)
+            end
+            pending_key = nil
+        end
+    end
+    f:close()
+    return map
+end
+
+local _l10n_cache = {}
+local function getL10NMap()
+    local lang = "en"
+    if G_reader_settings and G_reader_settings.readSetting then
+        lang = G_reader_settings:readSetting("language") or "en"
+    end
+    local lang_base = lang:match("^([a-z]+)") or lang
+    if _l10n_cache[lang_base] ~= nil then
+        return _l10n_cache[lang_base]
+    end
+    local map = loadPOFile(pluginDir() .. "l10n/" .. lang_base .. ".po")
+    _l10n_cache[lang_base] = map
+    return map
+end
+
+local function l10nLookup(msg)
+    local map = getL10NMap()
+    return map[msg]
+end
+
+local function _(msg)
+    return l10nLookup(msg) or gettext(msg)
+end
+
+local function N_(singular, plural, n)
+    local singular_override = l10nLookup(singular)
+    local plural_override = l10nLookup(plural)
+    if singular_override or plural_override then
+        if n == 1 then
+            return singular_override or plural_override
+        end
+        return plural_override or singular_override
+    end
+    return gettext.ngettext(singular, plural, n)
+end
+
+
+-- Language base code (e.g. "hu", "en"), cached for the session.
+local _cached_lang_base = nil
+local function getLangBase()
+    if not _cached_lang_base then
+        local lang = "en"
+        if G_reader_settings and G_reader_settings.readSetting then
+            lang = G_reader_settings:readSetting("language") or "en"
+        end
+        _cached_lang_base = lang:match("^([a-z]+)") or lang
+    end
+    return _cached_lang_base
+end
+
+-- Format a YYYY-MM-DD string for display (EN: DD/MM/YYYY, HU: YYYY.MM.DD.)
+-- no_trailing_dot: HU only - omit the final dot (used for the first date in a range)
+local function formatDateForDisplay(date_str, no_trailing_dot)
+    if not date_str then return "?" end
+    local y, m, d = date_str:match("^(%d+)-(%d+)-(%d+)$")
+    if not y then return date_str end
+    if getLangBase() == "hu" then
+        return string.format("%s.%s.%s%s", y, m, d, no_trailing_dot and "" or ".")
+    else
+        return string.format("%s/%s/%s", d, m, y)
+    end
+end
+
+local function formatNumber(n, decimals)
+    if n == nil then return "" end
+    decimals = decimals or 0
+    local is_hu = (getLangBase() == "hu")
+    if decimals == 0 and n >= 0 and n < 10000 then
+        return tostring(math.floor(n))
+    end
+    local s = string.format("%." .. decimals .. "f", n)
+    local int, frac = s:match("^(%-?%d+)%.*(%d*)$")
+    if not int then return s end
+    local absInt = int:gsub("^%-", "")
+    local threshold = is_hu and 5 or 4  -- HU: from 10 000 (5 digits); EN: from 1,000 (4 digits)
+    if #absInt >= threshold then
+        if is_hu then
+            int = int:reverse():gsub("(%d%d%d)", "%1 "):reverse():gsub("^ ", "")
+        else
+            int = int:reverse():gsub("(%d%d%d)", "%1,"):reverse():gsub("^,", "")
+        end
+    end
+    if frac ~= "" then return int .. (is_hu and "," or ".") .. frac end
+    return int
+end
+
+local function formatCount(value)
+    if value == nil then return "" end
+    if type(value) == "number" then return formatNumber(value, 0) end
+    return tostring(value)
+end
+
+local MONTH_NAMES_SHORT = {
+    _("Jan"), _("Feb"), _("Mar"), _("Apr"), _("May"), _("Jun"),
+    _("Jul"), _("Aug"), _("Sep"), _("Oct"), _("Nov"), _("Dec"),
+}
+local MONTH_NAMES_FULL = {
+    _("January"), _("February"), _("March"), _("April"), _("May "), _("June"),
+    _("July"), _("August"), _("September"), _("October"), _("November"), _("December"),
+}
+
+local db_path = DataStorage:getSettingsDir() .. "/statistics.sqlite3"
+local ReadingInsightsPopup
+
+local INSIGHTS_MODE_KEY = "reading_insights_popup_mode"
+local INSIGHTS_MODE_DAYS = "days"
+local INSIGHTS_MODE_HOURS = "hours"
+local INSIGHTS_MODE_BOOKS = "books"
+
+local function normalizeInsightsMode(mode)
+    if mode == INSIGHTS_MODE_DAYS then
+        return INSIGHTS_MODE_DAYS
+    end
+    if mode == INSIGHTS_MODE_BOOKS then
+        return INSIGHTS_MODE_BOOKS
+    end
+    return INSIGHTS_MODE_HOURS
+end
+
+local function readInsightsMode()
+    if G_reader_settings and G_reader_settings.readSetting then
+        return normalizeInsightsMode(G_reader_settings:readSetting(INSIGHTS_MODE_KEY, INSIGHTS_MODE_HOURS))
+    end
+    return INSIGHTS_MODE_HOURS
+end
+
+local function saveInsightsMode(mode)
+    if G_reader_settings and G_reader_settings.saveSetting then
+        G_reader_settings:saveSetting(INSIGHTS_MODE_KEY, mode)
+    end
+end
+
+local function withStatsDb(fallback, fn)
+    local lfs = require("libs/libkoreader-lfs")
+    if lfs.attributes(db_path, "mode") ~= "file" then
+        return fallback
+    end
+
+    local conn = SQ3.open(db_path)
+    if not conn then return fallback end
+
+    pcall(function()
+        conn:exec("PRAGMA journal_mode=WAL; PRAGMA cache_size=2000; PRAGMA temp_store=MEMORY;")
+    end)
+
+    local ok, result = pcall(fn, conn)
+    conn:close()
+    if ok then
+        return result
+    end
+    return fallback
+end
+
+local function withStatement(conn, sql, fn)
+    local stmt = conn:prepare(sql)
+    if not stmt then return end
+    local ok, result = pcall(fn, stmt)
+    stmt:close()
+    if ok then
+        return result
+    end
+end
+
+local function computeStreaks(entries_desc, is_consecutive, is_current_start)
+    if #entries_desc == 0 then
+        return 0, 0
+    end
+
+    local current = 0
+    if is_current_start(entries_desc[1]) then
+        current = 1
+        for i = 2, #entries_desc do
+            if is_consecutive(entries_desc[i - 1], entries_desc[i]) then
+                current = current + 1
+            else
+                break
+            end
+        end
+    end
+
+    local best = 1
+    local run = 1
+    for i = 2, #entries_desc do
+        if is_consecutive(entries_desc[i - 1], entries_desc[i]) then
+            run = run + 1
+            if run > best then
+                best = run
+            end
+        else
+            run = 1
+        end
+    end
+
+    return current, best
+end
+
+-- Like computeStreaks but also returns {start, end} date strings for current and best streaks.
+local function computeStreaksWithDates(entries_desc, is_consecutive, is_current_start)
+    if #entries_desc == 0 then
+        return 0, 0, nil, nil
+    end
+
+    local current = 0
+    local current_start, current_end
+    if is_current_start(entries_desc[1]) then
+        current = 1
+        current_end   = entries_desc[1]
+        current_start = entries_desc[1]
+        for i = 2, #entries_desc do
+            if is_consecutive(entries_desc[i - 1], entries_desc[i]) then
+                current = current + 1
+                current_start = entries_desc[i]
+            else
+                break
+            end
+        end
+    end
+
+    local best = 1
+    local run = 1
+    local run_start_idx = 1
+    local best_start_idx, best_end_idx = 1, 1
+    for i = 2, #entries_desc do
+        if is_consecutive(entries_desc[i - 1], entries_desc[i]) then
+            run = run + 1
+            if run > best then
+                best = run
+                best_end_idx   = run_start_idx
+                best_start_idx = i
+            end
+        else
+            run = 1
+            run_start_idx = i
+        end
+    end
+
+    local best_dates  = { start = entries_desc[best_start_idx], end_ = entries_desc[best_end_idx] }
+    local current_dates = current > 0
+        and { start = current_start, end_ = current_end }
+        or nil
+
+    return current, best, current_dates, best_dates
+end
+
+local function parseDateYMD(date_str)
+    if not date_str then return end
+    local year = tonumber(date_str:sub(1,4))
+    local month = tonumber(date_str:sub(6,7))
+    local day = tonumber(date_str:sub(9,10))
+    if not year or not month or not day then return end
+    return year, month, day
+end
+
+local function parseWeekYear(week_str)
+    if not week_str then return end
+    local year_str, week_str_num = week_str:match("(%d+)-(%d+)")
+    local year = tonumber(year_str)
+    local week = tonumber(week_str_num)
+    if not year or week == nil then return end
+    return year, week
+end
+
+local Math = require("optmath")
+
+local function formatTimeRead(seconds)
+    if not seconds or seconds <= 0 then
+        return "", ""
+    end
+    
+    if seconds < 60 then
+        local s = Math.round(seconds)  -- Math.round instead of math.floor
+        return formatNumber(s, 0),
+               N_("second read", "seconds read", s)
+
+    elseif seconds < 3600 then
+        local m = Math.round(seconds / 60)
+        return formatNumber(m, 0),
+               N_("minute read", "minutes read", m)
+
+    else
+        local rounded_minutes = Math.round(seconds / 60)
+        local h = math.floor(rounded_minutes / 60 * 10) / 10
+        return formatNumber(h, 1),
+               N_("hour read", "hours read", h)
+    end
+end
+
+local function formatHoursRead(seconds)
+    if not seconds or seconds <= 0 then
+        return "0", N_("hour read", "hours read", 0)
+    end
+
+    local rounded_minutes = Math.round(seconds / 60)
+    local h = math.floor(rounded_minutes / 60 * 10) / 10
+    h = math.floor(h)  -- drop decimal
+    return formatNumber(h, 0),
+           N_("hour read", "hours read", h)
+end
+
+-- Format seconds as HH:MM:SS for book list display.
+local function formatHHMMSS(seconds)
+    if not seconds or seconds <= 0 then return "00:00:00" end
+    local s = math.floor(seconds)
+    local hh = math.floor(s / 3600)
+    local mm = math.floor((s % 3600) / 60)
+    local ss = s % 60
+    return string.format("%02d:%02d:%02d", hh, mm, ss)
+end
+
+local function getSerifFace(font_name, fallback_name, size)
+    return Font:getFace(font_name, size) or Font:getFace(fallback_name, size)
+end
+
+local function buildSerifFonts()
+    return {
+        section = getSerifFace("NotoSans-Bold.ttf", "tfont", 22),
+        value   = getSerifFace("NotoSans-Bold.ttf",    "tfont", 26),
+        label   = getSerifFace("NotoSans-Regular.ttf", "x_smallinfofont", 20),
+        small   = getSerifFace("NotoSans-Regular.ttf", "xx_smallinfofont", 15),
+
+    }
+
+end
+
+local function buildLayout(screen_w, padding_h, column_gap)
+    local separator_width = 2 * column_gap + Size.line.medium
+    local content_width = screen_w - 2 * padding_h
+    local col_width = math.floor((content_width - separator_width) / 2)
+    return {
+        full_width    = screen_w,
+        padding_h     = padding_h,
+        column_gap    = column_gap,
+        separator_width = separator_width,
+        content_width = content_width,
+        col_width     = col_width,
+    }
+end
+
+local _cached_fonts  = nil
+local _cached_layout = nil
+
+local function getCachedFonts()
+    if not _cached_fonts then _cached_fonts = buildSerifFonts() end
+    return _cached_fonts
+end
+
+local function getCachedLayout()
+    if not _cached_layout then
+        local screen_w = Screen:getWidth()
+        _cached_layout = buildLayout(screen_w, Size.padding.large, Screen:scaleBySize(20))
+    end
+    return _cached_layout
+end
+
+local function buildColumnSeparator(column_gap, height)
+    local v_padding = Size.padding.default
+    return HorizontalGroup:new{
+        HorizontalSpan:new{ width = column_gap },
+        VerticalGroup:new{
+            align = "center",
+            VerticalSpan:new{ height = v_padding },
+            LineWidget:new{
+                dimen = Geom:new{ w = Size.line.medium, h = height - 2 * v_padding },
+                background = Blitbuffer.COLOR_GRAY,
+            },
+            VerticalSpan:new{ height = v_padding },
+        },
+        HorizontalSpan:new{ width = column_gap },
+    }
+end
+
+local function buildSectionHeader(font_section, text, width, left_padding)
+    left_padding = left_padding or Size.padding.large
+    local text_widget = TextWidget:new{ text = text, face = font_section }
+    return FrameContainer:new{
+        background    = Blitbuffer.COLOR_WHITE,
+        bordersize    = 0,
+        padding_top   = Size.padding.small,
+        padding_bottom = Size.padding.small,
+        padding_left  = left_padding,
+        padding_right = 0,
+        LeftContainer:new{
+            dimen = Geom:new{ w = width - left_padding, h = text_widget:getSize().h },
+            text_widget,
+        },
+    }
+    
+end
+
+local function buildValueLine(font_value, font_label, col_width, value, unit)
+    if value == "" then
+        return TextBoxWidget:new{
+            text      = unit,
+            face      = font_label,
+            width     = col_width,
+            alignment = "left",
+        }
+    end
+
+    local value_widget = TextWidget:new{ text = value, face = font_value }
+    local value_width = value_widget:getSize().w
+    local text_desc_width = col_width - value_width - Size.padding.large
+    return HorizontalGroup:new{
+        align = "center",
+        value_widget,
+        HorizontalSpan:new{ width = Size.padding.large },
+        TextBoxWidget:new{
+            text      = unit,
+            face      = font_label,
+            width     = text_desc_width,
+            alignment = "left",
+        },
+    }
+end
+
+local function fixedCol(widget, width)
+    return LeftContainer:new{
+        dimen  = Geom:new{ w = width, h = widget:getSize().h },
+        widget,
+    }
+end
+
+local function padded(padding_h, widget)
+    return HorizontalGroup:new{
+        HorizontalSpan:new{ width = padding_h },
+        widget,
+    }
+end
+
+local function buildTwoColRow(left_widget, right_widget, layout)
+    return HorizontalGroup:new{
+        align = "center",
+        fixedCol(left_widget, layout.col_width),
+        buildColumnSeparator(layout.column_gap, left_widget:getSize().h),
+        fixedCol(right_widget, layout.col_width),
+    }
+end
+
+local function tappableCell(widget, col_width, callback)
+    local cell = InputContainer:new{
+        dimen = Geom:new{ x = 0, y = 0, w = col_width, h = widget:getSize().h },
+        widget,
+    }
+    cell.ges_events = {
+        Tap = { GestureRange:new{ ges = "tap", range = cell.dimen } },
+    }
+    function cell:onTap()
+        callback()
+        return true
+    end
+    return cell
+end
+
+local function addSectionWithRow(sections, header_widget, row, layout, opts)
+    local pad_row        = true
+    local add_divider    = true
+    local no_bottom_line = false
+    local no_top_line    = false
+    if opts then
+        if opts.pad_row        == false then pad_row        = false end
+        if opts.add_divider    == false then add_divider    = false end
+        if opts.no_bottom_line == true  then no_bottom_line = true  end
+        if opts.no_top_line    == true  then no_top_line    = true  end
+    end
+
+    table.insert(sections, header_widget)
+    table.insert(sections, VerticalSpan:new{ height = Size.padding.default })
+    if add_divider and not no_top_line then
+        table.insert(sections, padded(layout.padding_h, LineWidget:new{
+            dimen      = Geom:new{ w = layout.content_width, h = Size.line.thin },
+            background = Blitbuffer.COLOR_GRAY,
+        }))
+    end
+    table.insert(sections, pad_row and padded(layout.padding_h, row) or row)
+    table.insert(sections, VerticalSpan:new{ height = Size.padding.large })
+    if add_divider and not no_bottom_line then
+        table.insert(sections, padded(layout.padding_h, LineWidget:new{
+            dimen      = Geom:new{ w = layout.content_width, h = Size.line.thick },
+            background = Blitbuffer.COLOR_GRAY,
+        }))
+    end
+end
+
+local function buildYearHeader(font_section, layout, year_range, selected_year)
+    local prev_available = selected_year > year_range.min_year
+    local next_available = selected_year < year_range.max_year
+
+    local inner_pad = Size.padding.default
+    local gap       = Size.padding.small
+
+    local sample_arrow = TextWidget:new{ text = "\xe2\x80\xb9", face = font_section }
+    local arrow_w = sample_arrow:getSize().w
+    sample_arrow:free()
+
+    local sample_yr = TextWidget:new{ text = tostring(selected_year - 1), face = font_section }
+    local yr_side_w = sample_yr:getSize().w
+    sample_yr:free()
+
+    local slot_w = arrow_w + gap + yr_side_w + inner_pad
+
+    local year_label = TextWidget:new{
+        text = tostring(selected_year),
+        face = font_section,
+    }
+
+    local function makeSlot(yr, arrow_glyph, left, visible)
+        if not visible then
+            return HorizontalSpan:new{ width = slot_w }, slot_w
+        end
+
+        local arrow_tw = TextWidget:new{
+            text    = arrow_glyph,
+            face    = font_section,
+            fgcolor = Blitbuffer.COLOR_BLACK,
+        }
+        local yr_tw = TextWidget:new{
+            text    = tostring(yr),
+            face    = font_section,
+            fgcolor = Blitbuffer.COLOR_BLACK,
+        }
+
+        local parts
+        if left then
+            parts = HorizontalGroup:new{
+                align = "center",
+                arrow_tw,
+                HorizontalSpan:new{ width = gap },
+                yr_tw,
+                HorizontalSpan:new{ width = inner_pad },
+            }
+        else
+            parts = HorizontalGroup:new{
+                align = "center",
+                HorizontalSpan:new{ width = inner_pad },
+                yr_tw,
+                HorizontalSpan:new{ width = gap },
+                arrow_tw,
+            }
+        end
+        return parts, slot_w
+    end
+
+    local left_slot,  left_w  = makeSlot(selected_year - 1, "\xe2\x80\xb9", true,  prev_available)
+    local right_slot, right_w = makeSlot(selected_year + 1, "\xe2\x80\xba", false, next_available)
+
+    local year_w    = year_label:getSize().w
+    local remaining = layout.content_width - left_w - right_w - year_w
+    if remaining < 0 then remaining = 0 end
+    local side_l = math.floor(remaining / 2)
+    local side_r = remaining - side_l
+
+    local header_content = HorizontalGroup:new{
+        align = "center",
+        left_slot,
+        HorizontalSpan:new{ width = side_l },
+        year_label,
+        HorizontalSpan:new{ width = side_r },
+        right_slot,
+    }
+
+    return FrameContainer:new{
+        background     = Blitbuffer.COLOR_WHITE,
+        bordersize     = 0,
+        padding_top    = Size.padding.small,
+        padding_bottom = Size.padding.small,
+        padding_left   = layout.padding_h,
+        padding_right  = layout.padding_h,
+        header_content,
+    }
+end
+
+local function buildYearlyRow(popup_self, yearly_stats, fonts, layout)
+    local left_value = ""
+    local left_unit  = ""
+    if popup_self.mode == INSIGHTS_MODE_HOURS then
+        local yr_secs = yearly_stats.duration or 0
+        local yr_total_mins = math.floor(yr_secs / 60 + 0.5)
+        local yr_h = math.floor(yr_total_mins / 60)
+        local yr_m = yr_total_mins % 60
+        left_value = string.format("%02d:%02d", yr_h, yr_m)
+        left_unit  = _("reading time")
+    elseif popup_self.mode == INSIGHTS_MODE_BOOKS then
+        left_value = formatCount(yearly_stats.books_started)
+        left_unit  = N_("book read", "books read", yearly_stats.books_started)
+    else
+        left_value = formatCount(yearly_stats.days)
+        left_unit  = N_("day read", "days read", yearly_stats.days)
+    end
+    local left_line = buildValueLine(
+        fonts.value, fonts.label, layout.col_width, left_value, left_unit)
+    local right_value, right_unit
+    if popup_self.mode == INSIGHTS_MODE_DAYS then
+        local selected_year = popup_self.selected_year or tonumber(os.date("%Y"))
+        local current_year  = tonumber(os.date("%Y"))
+        local days_in_year
+        if selected_year == current_year then
+            days_in_year = tonumber(os.date("%j"))
+        else
+            local is_leap = (selected_year % 4 == 0 and selected_year % 100 ~= 0)
+                         or (selected_year % 400 == 0)
+            days_in_year = is_leap and 366 or 365
+        end
+        local pct = (days_in_year > 0)
+            and math.floor((yearly_stats.days / days_in_year) * 100 + 0.5)
+            or 0
+        right_value = pct .. "%"
+        right_unit  = _("of days read")
+    elseif popup_self.mode == INSIGHTS_MODE_BOOKS then
+        local avg_days = yearly_stats.avg_days_per_book or 0
+        right_value = formatCount(avg_days)
+        right_unit  = N_("day/book avg", "days/book avg", avg_days)
+    else
+        right_value = formatCount(yearly_stats.pages)
+        right_unit  = N_("page read", "pages read", yearly_stats.pages)
+    end
+    local pages_val = buildValueLine(
+        fonts.value, fonts.label, layout.col_width, right_value, right_unit)
+
+    local selected_year_for_tap = popup_self.selected_year
+
+    local left_cell = InputContainer:new{
+        dimen = Geom:new{ x = 0, y = 0, w = layout.col_width, h = left_line:getSize().h },
+        left_line,
+    }
+    left_cell.ges_events = {
+        Tap = { GestureRange:new{ ges = "tap", range = left_cell.dimen } },
+    }
+    function left_cell:onTap()
+        popup_self:showBooksForYear(selected_year_for_tap)
+        return true
+    end
+
+    local right_cell = InputContainer:new{
+        dimen = Geom:new{ x = 0, y = 0, w = layout.col_width, h = pages_val:getSize().h },
+        pages_val,
+    }
+    right_cell.ges_events = {
+        Tap = { GestureRange:new{ ges = "tap", range = right_cell.dimen } },
+    }
+    function right_cell:onTap()
+        popup_self:showBooksForYear(selected_year_for_tap)
+        return true
+    end
+
+    local yearly_row = buildTwoColRow(left_cell, right_cell, layout)
+
+    return VerticalGroup:new{
+        align = "left",
+        FrameContainer:new{
+            bordersize = 0,
+            padding    = 0,
+            padded(layout.padding_h, yearly_row),
+        },
+    }
+end
+
+local function buildMonthlyChart(popup_self, monthly_data, layout, fonts)
+    if #monthly_data == 0 then return nil end
+
+    local value_key = (popup_self.mode == INSIGHTS_MODE_HOURS and "hours")
+        or (popup_self.mode == INSIGHTS_MODE_BOOKS and "book_count")
+        or "days"
+    local max_value = 1
+    for _, m in ipairs(monthly_data) do
+        local v = tonumber(m[value_key]) or 0
+        if v > max_value then max_value = v end
+    end
+
+    local chart_width  = layout.content_width
+    local bar_height   = tonumber(Screen:scaleBySize(48))
+    local bar_width    = math.floor(chart_width / 6) - tonumber(Screen:scaleBySize(8))
+    local bar_gap      = math.floor((chart_width - bar_width * 6) / 5)
+    local font_small   = fonts.small
+
+    local sample_label = TextWidget:new{ text = "0", face = font_small }
+    local label_height = sample_label:getSize().h
+    sample_label:free()
+
+    local current_year  = tonumber(os.date("%Y"))
+    local current_month = os.date("%Y-%m")
+
+    local function createBarRow(data_slice)
+        local bars_row        = HorizontalGroup:new{ align = "bottom" }
+        local month_labels_row = HorizontalGroup:new{ align = "top" }
+        local baseline_h      = Size.line.medium
+        local total_bar_height = bar_height + label_height
+
+        for i, m in ipairs(data_slice) do
+            local value = tonumber(m[value_key]) or 0
+            local ratio = max_value > 0 and (value / max_value) or 0
+            local bar_h = math.floor(ratio * bar_height + 0.5)
+            if bar_h == 0 and value > 0 then bar_h = 1 end
+
+            local is_current = (popup_self.selected_year == current_year) and (m.month == current_month)
+            local bar_color  = is_current and Blitbuffer.COLOR_BLACK or Blitbuffer.COLOR_GRAY
+
+            local bar_label_str
+            if popup_self.mode == INSIGHTS_MODE_HOURS then
+                local mo_secs = tonumber(m.seconds) or math.floor((tonumber(m.hours) or 0) * 3600 + 0.5)
+                local mo_mins = math.floor(mo_secs / 60 + 0.5)
+                local mo_h = math.floor(mo_mins / 60)
+                local mo_m = mo_mins % 60
+                bar_label_str = string.format("%02d:%02d", mo_h, mo_m)
+            else
+                bar_label_str = formatNumber(value)
+            end            local value_label   = TextWidget:new{ text = bar_label_str, face = font_small }
+            local centered_label = CenterContainer:new{
+                dimen  = Geom:new{ w = bar_width, h = label_height },
+                value_label,
+            }
+
+            local bar_column = VerticalGroup:new{ align = "center" }
+            table.insert(bar_column, centered_label)
+            if bar_h > 0 then
+                table.insert(bar_column, LineWidget:new{
+                    dimen      = Geom:new{ w = bar_width, h = bar_h },
+                    background = bar_color,
+                })
+            end
+            table.insert(bar_column, LineWidget:new{
+                dimen      = Geom:new{ w = bar_width, h = baseline_h },
+                background = bar_color,
+            })
+
+            local bar_container = BottomContainer:new{
+                dimen = Geom:new{ w = bar_width, h = total_bar_height },
+                bar_column,
+            }
+
+            local tappable_bar = InputContainer:new{
+                dimen = Geom:new{ x = 0, y = 0, w = bar_width, h = total_bar_height },
+                bar_container,
+            }
+            local month_data       = m
+            local month_year_label = m.label_full .. " " .. popup_self.selected_year
+            tappable_bar.ges_events = {
+                Tap  = { GestureRange:new{ ges = "tap",  range = tappable_bar.dimen } },
+            }
+            function tappable_bar:onTap()
+                popup_self:showBooksForMonth(month_data.month, month_year_label)
+                return true
+            end
+            if is_current then
+                popup_self._current_month_bar_widget = tappable_bar
+            end
+
+            table.insert(bars_row, tappable_bar)
+
+            local month_label_widget = TextWidget:new{ text = m.label, face = font_small }
+            table.insert(month_labels_row, CenterContainer:new{
+                dimen = Geom:new{ w = bar_width, h = month_label_widget:getSize().h },
+                month_label_widget,
+            })
+
+            if i < #data_slice then
+                table.insert(bars_row,         HorizontalSpan:new{ width = bar_gap })
+                table.insert(month_labels_row, HorizontalSpan:new{ width = bar_gap })
+            end
+        end
+
+        return VerticalGroup:new{
+            align = "center",
+            bars_row,
+            VerticalSpan:new{ height = Size.padding.small },
+            month_labels_row,
+        }
+    end
+
+    local chart     = VerticalGroup:new{ align = "center" }
+    local row_index = 0
+    for i = 1, #monthly_data, 6 do
+        local row_data = {}
+        for j = i, math.min(i + 5, #monthly_data) do
+            table.insert(row_data, monthly_data[j])
+        end
+        if #row_data > 0 then
+            if row_index > 0 then
+                table.insert(chart, VerticalSpan:new{ height = Size.padding.default })
+            end
+            table.insert(chart, createBarRow(row_data))
+            row_index = row_index + 1
+        end
+    end
+
+    return chart
+end
+
+-- ============================================================
+-- 8-week reading trend popup (tap a Last-week cell to open it)
+-- ============================================================
+
+-- Minimal line-chart widget: draws straight segments between `points`
+-- ({x, y} pixel pairs, relative to the widget's own top-left corner)
+-- using only bb:paintRect, so it doesn't depend on any diagonal-line
+-- drawing primitive that may or may not exist in a given KOReader build.
+local LineChartWidget = Widget:extend{
+    width      = nil,
+    height     = nil,
+    points     = nil,
+    line_color = nil,
+}
+
+function LineChartWidget:getSize()
+    return Geom:new{ w = self.width, h = self.height }
+end
+
+function LineChartWidget:paintTo(bb, x, y)
+    if not self.points or #self.points == 0 then return end
+    local color = self.line_color or Blitbuffer.COLOR_BLACK
+
+    if #self.points > 1 then
+        for i = 1, #self.points - 1 do
+            local p1, p2 = self.points[i], self.points[i + 1]
+            local dx, dy = p2.x - p1.x, p2.y - p1.y
+            local steps  = math.max(math.abs(dx), math.abs(dy), 1)
+            for s = 0, steps do
+                local t  = s / steps
+                local px = math.floor(p1.x + dx * t + 0.5)
+                local py = math.floor(p1.y + dy * t + 0.5)
+                bb:paintRect(x + px, y + py, 2, 2, color)
+            end
+        end
+    end
+end
+
+-- Same rounding rule used for the "avg/day" pages cell in the main popup:
+-- integer above 10, 1 decimal place below.
+local function roundAvgPages(value)
+    if value >= 10 then
+        return math.floor(value + 0.5)
+    else
+        return math.floor(value * 10 + 0.5) / 10
+    end
+end
+
+-- Format a single week's bucket value for the given metric.
+-- Returns (display_string, raw_numeric_value).
+local function formatWeekValue(metric, week_entry)
+    if metric == "time_total" or metric == "time_avg" then
+        local secs = week_entry.seconds or 0
+        if metric == "time_avg" then secs = secs / 7 end
+        local mins = math.floor(secs / 60 + 0.5)
+        local h = math.floor(mins / 60)
+        local m = mins % 60
+        return string.format("%02d:%02d", h, m), secs
+    else
+        local pages = week_entry.pages or 0
+        if metric == "pages_avg" then
+            pages = roundAvgPages(pages / 7)
+            return formatNumber(pages, pages ~= math.floor(pages) and 1 or 0), pages
+        end
+        return formatCount(pages), pages
+    end
+end
+
+local TREND_TITLE_KEYS = {
+    time_total  = "Reading time over the last 8 weeks",
+    pages_total = "Pages read over the last 8 weeks",
+    time_avg    = "Average daily reading time, last 8 weeks",
+    pages_avg   = "Average daily pages, last 8 weeks",
+}
+
+local function trendTitle(metric)
+    local key = TREND_TITLE_KEYS[metric]
+    return key and _(key) or ""
+end
+
+local function totalForMetric(metric, weeks)
+    local total_secs, total_pages = 0, 0
+    for _, w in ipairs(weeks) do
+        total_secs  = total_secs  + (w.seconds or 0)
+        total_pages = total_pages + (w.pages or 0)
+    end
+    if metric == "time_total" then
+        local mins = math.floor(total_secs / 60 + 0.5)
+        return string.format("%02d:%02d", math.floor(mins / 60), mins % 60)
+    elseif metric == "time_avg" then
+        local avg_secs = total_secs / (7 * #weeks)
+        local mins = math.floor(avg_secs / 60 + 0.5)
+        return string.format("%02d:%02d", math.floor(mins / 60), mins % 60)
+    elseif metric == "pages_total" then
+        return formatCount(total_pages)
+    else -- pages_avg
+        local avg = roundAvgPages(total_pages / (7 * #weeks))
+        return formatNumber(avg, avg ~= math.floor(avg) and 1 or 0)
+    end
+end
+
+-- Builds the chart: one dot per week, connected by straight segments,
+-- with the per-week value printed above each dot and a baseline below.
+-- "Máj 6" / "May 6" style label using the same month names as the monthly chart.
+local function formatShortDate(date_str)
+    local y, m, d = date_str:match("^(%d+)-(%d+)-(%d+)$")
+    if not y then return date_str end
+    local month_name = MONTH_NAMES_SHORT[tonumber(m)] or m
+    if getLangBase() == "hu" then
+        return month_name .. " " .. tostring(tonumber(d)) .. "."
+    else
+        return month_name .. " " .. tostring(tonumber(d))
+    end
+end
+
+local function buildLine8WeekChart(weeks, metric, chart_width, fonts)
+    if not weeks or #weeks == 0 then return nil end
+
+    local bar_height  = tonumber(Screen:scaleBySize(120))
+    local num_points  = #weeks
+    local col_width   = math.floor(chart_width / num_points)
+    local font_small  = fonts.small
+
+    local sample_label = TextWidget:new{ text = "0", face = font_small }
+    local label_height = sample_label:getSize().h
+    sample_label:free()
+
+    local values = {}
+    local max_value = 0
+    for i, w in ipairs(weeks) do
+        local _unused, raw = formatWeekValue(metric, w)
+        values[i] = raw
+        if raw > max_value then max_value = raw end
+    end
+    if max_value <= 0 then max_value = 1 end
+
+    local dot_size    = tonumber(Screen:scaleBySize(6))
+    local baseline_h  = Size.line.medium
+    local total_col_h = bar_height + label_height
+
+    local bars_row = HorizontalGroup:new{ align = "bottom" }
+    local points   = {}
+
+    for col = 1, num_points do
+        local i = num_points - col + 1  -- weeks[num_points] (current week) goes leftmost
+        local ratio = values[i] / max_value
+        local dot_y_from_bottom = math.floor(ratio * (bar_height - dot_size))
+        local val_str = formatWeekValue(metric, weeks[i])
+
+        local value_label    = TextWidget:new{ text = val_str, face = font_small }
+        local centered_label = CenterContainer:new{
+            dimen = Geom:new{ w = col_width, h = label_height },
+            value_label,
+        }
+
+        local col_group = VerticalGroup:new{ align = "center" }
+        table.insert(col_group, centered_label)
+        local space_above = bar_height - dot_size - dot_y_from_bottom
+        if space_above > 0 then
+            table.insert(col_group, VerticalSpan:new{ height = space_above })
+        end
+        table.insert(col_group, CenterContainer:new{
+            dimen = Geom:new{ w = col_width, h = dot_size },
+            LineWidget:new{
+                dimen      = Geom:new{ w = dot_size, h = dot_size },
+                background = Blitbuffer.COLOR_BLACK,
+            },
+        })
+        if dot_y_from_bottom > 0 then
+            table.insert(col_group, VerticalSpan:new{ height = dot_y_from_bottom })
+        end
+        table.insert(col_group, LineWidget:new{
+            dimen      = Geom:new{ w = col_width, h = baseline_h },
+            background = Blitbuffer.COLOR_GRAY,
+        })
+
+        table.insert(bars_row, BottomContainer:new{
+            dimen = Geom:new{ w = col_width, h = total_col_h },
+            col_group,
+        })
+
+        points[col] = {
+            x = (col - 1) * col_width + math.floor(col_width / 2),
+            y = label_height + space_above + math.floor(dot_size / 2),
+        }
+    end
+
+    local line_widget = LineChartWidget:new{
+        width      = num_points * col_width,
+        height     = total_col_h,
+        points     = points,
+        line_color = Blitbuffer.COLOR_BLACK,
+    }
+
+    local chart_area = OverlapGroup:new{
+        dimen = Geom:new{ w = num_points * col_width, h = total_col_h },
+        bars_row,
+        line_widget,
+    }
+
+    -- Per-week start/end date, same font size as the value labels above the dots.
+    -- Same left-to-right order as the columns above: most recent week first.
+    local date_labels_row = HorizontalGroup:new{ align = "top" }
+    for col = 1, num_points do
+        local i = num_points - col + 1
+        local start_lbl = TextWidget:new{ text = formatShortDate(weeks[i].start_date), face = font_small }
+        local col_dates  = CenterContainer:new{
+            dimen = Geom:new{ w = col_width, h = start_lbl:getSize().h },
+            start_lbl,
+        }
+        table.insert(date_labels_row, col_dates)
+    end
+
+    return VerticalGroup:new{
+        align = "center",
+        chart_area,
+        VerticalSpan:new{ height = Size.padding.small },
+        date_labels_row,
+    }
+end
+
+-- Full-screen tap-anywhere-to-close popup that hosts the trend chart.
+local WeeklyTrendPopup = InputContainer:extend{
+    modal       = true,
+    box_content = nil,
+}
+
+function WeeklyTrendPopup:init()
+    local screen_w = Screen:getWidth()
+    local screen_h = Screen:getHeight()
+    self.dimen = Geom:new{ x = 0, y = 0, w = screen_w, h = screen_h }
+
+    if Device:isTouchDevice() then
+        self.ges_events.Tap   = { GestureRange:new{ ges = "tap",   range = self.dimen } }
+        self.ges_events.Swipe = { GestureRange:new{ ges = "swipe", range = self.dimen } }
+    end
+    if Device:hasKeys() then
+        self.key_events.AnyKeyPressed = { { Device.input.group.Any } }
+    end
+
+    self[1] = CenterContainer:new{
+        dimen = self.dimen,
+        self.box_content,
+    }
+end
+
+function WeeklyTrendPopup:onTap()           UIManager:close(self) return true end
+function WeeklyTrendPopup:onSwipe()         UIManager:close(self) return true end
+function WeeklyTrendPopup:onAnyKeyPressed() UIManager:close(self) return true end
+
+-- Weekly bar chart: 7 bars, index 1 = today (leftmost), index 7 = 6 days ago.
+-- Labels: "Today", "Yesterday", then weekday abbreviations.
+local function buildWeeklyChart(popup_self, daily_data, layout, fonts)
+    if not daily_data or #daily_data == 0 then return nil end
+
+    -- Pad to exactly 7 entries.
+    while #daily_data < 7 do
+        table.insert(daily_data, { hours = 0, label = "" })
+    end
+
+    local chart_width  = layout.content_width
+
+    local bar_height   = tonumber(Screen:scaleBySize(48))
+    local num_bars     = 7
+    local bar_width    = math.floor(chart_width / num_bars) - tonumber(Screen:scaleBySize(6))
+    local bar_gap      = math.floor((chart_width - bar_width * num_bars) / (num_bars - 1))
+    local font_small   = fonts.small
+
+    local sample_label = TextWidget:new{ text = "0", face = font_small }
+    local label_height = sample_label:getSize().h
+    sample_label:free()
+
+    local max_value = 0
+    for _, d in ipairs(daily_data) do
+        local v = tonumber(d.seconds) or 0
+        if v > max_value then max_value = v end
+    end
+    if max_value < 0.1 then max_value = 1 end  -- avoid division by zero
+
+    local bars_row        = HorizontalGroup:new{ align = "bottom" }
+    local day_labels_row  = HorizontalGroup:new{ align = "top" }
+    local baseline_h      = Size.line.medium
+    local total_bar_height = bar_height + label_height
+
+    for i = 1, num_bars do
+        local d = daily_data[i]
+        local value = tonumber(d.seconds) or 0
+        local ratio = value / max_value
+        local bar_h = math.floor(ratio * bar_height + 0.5)
+        if bar_h == 0 and value > 0 then bar_h = 1 end
+
+        local bar_color = (WEEKLY_CHART_HIGHLIGHT_TODAY and i == 1) and Blitbuffer.COLOR_BLACK or Blitbuffer.COLOR_GRAY
+
+        local secs = tonumber(d.seconds) or 0
+        local total_mins = math.floor(secs / 60 + 0.5)
+        local h = math.floor(total_mins / 60)
+        local m = total_mins % 60
+        local val_str = string.format("%02d:%02d", h, m)
+        local value_label   = TextWidget:new{ text = val_str, face = font_small }
+        local centered_label = CenterContainer:new{
+            dimen  = Geom:new{ w = bar_width, h = label_height },
+            value_label,
+        }
+
+        local bar_column = VerticalGroup:new{ align = "center" }
+        table.insert(bar_column, centered_label)
+        if bar_h > 0 then
+            table.insert(bar_column, LineWidget:new{
+                dimen      = Geom:new{ w = bar_width, h = bar_h },
+                background = bar_color,
+            })
+        end
+        table.insert(bar_column, LineWidget:new{
+            dimen      = Geom:new{ w = bar_width, h = baseline_h },
+            background = bar_color,
+        })
+
+        local bar_container = BottomContainer:new{
+            dimen = Geom:new{ w = bar_width, h = total_bar_height },
+            bar_column,
+        }
+        
+        if i == 1 then
+            local tappable_bar = InputContainer:new{
+                dimen = Geom:new{ x = 0, y = 0, w = bar_width, h = total_bar_height },
+                bar_container,
+            }
+            tappable_bar.ges_events = {
+                Tap = { GestureRange:new{ ges = "tap", range = tappable_bar.dimen } },
+            }
+            function tappable_bar:onTap()
+                popup_self:openTodayTimeline()   -- ⬅ ITT, ez a csere
+                return true
+            end
+            table.insert(bars_row, tappable_bar)
+        else
+            table.insert(bars_row, bar_container)
+        end
+
+        local day_label_widget = TextWidget:new{ text = d.label, face = font_small }
+        table.insert(day_labels_row, CenterContainer:new{
+            dimen = Geom:new{ w = bar_width, h = day_label_widget:getSize().h },
+            day_label_widget,
+        })
+
+        if i < num_bars then
+            table.insert(bars_row,       HorizontalSpan:new{ width = bar_gap })
+            table.insert(day_labels_row, HorizontalSpan:new{ width = bar_gap })
+        end
+    end
+
+    return VerticalGroup:new{
+        align = "center",
+        bars_row,
+        VerticalSpan:new{ height = Size.padding.small },
+        day_labels_row,
+    }
+end
+
+-- Convert "YYYY-WW" to the Monday date of that ISO week as "YYYY-MM-DD".
+local function weekStrToMondayDate(week_str)
+    if not week_str then return nil end
+    local year, week = parseWeekYear(week_str)
+    if not year or not week then return nil end
+    -- Jan 4 is always in week 1; find Monday of week 1, then offset.
+    local jan4 = os.time({ year = year, month = 1, day = 4 })
+    local dow4 = tonumber(os.date("%w", jan4))  -- 0=Sun
+    if dow4 == 0 then dow4 = 7 end
+    local week1_mon = jan4 - (dow4 - 1) * 86400
+    local target_mon = week1_mon + (week - 1) * 7 * 86400
+    return os.date("%Y-%m-%d", target_mon)
+end
+
+-- Show an InfoMessage with the period start/end dates for a streak.
+-- dates table: { start = "YYYY-MM-DD" or "YYYY-WW", end_ = same }, is_weekly = bool
+-- is_current: true = current streak, false = best streak. When given, a label
+-- naming which streak's period is shown is prepended above the date range.
+local function showStreakDatePopup(dates, is_weekly, is_current)
+    if not dates then
+        UIManager:show(InfoMessage:new{ text = _("No streak dates") })
+        return
+    end
+    local start_str, end_str
+    if is_weekly then
+        -- entries_desc: dates.start = earliest week, dates.end_ = latest week
+        local mon_from = weekStrToMondayDate(dates.start)  -- earliest week → Monday
+        local mon_to   = weekStrToMondayDate(dates.end_)    -- latest week → Sunday
+        local sun_to
+        if mon_to then
+            sun_to = os.date("%Y-%m-%d", os.time({ year = tonumber(mon_to:sub(1,4)),
+                month = tonumber(mon_to:sub(6,7)), day = tonumber(mon_to:sub(9,10)) }) + 6 * 86400)
+        end
+        start_str = formatDateForDisplay(mon_from, true)
+        end_str   = formatDateForDisplay(sun_to or mon_to)
+    else
+        -- entries_desc: dates.start = earliest date, dates.end_ = latest date
+        start_str = formatDateForDisplay(dates.start, true)
+        end_str   = formatDateForDisplay(dates.end_)
+    end
+    local msg = start_str .. " – " .. end_str
+    if is_current ~= nil then
+        local label = is_current and _("CURRENT STREAK") or _("BEST STREAK")
+        msg = label .. "\n" .. msg
+    end
+    UIManager:show(InfoMessage:new{ text = msg })
+end
+
+local function buildInsightsSections(popup_self, streaks, yearly_stats, year_range, monthly_data, all_time_stats, last_week_stats, last_week_daily, fonts, layout)
+    local sections = VerticalGroup:new{ align = "left" }
+
+    do
+        local lw = last_week_stats or { avg_seconds = 0, avg_pages = 0 }
+        local has_week = lw.avg_seconds > 0 or lw.avg_pages > 0
+        if has_week then
+
+            local avg_secs = lw.avg_seconds or 0
+            local avg_total_mins = math.floor(avg_secs / 60 + 0.5)
+            local avg_h = math.floor(avg_total_mins / 60)
+            local avg_m = avg_total_mins % 60
+            local week_time_val = string.format("%02d:%02d", avg_h, avg_m)
+            local week_time_unit_full = _("read time avg/day")
+
+            local avg_pages_rounded
+            if lw.avg_pages >= 10 then
+                avg_pages_rounded = math.floor(lw.avg_pages + 0.5)
+            else
+                avg_pages_rounded = math.floor(lw.avg_pages * 10 + 0.5) / 10
+            end
+            local week_pages_val  = formatNumber(avg_pages_rounded, avg_pages_rounded ~= math.floor(avg_pages_rounded) and 1 or 0)
+            local pages_unit_base = N_("page read", "pages read", avg_pages_rounded)
+            local avg_day_str = _("avg/day")
+            local week_pages_unit
+            if getLangBase() == "hu" then
+                week_pages_unit = avg_day_str
+            else
+                week_pages_unit = pages_unit_base .. " " .. avg_day_str
+            end
+
+            local week_row = buildTwoColRow(
+                tappableCell(
+                    buildValueLine(fonts.value, fonts.label, layout.col_width, week_time_val,   week_time_unit_full),
+                    layout.col_width, function() popup_self:showWeeklyTrendPopup("time_avg") end),
+                tappableCell(
+                    buildValueLine(fonts.value, fonts.label, layout.col_width, week_pages_val,  week_pages_unit),
+                    layout.col_width, function() popup_self:showWeeklyTrendPopup("pages_avg") end),
+                layout)
+
+            local total_secs = math.floor((lw.avg_seconds or 0) * 7 + 0.5)
+            local total_mins = math.floor(total_secs / 60 + 0.5)
+            local total_hh = math.floor(total_mins / 60)
+            local total_mm = total_mins % 60
+            local total_time_val = string.format("%02d:%02d", total_hh, total_mm)
+            local total_time_unit = _("reading time")
+
+            local total_pages_raw = math.floor((lw.avg_pages or 0) * 7 + 0.5)
+            local total_pages_val = formatCount(total_pages_raw)
+            local total_pages_unit = N_("page read", "pages read", total_pages_raw)
+
+            local total_row = buildTwoColRow(
+                tappableCell(
+                    buildValueLine(fonts.value, fonts.label, layout.col_width, total_time_val, total_time_unit),
+                    layout.col_width, function() popup_self:showWeeklyTrendPopup("time_total") end),
+                tappableCell(
+                    buildValueLine(fonts.value, fonts.label, layout.col_width, total_pages_val, total_pages_unit),
+                    layout.col_width, function() popup_self:showWeeklyTrendPopup("pages_total") end),
+                layout)
+
+            local weekly_chart = buildWeeklyChart(popup_self, last_week_daily, layout, fonts)
+            local last_week_content = VerticalGroup:new{
+                align = "left",
+                padded(layout.padding_h, total_row),
+                VerticalSpan:new{ height = Size.padding.default },
+                padded(layout.padding_h, week_row),
+            }
+            if weekly_chart then
+                table.insert(last_week_content, VerticalSpan:new{ height = Size.padding.default })
+                table.insert(last_week_content, padded(layout.padding_h, weekly_chart))
+            end
+
+            addSectionWithRow(sections,
+                buildSectionHeader(fonts.section, _("LAST WEEK"), layout.full_width),
+                last_week_content, layout, { pad_row = false })
+        end
+    end
+
+    local function streakDisplay(n, unit_label, empty_label)
+        if n < 2 then return "", empty_label end
+        return formatCount(n), unit_label(n)
+    end
+
+    local cd_val, cd_unit = streakDisplay(streaks.current_days,
+        function(n) return N_("day in a row",  "days in a row",  n) end, _("No daily streak"))
+    local cw_val, cw_unit = streakDisplay(streaks.current_weeks,
+        function(n) return N_("week in a row", "weeks in a row", n) end, _("No weekly streak"))
+    local bd_val, bd_unit = streakDisplay(streaks.best_days,
+        function(n) return N_("day in a row",  "days in a row",  n) end, _("No daily streak"))
+    local bw_val, bw_unit = streakDisplay(streaks.best_weeks,
+        function(n) return N_("week in a row", "weeks in a row", n) end, _("No weekly streak"))
+
+    -- Two-column streak header (tappable: shows date range for that streak).
+    local streak_header_left  = buildSectionHeader(fonts.section, _("CURRENT STREAK"), layout.col_width, 0)
+    local streak_header_right = buildSectionHeader(fonts.section, _("BEST STREAK"),    layout.col_width, 0)
+    local sep_h = streak_header_left:getSize().h
+
+    local tap_current_header = InputContainer:new{
+        dimen = Geom:new{ x=0, y=0, w=layout.col_width, h=streak_header_left:getSize().h },
+        streak_header_left,
+    }
+    tap_current_header.ges_events = { Tap = { GestureRange:new{ ges="tap", range=tap_current_header.dimen } } }
+    function tap_current_header:onTap()
+        showStreakDatePopup(streaks.current_days_dates, false, true)
+        return true
+    end
+
+    local tap_best_header = InputContainer:new{
+        dimen = Geom:new{ x=0, y=0, w=layout.col_width, h=streak_header_right:getSize().h },
+        streak_header_right,
+    }
+    tap_best_header.ges_events = { Tap = { GestureRange:new{ ges="tap", range=tap_best_header.dimen } } }
+    function tap_best_header:onTap()
+        showStreakDatePopup(streaks.best_days_dates, false, false)
+        return true
+    end
+
+    local streak_combined_header = FrameContainer:new{
+        background = Blitbuffer.COLOR_WHITE,
+        bordersize = 0,
+        padding    = 0,
+        HorizontalGroup:new{
+            align = "center",
+            HorizontalSpan:new{ width = layout.padding_h },
+            fixedCol(tap_current_header, layout.col_width),
+            buildColumnSeparator(layout.column_gap, sep_h),
+            fixedCol(tap_best_header,    layout.col_width),
+        },
+    }
+
+    -- Days row: tappable cells show date range
+    local cd_line = buildValueLine(fonts.value, fonts.label, layout.col_width, cd_val, cd_unit)
+    local bd_line = buildValueLine(fonts.value, fonts.label, layout.col_width, bd_val, bd_unit)
+
+    local tap_cd = InputContainer:new{
+        dimen = Geom:new{ x=0, y=0, w=layout.col_width, h=cd_line:getSize().h }, cd_line,
+    }
+    tap_cd.ges_events = { Tap = { GestureRange:new{ ges="tap", range=tap_cd.dimen } } }
+    function tap_cd:onTap() showStreakDatePopup(streaks.current_days_dates, false, true) return true end
+
+    local tap_bd = InputContainer:new{
+        dimen = Geom:new{ x=0, y=0, w=layout.col_width, h=bd_line:getSize().h }, bd_line,
+    }
+    tap_bd.ges_events = { Tap = { GestureRange:new{ ges="tap", range=tap_bd.dimen } } }
+    function tap_bd:onTap() showStreakDatePopup(streaks.best_days_dates, false, false) return true end
+
+    local days_row = buildTwoColRow(tap_cd, tap_bd, layout)
+
+    -- Weeks row: tappable cells show date range
+    local cw_line = buildValueLine(fonts.value, fonts.label, layout.col_width, cw_val, cw_unit)
+    local bw_line = buildValueLine(fonts.value, fonts.label, layout.col_width, bw_val, bw_unit)
+
+    local tap_cw = InputContainer:new{
+        dimen = Geom:new{ x=0, y=0, w=layout.col_width, h=cw_line:getSize().h }, cw_line,
+    }
+    tap_cw.ges_events = { Tap = { GestureRange:new{ ges="tap", range=tap_cw.dimen } } }
+    function tap_cw:onTap() showStreakDatePopup(streaks.current_weeks_dates, true, true) return true end
+
+    local tap_bw = InputContainer:new{
+        dimen = Geom:new{ x=0, y=0, w=layout.col_width, h=bw_line:getSize().h }, bw_line,
+    }
+    tap_bw.ges_events = { Tap = { GestureRange:new{ ges="tap", range=tap_bw.dimen } } }
+    function tap_bw:onTap() showStreakDatePopup(streaks.best_weeks_dates, true, false) return true end
+
+    local weeks_row = buildTwoColRow(tap_cw, tap_bw, layout)
+
+    local streak_rows = VerticalGroup:new{
+        align = "left",
+        FrameContainer:new{
+            bordersize = 0,
+            padding    = 0,
+            padded(layout.padding_h, days_row),
+        },
+        VerticalSpan:new{ height = Size.padding.default },
+        FrameContainer:new{
+            bordersize = 0,
+            padding    = 0,
+            padded(layout.padding_h, weeks_row),
+        },
+    }
+
+    addSectionWithRow(sections,
+        streak_combined_header,
+        streak_rows, layout, { pad_row = false })
+
+    local year_header = buildYearHeader(fonts.section, layout, year_range, popup_self.selected_year)
+    local yearly_row  = buildYearlyRow(popup_self, yearly_stats, fonts, layout)
+
+    local chart = buildMonthlyChart(popup_self, monthly_data, layout, fonts)
+
+    addSectionWithRow(sections, year_header, yearly_row, layout, { pad_row = false, no_bottom_line = not chart })
+
+    if chart then
+        local chart_header_text = (popup_self.mode == INSIGHTS_MODE_HOURS
+            and _("TIME READ PER MONTH"))
+            or (popup_self.mode == INSIGHTS_MODE_BOOKS
+            and _("BOOKS READ PER MONTH"))
+            or _("DAYS READ PER MONTH")
+        chart_header_text = chart_header_text .. " \xe2\x80\xba"
+        local chart_header = buildSectionHeader(fonts.section, chart_header_text, layout.full_width)
+        local tappable_chart_header = InputContainer:new{
+            dimen = Geom:new{ x = 0, y = 0, w = chart_header:getSize().w, h = chart_header:getSize().h },
+            chart_header,
+        }
+        tappable_chart_header.ges_events = {
+            Tap  = { GestureRange:new{ ges = "tap",  range = tappable_chart_header.dimen } },
+        }
+        function tappable_chart_header:onTap()
+            popup_self:cycleInsightsMode()
+            return true
+        end
+        addSectionWithRow(sections, tappable_chart_header, chart, layout, { add_divider = true, no_bottom_line = false })
+    end
+
+    do
+        local all_hours = all_time_stats and all_time_stats.hours or 0
+        local all_pages = all_time_stats and all_time_stats.pages or 0
+
+        local all_secs_approx = (all_time_stats and all_time_stats.duration) or (all_hours * 3600)
+        local all_total_mins = math.floor(all_secs_approx / 60 + 0.5)
+        local all_hh = math.floor(all_total_mins / 60)
+        local all_mm = all_total_mins % 60
+        local all_time_val  = string.format("%02d:%02d", all_hh, all_mm)
+        local all_time_unit = _("reading time")
+        local all_pages_val  = formatCount(all_pages)
+        local all_pages_unit = N_("page read", "pages read", all_pages)
+
+        local left_line  = buildValueLine(fonts.value, fonts.label, layout.col_width, all_time_val,  all_time_unit)
+        local right_line = buildValueLine(fonts.value, fonts.label, layout.col_width, all_pages_val, all_pages_unit)
+
+        local left_cell = InputContainer:new{
+            dimen = Geom:new{ x = 0, y = 0, w = layout.col_width, h = left_line:getSize().h },
+            left_line,
+        }
+        left_cell.ges_events = {
+            Tap = { GestureRange:new{ ges = "tap", range = left_cell.dimen } },
+        }
+        function left_cell:onTap()
+            popup_self:showAllBooks()
+            return true
+        end
+
+        local right_cell = InputContainer:new{
+            dimen = Geom:new{ x = 0, y = 0, w = layout.col_width, h = right_line:getSize().h },
+            right_line,
+        }
+        right_cell.ges_events = {
+            Tap = { GestureRange:new{ ges = "tap", range = right_cell.dimen } },
+        }
+        function right_cell:onTap()
+            popup_self:showAllBooks()
+            return true
+        end
+
+        local all_time_row = buildTwoColRow(left_cell, right_cell, layout)
+
+        local all_book_count = all_time_stats and all_time_stats.book_count or 0
+        local header_text = _("TOTAL READ")
+
+        addSectionWithRow(sections,
+            buildSectionHeader(fonts.section, header_text, layout.full_width),
+            all_time_row, layout, { no_bottom_line = true })
+    end
+
+    return sections
+end
+
+Dispatcher:registerAction("reading_insights_popup", {
+    category = "none",
+    event    = "ShowReadingInsightsPopup",
+    title    = _("Reading insights"),
+    general  = true,
+})
+
+local ReadingInsightsPopup = InputContainer:extend{
+    modal         = true,
+    ui            = nil,
+    width         = nil,
+    height        = nil,
+    selected_year = nil,
+    mode          = nil,
+}
+
+function ReadingInsightsPopup:calculateStreaks()
+    local minute = currentMinute()
+    if ENABLE_CACHE and _cache.streaks and _cache.streaks_date == minute then
+        return _cache.streaks
+    end
+
+    local streaks = {
+        current_days  = 0,
+        best_days     = 0,
+        current_weeks = 0,
+        best_weeks    = 0,
+    }
+
+    local result = withStatsDb(streaks, function(conn)
+        local dates = {}
+        local sql = "SELECT DISTINCT date(start_time, 'unixepoch', 'localtime') as d FROM page_stat ORDER BY d DESC"
+        withStatement(conn, sql, function(stmt)
+            for row in stmt:rows() do table.insert(dates, row[1]) end
+        end)
+
+        local today_str   = os.date("%Y-%m-%d")
+        local yesterday   = os.date("%Y-%m-%d", os.time() - 86400)
+
+        local function isCurrentDayStart(first_date)
+            return first_date == today_str or first_date == yesterday
+        end
+
+        local function isConsecutiveDay(prev_date, curr_date)
+            local year, month, day = parseDateYMD(prev_date)
+            if not year then return false end
+            local prev_time   = os.time({ year = year, month = month, day = day })
+            local expected_prev = os.date("%Y-%m-%d", prev_time - 86400)
+            return curr_date == expected_prev
+        end
+
+        streaks.current_days, streaks.best_days,
+        streaks.current_days_dates, streaks.best_days_dates =
+            computeStreaksWithDates(dates, isConsecutiveDay, isCurrentDayStart)
+
+        local weeks    = {}
+        local sql_weeks = "SELECT DISTINCT strftime('%Y-%W', start_time, 'unixepoch', 'localtime') as w FROM page_stat ORDER BY w DESC"
+        withStatement(conn, sql_weeks, function(stmt_weeks)
+            for row in stmt_weeks:rows() do table.insert(weeks, row[1]) end
+        end)
+
+        local current_week = os.date("%Y-%W")
+        local last_week    = os.date("%Y-%W", os.time() - 7 * 86400)
+
+        local function isCurrentWeekStart(first_week)
+            return first_week == current_week or first_week == last_week
+        end
+
+        local function isConsecutiveWeek(prev_week, curr_week)
+            local prev_year, prev_wk = parseWeekYear(prev_week)
+            local curr_year, curr_wk = parseWeekYear(curr_week)
+            if not prev_year or not curr_year then return false end
+            if prev_year == curr_year and prev_wk == curr_wk + 1 then return true end
+            if prev_year == curr_year + 1 and prev_wk == 0 and curr_wk >= 52 then return true end
+            return false
+        end
+
+        streaks.current_weeks, streaks.best_weeks,
+        streaks.current_weeks_dates, streaks.best_weeks_dates =
+            computeStreaksWithDates(weeks, isConsecutiveWeek, isCurrentWeekStart)
+
+        return streaks
+    end)
+
+    if ENABLE_CACHE then
+        _cache.streaks      = result
+        _cache.streaks_date = minute
+        _stale_cache.streaks = result
+    end
+    return result
+end
+
+function ReadingInsightsPopup:getMonthlyReadingDays(year)
+    local key = "days:" .. year .. ":" .. todayDateStr()
+    if ENABLE_CACHE and _monthly_cache[key] then return _monthly_cache[key] end
+
+    local months = {}
+    local result = withStatsDb(months, function(conn)
+        local year_str = tostring(year)
+        local sql = string.format([[
+            SELECT strftime('%%Y-%%m', start_time, 'unixepoch', 'localtime') AS month,
+                   COUNT(DISTINCT date(start_time, 'unixepoch', 'localtime')) AS days_read
+            FROM page_stat
+            WHERE strftime('%%Y', start_time, 'unixepoch', 'localtime') = '%s'
+            GROUP BY month
+            ORDER BY month ASC
+        ]], year_str)
+
+        local results = {}
+        withStatement(conn, sql, function(stmt)
+            for row in stmt:rows() do results[row[1]] = row[2] end
+        end)
+
+        for month_num = 1, 12 do
+            local year_month = string.format("%04d-%02d", year, month_num)
+            local days = tonumber(results[year_month]) or 0
+            table.insert(months, {
+                month      = year_month,
+                days       = days,
+                label      = MONTH_NAMES_SHORT[month_num],
+                label_full = MONTH_NAMES_FULL[month_num],
+            })
+        end
+        return months
+    end)
+
+    if ENABLE_CACHE then
+        _monthly_cache[key] = result
+        _stale_monthly[key] = result
+    end
+    return result
+end
+
+function ReadingInsightsPopup:getMonthlyReadingHours(year)
+    local key = "hours:" .. year .. ":" .. todayDateStr()
+    if ENABLE_CACHE and _monthly_cache[key] then return _monthly_cache[key] end
+
+    local months = {}
+    local result = withStatsDb(months, function(conn)
+        local year_str = tostring(year)
+        local sql = string.format([[
+            SELECT dates AS month,
+                   SUM(sum_duration) / 3600.0 AS hours_read
+            FROM (
+                SELECT strftime('%%Y-%%m', start_time, 'unixepoch', 'localtime') AS dates,
+                       sum(duration) AS sum_duration
+                FROM page_stat
+                WHERE strftime('%%Y', start_time, 'unixepoch', 'localtime') = '%s'
+                GROUP BY id_book, page, dates
+            )
+            GROUP BY dates
+            ORDER BY dates ASC
+        ]], year_str)
+
+        local results = {}
+        withStatement(conn, sql, function(stmt)
+            for row in stmt:rows() do results[row[1]] = row[2] end
+        end)
+
+        for month_num = 1, 12 do
+            local year_month = string.format("%04d-%02d", year, month_num)
+            local hours_raw = tonumber(results[year_month]) or 0
+            local hours = hours_raw
+            if hours >= 1 then
+                hours = math.floor(hours)
+            elseif hours > 0 then
+                hours = (math.floor(hours * 10)) / 10
+            end
+
+            local seconds_raw = math.floor(hours_raw * 3600 + 0.5)
+            table.insert(months, {
+                month      = year_month,
+                hours      = hours,
+                seconds    = seconds_raw,
+                label      = MONTH_NAMES_SHORT[month_num],
+                label_full = MONTH_NAMES_FULL[month_num],
+            })
+        end
+        return months
+    end)
+
+    if ENABLE_CACHE then
+        _monthly_cache[key] = result
+        _stale_monthly[key] = result
+    end
+    return result
+end
+
+function ReadingInsightsPopup:getYearlyStats(year)
+    local key = year .. ":v3:" .. todayDateStr()
+    if ENABLE_CACHE and _yearly_cache[key] then return _yearly_cache[key] end
+
+    local stats = { days = 0, pages = 0, duration = 0, books_started = 0, avg_days_per_book = 0 }
+    local result = withStatsDb(stats, function(conn)
+        local year_str = tostring(year)
+        local sql = string.format([[
+            WITH dedup AS (
+                SELECT id_book,
+                       page,
+                       date(start_time, 'unixepoch', 'localtime') AS day,
+                       SUM(duration) AS dur
+                FROM page_stat
+                WHERE strftime('%%Y', start_time, 'unixepoch', 'localtime') = '%s'
+                GROUP BY id_book, page, day
+            )
+            SELECT
+                COUNT(DISTINCT day)      AS days_read,
+                COUNT(*)                 AS pages_read,
+                SUM(dur)                 AS total_duration,
+                COUNT(DISTINCT id_book)  AS books_started
+            FROM dedup
+        ]], year_str)
+
+        withStatement(conn, sql, function(stmt)
+            for row in stmt:rows() do
+                stats.days          = tonumber(row[1]) or 0
+                stats.pages         = tonumber(row[2]) or 0
+                stats.duration      = tonumber(row[3]) or 0
+                stats.books_started = tonumber(row[4]) or 0
+            end
+        end)
+
+        -- Average number of distinct reading days spent per book, rounded up.
+        if stats.books_started > 0 then
+            stats.avg_days_per_book = math.ceil(stats.days / stats.books_started)
+        end
+
+        return stats
+    end)
+
+    if ENABLE_CACHE then
+        _yearly_cache[key] = result
+        _stale_yearly[key] = result
+    end
+    return result
+end
+
+-- Returns { min_year, max_year } from the DB, cached per day.
+function ReadingInsightsPopup:getYearRange()
+    local today        = todayDateStr()
+    local range_cached = ENABLE_CACHE and _cache.year_range and _cache.year_range_date == today
+
+    if range_cached then
+        return _cache.year_range
+    end
+
+    local current_year = tonumber(os.date("%Y"))
+    local range = { min_year = current_year, max_year = current_year }
+
+    withStatsDb(nil, function(conn)
+        local sql_range = [[
+            SELECT MIN(strftime('%Y', start_time, 'unixepoch', 'localtime')) AS min_year,
+                   MAX(strftime('%Y', start_time, 'unixepoch', 'localtime')) AS max_year
+            FROM page_stat
+        ]]
+        withStatement(conn, sql_range, function(stmt)
+            for row in stmt:rows() do
+                if row[1] then range.min_year = tonumber(row[1]) or current_year end
+                if row[2] then range.max_year = tonumber(row[2]) or current_year end
+            end
+        end)
+        if ENABLE_CACHE then
+            _cache.year_range      = range
+            _cache.year_range_date = today
+            _stale_cache.year_range = range
+        end
+    end)
+
+    return range
+end
+
+function ReadingInsightsPopup:getAllTimeStats()
+    local today = todayDateStr()
+    if ENABLE_CACHE and _cache.all_time and _cache.all_time_date == today then
+        return _cache.all_time
+    end
+
+    return withStatsDb({ hours=0, pages=0, book_count=0, duration=0 }, function(conn)
+        local duration, pages, books = 0, 0, 0
+        withStatement(conn, [[
+            SELECT SUM(sum_dur), COUNT(DISTINCT dedup_page)
+            FROM (
+                SELECT SUM(duration) AS sum_dur, id_book || '-' || page AS dedup_page
+                FROM page_stat
+                GROUP BY id_book, page, date(start_time, 'unixepoch', 'localtime')
+            )
+        ]], function(stmt)
+            for row in stmt:rows() do
+                duration = tonumber(row[1]) or 0
+                pages    = tonumber(row[2]) or 0
+            end
+        end)
+        withStatement(conn, "SELECT COUNT(DISTINCT id_book) FROM page_stat", function(stmt)
+            for row in stmt:rows() do books = tonumber(row[1]) or 0 end
+        end)
+        local mins = Math.round(duration / 60)
+        local result = {
+            hours      = math.floor(mins / 60),
+            pages      = pages,
+            book_count = books,
+            duration   = duration,
+        }
+        if ENABLE_CACHE then
+            _cache.all_time      = result
+            _cache.all_time_date = today
+            _stale_cache.all_time = result
+        end
+        return result
+    end)
+end
+
+-- Returns both last-week stats in one DB connection:
+--   last_week:       { avg_seconds, avg_pages }
+--   last_week_daily: array[7] of { hours, seconds, label, midnight_ts }, index 1 = today
+function ReadingInsightsPopup:getLastWeekAll()
+    local minute = currentMinute()
+    local lw_ok    = ENABLE_CACHE and _cache.last_week       and _cache.last_week_minute       == minute
+    local daily_ok = ENABLE_CACHE and _cache.last_week_daily and _cache.last_week_daily_minute == minute
+    if lw_ok and daily_ok then
+        return _cache.last_week, _cache.last_week_daily
+    end
+
+    local now_ts  = os.time()
+    local now_t   = os.date("*t")
+    local today_midnight = now_ts - (now_t.hour * 3600 + now_t.min * 60 + now_t.sec)
+    local week_start_ts  = today_midnight - 6 * 86400
+
+    local DOW_KEYS = { [0]="Sun", [1]="Mon", [2]="Tue", [3]="Wed", [4]="Thu", [5]="Fri", [6]="Sat" }
+    local date_info = {}
+    for i = 0, 6 do
+        local day_midnight = today_midnight - i * 86400
+        local date_str = os.date("%Y-%m-%d", day_midnight)
+        local dow      = tonumber(os.date("%w", day_midnight))
+        local label
+        if i == 0 then
+            label = _("Today")
+        elseif i == 1 then
+            label = _("Yesterday")
+        else
+            label = _(DOW_KEYS[dow] or "")
+        end
+        date_info[i + 1] = { date_str = date_str, label = label, midnight_ts = day_midnight }
+    end
+
+    local lw_result    = lw_ok    and _cache.last_week       or { avg_seconds = 0, avg_pages = 0 }
+    local daily_result = daily_ok and _cache.last_week_daily or nil
+
+    withStatsDb(nil, function(conn)
+        -- Single query: per-day totals for the last 7 days.
+        -- From this we derive both the 7-day averages and the per-day chart data.
+        local sql = string.format([[
+            SELECT date(start_time, 'unixepoch', 'localtime') AS day,
+                   SUM(sum_dur)    AS total_sec,
+                   COUNT(*)        AS total_pages
+            FROM (
+                SELECT start_time,
+                       SUM(duration) AS sum_dur
+                FROM page_stat
+                WHERE start_time >= %d
+                GROUP BY id_book, page, date(start_time, 'unixepoch', 'localtime')
+            )
+            GROUP BY day
+        ]], week_start_ts)
+
+        local seconds_by_date = {}
+        local pages_by_date   = {}
+        if not lw_ok or not daily_ok then
+            withStatement(conn, sql, function(stmt)
+                for row in stmt:rows() do
+                    seconds_by_date[row[1]] = tonumber(row[2]) or 0
+                    pages_by_date[row[1]]   = tonumber(row[3]) or 0
+                end
+            end)
+        end
+
+        if not lw_ok then
+            local total_sec   = 0
+            local total_pages = 0
+            for _, secs in pairs(seconds_by_date) do total_sec   = total_sec   + secs end
+            for _, pgs  in pairs(pages_by_date)   do total_pages = total_pages + pgs  end
+            lw_result = { avg_seconds = total_sec / 7, avg_pages = total_pages / 7 }
+        end
+
+        if not daily_ok then
+            local hours_by_date = {}
+            for date_str, secs in pairs(seconds_by_date) do
+                local h = secs / 3600.0
+                if h >= 1 then
+                    h = math.floor(h + 0.5)
+                elseif h > 0 then
+                    h = math.floor(h * 10 + 0.5) / 10
+                end
+                hours_by_date[date_str] = h
+            end
+            daily_result = {}
+            for i = 1, 7 do
+                local di = date_info[i]
+                daily_result[i] = {
+                    hours       = hours_by_date[di.date_str]   or 0,
+                    seconds     = seconds_by_date[di.date_str] or 0,
+                    label       = di.label,
+                    midnight_ts = di.midnight_ts,
+                }
+            end
+        end
+    end)
+
+    if not daily_result then
+        daily_result = {}
+        for i = 1, 7 do
+            local di = date_info[i]
+            daily_result[i] = { hours = 0, seconds = 0, label = di.label, midnight_ts = di.midnight_ts }
+        end
+    end
+
+    if ENABLE_CACHE then
+        _cache.last_week              = lw_result
+        _cache.last_week_minute       = minute
+        _stale_cache.last_week        = lw_result
+        _cache.last_week_daily        = daily_result
+        _cache.last_week_daily_minute = minute
+        _stale_cache.last_week_daily  = daily_result
+    end
+    return lw_result, daily_result
+end
+
+-- Returns an array of 8 weekly buckets (index 1 = oldest of the 8 weeks,
+-- index 8 = current week), each { start_date, end_date, seconds, pages }.
+-- Mirrors the de-duplication logic used by getLastWeekAll, just over a
+-- wider 56-day window split into 7-day chunks.
+function ReadingInsightsPopup:getLast8WeeksData()
+    local minute = currentMinute()
+    if ENABLE_CACHE and _cache.last8weeks and _cache.last8weeks_minute == minute then
+        return _cache.last8weeks
+    end
+
+    local now_ts  = os.time()
+    local now_t   = os.date("*t")
+    local today_midnight = now_ts - (now_t.hour * 3600 + now_t.min * 60 + now_t.sec)
+    local period_start_ts = today_midnight - (8 * 7 - 1) * 86400
+
+    local weeks = {}
+    for w = 1, 8 do
+        local week_end_midnight   = today_midnight - (8 - w) * 7 * 86400
+        local week_start_midnight = week_end_midnight - 6 * 86400
+        weeks[w] = {
+            start_date = os.date("%Y-%m-%d", week_start_midnight),
+            end_date   = os.date("%Y-%m-%d", week_end_midnight),
+            seconds    = 0,
+            pages      = 0,
+        }
+    end
+
+    withStatsDb(nil, function(conn)
+        local sql = string.format([[
+            SELECT date(start_time, 'unixepoch', 'localtime') AS day,
+                   SUM(sum_dur) AS total_sec,
+                   COUNT(*)     AS total_pages
+            FROM (
+                SELECT start_time,
+                       SUM(duration) AS sum_dur
+                FROM page_stat
+                WHERE start_time >= %d
+                GROUP BY id_book, page, date(start_time, 'unixepoch', 'localtime')
+            )
+            GROUP BY day
+        ]], period_start_ts)
+
+        withStatement(conn, sql, function(stmt)
+            for row in stmt:rows() do
+                local day_str = row[1]
+                local secs  = tonumber(row[2]) or 0
+                local pages = tonumber(row[3]) or 0
+                local y, m, d = parseDateYMD(day_str)
+                if y then
+                    local day_ts = os.time({ year = y, month = m, day = d })
+                    local diff_days = math.floor((today_midnight - day_ts) / 86400 + 0.5)
+                    local week_from_end = math.floor(diff_days / 7)  -- 0 = current week
+                    local w = 8 - week_from_end
+                    if w >= 1 and w <= 8 then
+                        weeks[w].seconds = weeks[w].seconds + secs
+                        weeks[w].pages   = weeks[w].pages   + pages
+                    end
+                end
+            end
+        end)
+    end)
+
+    if ENABLE_CACHE then
+        _cache.last8weeks        = weeks
+        _cache.last8weeks_minute = minute
+        _stale_cache.last8weeks  = weeks
+    end
+    return weeks
+end
+
+-- Build and show the 8-week trend popup for the given metric:
+-- "time_total" | "pages_total" | "time_avg" | "pages_avg".
+function ReadingInsightsPopup:showWeeklyTrendPopup(metric)
+    local weeks = self:getLast8WeeksData()
+    if not weeks or #weeks == 0 then
+        UIManager:show(InfoMessage:new{ text = _("No streak dates") })
+        return
+    end
+
+    local has_data = false
+    for _, w in ipairs(weeks) do
+        if (w.seconds or 0) > 0 or (w.pages or 0) > 0 then
+            has_data = true
+            break
+        end
+    end
+    if not has_data then
+        UIManager:show(InfoMessage:new{ text = _("No reading data in the last 8 weeks") })
+        return
+    end
+
+    local fonts  = getCachedFonts()
+    local inner_padding = Size.padding.large
+    local box_width   = math.floor(Screen:getWidth() * 0.86)
+    local chart_width = box_width - 2 * inner_padding
+
+    local title_w = TextWidget:new{ text = trendTitle(metric), face = fonts.section }
+    local title_centered = CenterContainer:new{
+        dimen = Geom:new{ w = chart_width, h = title_w:getSize().h }, title_w,
+    }
+
+    local value_w = TextWidget:new{ text = totalForMetric(metric, weeks), face = fonts.value }
+    local value_centered = CenterContainer:new{
+        dimen = Geom:new{ w = chart_width, h = value_w:getSize().h }, value_w,
+    }
+
+    local chart_widget = buildLine8WeekChart(weeks, metric, chart_width, fonts)
+
+    local content = VerticalGroup:new{
+        align = "center",
+        title_centered,
+        VerticalSpan:new{ height = Size.padding.default },
+        value_centered,
+        VerticalSpan:new{ height = Size.padding.large },
+        chart_widget,
+    }
+
+    local box = FrameContainer:new{
+        background     = Blitbuffer.COLOR_WHITE,
+        bordersize     = Size.border.window,
+        radius         = Size.radius.window,
+        padding_top    = inner_padding,
+        padding_bottom = inner_padding,
+        padding_left   = inner_padding,
+        padding_right  = inner_padding,
+        content,
+    }
+
+    UIManager:show(WeeklyTrendPopup:new{ box_content = box })
+end
+
+local function getBooksForPeriod(period_format, period_value)
+    local books = {}
+    return withStatsDb(books, function(conn)
+        -- De-duplicated reading time per book for the period.
+        -- period_format inserted via concatenation to avoid %% escape conflicts.
+        local sql = [[
+            SELECT book.title, book.authors,
+                   COUNT(DISTINCT ps_dedup.page) AS pages_read,
+                   SUM(ps_dedup.period_sum) AS duration_sec,
+                   fin.finish_time,
+                   MAX(ps_dedup.last_read) AS last_read_time,
+                   day_counts.days_read,
+                   book.id AS id_book
+            FROM (
+                SELECT id_book, page,
+                       SUM(duration) AS period_sum,
+                       MAX(start_time) AS last_read
+                FROM page_stat
+                WHERE strftime(']] .. period_format .. [[', start_time, 'unixepoch', 'localtime') = ']] .. period_value .. [['
+                GROUP BY id_book, page
+            ) ps_dedup
+            JOIN book ON ps_dedup.id_book = book.id
+            LEFT JOIN (
+                SELECT ps2.id_book, MAX(ps2.start_time) AS finish_time
+                FROM page_stat ps2
+                JOIN book b2 ON ps2.id_book = b2.id
+                WHERE b2.pages > 0
+                GROUP BY ps2.id_book
+                HAVING MAX(ps2.page) >= b2.pages
+            ) fin ON ps_dedup.id_book = fin.id_book
+            LEFT JOIN (
+                SELECT id_book,
+                       COUNT(DISTINCT date(start_time, 'unixepoch', 'localtime')) AS days_read
+                FROM page_stat
+                WHERE strftime(']] .. period_format .. [[', start_time, 'unixepoch', 'localtime') = ']] .. period_value .. [['
+                GROUP BY id_book
+            ) day_counts ON ps_dedup.id_book = day_counts.id_book
+            GROUP BY ps_dedup.id_book
+            ORDER BY MAX(ps_dedup.last_read) DESC
+        ]]
+
+        withStatement(conn, sql, function(stmt)
+            for row in stmt:rows() do
+                table.insert(books, {
+                    title     = row[1] or _("Unknown"),
+                    authors   = "",
+                    pages     = tonumber(row[3]) or 0,
+                    duration  = tonumber(row[4]) or 0,
+                    days_read = tonumber(row[7]) or 0,
+                    id_book   = tonumber(row[8]),
+                })
+            end
+        end)
+        return books
+    end)
+end
+
+local function getAllBooks()
+    local books = {}
+    return withStatsDb(books, function(conn)
+        local sql = [[
+            SELECT book.title, book.authors,
+                   COUNT(DISTINCT ps_dedup.page) AS pages_read,
+                   SUM(ps_dedup.period_sum) AS duration_sec,
+                   MAX(ps_dedup.last_read) AS last_read_time,
+                   book.id AS id_book
+            FROM (
+                SELECT id_book, page,
+                       SUM(duration) AS period_sum,
+                       MAX(start_time) AS last_read
+                FROM page_stat
+                GROUP BY id_book, page
+            ) ps_dedup
+            JOIN book ON ps_dedup.id_book = book.id
+            GROUP BY ps_dedup.id_book
+            ORDER BY last_read_time DESC
+        ]]
+        withStatement(conn, sql, function(stmt)
+            for row in stmt:rows() do
+                table.insert(books, {
+                    title    = row[1] or _("Unknown"),
+                    authors  = "",
+                    pages    = tonumber(row[3]) or 0,
+                    duration = tonumber(row[4]) or 0,
+                    id_book  = tonumber(row[6]),
+                })
+            end
+        end)
+        return books
+    end)
+end
+
+function ReadingInsightsPopup:getBooksForMonth(year_month)
+    return getBooksForPeriod("%Y-%m", year_month)
+end
+
+local function showBookList(title, books, on_close, stats_plugin)
+    local KeyValuePage = require("ui/widget/keyvaluepage")
+
+    if #books == 0 then
+        UIManager:show(InfoMessage:new{ text = _("No books read") })
+        return
+    end
+
+    local kv_pairs = {}
+    for _, book in ipairs(books) do
+        local display_text = book.title
+        if book.authors and book.authors ~= "" then
+            display_text = display_text .. "\n" .. book.authors
+        end
+
+        local time_str
+        if book.duration and book.duration > 0 then
+            time_str = formatHHMMSS(book.duration)
+        else
+            time_str = "00:00:00"
+        end
+        local time_text = time_str
+        local book_id = book.id_book
+        local book_title = book.title
+        local cb = nil
+        if book_id and stats_plugin then
+            cb = function()
+                local kv2
+                kv2 = KeyValuePage:new{
+                    title           = book_title,
+                    kv_pairs        = stats_plugin:getBookStat(book_id),
+                    value_align     = "right",
+                    single_page     = true,
+                    callback_return = function()
+                        UIManager:close(kv2)
+                    end,
+                    close_callback  = function() kv2 = nil end,
+                }
+                UIManager:show(kv2)
+            end
+        end
+        table.insert(kv_pairs, {
+            display_text,
+            time_text,
+            callback = cb,
+        })
+    end
+
+    local kv
+    kv = KeyValuePage:new{
+        title          = title,
+        kv_pairs       = kv_pairs,
+        value_align    = "right",
+        close_callback = function()
+            UIManager:close(kv)
+            UIManager:scheduleIn(0, function()
+                if on_close then on_close() end
+            end)
+        end,
+    }
+    UIManager:show(kv)
+end
+
+local function showBooksForPeriod(popup_self, books, empty_text, title)
+    if #books == 0 then
+        UIManager:show(InfoMessage:new{ text = empty_text })
+        return
+    end
+
+    local saved_year     = popup_self.selected_year
+    local saved_mode     = popup_self.mode
+    local saved_ui       = popup_self.ui
+
+    local saved_streaks        = popup_self._streaks
+    local saved_yr             = popup_self._year_range
+    local saved_yearly         = popup_self._yearly
+    local saved_monthly        = popup_self._monthly
+    local saved_all_time       = popup_self._all_time
+    local saved_last_week      = popup_self._last_week
+    local saved_last_week_daily = popup_self._last_week_daily
+
+    popup_self._closed = true
+    UIManager:close(popup_self)
+
+    local stats_plugin = saved_ui and saved_ui.statistics or nil
+    showBookList(title, books, function()
+        local p = ReadingInsightsPopup:new{
+            ui               = saved_ui,
+            selected_year    = saved_year,
+            mode             = saved_mode,
+            _streaks         = saved_streaks,
+            _year_range      = saved_yr,
+            _yearly          = saved_yearly,
+            _monthly         = saved_monthly,
+            _all_time        = saved_all_time,
+            _last_week       = saved_last_week,
+            _last_week_daily = saved_last_week_daily,
+        }
+        UIManager:show(p)
+    end, stats_plugin)
+end
+
+function ReadingInsightsPopup:showBooksForMonth(year_month, month_label_full)
+    local books
+    local title
+    books = self:getBooksForMonth(year_month)
+    local total_secs = 0
+    for _, b in ipairs(books) do total_secs = total_secs + (b.duration or 0) end
+    title = T(N_("%1 - book read %2", "%1 - books read %2", #books), month_label_full, formatCount(#books)) .. " (" .. formatHHMMSS(total_secs) .. ")"
+    showBooksForPeriod(
+        self, books,
+        T(_("No books read in %1"), month_label_full),
+        title)
+end
+
+-- Open CalendarView for the given "YYYY-MM" string.
+-- Closes this popup first; reopens it when CalendarView is dismissed.
+function ReadingInsightsPopup:openCalendarForMonth(year_month)
+    local year  = tonumber(year_month:sub(1, 4))
+    local month = tonumber(year_month:sub(6, 7))
+    if not year or not month then return end
+
+    local ok, CalendarView = pcall(require, "ui/widget/calendarview")
+    if not ok or not CalendarView then
+        ok, CalendarView = pcall(require, "calendarview")
+    end
+    if not ok or not CalendarView then
+        UIManager:show(InfoMessage:new{ text = _("CalendarView not available") })
+        return
+    end
+
+    -- Save state so the popup can be recreated after CalendarView closes.
+    local saved_year             = self.selected_year
+    local saved_mode             = self.mode
+    local saved_ui               = self.ui
+    local saved_streaks          = self._streaks
+    local saved_yr               = self._year_range
+    local saved_yearly           = self._yearly
+    local saved_monthly          = self._monthly
+    local saved_all_time         = self._all_time
+    local saved_last_week        = self._last_week
+    local saved_last_week_daily  = self._last_week_daily
+
+    self._closed = true
+    UIManager:close(self)
+
+    -- Wait one frame so the popup is fully closed before opening CalendarView.
+    UIManager:scheduleIn(0, function()
+        local stats_plugin = saved_ui and saved_ui.statistics or nil
+
+        local function reopen_popup()
+            local p = ReadingInsightsPopup:new{
+                ui               = saved_ui,
+                selected_year    = saved_year,
+                mode             = saved_mode,
+                _streaks         = saved_streaks,
+                _year_range      = saved_yr,
+                _yearly          = saved_yearly,
+                _monthly         = saved_monthly,
+                _all_time        = saved_all_time,
+                _last_week       = saved_last_week,
+                _last_week_daily = saved_last_week_daily,
+            }
+            UIManager:show(p)
+        end
+
+        local reopened = false
+        local function reopen_once()
+            if reopened then return end
+            reopened = true
+            UIManager:scheduleIn(0, reopen_popup)
+        end
+
+        local cv
+        cv = CalendarView:new{
+            reader_statistics = stats_plugin,
+            shown_year        = year,
+            shown_month       = month,
+            close_callback    = function()
+
+                reopen_once()
+            end,
+        }
+        -- onCloseWidget fires on all dismiss paths; the flag prevents double-open.
+        local orig_onCloseWidget = cv.onCloseWidget
+        cv.onCloseWidget = function(self_cv, ...)
+            if orig_onCloseWidget then orig_onCloseWidget(self_cv, ...) end
+            reopen_once()
+        end
+        UIManager:show(cv)
+    end)
+end
+
+-- Open today's reading timeline (CalendarDayView) for the current day.
+-- Closes this popup first; reopens it when the timeline is dismissed.
+function ReadingInsightsPopup:openTodayTimeline()
+    local ok, CalendarView = pcall(require, "ui/widget/calendarview")
+    if not ok or not CalendarView then
+        ok, CalendarView = pcall(require, "calendarview")
+    end
+    if not ok or not CalendarView then
+        UIManager:show(InfoMessage:new{ text = _("CalendarView not available") })
+        return
+    end
+
+    -- Save state so the popup can be recreated after the timeline closes.
+    local saved_year             = self.selected_year
+    local saved_mode             = self.mode
+    local saved_ui               = self.ui
+    local saved_streaks          = self._streaks
+    local saved_yr               = self._year_range
+    local saved_yearly           = self._yearly
+    local saved_monthly          = self._monthly
+    local saved_all_time         = self._all_time
+    local saved_last_week        = self._last_week
+    local saved_last_week_daily  = self._last_week_daily
+
+    self._closed = true
+    UIManager:close(self)
+
+    -- Wait one frame so the popup is fully closed before opening the timeline.
+    UIManager:scheduleIn(0, function()
+        local stats_plugin = saved_ui and saved_ui.statistics or nil
+        if not stats_plugin then
+            UIManager:show(InfoMessage:new{ text = _("CalendarView not available") })
+            return
+        end
+
+        local function reopen_popup()
+            local p = ReadingInsightsPopup:new{
+                ui               = saved_ui,
+                selected_year    = saved_year,
+                mode             = saved_mode,
+                _streaks         = saved_streaks,
+                _year_range      = saved_yr,
+                _yearly          = saved_yearly,
+                _monthly         = saved_monthly,
+                _all_time        = saved_all_time,
+                _last_week       = saved_last_week,
+                _last_week_daily = saved_last_week_daily,
+            }
+            UIManager:show(p)
+        end
+
+        local reopened = false
+        local function reopen_once()
+            if reopened then return end
+            reopened = true
+            UIManager:scheduleIn(0, reopen_popup)
+        end
+
+        -- CalendarView:showCalendarDayView() builds and shows the day's
+        -- CalendarDayView for us (its day_ts logic respects the user's
+        -- configured calendar_day_start_hour/minute), but it doesn't expose
+        -- a close_callback hook. We build a CalendarView purely to call
+        -- that helper (it's never itself shown), and intercept the single
+        -- UIManager:show() call it makes so we can attach our own
+        -- close_callback / onCloseWidget before the widget is painted.
+        local cv = CalendarView:new{ reader_statistics = stats_plugin }
+
+        local orig_show = UIManager.show
+        UIManager.show = function(mgr, widget, ...)
+            UIManager.show = orig_show -- one-shot: restore immediately
+            widget.close_callback = reopen_once
+            local orig_onCloseWidget = widget.onCloseWidget
+            widget.onCloseWidget = function(self_w, ...)
+                if orig_onCloseWidget then orig_onCloseWidget(self_w, ...) end
+                reopen_once()
+            end
+            return orig_show(mgr, widget, ...)
+        end
+
+        cv:showCalendarDayView(stats_plugin)
+    end)
+end
+
+-- Open CalendarView for today's month.
+function ReadingInsightsPopup:openCalendarForCurrentMonth()
+    local year_month = os.date("%Y-%m")
+    self:openCalendarForMonth(year_month)
+end
+
+function ReadingInsightsPopup:getMonthlyBookCounts(year)
+    local key = "books:" .. year .. ":" .. todayDateStr()
+    if ENABLE_CACHE and _monthly_cache[key] then return _monthly_cache[key] end
+
+    local months = {}
+    local result = withStatsDb(months, function(conn)
+        local year_str = tostring(year)
+        local sql = string.format([[
+            SELECT strftime('%%Y-%%m', start_time, 'unixepoch', 'localtime') AS month,
+                   COUNT(DISTINCT id_book) AS book_count
+            FROM page_stat
+            WHERE strftime('%%Y', start_time, 'unixepoch', 'localtime') = '%s'
+            GROUP BY month
+            ORDER BY month ASC
+        ]], year_str)
+
+        local results = {}
+        withStatement(conn, sql, function(stmt)
+            for row in stmt:rows() do results[row[1]] = row[2] end
+        end)
+
+        for month_num = 1, 12 do
+            local year_month = string.format("%04d-%02d", year, month_num)
+            local book_count = tonumber(results[year_month]) or 0
+            table.insert(months, {
+                month      = year_month,
+                book_count = book_count,
+                label      = MONTH_NAMES_SHORT[month_num],
+                label_full = MONTH_NAMES_FULL[month_num],
+            })
+        end
+        return months
+    end)
+
+    if ENABLE_CACHE then
+        _monthly_cache[key] = result
+        _stale_monthly[key] = result
+    end
+    return result
+end
+
+function ReadingInsightsPopup:getBooksForYear(year)
+    return getBooksForPeriod("%Y", tostring(year))
+end
+
+function ReadingInsightsPopup:showAllBooks()
+    local books = getAllBooks()
+    local total_secs = 0
+    for _, b in ipairs(books) do total_secs = total_secs + (b.duration or 0) end
+    showBooksForPeriod(
+        self, books,
+        _("No books read"),
+        T(_("ALL BOOKS READ %1"), formatCount(#books)) .. " (" .. formatHHMMSS(total_secs) .. ")")
+end
+
+function ReadingInsightsPopup:showBooksForYear(year)
+    local books = self:getBooksForYear(year)
+    local total_secs = 0
+    for _, b in ipairs(books) do total_secs = total_secs + (b.duration or 0) end
+    showBooksForPeriod(
+        self, books,
+        _("No books read in ") .. year,
+        T(N_("%1 - book read %2", "%1 - books read %2", #books), year, formatCount(#books)) .. " (" .. formatHHMMSS(total_secs) .. ")")
+end
+
+function ReadingInsightsPopup:_buildUI()
+    local screen_w = Screen:getWidth()
+    local screen_h = Screen:getHeight()
+    local fonts    = getCachedFonts()
+    local layout   = getCachedLayout()
+
+    local sections = buildInsightsSections(
+        self,
+        self._streaks    or { current_days=0, best_days=0, current_weeks=0, best_weeks=0 },
+        self._yearly     or { days=0, pages=0, duration=0 },
+        self._year_range or { min_year=self.selected_year, max_year=self.selected_year },
+        self._monthly    or {},
+        self._all_time   or { hours=0, pages=0 },
+        self._last_week  or { avg_seconds=0, avg_pages=0 },
+        self._last_week_daily or nil,
+        fonts, layout)
+
+    local title_bar_inner = TitleBar:new{
+        fullscreen     = true,
+        width          = screen_w,
+        align          = "left",
+        title          = _("Reading insights"),
+        close_callback = function() UIManager:close(self) end,
+        show_parent    = self,
+        top_v_padding    = Size.padding.default,
+        bottom_v_padding = Size.padding.default,
+    }
+
+    local title_bar_h = title_bar_inner:getSize().h
+    self._title_bar_height = title_bar_h
+
+    local title_bar = title_bar_inner
+
+    local content = VerticalGroup:new{
+        align = "left",
+        title_bar,
+        padded(layout.padding_h, LineWidget:new{
+            dimen      = Geom:new{ w = layout.content_width, h = Size.line.thick },
+            background = Blitbuffer.COLOR_GRAY,
+        }),
+        sections,
+        VerticalSpan:new{ height = title_bar:getSize().h },
+    }
+
+    local ScrollableContainer = require("ui/widget/container/scrollablecontainer")
+
+    self.scroll_container = ScrollableContainer:new{
+        dimen               = Geom:new{ w = screen_w, h = screen_h },
+        show_parent         = self,
+        scroll_bar_position = "right",
+        content,
+    }
+
+    self.popup_frame = FrameContainer:new{
+        background = Blitbuffer.COLOR_WHITE,
+        bordersize = 0,
+        radius     = 0,
+        padding    = 0,
+        width      = screen_w,
+        VerticalGroup:new{
+            align = "left",
+            self.scroll_container,
+        },
+    }
+
+    self.popup_frame.dimen = Geom:new{ x = 0, y = 0, w = screen_w, h = screen_h }
+
+    self[1] = VerticalGroup:new{ self.popup_frame }
+end
+
+function ReadingInsightsPopup:_loadAndRebuild()
+    -- Re-fetch all data; each getter has its own cache key so this is cheap when data is fresh.
+    local new_streaks         = self:calculateStreaks()
+    local new_year_range      = self:getYearRange()
+    local new_yearly          = self:getYearlyStats(self.selected_year)
+    local new_all_time        = self:getAllTimeStats()
+    local new_last_week, new_last_week_daily = self:getLastWeekAll()
+    local new_monthly
+    if self.mode == INSIGHTS_MODE_HOURS then
+        new_monthly = self:getMonthlyReadingHours(self.selected_year)
+    elseif self.mode == INSIGHTS_MODE_BOOKS then
+        new_monthly = self:getMonthlyBookCounts(self.selected_year)
+    else
+        new_monthly = self:getMonthlyReadingDays(self.selected_year)
+    end
+
+    -- Skip rebuild if the background fetch returned the exact same table references
+    -- (i.e. all data came from cache and nothing changed).
+    if new_streaks         == self._streaks         and
+       new_year_range      == self._year_range      and
+       new_yearly          == self._yearly          and
+       new_all_time        == self._all_time        and
+       new_last_week       == self._last_week       and
+       new_last_week_daily == self._last_week_daily and
+       new_monthly         == self._monthly         then
+        return
+    end
+
+    self._streaks         = new_streaks
+    self._year_range      = new_year_range
+    self._yearly          = new_yearly
+    self._all_time        = new_all_time
+    self._last_week       = new_last_week
+    self._last_week_daily = new_last_week_daily
+    self._monthly         = new_monthly
+
+    self:_buildUI()
+    UIManager:setDirty(self, function()
+        return "ui", self.popup_frame.dimen
+    end)
+end
+
+-- init() shows cached/stale data immediately, then _loadAndRebuild() refreshes in the background.
+function ReadingInsightsPopup:init()
+    local screen_w = Screen:getWidth()
+    local screen_h = Screen:getHeight()
+
+    -- Use fresh cache if available.
+    if ENABLE_CACHE then
+        self._streaks    = self._streaks    or _cache.streaks
+        local minute = currentMinute()
+        self._year_range = self._year_range or _cache.year_range
+        self._all_time   = self._all_time   or _cache.all_time
+        local year_key = (self.selected_year or tonumber(os.date("%Y"))) .. ":v3:" .. todayDateStr()
+        self._yearly  = self._yearly  or _yearly_cache[year_key]
+        local mode = normalizeInsightsMode(self.mode or readInsightsMode())
+        local month_key_prefix = (mode == INSIGHTS_MODE_HOURS and "hours:" or
+                                  mode == INSIGHTS_MODE_BOOKS and "books:" or "days:")
+        local month_key = month_key_prefix .. (self.selected_year or tonumber(os.date("%Y"))) .. ":" .. todayDateStr()
+        self._monthly = self._monthly or _monthly_cache[month_key]
+        if not self._last_week or not self._last_week_daily then
+            local lw_ok    = _cache.last_week       and _cache.last_week_minute       == minute
+            local daily_ok = _cache.last_week_daily and _cache.last_week_daily_minute == minute
+            if lw_ok    then self._last_week       = self._last_week       or _cache.last_week       end
+            if daily_ok then self._last_week_daily = self._last_week_daily or _cache.last_week_daily end
+        end
+    end
+
+    -- Fall back to stale cache for anything still missing (e.g. after a restart or day rollover).
+    if ENABLE_CACHE then
+        local year_key_any   = (self.selected_year or tonumber(os.date("%Y"))) .. ":v3:"
+        local mode_fb = normalizeInsightsMode(self.mode or readInsightsMode())
+        local month_key_prefix_fb = (mode_fb == INSIGHTS_MODE_HOURS and "hours:" or
+                                     mode_fb == INSIGHTS_MODE_BOOKS and "books:" or "days:")
+        local month_key_fb = month_key_prefix_fb .. (self.selected_year or tonumber(os.date("%Y"))) .. ":"
+
+        if not self._streaks then
+            self._streaks = _stale_cache.streaks
+        end
+
+        if not self._year_range then
+            self._year_range = _stale_cache.year_range
+            -- Ensure selected_year stays within the stale range if we got one.
+            if self._year_range and self.selected_year then
+                if self.selected_year < self._year_range.min_year then
+                    self.selected_year = self._year_range.min_year
+                elseif self.selected_year > self._year_range.max_year then
+                    self.selected_year = self._year_range.max_year
+                end
+            end
+        end
+
+        if not self._all_time then
+            self._all_time = _stale_cache.all_time
+        end
+
+        if not self._last_week then
+            self._last_week = _stale_cache.last_week
+        end
+
+        if not self._last_week_daily then
+            self._last_week_daily = _stale_cache.last_week_daily
+        end
+        -- Find any stale yearly entry for the current year.
+        if not self._yearly then
+            for k, v in pairs(_stale_yearly) do
+                if k:sub(1, #year_key_any) == year_key_any then
+                    self._yearly = v
+                    break
+                end
+            end
+        end
+        -- Find any stale monthly entry for the current year + mode.
+        if not self._monthly then
+            for k, v in pairs(_stale_monthly) do
+                if k:sub(1, #month_key_fb) == month_key_fb then
+                    self._monthly = v
+                    break
+                end
+            end
+        end
+    end
+
+    self.mode = normalizeInsightsMode(self.mode or readInsightsMode())
+
+    -- selected_year needs an initial value before _loadAndRebuild runs.
+    if not self.selected_year then
+        self.selected_year = tonumber(os.date("%Y"))
+    end
+
+    self.dimen = Geom:new{ w = screen_w, h = screen_h }
+
+    if Device:isTouchDevice() then
+        -- Hold handled at popup level to avoid ScrollableContainer eating inner Hold events.
+        self.ges_events.Swipe = { GestureRange:new{ ges = "swipe", range = self.dimen } }
+        self.ges_events.Hold  = { GestureRange:new{ ges = "hold",  range = self.dimen } }
+    end
+    if Device:hasKeys() then
+        self.key_events.AnyKeyPressed = { { Device.input.group.Any } }
+    end
+
+    -- Build UI immediately with available data; refresh in background.
+    self:_buildUI()
+    UIManager:scheduleIn(0, function()
+        if self._closed then return end
+        self:_loadAndRebuild()
+    end)
+end
+
+function ReadingInsightsPopup:onSwipe(arg, ges_ev)
+    if not ges_ev then return false end
+    local dir = ges_ev.direction
+    if dir == "west" or dir == "left"  then return self:onGoToNextYear() end
+    if dir == "east" or dir == "right" then return self:onGoToPrevYear() end
+    if dir == "south" or dir == "down" then UIManager:close(self) return true end
+    return false
+end
+
+-- Hold dispatch by touch position:
+--   title bar      → cache reload
+--   chart header   → CalendarView for current month
+function ReadingInsightsPopup:onHold(arg, ges_ev)
+    if not ges_ev or not ges_ev.pos then return true end
+    local pos = ges_ev.pos
+
+    local title_h = self._title_bar_height
+    if title_h and pos.y <= title_h then
+        local msg = InfoMessage:new{ text = _("Reloading data...") }
+        UIManager:show(msg)
+        UIManager:scheduleIn(0.5, function()
+            UIManager:close(msg)
+            clearAllCache()
+            self._streaks         = nil
+            self._yearly          = nil
+            self._monthly         = nil
+            self._all_time        = nil
+            self._last_week       = nil
+            self._last_week_daily = nil
+            self:_loadAndRebuild()
+        end)
+        return true
+    end
+    
+    if self._current_month_bar_widget then
+        local d = self._current_month_bar_widget.dimen
+        if d and pos.x >= d.x and pos.x <= d.x + d.w
+              and pos.y >= d.y and pos.y <= d.y + d.h then
+            self:openCalendarForCurrentMonth()
+            return true
+        end
+    end
+
+    return true
+end
+
+function ReadingInsightsPopup:toggleInsightsMode()
+    local new_mode
+    if self.mode == INSIGHTS_MODE_HOURS then
+        new_mode = INSIGHTS_MODE_DAYS
+    elseif self.mode == INSIGHTS_MODE_DAYS then
+        new_mode = INSIGHTS_MODE_BOOKS
+    else
+        new_mode = INSIGHTS_MODE_HOURS
+    end
+    saveInsightsMode(new_mode)
+    self.mode     = new_mode
+    local month_key_prefix_new = (new_mode == INSIGHTS_MODE_HOURS and "hours:" or
+                                  new_mode == INSIGHTS_MODE_BOOKS and "books:" or "days:")
+    local month_key_fb = month_key_prefix_new .. (self.selected_year or tonumber(os.date("%Y"))) .. ":"
+    self._monthly = nil
+    if ENABLE_CACHE then
+        for k, v in pairs(_stale_monthly) do
+            if k:sub(1, #month_key_fb) == month_key_fb then
+                self._monthly = v
+                break
+            end
+        end
+    end
+    self:_buildUI()
+    UIManager:setDirty(self, function()
+        return "ui", self.popup_frame.dimen
+    end)
+    UIManager:scheduleIn(0, function()
+        if self._closed then return end
+        self:_loadAndRebuild()
+    end)
+    return true
+end
+
+function ReadingInsightsPopup:cycleInsightsMode()
+    local new_mode
+    if self.mode == INSIGHTS_MODE_HOURS then
+        new_mode = INSIGHTS_MODE_DAYS
+    elseif self.mode == INSIGHTS_MODE_DAYS then
+        new_mode = INSIGHTS_MODE_BOOKS
+    else
+        new_mode = INSIGHTS_MODE_HOURS
+    end
+
+    saveInsightsMode(new_mode)
+    self.mode = new_mode
+
+    local month_key_prefix_new = (new_mode == INSIGHTS_MODE_HOURS and "hours:" or
+                                  new_mode == INSIGHTS_MODE_BOOKS and "books:" or "days:")
+    local month_key_fb = month_key_prefix_new .. (self.selected_year or tonumber(os.date("%Y"))) .. ":"
+    self._monthly = nil
+    if ENABLE_CACHE then
+        for k, v in pairs(_stale_monthly) do
+            if k:sub(1, #month_key_fb) == month_key_fb then
+                self._monthly = v
+                break
+            end
+        end
+    end
+    self:_buildUI()
+    UIManager:setDirty(self, function()
+        return "ui", self.popup_frame.dimen
+    end)
+    UIManager:scheduleIn(0, function()
+        if self._closed then return end
+        self:_loadAndRebuild()
+    end)
+    return true
+end
+
+function ReadingInsightsPopup:onGoToPrevYear()
+    local yr = self._year_range or self.year_range
+    if yr and self.selected_year > yr.min_year then
+        self.selected_year = self.selected_year - 1
+        self._monthly = nil
+        self._yearly  = nil
+        -- Serve stale data for the target year immediately.
+        local year_key_any   = self.selected_year .. ":v3:"
+        local mode_fb = self.mode or INSIGHTS_MODE_HOURS
+        local month_key_prefix_fb = (mode_fb == INSIGHTS_MODE_HOURS and "hours:" or
+                                     mode_fb == INSIGHTS_MODE_BOOKS and "books:" or "days:")
+        local month_key_fb = month_key_prefix_fb .. self.selected_year .. ":"
+        if ENABLE_CACHE then
+            for k, v in pairs(_stale_yearly) do
+                if k:sub(1, #year_key_any) == year_key_any then
+                    self._yearly = v
+                    break
+                end
+            end
+            for k, v in pairs(_stale_monthly) do
+                if k:sub(1, #month_key_fb) == month_key_fb then
+                    self._monthly = v
+                    break
+                end
+            end
+        end
+        self:_buildUI()
+        UIManager:setDirty(self, function()
+            return "ui", self.popup_frame.dimen
+        end)
+        UIManager:scheduleIn(0, function()
+            if self._closed then return end
+            self:_loadAndRebuild()
+        end)
+    end
+    return true
+end
+
+function ReadingInsightsPopup:onAnyKeyPressed(_, key)
+    if key and key:match({ { "RPgBack", "LPgBack", "Left"  } }) then return self:onGoToPrevYear() end
+    if key and key:match({ { "RPgFwd",  "LPgFwd",  "Right" } }) then return self:onGoToNextYear() end
+    if key and key:match({ { "Press" } }) then return self:toggleInsightsMode() end
+    UIManager:close(self)
+    return true
+end
+
+function ReadingInsightsPopup:onGoToNextYear()
+    local yr = self._year_range or self.year_range
+    if yr and self.selected_year < yr.max_year then
+        self.selected_year = self.selected_year + 1
+        self._monthly      = nil
+        self._yearly       = nil
+        -- Serve stale data for the target year immediately.
+        local year_key_any   = self.selected_year .. ":v3:"
+        local mode_fb = self.mode or INSIGHTS_MODE_HOURS
+        local month_key_prefix_fb = (mode_fb == INSIGHTS_MODE_HOURS and "hours:" or
+                                     mode_fb == INSIGHTS_MODE_BOOKS and "books:" or "days:")
+        local month_key_fb = month_key_prefix_fb .. self.selected_year .. ":"
+        if ENABLE_CACHE then
+            for k, v in pairs(_stale_yearly) do
+                if k:sub(1, #year_key_any) == year_key_any then
+                    self._yearly = v
+                    break
+                end
+            end
+            for k, v in pairs(_stale_monthly) do
+                if k:sub(1, #month_key_fb) == month_key_fb then
+                    self._monthly = v
+                    break
+                end
+            end
+        end
+        self:_buildUI()
+        UIManager:setDirty(self, function()
+            return "ui", self.popup_frame.dimen
+        end)
+        UIManager:scheduleIn(0, function()
+            if self._closed then return end
+            self:_loadAndRebuild()
+        end)
+    end
+    return true
+end
+
+function ReadingInsightsPopup:onShow()
+    if FULL_SCREEN_REFRESH_ON_OPEN_CLOSE then
+        UIManager:setDirty(self, function()
+            return "full", self.popup_frame.dimen
+        end)
+    else
+        UIManager:setDirty(self, function()
+            return "ui", self.popup_frame.dimen
+        end)
+    end
+    return true
+end
+
+function ReadingInsightsPopup:onTapClose()
+    UIManager:close(self)
+    return true
+end
+
+function ReadingInsightsPopup:onCloseWidget()
+    self._closed = true
+    if self.scroll_container then
+        self.scroll_container:free()
+    end
+    if FULL_SCREEN_REFRESH_ON_OPEN_CLOSE then
+        UIManager:setDirty(nil, "full")
+    else
+        UIManager:setDirty(nil, "ui")
+    end
+end
+
+--[[
+Plugin wiring.
+
+is_doc_only = false, so KOReader instantiates this plugin both while
+reading a book (self.ui = ReaderUI) and in the file browser
+(self.ui = FileManager) -- matching the two entry points the original
+patch monkey-patched by hand.
+]]--
+local ReadingInsights = WidgetContainer:extend{
+    name = "readinginsights",
+    is_doc_only = false,
+}
+
+function ReadingInsights:init()
+    self.ui.menu:registerToMainMenu(self)
+end
+
+function ReadingInsights:onShowReadingInsightsPopup()
+    local popup = ReadingInsightsPopup:new{ ui = self.ui }
+    UIManager:show(popup)
+    return true
+end
+
+-- Adds "Reading insights" under the same "Statistics" submenu the core
+-- statistics.koplugin (readerstatistics) populates. If that plugin's
+-- menu hasn't been built yet for some reason, fall back to a top-level
+-- entry so the feature is never silently missing from the menu.
+function ReadingInsights:addToMainMenu(menu_items)
+    menu_items.reading_insights_popup = {
+        text = _("Reading insights"),
+        sorting_hint = "tools",
+        keep_menu_open = true,
+        callback = function()
+            self:onShowReadingInsightsPopup()
+        end,
+    }
+end
+
+return ReadingInsights
