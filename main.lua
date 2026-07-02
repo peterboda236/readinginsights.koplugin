@@ -79,7 +79,7 @@ local util = require("util")
 local ENABLE_CACHE = true
 
 -- true: full-screen refresh on open/close. false: partial refresh only.
-local FULL_SCREEN_REFRESH_ON_OPEN_CLOSE = true
+local FULL_SCREEN_REFRESH_ON_OPEN_CLOSE = false
 
 -- true: today's bar in the weekly chart is black. false: all bars gray.
 local WEEKLY_CHART_HIGHLIGHT_TODAY = true

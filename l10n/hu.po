@@ -250,7 +250,7 @@ msgid "avg time/day"
 msgstr "átlag idő/nap"
 
 msgid "book read in this streak"
-msgstr "könyvet olvastál ez alatt"
+msgstr "könyvet olvasva ez alatt"
 
 msgid "books read in this streak"
-msgstr "könyvet olvastál ez alatt"
+msgstr "könyv olvasva ez alatt"
