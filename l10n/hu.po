@@ -242,3 +242,15 @@ msgstr "Elmúlt 8 hét átlagos napi oldalszáma"
 
 msgid "No reading data in the last 8 weeks"
 msgstr "Nincs olvasási adat az elmúlt 8 héten"
+
+msgid "total reading time"
+msgstr "összes olvasási idő"
+
+msgid "avg time/day"
+msgstr "átlag idő/nap"
+
+msgid "book read in this streak"
+msgstr "könyvet olvastál ez alatt"
+
+msgid "books read in this streak"
+msgstr "könyvet olvastál ez alatt"
