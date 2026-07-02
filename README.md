@@ -2,6 +2,11 @@
 
 <img width="384" height="512" alt="FileManager_2026-06-30_074746" src="https://github.com/user-attachments/assets/cf248698-75d0-4948-8d9c-70ea5c69fd5e" />
 
+More screenshots
+
+<img width="96" height="128" alt="FileManager_2026-07-02_083320" src="https://github.com/user-attachments/assets/8193ba8b-7f7e-4b35-9efb-81d0d4a1df8e" /><img width="96" height="128" alt="FileManager_2026-07-02_083306" src="https://github.com/user-attachments/assets/3026267b-d29d-4487-99a5-6efdcc4baa37" /><img width="96" height="128" alt="FileManager_2026-07-02_083257" src="https://github.com/user-attachments/assets/8a5857fb-f313-4d04-ab26-f604bdee7e52" />
+
+
 A full-screen scrollable overlay with a comprehensive overview of your reading history, powered by KOReader's statistics database.
 
 **Highlights:**
