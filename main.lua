@@ -3226,6 +3226,34 @@ local ReadingInsights = WidgetContainer:extend{
 
 function ReadingInsights:init()
     self.ui.menu:registerToMainMenu(self)
+
+    -- Force this plugin's entry to the top of the Tools menu
+    -- (both in Reader view and in the File manager)
+    UIManager:scheduleIn(1, function()
+        local function forceFirst(module_path_new, module_path_old)
+            local ok_new, order_module = pcall(require, module_path_new)
+            if not ok_new then
+                local ok_old, res_old = pcall(require, module_path_old)
+                if ok_old then order_module = res_old end
+            end
+            if order_module then
+                if order_module.insertSorted then
+                    order_module.insertSorted("tools", "reading_insights_popup", 1)
+                elseif order_module.tools then
+                    for i, v in ipairs(order_module.tools) do
+                        if v == "reading_insights_popup" then
+                            table.remove(order_module.tools, i)
+                            break
+                        end
+                    end
+                    table.insert(order_module.tools, 1, "reading_insights_popup")
+                end
+            end
+        end
+
+        forceFirst("ui/elements/reader_menu_order", "apps/reader/modules/readermenuorder")
+        forceFirst("ui/elements/filemanager_menu_order", "apps/filemanager/modules/filemanagermenuorder")
+    end)
 end
 
 function ReadingInsights:onShowReadingInsightsPopup()
