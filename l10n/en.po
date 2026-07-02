@@ -243,3 +243,14 @@ msgstr "Average daily pages, last 8 weeks"
 msgid "No reading data in the last 8 weeks"
 msgstr "No reading data in the last 8 weeks"
 
+msgid "total reading time"
+msgstr "total reading time"
+
+msgid "avg time/day"
+msgstr "avg time/day"
+
+msgid "book read in this streak"
+msgstr "book read in this streak"
+
+msgid "books read in this streak"
+msgstr "books read in this streak

@@ -15,7 +15,7 @@ Sections:
 Gestures:
   - Tap yearly value or monthly bar    open book list for that period
   - Tap monthly chart header           cycle hours/days/books mode
-  - Tap on Streak                      show the streak period date
+  - Tap on Streak                      show the streak period date and some more stats
   - Long press title bar               force-reload all data from DB
   - Swipe left/right                   change year
   - Swipe down / any key               close
@@ -1331,7 +1331,41 @@ local function weekStrToMondayDate(week_str)
     return os.date("%Y-%m-%d", target_mon)
 end
 
--- Show an InfoMessage with the period start/end dates for a streak.
+-- Total reading seconds and distinct book count for a "YYYY-MM-DD" date range (inclusive).
+local function getStreakPeriodStats(start_date, end_date)
+    local stats = { duration = 0, books = 0 }
+    if not start_date or not end_date then return stats end
+    return withStatsDb(stats, function(conn)
+        local sql = string.format([[
+            SELECT COALESCE(SUM(duration), 0) AS total_duration,
+                   COUNT(DISTINCT id_book) AS book_count
+            FROM page_stat
+            WHERE date(start_time, 'unixepoch', 'localtime') BETWEEN '%s' AND '%s'
+        ]], start_date, end_date)
+        withStatement(conn, sql, function(stmt)
+            for row in stmt:rows() do
+                stats.duration = tonumber(row[1]) or 0
+                stats.books    = tonumber(row[2]) or 0
+            end
+        end)
+        return stats
+    end)
+end
+
+-- Number of calendar days between two "YYYY-MM-DD" dates, inclusive.
+local function daysBetweenInclusive(start_date, end_date)
+    local sy, sm, sd = parseDateYMD(start_date)
+    local ey, em, ed = parseDateYMD(end_date)
+    if not sy or not ey then return 1 end
+    local t1 = os.time({ year = sy, month = sm, day = sd })
+    local t2 = os.time({ year = ey, month = em, day = ed })
+    local days = math.floor((t2 - t1) / 86400) + 1
+    if days < 1 then days = 1 end
+    return days
+end
+
+-- Show a popup (styled like the main insights popup) with the period start/end
+-- dates for a streak, plus total reading time, average time/day, and book count.
 -- dates table: { start = "YYYY-MM-DD" or "YYYY-WW", end_ = same }, is_weekly = bool
 -- is_current: true = current streak, false = best streak. When given, a label
 -- naming which streak's period is shown is prepended above the date range.
@@ -1340,29 +1374,125 @@ local function showStreakDatePopup(dates, is_weekly, is_current)
         UIManager:show(InfoMessage:new{ text = _("No streak dates") })
         return
     end
-    local start_str, end_str
+    local start_str, end_str, range_start, range_end
     if is_weekly then
-        -- entries_desc: dates.start = earliest week, dates.end_ = latest week
-        local mon_from = weekStrToMondayDate(dates.start)  -- earliest week → Monday
-        local mon_to   = weekStrToMondayDate(dates.end_)    -- latest week → Sunday
+        local mon_from = weekStrToMondayDate(dates.start)
+        local mon_to   = weekStrToMondayDate(dates.end_)
         local sun_to
         if mon_to then
             sun_to = os.date("%Y-%m-%d", os.time({ year = tonumber(mon_to:sub(1,4)),
                 month = tonumber(mon_to:sub(6,7)), day = tonumber(mon_to:sub(9,10)) }) + 6 * 86400)
         end
+        range_start = mon_from
+        range_end   = sun_to or mon_to
         start_str = formatDateForDisplay(mon_from, true)
         end_str   = formatDateForDisplay(sun_to or mon_to)
     else
-        -- entries_desc: dates.start = earliest date, dates.end_ = latest date
+        range_start = dates.start
+        range_end   = dates.end_
         start_str = formatDateForDisplay(dates.start, true)
         end_str   = formatDateForDisplay(dates.end_)
     end
-    local msg = start_str .. " – " .. end_str
+
+    local period = getStreakPeriodStats(range_start, range_end)
+    local num_days = daysBetweenInclusive(range_start, range_end)
+    local avg_seconds = num_days > 0 and (period.duration / num_days) or 0
+
+    local total_mins = math.floor(period.duration / 60 + 0.5)
+    local total_time_val = string.format("%02d:%02d", math.floor(total_mins / 60), total_mins % 60)
+
+    local avg_mins = math.floor(avg_seconds / 60 + 0.5)
+    local avg_time_val = string.format("%02d:%02d", math.floor(avg_mins / 60), avg_mins % 60)
+
+    local book_count = period.books
+    local book_label
+    if is_current then
+        book_label = N_("book read in this streak",
+                         "books read in this streak", book_count)
+    else
+        book_label = N_("book read in this streak",
+                         "books read in this streak", book_count)
+    end
+
+    local fonts = getCachedFonts()
+    local inner_padding = Size.padding.large
+    local max_width = math.floor(Screen:getWidth() * 0.9) - 2 * inner_padding
+
+    -- Build the title/date text widgets first so we can measure their natural width.
+    local title_w
     if is_current ~= nil then
         local label = is_current and _("Current streak") or _("Best streak")
-        msg = label .. "\n" .. msg
+        title_w = TextWidget:new{ text = label, face = fonts.section }
     end
-    UIManager:show(InfoMessage:new{ text = msg })
+    local date_w = TextWidget:new{ text = start_str .. " – " .. end_str, face = fonts.label }
+
+    -- Measure each value/label row at its own natural (unwrapped) width.
+    local function naturalRowWidth(value, unit)
+        local value_w = TextWidget:new{ text = value, face = fonts.value }:getSize().w
+        local label_w = TextWidget:new{ text = unit,  face = fonts.label }:getSize().w
+        return value_w + Size.padding.large + label_w
+    end
+
+    local row_width = math.max(
+        naturalRowWidth(total_time_val, _("total reading time")),
+        naturalRowWidth(avg_time_val, _("avg time/day")),
+        naturalRowWidth(tostring(book_count), book_label)
+    )
+
+    -- The box hugs whichever element is widest (title / date / value rows),
+    -- capped so it never overflows the screen. No more fixed 86%-wide box.
+    local content_width = row_width
+    if title_w then content_width = math.max(content_width, title_w:getSize().w) end
+    content_width = math.max(content_width, date_w:getSize().w)
+    content_width = math.min(content_width, max_width)
+    row_width = math.min(row_width, content_width)
+
+    local content = VerticalGroup:new{ align = "left" }
+
+    if title_w then
+        table.insert(content, CenterContainer:new{
+            dimen = Geom:new{ w = content_width, h = title_w:getSize().h }, title_w,
+        })
+        table.insert(content, VerticalSpan:new{ height = Size.padding.default })
+    end
+
+    table.insert(content, CenterContainer:new{
+        dimen = Geom:new{ w = content_width, h = date_w:getSize().h }, date_w,
+    })
+    table.insert(content, VerticalSpan:new{ height = Size.padding.default })
+    table.insert(content, LineWidget:new{
+        dimen      = Geom:new{ w = content_width, h = Size.line.thin },
+        background = Blitbuffer.COLOR_GRAY,
+    })
+    table.insert(content, VerticalSpan:new{ height = Size.padding.large })
+
+    local value_lines = VerticalGroup:new{ align = "left" }
+    table.insert(value_lines, buildValueLine(fonts.value, fonts.label, row_width,
+        total_time_val, _("total reading time")))
+    table.insert(value_lines, VerticalSpan:new{ height = Size.padding.default })
+    table.insert(value_lines, buildValueLine(fonts.value, fonts.label, row_width,
+        avg_time_val, _("avg time/day")))
+    table.insert(value_lines, VerticalSpan:new{ height = Size.padding.default })
+    table.insert(value_lines, buildValueLine(fonts.value, fonts.label, row_width,
+        tostring(book_count), book_label))
+
+    table.insert(content, CenterContainer:new{
+        dimen = Geom:new{ w = content_width, h = value_lines:getSize().h },
+        value_lines,
+    })
+
+    local box = FrameContainer:new{
+        background     = Blitbuffer.COLOR_WHITE,
+        bordersize     = Size.border.window,
+        radius         = Size.radius.window,
+        padding_top    = inner_padding,
+        padding_bottom = inner_padding,
+        padding_left   = inner_padding,
+        padding_right  = inner_padding,
+        content,
+    }
+
+    UIManager:show(WeeklyTrendPopup:new{ box_content = box })
 end
 
 local function buildInsightsSections(popup_self, streaks, yearly_stats, year_range, monthly_data, all_time_stats, last_week_stats, last_week_daily, fonts, layout)
