@@ -254,3 +254,24 @@ msgstr "book read in this streak"
 
 msgid "books read in this streak"
 msgstr "books read in this streak
+
+msgid "Show Reading insights"
+msgstr "Show Reading insights"
+
+msgid "Full-screen refresh on open/close"
+msgstr "Full-screen refresh on open/close"
+
+msgid "8-week chart order"
+msgstr "8-week chart order"
+
+msgid "Newest first"
+msgstr "Newest first"
+
+msgid "Oldest first"
+msgstr "Oldest first"
+
+msgid "Newest first (descending)"
+msgstr "Newest first (descending)"
+
+msgid "Oldest first (ascending)"
+msgstr "Oldest first (ascending)"
