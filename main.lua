@@ -3294,16 +3294,13 @@ local ReadingInsights = WidgetContainer:extend{
 }
 
 function ReadingInsights:onDispatcherRegisterActions()
-    local ok, Dispatcher = pcall(require, "dispatcher")
-    if not ok or not Dispatcher then return end
-    pcall(function()
-        Dispatcher:registerAction("reading_insights_popup", {
-            category = "none",
-            event    = "ShowReadingInsightsPopup",
-            title    = _("Reading insights"),
-            general  = true,
-        })
-    end)
+    local Dispatcher = require("dispatcher")
+    Dispatcher:registerAction("reading_insights_popup", {
+        category = "none",
+        event    = "ShowReadingInsightsPopup",
+        title    = _("Reading insights"),
+        general  = true,
+    })
 end
 
 function ReadingInsights:init()
