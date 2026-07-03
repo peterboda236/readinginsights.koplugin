@@ -1837,12 +1837,6 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
     return sections
 end
 
-Dispatcher:registerAction("reading_insights_popup", {
-    category = "none",
-    event    = "ShowReadingInsightsPopup",
-    title    = _("Reading insights"),
-    general  = true,
-})
 
 local ReadingInsightsPopup = InputContainer:extend{
     modal         = true,
@@ -3299,9 +3293,22 @@ local ReadingInsights = WidgetContainer:extend{
     is_doc_only = false,
 }
 
+function ReadingInsights:onDispatcherRegisterActions()
+    local ok, Dispatcher = pcall(require, "dispatcher")
+    if not ok or not Dispatcher then return end
+    pcall(function()
+        Dispatcher:registerAction("reading_insights_popup", {
+            category = "none",
+            event    = "ShowReadingInsightsPopup",
+            title    = _("Reading insights"),
+            general  = true,
+        })
+    end)
+end
+
 function ReadingInsights:init()
     self.ui.menu:registerToMainMenu(self)
-
+	self:onDispatcherRegisterActions()
     -- Force this plugin's entry to the top of the Tools menu
     -- (both in Reader view and in the File manager)
     UIManager:scheduleIn(1, function()
