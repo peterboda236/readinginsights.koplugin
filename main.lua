@@ -29,6 +29,34 @@ Monthly chart modes (cycle by tapping header):
   days   – reading days per month
   books  – distinct books with reading data per month (getMonthlyBookCounts)
 
+Menu (Tools → Reading insights):
+  The "Reading insights" entry in the Tools menu is a submenu with three items:
+
+  Show Reading insights
+    Opens the popup directly. Also available via gestures/shortcuts under
+    Settings → Taps and gestures → Reading insights (dispatcher name:
+    "reading_insights_popup").
+
+  Full-screen refresh on open/close  [toggle]
+    When enabled, forces a full e-ink refresh (flicker) each time the popup
+    opens or closes. Useful if ghosting is visible; off by default.
+    Settings key: "reading_insights_full_refresh_on_open_close"
+
+  8-week chart order  [Oldest first / Newest first]
+    Controls the left-to-right order of the 8-week trend line chart shown
+    when tapping a value in the Last week section.
+      Oldest first (ascending)  – week 1 (oldest) on the left, current week on the right
+      Newest first (descending) – current week on the left (original behaviour)
+    Default: Oldest first.
+    Settings key: "reading_insights_8week_ascending"
+
+Refresh behaviour:
+  - Main popup open/close: "ui" refresh by default; "full" if the toggle above is on.
+  - 8-week trend popup and streak detail popup: partial "ui" refresh limited to
+    the popup box area only — no full-screen flicker on open or close.
+  - CalendarView open/close: managed by KOReader's own CalendarView widget,
+    not controllable from this plugin.
+
 Caching:
   Streaks cached per minute; year range cached per day; last-week stats per minute;
   yearly and monthly stats per year per day. Monthly book counts cached under
@@ -78,11 +106,42 @@ local util = require("util")
 -- false: always query DB fresh on open.
 local ENABLE_CACHE = true
 
--- true: full-screen refresh on open/close. false: partial refresh only.
-local FULL_SCREEN_REFRESH_ON_OPEN_CLOSE = false
-
 -- true: today's bar in the weekly chart is black. false: all bars gray.
 local WEEKLY_CHART_HIGHLIGHT_TODAY = true
+
+-- Settings keys
+local SETTINGS_KEY_FULL_REFRESH   = "reading_insights_full_refresh_on_open_close"
+local SETTINGS_KEY_8W_ASCENDING   = "reading_insights_8week_ascending"
+
+local function readFullRefreshSetting()
+    if G_reader_settings and G_reader_settings.readSetting then
+        local v = G_reader_settings:readSetting(SETTINGS_KEY_FULL_REFRESH)
+        if v == nil then return false end
+        return v == true
+    end
+    return false
+end
+
+local function readAscendingSetting()
+    if G_reader_settings and G_reader_settings.readSetting then
+        local v = G_reader_settings:readSetting(SETTINGS_KEY_8W_ASCENDING)
+        if v == nil then return true end  -- default: növekvő (legrégebbi balra)
+        return v == true
+    end
+    return true
+end
+
+local function saveFullRefreshSetting(value)
+    if G_reader_settings and G_reader_settings.saveSetting then
+        G_reader_settings:saveSetting(SETTINGS_KEY_FULL_REFRESH, value)
+    end
+end
+
+local function saveAscendingSetting(value)
+    if G_reader_settings and G_reader_settings.saveSetting then
+        G_reader_settings:saveSetting(SETTINGS_KEY_8W_ASCENDING, value)
+    end
+end
 
 local _cache = {
     streaks      = nil,
@@ -1098,11 +1157,14 @@ local function buildLine8WeekChart(weeks, metric, chart_width, fonts)
     local baseline_h  = Size.line.medium
     local total_col_h = bar_height + label_height
 
+    -- Ascending = weeks[1] (oldest) leftmost; descending = weeks[num_points] (newest) leftmost.
+    local ascending = readAscendingSetting()
+
     local bars_row = HorizontalGroup:new{ align = "bottom" }
     local points   = {}
 
     for col = 1, num_points do
-        local i = num_points - col + 1  -- weeks[num_points] (current week) goes leftmost
+        local i = ascending and col or (num_points - col + 1)
         local ratio = values[i] / max_value
         local dot_y_from_bottom = math.floor(ratio * (bar_height - dot_size))
         local val_str = formatWeekValue(metric, weeks[i])
@@ -1159,10 +1221,10 @@ local function buildLine8WeekChart(weeks, metric, chart_width, fonts)
     }
 
     -- Per-week start/end date, same font size as the value labels above the dots.
-    -- Same left-to-right order as the columns above: most recent week first.
+    -- Order follows the same ascending/descending setting as the columns above.
     local date_labels_row = HorizontalGroup:new{ align = "top" }
     for col = 1, num_points do
-        local i = num_points - col + 1
+        local i = ascending and col or (num_points - col + 1)
         local start_lbl = TextWidget:new{ text = formatShortDate(weeks[i].start_date), face = font_small }
         local col_dates  = CenterContainer:new{
             dimen = Geom:new{ w = col_width, h = start_lbl:getSize().h },
@@ -1202,6 +1264,19 @@ function WeeklyTrendPopup:init()
         dimen = self.dimen,
         self.box_content,
     }
+end
+
+function WeeklyTrendPopup:onShow()
+    UIManager:setDirty(self, function()
+        return "ui", self.box_content.dimen
+    end)
+    return true
+end
+
+function WeeklyTrendPopup:onCloseWidget()
+    UIManager:setDirty(nil, function()
+        return "ui", self.box_content.dimen
+    end)
 end
 
 function WeeklyTrendPopup:onTap()           UIManager:close(self) return true end
@@ -3182,7 +3257,7 @@ function ReadingInsightsPopup:onGoToNextYear()
 end
 
 function ReadingInsightsPopup:onShow()
-    if FULL_SCREEN_REFRESH_ON_OPEN_CLOSE then
+    if readFullRefreshSetting() then
         UIManager:setDirty(self, function()
             return "full", self.popup_frame.dimen
         end)
@@ -3204,7 +3279,7 @@ function ReadingInsightsPopup:onCloseWidget()
     if self.scroll_container then
         self.scroll_container:free()
     end
-    if FULL_SCREEN_REFRESH_ON_OPEN_CLOSE then
+    if readFullRefreshSetting() then
         UIManager:setDirty(nil, "full")
     else
         UIManager:setDirty(nil, "ui")
@@ -3262,18 +3337,64 @@ function ReadingInsights:onShowReadingInsightsPopup()
     return true
 end
 
--- Adds "Reading insights" under the same "Statistics" submenu the core
--- statistics.koplugin (readerstatistics) populates. If that plugin's
--- menu hasn't been built yet for some reason, fall back to a top-level
--- entry so the feature is never silently missing from the menu.
+-- Adds "Reading insights" under Tools as a submenu.
+-- Sub-entries: open the popup, plus two persistent settings.
 function ReadingInsights:addToMainMenu(menu_items)
     menu_items.reading_insights_popup = {
         text = _("Reading insights"),
         sorting_hint = "tools",
-        keep_menu_open = true,
-        callback = function()
-            self:onShowReadingInsightsPopup()
-        end,
+        sub_item_table = {
+            {
+                text = _("Show Reading insights"),
+                keep_menu_open = false,
+                callback = function()
+                    self:onShowReadingInsightsPopup()
+                end,
+            },
+            {
+                text = _("Full-screen refresh on open/close"),
+                keep_menu_open = true,
+                checked_func = function()
+                    return readFullRefreshSetting()
+                end,
+                callback = function()
+                    saveFullRefreshSetting(not readFullRefreshSetting())
+                end,
+            },
+            {
+                text_func = function()
+                    local order = readAscendingSetting()
+                        and _("Oldest first")
+                        or  _("Newest first")
+                    return _("8-week chart order") .. ": " .. order
+                end,
+                keep_menu_open = true,
+                sub_item_table = {
+                    {
+                        text = _("Newest first (descending)"),
+                        keep_menu_open = true,
+                        radio = true,
+                        checked_func = function()
+                            return not readAscendingSetting()
+                        end,
+                        callback = function()
+                            saveAscendingSetting(false)
+                        end,
+                    },
+                    {
+                        text = _("Oldest first (ascending)"),
+                        keep_menu_open = true,
+                        radio = true,
+                        checked_func = function()
+                            return readAscendingSetting()
+                        end,
+                        callback = function()
+                            saveAscendingSetting(true)
+                        end,
+                    },
+                },
+            },
+        },
     }
 end
 
