@@ -3294,7 +3294,6 @@ local ReadingInsights = WidgetContainer:extend{
 }
 
 function ReadingInsights:onDispatcherRegisterActions()
-    local Dispatcher = require("dispatcher")
     Dispatcher:registerAction("reading_insights_popup", {
         category = "none",
         event    = "ShowReadingInsightsPopup",
