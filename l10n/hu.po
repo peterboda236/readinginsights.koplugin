@@ -254,3 +254,24 @@ msgstr "könyvet olvasva ez alatt"
 
 msgid "books read in this streak"
 msgstr "könyv olvasva ez alatt"
+
+msgid "Show Reading insights"
+msgstr "Olvasási áttekintés megnyitása"
+
+msgid "Full-screen refresh on open/close"
+msgstr "Teljes képernyő frissítés megnyitáskor/bezáráskor"
+
+msgid "8-week chart order"
+msgstr "8 hetes grafikon sorrendje"
+
+msgid "Newest first"
+msgstr "Legújabb először"
+
+msgid "Oldest first"
+msgstr "Legrégebbi először"
+
+msgid "Newest first (descending)"
+msgstr "Legújabb először (csökkenő)"
+
+msgid "Oldest first (ascending)"
+msgstr "Legrégebbi először (növekvő)"
