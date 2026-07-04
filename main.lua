@@ -58,11 +58,18 @@ Refresh behaviour:
     not controllable from this plugin.
 
 Caching:
-  Streaks cached per minute; year range cached per day; last-week stats per minute;
-  yearly and monthly stats per year per day. Monthly book counts cached under
+  Streaks cached per minute; year range cached per day; yearly and monthly
+  stats per year per day. Monthly book counts cached under
   "books:<year>:<date>" keys, mirrored to _stale_monthly. Stale-while-revalidate:
   the popup opens immediately with cached data while fresh values load
   in the background.
+
+  Last week: on every popup open, the current reading session's in-memory
+  data is first flushed into statistics.sqlite3 (same insertDB() call the
+  statistics koplugin itself makes before showing its own dialogs), and the
+  last-week cache is invalidated so it is always re-read from the DB right
+  after - not just once per minute. The previous value is still shown
+  instantly (stale-while-revalidate) until the fresh one is ready.
 
   CalendarView: when closed, the popup reopens with the same year, mode,
   and cached data — no extra DB queries needed on return. If CalendarView
@@ -194,6 +201,21 @@ end
 
 local function currentMinute()
     return math.floor(os.time() / 60)
+end
+
+-- The statistics koplugin keeps the current reading session's page timings
+-- in memory (self.page_stat) and only periodically writes them into
+-- statistics.sqlite3. Its own dialogs (e.g. "Current statistics") call
+-- self:insertDB() right before reading anything from the DB, so the numbers
+-- shown always include the still-open session. We do the same thing here
+-- before querying "Last week", otherwise time spent in the current session
+-- would be missing until KOReader's own autosave/close flushes it.
+local function flushStatsToDB(ui)
+    local stats_plugin = ui and ui.statistics or nil
+    if stats_plugin and stats_plugin.insertDB then
+        pcall(stats_plugin.insertDB, stats_plugin)
+    end
+    return stats_plugin
 end
 
 -- Localisation loader: reads l10n/<lang>.po (simple "msgid"/"msgstr" pairs,
@@ -2947,6 +2969,18 @@ end
 function ReadingInsightsPopup:init()
     local screen_w = Screen:getWidth()
     local screen_h = Screen:getHeight()
+
+    -- Write the current (in-memory, not yet saved) reading session into
+    -- statistics.sqlite3, then invalidate the "Last week" cache so it is
+    -- always re-queried from the DB on every open of this popup - not just
+    -- once per minute. Older cached/stale values are still shown instantly
+    -- below (stale-while-revalidate); _loadAndRebuild() then replaces them
+    -- with the freshly-flushed numbers a moment later.
+    flushStatsToDB(self.ui)
+    _cache.last_week              = nil
+    _cache.last_week_minute       = nil
+    _cache.last_week_daily        = nil
+    _cache.last_week_daily_minute = nil
 
     -- Use fresh cache if available.
     if ENABLE_CACHE then
