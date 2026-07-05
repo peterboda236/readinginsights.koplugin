@@ -275,3 +275,6 @@ msgstr "Legújabb először (csökkenő)"
 
 msgid "Oldest first (ascending)"
 msgstr "Legrégebbi először (növekvő)"
+
+msgid "Loading data…"
+msgstr "Adatok betöltése…"
