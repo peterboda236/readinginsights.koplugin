@@ -58,11 +58,13 @@ Refresh behaviour:
     not controllable from this plugin.
 
 Caching:
-  Streaks cached per minute; year range cached per day; yearly and monthly
-  stats per year per day. Monthly book counts cached under
-  "books:<year>:<date>" keys, mirrored to _stale_monthly. Stale-while-revalidate:
-  the popup opens immediately with cached data while fresh values load
-  in the background.
+  Streaks, yearly, monthly, and all-time stats are all cached per minute
+  (a cheap "today" slice is merged fresh on every call into a once-per-day
+  cached "up to yesterday" base, so totals stay live without re-scanning
+  full history each open). Year range cached per day. Monthly book counts
+  cached under "books:<year>:<date>" keys, mirrored to _stale_monthly.
+  Stale-while-revalidate: the popup opens immediately with cached data
+  while fresh values load in the background.
 
   Last week: on every popup open, the current reading session's in-memory
   data is first flushed into statistics.sqlite3 (same insertDB() call the
@@ -120,43 +122,49 @@ local WEEKLY_CHART_HIGHLIGHT_TODAY = true
 local SETTINGS_KEY_FULL_REFRESH   = "reading_insights_full_refresh_on_open_close"
 local SETTINGS_KEY_8W_ASCENDING   = "reading_insights_8week_ascending"
 
-local function readFullRefreshSetting()
+-- Generic boolean-setting reader/writer; replaces the previous 4 near-identical
+-- read/save*Setting functions that only differed by key and default.
+local function readBoolSetting(key, default)
     if G_reader_settings and G_reader_settings.readSetting then
-        local v = G_reader_settings:readSetting(SETTINGS_KEY_FULL_REFRESH)
-        if v == nil then return false end
+        local v = G_reader_settings:readSetting(key)
+        if v == nil then return default end
         return v == true
     end
-    return false
+    return default
+end
+
+local function saveBoolSetting(key, value)
+    if G_reader_settings and G_reader_settings.saveSetting then
+        G_reader_settings:saveSetting(key, value)
+    end
+end
+
+local function readFullRefreshSetting()
+    return readBoolSetting(SETTINGS_KEY_FULL_REFRESH, false)
 end
 
 local function readAscendingSetting()
-    if G_reader_settings and G_reader_settings.readSetting then
-        local v = G_reader_settings:readSetting(SETTINGS_KEY_8W_ASCENDING)
-        if v == nil then return true end  -- default: növekvő (legrégebbi balra)
-        return v == true
-    end
-    return true
+    -- default: növekvő (legrégebbi balra)
+    return readBoolSetting(SETTINGS_KEY_8W_ASCENDING, true)
 end
 
 local function saveFullRefreshSetting(value)
-    if G_reader_settings and G_reader_settings.saveSetting then
-        G_reader_settings:saveSetting(SETTINGS_KEY_FULL_REFRESH, value)
-    end
+    saveBoolSetting(SETTINGS_KEY_FULL_REFRESH, value)
 end
 
 local function saveAscendingSetting(value)
-    if G_reader_settings and G_reader_settings.saveSetting then
-        G_reader_settings:saveSetting(SETTINGS_KEY_8W_ASCENDING, value)
-    end
+    saveBoolSetting(SETTINGS_KEY_8W_ASCENDING, value)
 end
 
 local _cache = {
-    streaks      = nil,
-    streaks_date = nil,
+    streaks                = nil,
+    streaks_date           = nil,
+    streaks_date_minute    = nil,
+    streaks_today_confirmed = nil,
     year_range      = nil,
     year_range_date = nil,
-    all_time      = nil,
-    all_time_date = nil,
+    all_time        = nil,
+    all_time_minute = nil,
     last_week        = nil,
     last_week_minute = nil,
     last_week_daily        = nil,
@@ -168,6 +176,15 @@ local _cache = {
 local _yearly_cache  = {}
 local _monthly_cache = {}
 
+-- "Up to yesterday" base aggregates (excludes today), kept separate from
+-- _yearly_cache/_monthly_cache so they never collide with the stale-prefix
+-- lookups those tables are searched with (e.g. "books:<year>:").
+-- Recomputed once per day; today's slice is queried fresh and merged in on
+-- every call, so totals stay live across repeated opens on the same day.
+local _yearly_base_cache  = {}
+local _monthly_base_cache = {}
+local _alltime_base_cache = nil
+
 -- Stale cache: holds expired values for immediate display on the next open.
 -- _stale_cache is read-only in init(); writes go to the primary cache tables.
 local _stale_cache   = {}
@@ -175,12 +192,14 @@ local _stale_yearly  = {}
 local _stale_monthly = {}
 
 local function clearAllCache()
-    _cache.streaks         = nil
-    _cache.streaks_date    = nil
+    _cache.streaks                 = nil
+    _cache.streaks_date            = nil
+    _cache.streaks_date_minute     = nil
+    _cache.streaks_today_confirmed = nil
     _cache.year_range      = nil
     _cache.year_range_date = nil
     _cache.all_time        = nil
-    _cache.all_time_date   = nil
+    _cache.all_time_minute = nil
     _cache.last_week        = nil
     _cache.last_week_minute = nil
     _cache.last_week_daily        = nil
@@ -189,6 +208,9 @@ local function clearAllCache()
     _cache.last8weeks_minute = nil
     _yearly_cache          = {}
     _monthly_cache         = {}
+    _yearly_base_cache     = {}
+    _monthly_base_cache    = {}
+    _alltime_base_cache    = nil
     -- Stale cache is wiped on force-reload so stale data is not shown after a manual refresh.
     _stale_cache           = {}
     _stale_yearly          = {}
@@ -201,6 +223,71 @@ end
 
 local function currentMinute()
     return math.floor(os.time() / 60)
+end
+
+-- Per-minute cache read: returns the cached value for `key` if caching is
+-- on and it was last refreshed during the current minute, else nil.
+-- `minute_key` is the sibling field/key holding the minute stamp (e.g.
+-- "all_time_minute", or key .. ":minute" for the dynamically-keyed caches).
+local function getMinuteCache(cache_table, key, minute_key, minute)
+    if ENABLE_CACHE and cache_table[key] ~= nil and cache_table[minute_key] == minute then
+        return cache_table[key]
+    end
+    return nil
+end
+
+-- Per-minute cache write: stores value + minute stamp, and mirrors it into
+-- stale_table (read on the next popup open for instant stale-while-revalidate
+-- display). No-op when caching is disabled.
+local function setMinuteCache(cache_table, stale_table, key, minute_key, minute, value)
+    if ENABLE_CACHE then
+        cache_table[key]   = value
+        cache_table[minute_key] = minute
+        stale_table[key]   = value
+    end
+end
+
+-- "Up to yesterday" base-aggregate read: returns the cached data only if it
+-- was computed today, else nil (meaning: recompute). For per-key caches
+-- (yearly/monthly) pass base_key; for the single un-keyed all-time cache
+-- pass base_key = nil and the cache variable's current value as cache_entry.
+local function getCachedBase(cache_table, base_key, today)
+    if not ENABLE_CACHE then return nil end
+    local entry
+    if base_key then
+        entry = cache_table[base_key]
+    else
+        entry = cache_table
+    end
+    if entry and entry.date == today then
+        return entry.data
+    end
+    return nil
+end
+
+-- Builds the { date, data } shape stored by the base caches above; caller
+-- assigns the result to cache_table[base_key] (or to the all-time base-cache
+-- variable directly, since it isn't keyed).
+local function makeCachedBase(today, data)
+    return { date = today, data = data }
+end
+
+-- Value-based (not reference-based) equality for the small stat tables
+-- returned by the getters below. Needed because a per-minute cache refresh
+-- allocates a brand new result table every time it recomputes, even when
+-- the actual numbers haven't changed (e.g. no reading happened in the last
+-- minute) - a plain "==" would treat that as "changed" and force a needless
+-- UI rebuild + e-ink redraw on almost every popup open.
+local function valuesEqual(a, b)
+    if a == b then return true end
+    if type(a) ~= "table" or type(b) ~= "table" then return false end
+    for k, v in pairs(a) do
+        if not valuesEqual(v, b[k]) then return false end
+    end
+    for k in pairs(b) do
+        if a[k] == nil then return false end
+    end
+    return true
 end
 
 -- The statistics koplugin keeps the current reading session's page timings
@@ -353,6 +440,36 @@ local MONTH_NAMES_FULL = {
     _("July"), _("August"), _("September"), _("October"), _("November"), _("December"),
 }
 
+-- Builds the 12-entry month array shared by getMonthlyReadingDays/Hours/
+-- BookCounts. `entry_fn(year_month, month_num)` returns the mode-specific
+-- fields (e.g. { days = ... } or { hours = ..., seconds = ... }); month,
+-- label and label_full are filled in here.
+local function buildMonthlyArray(year, entry_fn)
+    local months = {}
+    for month_num = 1, 12 do
+        local year_month = string.format("%04d-%02d", year, month_num)
+        local entry = entry_fn(year_month, month_num)
+        entry.month      = year_month
+        entry.label      = MONTH_NAMES_SHORT[month_num]
+        entry.label_full = MONTH_NAMES_FULL[month_num]
+        table.insert(months, entry)
+    end
+    return months
+end
+
+-- Scans a stale-cache table for the first entry whose key starts with
+-- `prefix`. Used as a fallback when no fresh/minute-cached value is
+-- available yet (e.g. right after a restart, mode switch, or year change).
+local function findStaleByPrefix(stale_table, prefix)
+    if not ENABLE_CACHE then return nil end
+    for k, v in pairs(stale_table) do
+        if k:sub(1, #prefix) == prefix then
+            return v
+        end
+    end
+    return nil
+end
+
 local db_path = DataStorage:getSettingsDir() .. "/statistics.sqlite3"
 local ReadingInsightsPopup
 
@@ -369,6 +486,16 @@ local function normalizeInsightsMode(mode)
         return INSIGHTS_MODE_BOOKS
     end
     return INSIGHTS_MODE_HOURS
+end
+
+-- Returns the _monthly_cache/_stale_monthly key prefix for a given insights
+-- mode ("hours:" / "books:" / "days:"). Shared by init(), the mode-toggle
+-- and year-navigation handlers, all of which need to guess the right
+-- monthly cache key before the real data has loaded.
+local function monthKeyPrefixForMode(mode)
+    if mode == INSIGHTS_MODE_HOURS then return "hours:" end
+    if mode == INSIGHTS_MODE_BOOKS then return "books:" end
+    return "days:"
 end
 
 local function readInsightsMode()
@@ -403,6 +530,37 @@ local function withStatsDb(fallback, fn)
         return result
     end
     return fallback
+end
+
+-- Open a persistent DB connection for batch use; caller must call conn:close().
+-- Returns nil if the DB file does not exist or cannot be opened.
+local function openStatsDb()
+    local lfs = require("libs/libkoreader-lfs")
+    if lfs.attributes(db_path, "mode") ~= "file" then return nil end
+    local conn = SQ3.open(db_path)
+    if not conn then return nil end
+    pcall(function()
+        conn:exec("PRAGMA journal_mode=WAL; PRAGMA cache_size=2000; PRAGMA temp_store=MEMORY;")
+    end)
+    return conn
+end
+
+-- Like withStatsDb but reuses an already-open connection (conn must be non-nil).
+-- Does NOT close the connection; the caller owns it.
+local function withConn(conn, fallback, fn)
+    if not conn then return fallback end
+    local ok, result = pcall(fn, conn)
+    if ok then return result end
+    return fallback
+end
+
+-- Normalizes calling withConn (3 args) vs withStatsDb (2 args) behind one
+-- signature, so callers don't have to branch on which one they picked.
+local function withDb(shared_conn, fallback, fn)
+    if shared_conn then
+        return withConn(shared_conn, fallback, fn)
+    end
+    return withStatsDb(fallback, fn)
 end
 
 local function withStatement(conn, sql, fn)
@@ -1386,7 +1544,7 @@ local function buildWeeklyChart(popup_self, daily_data, layout, fonts)
                 Tap = { GestureRange:new{ ges = "tap", range = tappable_bar.dimen } },
             }
             function tappable_bar:onTap()
-                popup_self:openTodayTimeline()   -- ⬅ ITT, ez a csere
+                popup_self:openTodayTimeline()
                 return true
             end
             table.insert(bars_row, tappable_bar)
@@ -1869,10 +2027,22 @@ local ReadingInsightsPopup = InputContainer:extend{
     mode          = nil,
 }
 
-function ReadingInsightsPopup:calculateStreaks()
+function ReadingInsightsPopup:calculateStreaks(shared_conn)
+    local today  = todayDateStr()
     local minute = currentMinute()
-    if ENABLE_CACHE and _cache.streaks and _cache.streaks_date == minute then
-        return _cache.streaks
+
+    -- Daily lock: once we have confirmed today's reading and cached the result
+    -- for today, skip the expensive full-table scan for the rest of the day.
+    -- If today has no reading yet, fall back to per-minute checks so the streak
+    -- updates as soon as the user starts reading.
+    -- Force-reload (clearAllCache) wipes streaks_date so this is always bypassed.
+    if ENABLE_CACHE and _cache.streaks then
+        if _cache.streaks_date == today then
+            return _cache.streaks
+        end
+        if _cache.streaks_today_confirmed and _cache.streaks_date_minute == minute then
+            return _cache.streaks
+        end
     end
 
     local streaks = {
@@ -1882,7 +2052,7 @@ function ReadingInsightsPopup:calculateStreaks()
         best_weeks    = 0,
     }
 
-    local result = withStatsDb(streaks, function(conn)
+    local result = withDb(shared_conn, streaks, function(conn)
         local dates = {}
         local sql = "SELECT DISTINCT date(start_time, 'unixepoch', 'localtime') as d FROM page_stat ORDER BY d DESC"
         withStatement(conn, sql, function(stmt)
@@ -1934,164 +2104,297 @@ function ReadingInsightsPopup:calculateStreaks()
         streaks.current_weeks_dates, streaks.best_weeks_dates =
             computeStreaksWithDates(weeks, isConsecutiveWeek, isCurrentWeekStart)
 
+        -- Check whether today already has confirmed reading activity in the DB.
+        -- If yes, the streak result is stable for the rest of the day.
+        local today_confirmed = false
+        if dates[1] == today_str then
+            today_confirmed = true
+        end
+        streaks._today_confirmed = today_confirmed
+
         return streaks
     end)
 
     if ENABLE_CACHE then
         _cache.streaks      = result
-        _cache.streaks_date = minute
         _stale_cache.streaks = result
+        -- If today's reading is confirmed in the DB, lock to daily refresh.
+        -- Otherwise keep the per-minute fallback so the first read of the day is picked up.
+        local today_confirmed = result and result._today_confirmed
+        _cache.streaks_today_confirmed = today_confirmed
+        if today_confirmed then
+            _cache.streaks_date        = today
+            _cache.streaks_date_minute = nil
+        else
+            _cache.streaks_date        = nil
+            _cache.streaks_date_minute = minute
+        end
     end
     return result
 end
 
-function ReadingInsightsPopup:getMonthlyReadingDays(year)
-    local key = "days:" .. year .. ":" .. todayDateStr()
-    if ENABLE_CACHE and _monthly_cache[key] then return _monthly_cache[key] end
+function ReadingInsightsPopup:getMonthlyReadingDays(year, shared_conn)
+    local today         = todayDateStr()
+    local key           = "days:" .. year .. ":" .. today
+    local base_key      = "days:" .. year
+    local current_month = today:sub(1, 7)
+    local minute        = currentMinute()
 
-    local months = {}
-    local result = withStatsDb(months, function(conn)
-        local year_str = tostring(year)
-        local sql = string.format([[
-            SELECT strftime('%%Y-%%m', start_time, 'unixepoch', 'localtime') AS month,
-                   COUNT(DISTINCT date(start_time, 'unixepoch', 'localtime')) AS days_read
+    -- Fast path: already served this exact minute, skip the DB entirely.
+    local cached_val = getMinuteCache(_monthly_cache, key, key .. ":minute", minute)
+    if cached_val then
+        return cached_val
+    end
+
+    local cached_base = getCachedBase(_monthly_base_cache, base_key, today)
+
+    -- One connection covers both the (rare, once/day) base recompute and the
+    -- (frequent) cheap today-only check.
+    local merged = withDb(shared_conn, nil, function(conn)
+        local base = cached_base
+        if not base then
+            local year_str = tostring(year)
+            local sql = string.format([[
+                SELECT strftime('%%Y-%%m', start_time, 'unixepoch', 'localtime') AS month,
+                       COUNT(DISTINCT date(start_time, 'unixepoch', 'localtime')) AS days_read
+                FROM page_stat
+                WHERE strftime('%%Y', start_time, 'unixepoch', 'localtime') = '%s'
+                  AND date(start_time, 'unixepoch', 'localtime') < '%s'
+                GROUP BY month
+                ORDER BY month ASC
+            ]], year_str, today)
+
+            base = {}
+            withStatement(conn, sql, function(stmt)
+                for row in stmt:rows() do base[row[1]] = row[2] end
+            end)
+        end
+
+        local today_has_activity = false
+        withStatement(conn, string.format([[
+            SELECT 1 FROM page_stat
+            WHERE date(start_time, 'unixepoch', 'localtime') = '%s'
+            LIMIT 1
+        ]], today), function(stmt)
+            for _ in stmt:rows() do today_has_activity = true end
+        end)
+
+        return { base = base, today_has_activity = today_has_activity }
+    end)
+    if not merged then
+        merged = { base = cached_base or {}, today_has_activity = false }
+    end
+
+    if ENABLE_CACHE and not cached_base then
+        _monthly_base_cache[base_key] = makeCachedBase(today, merged.base)
+    end
+
+    local months = buildMonthlyArray(year, function(year_month)
+        local days = tonumber(merged.base[year_month]) or 0
+        if merged.today_has_activity and year_month == current_month then
+            days = days + 1
+        end
+        return { days = days }
+    end)
+
+    setMinuteCache(_monthly_cache, _stale_monthly, key, key .. ":minute", minute, months)
+    return months
+end
+
+function ReadingInsightsPopup:getMonthlyReadingHours(year, shared_conn)
+    local today         = todayDateStr()
+    local key           = "hours:" .. year .. ":" .. today
+    local base_key      = "hours:" .. year
+    local current_month = today:sub(1, 7)
+    local minute        = currentMinute()
+
+    local cached_val = getMinuteCache(_monthly_cache, key, key .. ":minute", minute)
+    if cached_val then
+        return cached_val
+    end
+
+    local cached_base = getCachedBase(_monthly_base_cache, base_key, today)
+
+    local merged = withDb(shared_conn, nil, function(conn)
+        local base = cached_base
+        if not base then
+            local year_str = tostring(year)
+            local sql = string.format([[
+                SELECT dates AS month,
+                       SUM(sum_duration) AS sum_duration
+                FROM (
+                    SELECT strftime('%%Y-%%m', start_time, 'unixepoch', 'localtime') AS dates,
+                           sum(duration) AS sum_duration
+                    FROM page_stat
+                    WHERE strftime('%%Y', start_time, 'unixepoch', 'localtime') = '%s'
+                      AND date(start_time, 'unixepoch', 'localtime') < '%s'
+                    GROUP BY id_book, page, dates
+                )
+                GROUP BY dates
+                ORDER BY dates ASC
+            ]], year_str, today)
+
+            base = {}
+            withStatement(conn, sql, function(stmt)
+                for row in stmt:rows() do base[row[1]] = row[2] end
+            end)
+        end
+
+        local today_seconds = 0
+        withStatement(conn, string.format([[
+            SELECT id_book, page, SUM(duration) AS dur
             FROM page_stat
-            WHERE strftime('%%Y', start_time, 'unixepoch', 'localtime') = '%s'
-            GROUP BY month
-            ORDER BY month ASC
-        ]], year_str)
-
-        local results = {}
-        withStatement(conn, sql, function(stmt)
-            for row in stmt:rows() do results[row[1]] = row[2] end
-        end)
-
-        for month_num = 1, 12 do
-            local year_month = string.format("%04d-%02d", year, month_num)
-            local days = tonumber(results[year_month]) or 0
-            table.insert(months, {
-                month      = year_month,
-                days       = days,
-                label      = MONTH_NAMES_SHORT[month_num],
-                label_full = MONTH_NAMES_FULL[month_num],
-            })
-        end
-        return months
-    end)
-
-    if ENABLE_CACHE then
-        _monthly_cache[key] = result
-        _stale_monthly[key] = result
-    end
-    return result
-end
-
-function ReadingInsightsPopup:getMonthlyReadingHours(year)
-    local key = "hours:" .. year .. ":" .. todayDateStr()
-    if ENABLE_CACHE and _monthly_cache[key] then return _monthly_cache[key] end
-
-    local months = {}
-    local result = withStatsDb(months, function(conn)
-        local year_str = tostring(year)
-        local sql = string.format([[
-            SELECT dates AS month,
-                   SUM(sum_duration) / 3600.0 AS hours_read
-            FROM (
-                SELECT strftime('%%Y-%%m', start_time, 'unixepoch', 'localtime') AS dates,
-                       sum(duration) AS sum_duration
-                FROM page_stat
-                WHERE strftime('%%Y', start_time, 'unixepoch', 'localtime') = '%s'
-                GROUP BY id_book, page, dates
-            )
-            GROUP BY dates
-            ORDER BY dates ASC
-        ]], year_str)
-
-        local results = {}
-        withStatement(conn, sql, function(stmt)
-            for row in stmt:rows() do results[row[1]] = row[2] end
-        end)
-
-        for month_num = 1, 12 do
-            local year_month = string.format("%04d-%02d", year, month_num)
-            local hours_raw = tonumber(results[year_month]) or 0
-            local hours = hours_raw
-            if hours >= 1 then
-                hours = math.floor(hours)
-            elseif hours > 0 then
-                hours = (math.floor(hours * 10)) / 10
-            end
-
-            local seconds_raw = math.floor(hours_raw * 3600 + 0.5)
-            table.insert(months, {
-                month      = year_month,
-                hours      = hours,
-                seconds    = seconds_raw,
-                label      = MONTH_NAMES_SHORT[month_num],
-                label_full = MONTH_NAMES_FULL[month_num],
-            })
-        end
-        return months
-    end)
-
-    if ENABLE_CACHE then
-        _monthly_cache[key] = result
-        _stale_monthly[key] = result
-    end
-    return result
-end
-
-function ReadingInsightsPopup:getYearlyStats(year)
-    local key = year .. ":v3:" .. todayDateStr()
-    if ENABLE_CACHE and _yearly_cache[key] then return _yearly_cache[key] end
-
-    local stats = { days = 0, pages = 0, duration = 0, books_started = 0, avg_days_per_book = 0 }
-    local result = withStatsDb(stats, function(conn)
-        local year_str = tostring(year)
-        local sql = string.format([[
-            WITH dedup AS (
-                SELECT id_book,
-                       page,
-                       date(start_time, 'unixepoch', 'localtime') AS day,
-                       SUM(duration) AS dur
-                FROM page_stat
-                WHERE strftime('%%Y', start_time, 'unixepoch', 'localtime') = '%s'
-                GROUP BY id_book, page, day
-            )
-            SELECT
-                COUNT(DISTINCT day)      AS days_read,
-                COUNT(*)                 AS pages_read,
-                SUM(dur)                 AS total_duration,
-                COUNT(DISTINCT id_book)  AS books_started
-            FROM dedup
-        ]], year_str)
-
-        withStatement(conn, sql, function(stmt)
+            WHERE date(start_time, 'unixepoch', 'localtime') = '%s'
+            GROUP BY id_book, page
+        ]], today), function(stmt)
             for row in stmt:rows() do
-                stats.days          = tonumber(row[1]) or 0
-                stats.pages         = tonumber(row[2]) or 0
-                stats.duration      = tonumber(row[3]) or 0
-                stats.books_started = tonumber(row[4]) or 0
+                today_seconds = today_seconds + (tonumber(row[3]) or 0)
             end
         end)
 
-        -- Average number of distinct reading days spent per book, rounded up.
-        if stats.books_started > 0 then
-            stats.avg_days_per_book = math.ceil(stats.days / stats.books_started)
-        end
+        return { base = base, today_seconds = today_seconds }
+    end)
+    if not merged then
+        merged = { base = cached_base or {}, today_seconds = 0 }
+    end
 
-        return stats
+    if ENABLE_CACHE and not cached_base then
+        _monthly_base_cache[base_key] = makeCachedBase(today, merged.base)
+    end
+
+    local months = buildMonthlyArray(year, function(year_month)
+        local seconds_raw = tonumber(merged.base[year_month]) or 0
+        if year_month == current_month then
+            seconds_raw = seconds_raw + merged.today_seconds
+        end
+        local hours = seconds_raw / 3600.0
+        if hours >= 1 then
+            hours = math.floor(hours)
+        elseif hours > 0 then
+            hours = (math.floor(hours * 10)) / 10
+        end
+        return { hours = hours, seconds = math.floor(seconds_raw + 0.5) }
     end)
 
-    if ENABLE_CACHE then
-        _yearly_cache[key] = result
-        _stale_yearly[key] = result
+    setMinuteCache(_monthly_cache, _stale_monthly, key, key .. ":minute", minute, months)
+    return months
+end
+
+function ReadingInsightsPopup:getYearlyStats(year, shared_conn)
+    local today    = todayDateStr()
+    local key      = year .. ":v3:" .. today
+    local base_key = year .. ":v3"
+    local minute   = currentMinute()
+
+    local cached_val = getMinuteCache(_yearly_cache, key, key .. ":minute", minute)
+    if cached_val then
+        return cached_val
     end
+
+    local cached_base = getCachedBase(_yearly_base_cache, base_key, today)
+
+    -- One connection covers both the (once/day) base recompute and the
+    -- (frequent) cheap today-only slice.
+    local merged = withDb(shared_conn, nil, function(conn)
+        local base = cached_base
+        if not base then
+            local year_str = tostring(year)
+            local sql = string.format([[
+                WITH dedup AS (
+                    SELECT id_book,
+                           page,
+                           date(start_time, 'unixepoch', 'localtime') AS day,
+                           SUM(duration) AS dur
+                    FROM page_stat
+                    WHERE strftime('%%Y', start_time, 'unixepoch', 'localtime') = '%s'
+                      AND date(start_time, 'unixepoch', 'localtime') < '%s'
+                    GROUP BY id_book, page, day
+                )
+                SELECT
+                    COUNT(DISTINCT day)      AS days_read,
+                    COUNT(*)                 AS pages_read,
+                    SUM(dur)                 AS total_duration,
+                    COUNT(DISTINCT id_book)  AS books_started
+                FROM dedup
+            ]], year_str, today)
+
+            base = { days = 0, pages = 0, duration = 0, books_started = 0, book_ids = {} }
+            withStatement(conn, sql, function(stmt)
+                for row in stmt:rows() do
+                    base.days          = tonumber(row[1]) or 0
+                    base.pages         = tonumber(row[2]) or 0
+                    base.duration      = tonumber(row[3]) or 0
+                    base.books_started = tonumber(row[4]) or 0
+                end
+            end)
+
+            local ids_sql = string.format([[
+                SELECT DISTINCT id_book
+                FROM page_stat
+                WHERE strftime('%%Y', start_time, 'unixepoch', 'localtime') = '%s'
+                  AND date(start_time, 'unixepoch', 'localtime') < '%s'
+            ]], year_str, today)
+            withStatement(conn, ids_sql, function(stmt)
+                for row in stmt:rows() do base.book_ids[tostring(row[1])] = true end
+            end)
+        end
+
+        local t = { pages = 0, duration = 0, has_activity = false, new_books = 0 }
+        -- Only merge "today" into the total when the requested year is the
+        -- current year - otherwise today's (this year's) activity would get
+        -- added on top of a past, already-closed year's total.
+        if year == tonumber(os.date("%Y")) then
+            local seen = {}
+            withStatement(conn, string.format([[
+                SELECT id_book, page, SUM(duration) AS dur
+                FROM page_stat
+                WHERE date(start_time, 'unixepoch', 'localtime') = '%s'
+                GROUP BY id_book, page
+            ]], today), function(stmt)
+                for row in stmt:rows() do
+                    t.pages        = t.pages + 1
+                    t.duration     = t.duration + (tonumber(row[3]) or 0)
+                    t.has_activity = true
+                    local id_book = tostring(row[1])
+                    if not base.book_ids[id_book] and not seen[id_book] then
+                        seen[id_book] = true
+                        t.new_books = t.new_books + 1
+                    end
+                end
+            end)
+        end
+
+        return { base = base, today_stats = t }
+    end)
+    if not merged then
+        merged = {
+            base        = cached_base or { days = 0, pages = 0, duration = 0, books_started = 0, book_ids = {} },
+            today_stats = { pages = 0, duration = 0, has_activity = false, new_books = 0 },
+        }
+    end
+
+    if ENABLE_CACHE and not cached_base then
+        _yearly_base_cache[base_key] = makeCachedBase(today, merged.base)
+    end
+
+    local base, today_stats = merged.base, merged.today_stats
+    local result = {
+        days          = base.days + (today_stats.has_activity and 1 or 0),
+        pages         = base.pages + today_stats.pages,
+        duration      = base.duration + today_stats.duration,
+        books_started = base.books_started + today_stats.new_books,
+    }
+    result.avg_days_per_book = 0
+    if result.books_started > 0 then
+        result.avg_days_per_book = math.ceil(result.days / result.books_started)
+    end
+
+    setMinuteCache(_yearly_cache, _stale_yearly, key, key .. ":minute", minute, result)
     return result
 end
 
 -- Returns { min_year, max_year } from the DB, cached per day.
-function ReadingInsightsPopup:getYearRange()
+function ReadingInsightsPopup:getYearRange(shared_conn)
     local today        = todayDateStr()
     local range_cached = ENABLE_CACHE and _cache.year_range and _cache.year_range_date == today
 
@@ -2102,7 +2405,7 @@ function ReadingInsightsPopup:getYearRange()
     local current_year = tonumber(os.date("%Y"))
     local range = { min_year = current_year, max_year = current_year }
 
-    withStatsDb(nil, function(conn)
+    withDb(shared_conn, nil, function(conn)
         local sql_range = [[
             SELECT MIN(strftime('%Y', start_time, 'unixepoch', 'localtime')) AS min_year,
                    MAX(strftime('%Y', start_time, 'unixepoch', 'localtime')) AS max_year
@@ -2124,53 +2427,114 @@ function ReadingInsightsPopup:getYearRange()
     return range
 end
 
-function ReadingInsightsPopup:getAllTimeStats()
-    local today = todayDateStr()
-    if ENABLE_CACHE and _cache.all_time and _cache.all_time_date == today then
-        return _cache.all_time
+function ReadingInsightsPopup:getAllTimeStats(shared_conn)
+    local today  = todayDateStr()
+    local minute = currentMinute()
+
+    local cached_val = getMinuteCache(_cache, "all_time", "all_time_minute", minute)
+    if cached_val then
+        return cached_val
     end
 
-    return withStatsDb({ hours=0, pages=0, book_count=0, duration=0 }, function(conn)
-        local duration, pages, books = 0, 0, 0
-        withStatement(conn, [[
-            SELECT SUM(sum_dur), COUNT(DISTINCT dedup_page)
-            FROM (
-                SELECT SUM(duration) AS sum_dur, id_book || '-' || page AS dedup_page
-                FROM page_stat
-                GROUP BY id_book, page, date(start_time, 'unixepoch', 'localtime')
-            )
-        ]], function(stmt)
-            for row in stmt:rows() do
-                duration = tonumber(row[1]) or 0
-                pages    = tonumber(row[2]) or 0
-            end
-        end)
-        withStatement(conn, "SELECT COUNT(DISTINCT id_book) FROM page_stat", function(stmt)
-            for row in stmt:rows() do books = tonumber(row[1]) or 0 end
-        end)
-        local mins = Math.round(duration / 60)
-        local result = {
-            hours      = math.floor(mins / 60),
-            pages      = pages,
-            book_count = books,
-            duration   = duration,
-        }
-        if ENABLE_CACHE then
-            _cache.all_time      = result
-            _cache.all_time_date = today
-            _stale_cache.all_time = result
+    local cached_base = getCachedBase(_alltime_base_cache, nil, today)
+
+    -- One connection covers both the (once/day, whole-history) base
+    -- recompute and today's cheap, narrowly-scoped queries.
+    local merged = withDb(shared_conn, nil, function(conn)
+        local base = cached_base
+        if not base then
+            base = { duration = 0, pages = 0, book_count = 0 }
+            withStatement(conn, string.format([[
+                SELECT SUM(sum_dur), COUNT(DISTINCT dedup_page)
+                FROM (
+                    SELECT SUM(duration) AS sum_dur, id_book || '-' || page AS dedup_page
+                    FROM page_stat
+                    WHERE date(start_time, 'unixepoch', 'localtime') < '%s'
+                    GROUP BY id_book, page, date(start_time, 'unixepoch', 'localtime')
+                )
+            ]], today), function(stmt)
+                for row in stmt:rows() do
+                    base.duration = tonumber(row[1]) or 0
+                    base.pages    = tonumber(row[2]) or 0
+                end
+            end)
+            withStatement(conn, string.format([[
+                SELECT COUNT(DISTINCT id_book) FROM page_stat
+                WHERE date(start_time, 'unixepoch', 'localtime') < '%s'
+            ]], today), function(stmt)
+                for row in stmt:rows() do base.book_count = tonumber(row[1]) or 0 end
+            end)
         end
-        return result
+
+        local t = { duration = 0, new_pages = 0, new_books = 0 }
+
+        withStatement(conn, string.format([[
+            SELECT SUM(duration) FROM page_stat
+            WHERE date(start_time, 'unixepoch', 'localtime') = '%s'
+        ]], today), function(stmt)
+            for row in stmt:rows() do t.duration = tonumber(row[1]) or 0 end
+        end)
+
+        withStatement(conn, string.format([[
+            SELECT COUNT(*) FROM (
+                SELECT DISTINCT id_book, page FROM page_stat
+                WHERE date(start_time, 'unixepoch', 'localtime') = '%s'
+            ) t
+            WHERE NOT EXISTS (
+                SELECT 1 FROM page_stat p
+                WHERE p.id_book = t.id_book AND p.page = t.page
+                  AND date(p.start_time, 'unixepoch', 'localtime') < '%s'
+            )
+        ]], today, today), function(stmt)
+            for row in stmt:rows() do t.new_pages = tonumber(row[1]) or 0 end
+        end)
+
+        withStatement(conn, string.format([[
+            SELECT COUNT(DISTINCT id_book) FROM page_stat t
+            WHERE date(start_time, 'unixepoch', 'localtime') = '%s'
+              AND NOT EXISTS (
+                SELECT 1 FROM page_stat p
+                WHERE p.id_book = t.id_book
+                  AND date(p.start_time, 'unixepoch', 'localtime') < '%s'
+              )
+        ]], today, today), function(stmt)
+            for row in stmt:rows() do t.new_books = tonumber(row[1]) or 0 end
+        end)
+
+        return { base = base, today_stats = t }
     end)
+    if not merged then
+        merged = {
+            base        = cached_base or { duration = 0, pages = 0, book_count = 0 },
+            today_stats = { duration = 0, new_pages = 0, new_books = 0 },
+        }
+    end
+
+    if ENABLE_CACHE and not cached_base then
+        _alltime_base_cache = makeCachedBase(today, merged.base)
+    end
+
+    local base, today_stats = merged.base, merged.today_stats
+    local duration = base.duration + today_stats.duration
+    local mins = Math.round(duration / 60)
+    local result = {
+        hours      = math.floor(mins / 60),
+        pages      = base.pages + today_stats.new_pages,
+        book_count = base.book_count + today_stats.new_books,
+        duration   = duration,
+    }
+
+    setMinuteCache(_cache, _stale_cache, "all_time", "all_time_minute", minute, result)
+    return result
 end
 
 -- Returns both last-week stats in one DB connection:
 --   last_week:       { avg_seconds, avg_pages }
 --   last_week_daily: array[7] of { hours, seconds, label, midnight_ts }, index 1 = today
-function ReadingInsightsPopup:getLastWeekAll()
+function ReadingInsightsPopup:getLastWeekAll(shared_conn)
     local minute = currentMinute()
-    local lw_ok    = ENABLE_CACHE and _cache.last_week       and _cache.last_week_minute       == minute
-    local daily_ok = ENABLE_CACHE and _cache.last_week_daily and _cache.last_week_daily_minute == minute
+    local lw_ok    = getMinuteCache(_cache, "last_week", "last_week_minute", minute) ~= nil
+    local daily_ok = getMinuteCache(_cache, "last_week_daily", "last_week_daily_minute", minute) ~= nil
     if lw_ok and daily_ok then
         return _cache.last_week, _cache.last_week_daily
     end
@@ -2200,7 +2564,7 @@ function ReadingInsightsPopup:getLastWeekAll()
     local lw_result    = lw_ok    and _cache.last_week       or { avg_seconds = 0, avg_pages = 0 }
     local daily_result = daily_ok and _cache.last_week_daily or nil
 
-    withStatsDb(nil, function(conn)
+    withDb(shared_conn, nil, function(conn)
         -- Single query: per-day totals for the last 7 days.
         -- From this we derive both the 7-day averages and the per-day chart data.
         local sql = string.format([[
@@ -2268,14 +2632,8 @@ function ReadingInsightsPopup:getLastWeekAll()
         end
     end
 
-    if ENABLE_CACHE then
-        _cache.last_week              = lw_result
-        _cache.last_week_minute       = minute
-        _stale_cache.last_week        = lw_result
-        _cache.last_week_daily        = daily_result
-        _cache.last_week_daily_minute = minute
-        _stale_cache.last_week_daily  = daily_result
-    end
+    setMinuteCache(_cache, _stale_cache, "last_week", "last_week_minute", minute, lw_result)
+    setMinuteCache(_cache, _stale_cache, "last_week_daily", "last_week_daily_minute", minute, daily_result)
     return lw_result, daily_result
 end
 
@@ -2285,8 +2643,9 @@ end
 -- wider 56-day window split into 7-day chunks.
 function ReadingInsightsPopup:getLast8WeeksData()
     local minute = currentMinute()
-    if ENABLE_CACHE and _cache.last8weeks and _cache.last8weeks_minute == minute then
-        return _cache.last8weeks
+    local cached_val = getMinuteCache(_cache, "last8weeks", "last8weeks_minute", minute)
+    if cached_val then
+        return cached_val
     end
 
     local now_ts  = os.time()
@@ -2341,11 +2700,7 @@ function ReadingInsightsPopup:getLast8WeeksData()
         end)
     end)
 
-    if ENABLE_CACHE then
-        _cache.last8weeks        = weeks
-        _cache.last8weeks_minute = minute
-        _stale_cache.last8weeks  = weeks
-    end
+    setMinuteCache(_cache, _stale_cache, "last8weeks", "last8weeks_minute", minute, weeks)
     return weeks
 end
 
@@ -2408,6 +2763,16 @@ function ReadingInsightsPopup:showWeeklyTrendPopup(metric)
     }
 
     UIManager:show(WeeklyTrendPopup:new{ box_content = box })
+end
+
+-- Sums the .duration field (seconds) across a list of books; used to build
+-- the "(H:MM:SS)" suffix in the various "books read in <period>" titles.
+local function sumDuration(books)
+    local total_secs = 0
+    for _, b in ipairs(books) do
+        total_secs = total_secs + (b.duration or 0)
+    end
+    return total_secs
 end
 
 local function getBooksForPeriod(period_format, period_value)
@@ -2609,12 +2974,9 @@ local function showBooksForPeriod(popup_self, books, empty_text, title)
 end
 
 function ReadingInsightsPopup:showBooksForMonth(year_month, month_label_full)
-    local books
-    local title
-    books = self:getBooksForMonth(year_month)
-    local total_secs = 0
-    for _, b in ipairs(books) do total_secs = total_secs + (b.duration or 0) end
-    title = T(N_("%1 - book read %2", "%1 - books read %2", #books), month_label_full, formatCount(#books)) .. " (" .. formatHHMMSS(total_secs) .. ")"
+    local books = self:getBooksForMonth(year_month)
+    local total_secs = sumDuration(books)
+    local title = T(N_("%1 - book read %2", "%1 - books read %2", #books), month_label_full, formatCount(#books)) .. " (" .. formatHHMMSS(total_secs) .. ")"
     showBooksForPeriod(
         self, books,
         T(_("No books read in %1"), month_label_full),
@@ -2788,45 +3150,86 @@ function ReadingInsightsPopup:openCalendarForCurrentMonth()
     self:openCalendarForMonth(year_month)
 end
 
-function ReadingInsightsPopup:getMonthlyBookCounts(year)
-    local key = "books:" .. year .. ":" .. todayDateStr()
-    if ENABLE_CACHE and _monthly_cache[key] then return _monthly_cache[key] end
+function ReadingInsightsPopup:getMonthlyBookCounts(year, shared_conn)
+    local today         = todayDateStr()
+    local key           = "books:" .. year .. ":" .. today
+    local base_key      = "books:" .. year
+    local current_month = today:sub(1, 7)
+    local minute        = currentMinute()
 
-    local months = {}
-    local result = withStatsDb(months, function(conn)
-        local year_str = tostring(year)
-        local sql = string.format([[
-            SELECT strftime('%%Y-%%m', start_time, 'unixepoch', 'localtime') AS month,
-                   COUNT(DISTINCT id_book) AS book_count
-            FROM page_stat
-            WHERE strftime('%%Y', start_time, 'unixepoch', 'localtime') = '%s'
-            GROUP BY month
-            ORDER BY month ASC
-        ]], year_str)
+    local cached_val = getMinuteCache(_monthly_cache, key, key .. ":minute", minute)
+    if cached_val then
+        return cached_val
+    end
 
-        local results = {}
-        withStatement(conn, sql, function(stmt)
-            for row in stmt:rows() do results[row[1]] = row[2] end
+    local cached_base = getCachedBase(_monthly_base_cache, base_key, today)
+
+    local merged = withDb(shared_conn, nil, function(conn)
+        local base = cached_base
+        if not base then
+            local year_str = tostring(year)
+            local sql = string.format([[
+                SELECT strftime('%%Y-%%m', start_time, 'unixepoch', 'localtime') AS month,
+                       COUNT(DISTINCT id_book) AS book_count
+                FROM page_stat
+                WHERE strftime('%%Y', start_time, 'unixepoch', 'localtime') = '%s'
+                  AND date(start_time, 'unixepoch', 'localtime') < '%s'
+                GROUP BY month
+                ORDER BY month ASC
+            ]], year_str, today)
+
+            local counts = {}
+            withStatement(conn, sql, function(stmt)
+                for row in stmt:rows() do counts[row[1]] = row[2] end
+            end)
+
+            local ids_sql = string.format([[
+                SELECT DISTINCT id_book
+                FROM page_stat
+                WHERE strftime('%%Y-%%m', start_time, 'unixepoch', 'localtime') = '%s'
+                  AND date(start_time, 'unixepoch', 'localtime') < '%s'
+            ]], current_month, today)
+            local book_ids = {}
+            withStatement(conn, ids_sql, function(stmt)
+                for row in stmt:rows() do book_ids[tostring(row[1])] = true end
+            end)
+
+            base = { counts = counts, current_month_book_ids = book_ids }
+        end
+
+        local new_books_today = 0
+        withStatement(conn, string.format([[
+            SELECT DISTINCT id_book FROM page_stat
+            WHERE date(start_time, 'unixepoch', 'localtime') = '%s'
+        ]], today), function(stmt)
+            for row in stmt:rows() do
+                local id_book = tostring(row[1])
+                if not base.current_month_book_ids[id_book] then
+                    new_books_today = new_books_today + 1
+                end
+            end
         end)
 
-        for month_num = 1, 12 do
-            local year_month = string.format("%04d-%02d", year, month_num)
-            local book_count = tonumber(results[year_month]) or 0
-            table.insert(months, {
-                month      = year_month,
-                book_count = book_count,
-                label      = MONTH_NAMES_SHORT[month_num],
-                label_full = MONTH_NAMES_FULL[month_num],
-            })
+        return { base = base, new_books_today = new_books_today }
+    end)
+    if not merged then
+        merged = { base = cached_base or { counts = {}, current_month_book_ids = {} }, new_books_today = 0 }
+    end
+
+    if ENABLE_CACHE and not cached_base then
+        _monthly_base_cache[base_key] = makeCachedBase(today, merged.base)
+    end
+
+    local months = buildMonthlyArray(year, function(year_month)
+        local book_count = tonumber(merged.base.counts[year_month]) or 0
+        if year_month == current_month then
+            book_count = book_count + merged.new_books_today
         end
-        return months
+        return { book_count = book_count }
     end)
 
-    if ENABLE_CACHE then
-        _monthly_cache[key] = result
-        _stale_monthly[key] = result
-    end
-    return result
+    setMinuteCache(_monthly_cache, _stale_monthly, key, key .. ":minute", minute, months)
+    return months
 end
 
 function ReadingInsightsPopup:getBooksForYear(year)
@@ -2835,8 +3238,7 @@ end
 
 function ReadingInsightsPopup:showAllBooks()
     local books = getAllBooks()
-    local total_secs = 0
-    for _, b in ipairs(books) do total_secs = total_secs + (b.duration or 0) end
+    local total_secs = sumDuration(books)
     showBooksForPeriod(
         self, books,
         _("No books read"),
@@ -2845,8 +3247,7 @@ end
 
 function ReadingInsightsPopup:showBooksForYear(year)
     local books = self:getBooksForYear(year)
-    local total_secs = 0
-    for _, b in ipairs(books) do total_secs = total_secs + (b.duration or 0) end
+    local total_secs = sumDuration(books)
     showBooksForPeriod(
         self, books,
         _("No books read in ") .. year,
@@ -2924,30 +3325,46 @@ function ReadingInsightsPopup:_buildUI()
 end
 
 function ReadingInsightsPopup:_loadAndRebuild()
-    -- Re-fetch all data; each getter has its own cache key so this is cheap when data is fresh.
-    local new_streaks         = self:calculateStreaks()
-    local new_year_range      = self:getYearRange()
-    local new_yearly          = self:getYearlyStats(self.selected_year)
-    local new_all_time        = self:getAllTimeStats()
-    local new_last_week, new_last_week_daily = self:getLastWeekAll()
+    -- Re-fetch all data using a single shared DB connection (6→1 open/close cycles).
+    -- Each getter still manages its own cache; shared_conn is just passed through
+    -- so it skips the redundant open/close when data is actually read.
+    local shared_conn = openStatsDb()
+
+    local new_streaks    = self:calculateStreaks(shared_conn)
+    local new_year_range = self:getYearRange(shared_conn)
+    local new_yearly     = self:getYearlyStats(self.selected_year, shared_conn)
+    local new_all_time   = self:getAllTimeStats(shared_conn)
+    local new_last_week, new_last_week_daily = self:getLastWeekAll(shared_conn)
     local new_monthly
     if self.mode == INSIGHTS_MODE_HOURS then
-        new_monthly = self:getMonthlyReadingHours(self.selected_year)
+        new_monthly = self:getMonthlyReadingHours(self.selected_year, shared_conn)
     elseif self.mode == INSIGHTS_MODE_BOOKS then
-        new_monthly = self:getMonthlyBookCounts(self.selected_year)
+        new_monthly = self:getMonthlyBookCounts(self.selected_year, shared_conn)
     else
-        new_monthly = self:getMonthlyReadingDays(self.selected_year)
+        new_monthly = self:getMonthlyReadingDays(self.selected_year, shared_conn)
     end
 
-    -- Skip rebuild if the background fetch returned the exact same table references
-    -- (i.e. all data came from cache and nothing changed).
-    if new_streaks         == self._streaks         and
-       new_year_range      == self._year_range      and
-       new_yearly          == self._yearly          and
-       new_all_time        == self._all_time        and
-       new_last_week       == self._last_week       and
-       new_last_week_daily == self._last_week_daily and
-       new_monthly         == self._monthly         then
+    if shared_conn then shared_conn:close() end
+
+    -- Skip rebuild if nothing actually displayed would change - compared by
+    -- value, not by table reference (see valuesEqual() for why reference
+    -- equality isn't enough now that all_time/yearly refresh every minute).
+    if valuesEqual(new_streaks,         self._streaks)         and
+       valuesEqual(new_year_range,      self._year_range)      and
+       valuesEqual(new_yearly,          self._yearly)          and
+       valuesEqual(new_all_time,        self._all_time)        and
+       valuesEqual(new_last_week,       self._last_week)       and
+       valuesEqual(new_last_week_daily, self._last_week_daily) and
+       valuesEqual(new_monthly,         self._monthly)         then
+        -- Still adopt the new table references so future comparisons are
+        -- against the freshest cache entries, but skip the rebuild/redraw.
+        self._streaks         = new_streaks
+        self._year_range      = new_year_range
+        self._yearly          = new_yearly
+        self._all_time        = new_all_time
+        self._last_week       = new_last_week
+        self._last_week_daily = new_last_week_daily
+        self._monthly         = new_monthly
         return
     end
 
@@ -2991,15 +3408,13 @@ function ReadingInsightsPopup:init()
         local year_key = (self.selected_year or tonumber(os.date("%Y"))) .. ":v3:" .. todayDateStr()
         self._yearly  = self._yearly  or _yearly_cache[year_key]
         local mode = normalizeInsightsMode(self.mode or readInsightsMode())
-        local month_key_prefix = (mode == INSIGHTS_MODE_HOURS and "hours:" or
-                                  mode == INSIGHTS_MODE_BOOKS and "books:" or "days:")
-        local month_key = month_key_prefix .. (self.selected_year or tonumber(os.date("%Y"))) .. ":" .. todayDateStr()
+        local month_key = monthKeyPrefixForMode(mode) .. (self.selected_year or tonumber(os.date("%Y"))) .. ":" .. todayDateStr()
         self._monthly = self._monthly or _monthly_cache[month_key]
         if not self._last_week or not self._last_week_daily then
-            local lw_ok    = _cache.last_week       and _cache.last_week_minute       == minute
-            local daily_ok = _cache.last_week_daily and _cache.last_week_daily_minute == minute
-            if lw_ok    then self._last_week       = self._last_week       or _cache.last_week       end
-            if daily_ok then self._last_week_daily = self._last_week_daily or _cache.last_week_daily end
+            local lw_cached    = getMinuteCache(_cache, "last_week", "last_week_minute", minute)
+            local daily_cached = getMinuteCache(_cache, "last_week_daily", "last_week_daily_minute", minute)
+            self._last_week       = self._last_week       or lw_cached
+            self._last_week_daily = self._last_week_daily or daily_cached
         end
     end
 
@@ -3007,9 +3422,7 @@ function ReadingInsightsPopup:init()
     if ENABLE_CACHE then
         local year_key_any   = (self.selected_year or tonumber(os.date("%Y"))) .. ":v3:"
         local mode_fb = normalizeInsightsMode(self.mode or readInsightsMode())
-        local month_key_prefix_fb = (mode_fb == INSIGHTS_MODE_HOURS and "hours:" or
-                                     mode_fb == INSIGHTS_MODE_BOOKS and "books:" or "days:")
-        local month_key_fb = month_key_prefix_fb .. (self.selected_year or tonumber(os.date("%Y"))) .. ":"
+        local month_key_fb = monthKeyPrefixForMode(mode_fb) .. (self.selected_year or tonumber(os.date("%Y"))) .. ":"
 
         if not self._streaks then
             self._streaks = _stale_cache.streaks
@@ -3040,21 +3453,11 @@ function ReadingInsightsPopup:init()
         end
         -- Find any stale yearly entry for the current year.
         if not self._yearly then
-            for k, v in pairs(_stale_yearly) do
-                if k:sub(1, #year_key_any) == year_key_any then
-                    self._yearly = v
-                    break
-                end
-            end
+            self._yearly = findStaleByPrefix(_stale_yearly, year_key_any)
         end
         -- Find any stale monthly entry for the current year + mode.
         if not self._monthly then
-            for k, v in pairs(_stale_monthly) do
-                if k:sub(1, #month_key_fb) == month_key_fb then
-                    self._monthly = v
-                    break
-                end
-            end
+            self._monthly = findStaleByPrefix(_stale_monthly, month_key_fb)
         end
     end
 
@@ -3077,8 +3480,11 @@ function ReadingInsightsPopup:init()
     end
 
     -- Build UI immediately with available data; refresh in background.
+    -- Small delay (not 0) so the initial paint actually lands on screen
+    -- before _loadAndRebuild() (which now recomputes all_time/yearly on
+    -- almost every open, not just once a day) can trigger a second redraw.
     self:_buildUI()
-    UIManager:scheduleIn(0, function()
+    UIManager:scheduleIn(0.1, function()
         if self._closed then return end
         self:_loadAndRebuild()
     end)
@@ -3130,40 +3536,11 @@ function ReadingInsightsPopup:onHold(arg, ges_ev)
     return true
 end
 
-function ReadingInsightsPopup:toggleInsightsMode()
-    local new_mode
-    if self.mode == INSIGHTS_MODE_HOURS then
-        new_mode = INSIGHTS_MODE_DAYS
-    elseif self.mode == INSIGHTS_MODE_DAYS then
-        new_mode = INSIGHTS_MODE_BOOKS
-    else
-        new_mode = INSIGHTS_MODE_HOURS
-    end
-    saveInsightsMode(new_mode)
-    self.mode     = new_mode
-    local month_key_prefix_new = (new_mode == INSIGHTS_MODE_HOURS and "hours:" or
-                                  new_mode == INSIGHTS_MODE_BOOKS and "books:" or "days:")
-    local month_key_fb = month_key_prefix_new .. (self.selected_year or tonumber(os.date("%Y"))) .. ":"
-    self._monthly = nil
-    if ENABLE_CACHE then
-        for k, v in pairs(_stale_monthly) do
-            if k:sub(1, #month_key_fb) == month_key_fb then
-                self._monthly = v
-                break
-            end
-        end
-    end
-    self:_buildUI()
-    UIManager:setDirty(self, function()
-        return "ui", self.popup_frame.dimen
-    end)
-    UIManager:scheduleIn(0, function()
-        if self._closed then return end
-        self:_loadAndRebuild()
-    end)
-    return true
-end
-
+-- Cycles the insights mode (hours -> days -> books -> hours) and reloads
+-- the monthly chart for it. Bound to both the "Press" key handler
+-- (toggleInsightsMode) and tapping the monthly chart header
+-- (cycleInsightsMode) - kept as two names since that's what the gesture/key
+-- wiring elsewhere calls, but there's only one implementation.
 function ReadingInsightsPopup:cycleInsightsMode()
     local new_mode
     if self.mode == INSIGHTS_MODE_HOURS then
@@ -3177,18 +3554,43 @@ function ReadingInsightsPopup:cycleInsightsMode()
     saveInsightsMode(new_mode)
     self.mode = new_mode
 
-    local month_key_prefix_new = (new_mode == INSIGHTS_MODE_HOURS and "hours:" or
-                                  new_mode == INSIGHTS_MODE_BOOKS and "books:" or "days:")
-    local month_key_fb = month_key_prefix_new .. (self.selected_year or tonumber(os.date("%Y"))) .. ":"
+    local month_key_fb = monthKeyPrefixForMode(new_mode) .. (self.selected_year or tonumber(os.date("%Y"))) .. ":"
+    self._monthly = findStaleByPrefix(_stale_monthly, month_key_fb)
+
+    self:_buildUI()
+    UIManager:setDirty(self, function()
+        return "ui", self.popup_frame.dimen
+    end)
+    UIManager:scheduleIn(0, function()
+        if self._closed then return end
+        self:_loadAndRebuild()
+    end)
+    return true
+end
+
+function ReadingInsightsPopup:toggleInsightsMode()
+    return self:cycleInsightsMode()
+end
+
+-- Shared implementation for year navigation: moves selected_year by `delta`
+-- (-1 or +1), staying within the known year range, serves stale yearly/
+-- monthly data for the new year immediately, then reloads for real.
+function ReadingInsightsPopup:_goToYear(delta)
+    local yr = self._year_range or self.year_range
+    if not yr then return true end
+    local new_year = self.selected_year + delta
+    if new_year < yr.min_year or new_year > yr.max_year then return true end
+
+    self.selected_year = new_year
     self._monthly = nil
-    if ENABLE_CACHE then
-        for k, v in pairs(_stale_monthly) do
-            if k:sub(1, #month_key_fb) == month_key_fb then
-                self._monthly = v
-                break
-            end
-        end
-    end
+    self._yearly  = nil
+    -- Serve stale data for the target year immediately.
+    local year_key_any = self.selected_year .. ":v3:"
+    local mode_fb       = self.mode or INSIGHTS_MODE_HOURS
+    local month_key_fb  = monthKeyPrefixForMode(mode_fb) .. self.selected_year .. ":"
+    self._yearly  = findStaleByPrefix(_stale_yearly, year_key_any)
+    self._monthly = findStaleByPrefix(_stale_monthly, month_key_fb)
+
     self:_buildUI()
     UIManager:setDirty(self, function()
         return "ui", self.popup_frame.dimen
@@ -3201,41 +3603,7 @@ function ReadingInsightsPopup:cycleInsightsMode()
 end
 
 function ReadingInsightsPopup:onGoToPrevYear()
-    local yr = self._year_range or self.year_range
-    if yr and self.selected_year > yr.min_year then
-        self.selected_year = self.selected_year - 1
-        self._monthly = nil
-        self._yearly  = nil
-        -- Serve stale data for the target year immediately.
-        local year_key_any   = self.selected_year .. ":v3:"
-        local mode_fb = self.mode or INSIGHTS_MODE_HOURS
-        local month_key_prefix_fb = (mode_fb == INSIGHTS_MODE_HOURS and "hours:" or
-                                     mode_fb == INSIGHTS_MODE_BOOKS and "books:" or "days:")
-        local month_key_fb = month_key_prefix_fb .. self.selected_year .. ":"
-        if ENABLE_CACHE then
-            for k, v in pairs(_stale_yearly) do
-                if k:sub(1, #year_key_any) == year_key_any then
-                    self._yearly = v
-                    break
-                end
-            end
-            for k, v in pairs(_stale_monthly) do
-                if k:sub(1, #month_key_fb) == month_key_fb then
-                    self._monthly = v
-                    break
-                end
-            end
-        end
-        self:_buildUI()
-        UIManager:setDirty(self, function()
-            return "ui", self.popup_frame.dimen
-        end)
-        UIManager:scheduleIn(0, function()
-            if self._closed then return end
-            self:_loadAndRebuild()
-        end)
-    end
-    return true
+    return self:_goToYear(-1)
 end
 
 function ReadingInsightsPopup:onAnyKeyPressed(_, key)
@@ -3247,41 +3615,7 @@ function ReadingInsightsPopup:onAnyKeyPressed(_, key)
 end
 
 function ReadingInsightsPopup:onGoToNextYear()
-    local yr = self._year_range or self.year_range
-    if yr and self.selected_year < yr.max_year then
-        self.selected_year = self.selected_year + 1
-        self._monthly      = nil
-        self._yearly       = nil
-        -- Serve stale data for the target year immediately.
-        local year_key_any   = self.selected_year .. ":v3:"
-        local mode_fb = self.mode or INSIGHTS_MODE_HOURS
-        local month_key_prefix_fb = (mode_fb == INSIGHTS_MODE_HOURS and "hours:" or
-                                     mode_fb == INSIGHTS_MODE_BOOKS and "books:" or "days:")
-        local month_key_fb = month_key_prefix_fb .. self.selected_year .. ":"
-        if ENABLE_CACHE then
-            for k, v in pairs(_stale_yearly) do
-                if k:sub(1, #year_key_any) == year_key_any then
-                    self._yearly = v
-                    break
-                end
-            end
-            for k, v in pairs(_stale_monthly) do
-                if k:sub(1, #month_key_fb) == month_key_fb then
-                    self._monthly = v
-                    break
-                end
-            end
-        end
-        self:_buildUI()
-        UIManager:setDirty(self, function()
-            return "ui", self.popup_frame.dimen
-        end)
-        UIManager:scheduleIn(0, function()
-            if self._closed then return end
-            self:_loadAndRebuild()
-        end)
-    end
-    return true
+    return self:_goToYear(1)
 end
 
 function ReadingInsightsPopup:onShow()
