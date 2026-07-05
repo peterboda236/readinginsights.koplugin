@@ -3260,6 +3260,47 @@ function ReadingInsightsPopup:_buildUI()
     local fonts    = getCachedFonts()
     local layout   = getCachedLayout()
 
+    -- Cold start (e.g. right after a KOReader restart): no cache, no stale
+    -- data, nothing to show yet. Rather than flashing zeroed-out sections
+    -- for a moment, show a plain loading message; _loadAndRebuild() will
+    -- call _buildUI() again as soon as real data is available.
+    if self._initial_loading then
+        local title_bar_inner = TitleBar:new{
+            fullscreen     = true,
+            width          = screen_w,
+            align          = "left",
+            title          = _("Reading insights"),
+            close_callback = function() UIManager:close(self) end,
+            show_parent    = self,
+            top_v_padding    = Size.padding.default,
+            bottom_v_padding = Size.padding.default,
+        }
+        self._title_bar_height = title_bar_inner:getSize().h
+
+        self.popup_frame = FrameContainer:new{
+            background = Blitbuffer.COLOR_WHITE,
+            bordersize = 0,
+            radius     = 0,
+            padding    = 0,
+            width      = screen_w,
+            height     = screen_h,
+            VerticalGroup:new{
+                align = "left",
+                title_bar_inner,
+                CenterContainer:new{
+                    dimen = Geom:new{ w = screen_w, h = screen_h - title_bar_inner:getSize().h },
+                    TextWidget:new{
+                        text = _("Loading data…"),
+                        face = fonts.label,
+                    },
+                },
+            },
+        }
+        self.popup_frame.dimen = Geom:new{ x = 0, y = 0, w = screen_w, h = screen_h }
+        self[1] = VerticalGroup:new{ self.popup_frame }
+        return
+    end
+
     local sections = buildInsightsSections(
         self,
         self._streaks    or { current_days=0, best_days=0, current_weeks=0, best_weeks=0 },
@@ -3349,7 +3390,12 @@ function ReadingInsightsPopup:_loadAndRebuild()
     -- Skip rebuild if nothing actually displayed would change - compared by
     -- value, not by table reference (see valuesEqual() for why reference
     -- equality isn't enough now that all_time/yearly refresh every minute).
-    if valuesEqual(new_streaks,         self._streaks)         and
+    -- Exception: coming out of the cold-start "Loading data..." placeholder
+    -- always needs a rebuild, even if the freshly-loaded values happen to
+    -- be all-zero (e.g. a brand new, still-empty statistics.sqlite3).
+    local was_initial_loading = self._initial_loading
+    if not was_initial_loading and
+       valuesEqual(new_streaks,         self._streaks)         and
        valuesEqual(new_year_range,      self._year_range)      and
        valuesEqual(new_yearly,          self._yearly)          and
        valuesEqual(new_all_time,        self._all_time)        and
@@ -3375,6 +3421,7 @@ function ReadingInsightsPopup:_loadAndRebuild()
     self._last_week       = new_last_week
     self._last_week_daily = new_last_week_daily
     self._monthly         = new_monthly
+    self._initial_loading = false
 
     self:_buildUI()
     UIManager:setDirty(self, function()
@@ -3462,6 +3509,14 @@ function ReadingInsightsPopup:init()
     end
 
     self.mode = normalizeInsightsMode(self.mode or readInsightsMode())
+
+    -- True only on a genuine cold start (e.g. right after a KOReader restart):
+    -- no fresh cache and no stale fallback for any of the core stats. In that
+    -- case _buildUI() shows a "Loading data..." placeholder instead of a
+    -- flash of zeroed-out sections; cleared as soon as _loadAndRebuild()
+    -- brings in real data.
+    self._initial_loading = not (self._streaks or self._yearly or self._monthly
+        or self._all_time or self._last_week)
 
     -- selected_year needs an initial value before _loadAndRebuild runs.
     if not self.selected_year then
