@@ -275,3 +275,6 @@ msgstr "Newest first (descending)"
 
 msgid "Oldest first (ascending)"
 msgstr "Oldest first (ascending)"
+
+msgid "Loading data…"
+msgstr "Loading data…"
