@@ -476,3 +476,54 @@ msgstr "Biztosan visszaállítod az összes színt az alapértelmezettre?"
 
 msgid "Reset"
 msgstr "Visszaállítás"
+
+msgid "Font"
+msgstr "Betűtípus"
+
+msgid "Fonts"
+msgstr "Betűtípusok"
+
+msgid "Choose a font"
+msgstr "Válassz betűtípust"
+
+msgid "Section headers"
+msgstr "Szekciófejlécek"
+
+msgid "Values (big numbers)"
+msgstr "Értékek (nagy számok)"
+
+msgid "Labels"
+msgstr "Fejlécek"
+
+msgid "Chart/axis labels"
+msgstr "Diagram-/tengelyfeliratok"
+
+msgid "Chapter-bar arrows"
+msgstr "Fejezetsáv nyilai"
+
+msgid "Font name"
+msgstr "Betűtípus neve"
+
+msgid "Enter a bundled font file name (e.g. NotoSans-Bold.ttf) or a KOReader font alias (e.g. tfont, cfont). If it can't be found, this role falls back to its default font."
+msgstr "Add meg egy csomagolt betűtípus fájlnevét (pl. NotoSans-Bold.ttf) vagy egy KOReader betűtípus-aliast (pl. tfont, cfont). Ha nem található, ez a szerep visszaáll az alapértelmezett betűtípusra."
+
+msgid "Please enter a non-empty font name."
+msgstr "Adj meg egy nem üres betűtípusnevet."
+
+msgid "Font size"
+msgstr "Betűméret"
+
+msgid "Custom font name (type manually)"
+msgstr "Egyéni betűtípus neve (kézi beírás)"
+
+msgid "Reset to default"
+msgstr "Visszaállítás alapértelmezettre"
+
+msgid "Reset all fonts to default"
+msgstr "Összes betűtípus visszaállítása alapértelmezettre"
+
+msgid "Reset all fonts to their default values?"
+msgstr "Biztosan visszaállítod az összes betűtípust az alapértelmezettre?"
+
+msgid "Set"
+msgstr "Beállít"

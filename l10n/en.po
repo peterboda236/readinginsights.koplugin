@@ -461,3 +461,54 @@ msgstr "Reset all colors to their default values?"
 
 msgid "Reset"
 msgstr "Reset"
+
+msgid "Font"
+msgstr "Font"
+
+msgid "Fonts"
+msgstr "Fonts"
+
+msgid "Choose a font"
+msgstr "Choose a font"
+
+msgid "Section headers"
+msgstr "Section headers"
+
+msgid "Values (big numbers)"
+msgstr "Values (big numbers)"
+
+msgid "Labels"
+msgstr "Labels"
+
+msgid "Chart/axis labels"
+msgstr "Chart/axis labels"
+
+msgid "Chapter-bar arrows"
+msgstr "Chapter-bar arrows"
+
+msgid "Font name"
+msgstr "Font name"
+
+msgid "Enter a bundled font file name (e.g. NotoSans-Bold.ttf) or a KOReader font alias (e.g. tfont, cfont). If it can't be found, this role falls back to its default font."
+msgstr "Enter a bundled font file name (e.g. NotoSans-Bold.ttf) or a KOReader font alias (e.g. tfont, cfont). If it can't be found, this role falls back to its default font."
+
+msgid "Please enter a non-empty font name."
+msgstr "Please enter a non-empty font name."
+
+msgid "Font size"
+msgstr "Font size"
+
+msgid "Custom font name (type manually)"
+msgstr "Custom font name (type manually)"
+
+msgid "Reset to default"
+msgstr "Reset to default"
+
+msgid "Reset all fonts to default"
+msgstr "Reset all fonts to default"
+
+msgid "Reset all fonts to their default values?"
+msgstr "Reset all fonts to their default values?"
+
+msgid "Set"
+msgstr "Set"
