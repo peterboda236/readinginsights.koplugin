@@ -420,6 +420,9 @@ msgstr "Inactive column color"
 msgid "Trend chart line color"
 msgstr "Trend chart line color"
 
+msgid "Separator line color"
+msgstr "Separator line color"
+
 msgid "Label color"
 msgstr "Label color"
 
