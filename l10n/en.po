@@ -432,6 +432,9 @@ msgstr "Section color"
 msgid "Chart label color"
 msgstr "Chart label color"
 
+msgid "Settings"
+msgstr "Settings"
+
 msgid "Reset all colors to default"
 msgstr "Reset all colors to default"
 
