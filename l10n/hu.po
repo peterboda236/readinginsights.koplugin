@@ -413,3 +413,51 @@ msgstr "nappal ezelőtt elkezdve"
 
 msgid "days since started"
 msgstr "nappal ezelőtt elkezdve"
+
+msgid "Colors"
+msgstr "Színek"
+
+msgid "Active column color"
+msgstr "Aktív oszlop színe"
+
+msgid "Inactive column color"
+msgstr "Inaktív oszlop színe"
+
+msgid "Trend chart line color"
+msgstr "Trend diagram vonalának színe"
+
+msgid "Label color"
+msgstr "Fejlécek színe"
+
+msgid "Value color"
+msgstr "Értékek színe"
+
+msgid "Section color"
+msgstr "Szekció színe"
+
+msgid "Chart label color"
+msgstr "Diagram felirat színe"
+
+msgid "Reset all colors to default"
+msgstr "Összes szín visszaállítása alapértelmezettre"
+
+msgid "Cancel"
+msgstr "Mégse"
+
+msgid "Default"
+msgstr "Alapértelmezett"
+
+msgid "Save"
+msgstr "Mentés"
+
+msgid "Enter a hex color code (e.g. #1E90FF), the way KOReader expects it."
+msgstr "Add meg a szín hex kódját (pl. #1E90FF), ahogy a KOReader is kezeli."
+
+msgid "Not a valid hex color code, e.g. #1E90FF."
+msgstr "Ez nem érvényes hex színkód, pl. #1E90FF."
+
+msgid "Reset all colors to their default values?"
+msgstr "Biztosan visszaállítod az összes színt az alapértelmezettre?"
+
+msgid "Reset"
+msgstr "Visszaállítás"
