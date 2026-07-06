@@ -438,6 +438,9 @@ msgstr "Szekció színe"
 msgid "Chart label color"
 msgstr "Diagram felirat színe"
 
+msgid "Settings"
+msgstr "Beállítások"
+
 msgid "Reset all colors to default"
 msgstr "Összes szín visszaállítása alapértelmezettre"
 
