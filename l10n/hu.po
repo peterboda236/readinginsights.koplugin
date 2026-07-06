@@ -278,3 +278,138 @@ msgstr "Legrégebbi először (növekvő)"
 
 msgid "Loading data…"
 msgstr "Adatok betöltése…"
+
+msgid "Book progress"
+msgstr "Könyv haladás"
+
+msgid "Show Book progress"
+msgstr "Könyv haladás megnyitása"
+
+msgid "This chapter"
+msgstr "Aktuális fejezet"
+
+msgid "Next chapter"
+msgstr "Következő fejezet"
+
+msgid "This book"
+msgstr "Könyv"
+
+msgid "Pace"
+msgstr "Haladás"
+
+msgid "Chapters"
+msgstr "Fejezetek"
+
+msgid "today for all books"
+msgstr "ma: összes könyv"
+
+msgid "to go"
+msgstr "van hátra"
+
+msgid "to read"
+msgstr "olvasás"
+
+msgid "read"
+msgstr "elolvasva"
+
+msgid "read time"
+msgstr "olvasás"
+
+msgid "read today"
+msgstr "olvasott idő ma"
+
+msgid "per day"
+msgstr "naponta"
+
+msgid "second"
+msgstr "mp"
+
+msgid "seconds"
+msgstr "mp"
+
+msgid "minute"
+msgstr "perc"
+
+msgid "minutes"
+msgstr "perc"
+
+msgid "hour"
+msgstr "óra"
+
+msgid "hours"
+msgstr "óra"
+
+msgid "week reading"
+msgstr "olvasási hét"
+
+msgid "weeks reading"
+msgstr "olvasási hét"
+
+msgid "month reading"
+msgstr "olvasási hónap"
+
+msgid "months reading"
+msgstr "olvasási hónap"
+
+msgid "day reading"
+msgstr "olvasási nap"
+
+msgid "days reading"
+msgstr "olvasási nap"
+
+msgid "week to go"
+msgstr "hátralévő hét"
+
+msgid "weeks to go"
+msgstr "hátralévő hét"
+
+msgid "month to go"
+msgstr "hátralévő hónap"
+
+msgid "months to go"
+msgstr "hátralévő hónap"
+
+msgid "day to go"
+msgstr "hátralévő nap"
+
+msgid "days to go"
+msgstr "hátralévő nap"
+
+msgid "page"
+msgstr "oldal"
+
+msgid "pages"
+msgstr "oldal"
+
+msgid "page per minute"
+msgstr "oldal percenként"
+
+msgid "pages per minute"
+msgstr "oldal percenként"
+
+msgid "less than"
+msgstr "kevesebb mint"
+
+msgid "read so far"
+msgstr "olvasási idő"
+
+msgid "reading time left"
+msgstr "hátralévő idő"
+
+msgid "(%d day left)"
+msgstr "(még %d nap)"
+
+msgid "(%d days left)"
+msgstr "(még %d nap)"
+
+msgid "day of reading left"
+msgstr "nap olvasás van hátra"
+
+msgid "days of reading left"
+msgstr "nap olvasás van hátra"
+
+msgid "day since started"
+msgstr "nappal ezelőtt elkezdve"
+
+msgid "days since started"
+msgstr "nappal ezelőtt elkezdve"
