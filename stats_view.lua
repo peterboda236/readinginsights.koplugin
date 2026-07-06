@@ -1089,12 +1089,6 @@ function ReadingStatsPopup:gatherStats()
             }
         end
 
-        if plugin.getTodayBookStats then
-            local pt, pp = plugin:getTodayBookStats()
-            if pt then today_t = pt end
-            if pp then today_p = pp end
-        end
-
         if total_days ~= nil then
             if total_time and total_time > 0 then
                 local avg_secs = total_time / total_days
