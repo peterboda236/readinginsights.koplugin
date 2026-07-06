@@ -1161,6 +1161,10 @@ end
 function LineChartWidget:paintTo(bb, x, y)
     if not self.points or #self.points == 0 then return end
     local color = self.line_color or Colors.trendLine()
+    -- See colors.lua's LineWidget patch: bb:paintRect only renders native
+    -- 8bit grayscale colors correctly; arbitrary hex colors need
+    -- bb:paintRectRGB32 or they silently misrender (usually as black).
+    local paint = Blitbuffer.isColor8(color) and bb.paintRect or bb.paintRectRGB32
 
     if #self.points > 1 then
         for i = 1, #self.points - 1 do
@@ -1171,7 +1175,7 @@ function LineChartWidget:paintTo(bb, x, y)
                 local t  = s / steps
                 local px = math.floor(p1.x + dx * t + 0.5)
                 local py = math.floor(p1.y + dy * t + 0.5)
-                bb:paintRect(x + px, y + py, 2, 2, color)
+                paint(bb, x + px, y + py, 2, 2, color)
             end
         end
     end

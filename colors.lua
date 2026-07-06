@@ -41,10 +41,56 @@ local Blitbuffer  = require("ffi/blitbuffer")
 local ConfirmBox  = require("ui/widget/confirmbox")
 local InfoMessage = require("ui/widget/infomessage")
 local InputDialog = require("ui/widget/inputdialog")
+local LineWidget  = require("ui/widget/linewidget")
 local UIManager    = require("ui/uimanager")
 
 local L10N = ...
 local _ = L10N._
+
+-- ---------------------------------------------------------------------
+-- Custom hex colors need bb:paintRectRGB32, not bb:paintRect.
+--
+-- Blitbuffer.colorFromString("#RRGGBB") always returns a 32bit RGB color
+-- object, even for plain black/white/gray. LineWidget:paintTo (the
+-- widget used for every bar, dot and baseline in both popups) always
+-- calls bb:paintRect(), which only handles the handful of native 8bit
+-- grayscale colors (Blitbuffer.COLOR_BLACK/GRAY/WHITE/...) correctly -
+-- on an actual (typically 8bit/grayscale) e-ink framebuffer, feeding it
+-- an arbitrary RGB32 color silently misrenders (usually as black),
+-- which is why custom colors otherwise look like they "don't work".
+-- Patching paintTo to fall back to bb:paintRectRGB32() for genuinely
+-- non-8bit colors fixes this, while leaving every other LineWidget in
+-- KOReader (and our own native-color usages) untouched.
+-- Guarded so re-loading this module never wraps paintTo twice.
+if not LineWidget._reading_insights_rgb_patch then
+    local original_paintTo = LineWidget.paintTo
+
+    function LineWidget:paintTo(bb, x, y)
+        if self.style == "none" then return end
+        if not self.background or Blitbuffer.isColor8(self.background) then
+            return original_paintTo(self, bb, x, y)
+        end
+
+        local function paintRect(px, py, w, h, color)
+            bb:paintRectRGB32(px, py, w, h, color)
+        end
+
+        if self.style == "dashed" then
+            for i = 0, self.dimen.w - 20, 20 do
+                paintRect(x + i, y, 16, self.dimen.h, self.background)
+            end
+        elseif self.empty_segments then
+            paintRect(x, y, self.empty_segments[1].s, self.dimen.h, self.background)
+            paintRect(x + self.empty_segments[1].e, y,
+                self.dimen.w - self.empty_segments[1].e, self.dimen.h, self.background)
+        else
+            paintRect(x, y, self.dimen.w, self.dimen.h, self.background)
+        end
+    end
+
+    LineWidget._reading_insights_rgb_patch = true
+end
+-- ---------------------------------------------------------------------
 
 -- Order the "Colors" menu is built in.
 local KEY_ORDER = { "active_bar", "inactive_bar", "trend_line", "label", "value", "section", "small" }
