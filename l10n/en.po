@@ -253,7 +253,7 @@ msgid "book read in this streak"
 msgstr "book read in this streak"
 
 msgid "books read in this streak"
-msgstr "books read in this streak
+msgstr "books read in this streak"
 
 msgid "Show Reading insights"
 msgstr "Show Reading insights"
@@ -278,3 +278,132 @@ msgstr "Oldest first (ascending)"
 
 msgid "Loading data…"
 msgstr "Loading data…"
+
+msgid "Book progress"
+msgstr "Book progress"
+
+msgid "Show Book progress"
+msgstr "Show Book progress"
+
+msgid "This chapter"
+msgstr "This chapter"
+
+msgid "Next chapter"
+msgstr "Next chapter"
+
+msgid "This book"
+msgstr "This book"
+
+msgid "Pace"
+msgstr "Pace"
+
+msgid "Chapters"
+msgstr "Chapters"
+
+msgid "today for all books"
+msgstr "today for all books"
+
+msgid "to go"
+msgstr "to go"
+
+msgid "to read"
+msgstr "to read"
+
+msgid "read"
+msgstr "read"
+
+msgid "read today"
+msgstr "read today"
+
+msgid "read time"
+msgstr "read time"
+
+msgid "per day"
+msgstr "per day"
+
+msgid "minute"
+msgstr "minute"
+
+msgid "minutes"
+msgstr "minutes"
+
+msgid "hour"
+msgstr "hour"
+
+msgid "hours"
+msgstr "hours"
+
+msgid "week reading"
+msgstr "week reading"
+
+msgid "weeks reading"
+msgstr "weeks reading"
+
+msgid "month reading"
+msgstr "month reading"
+
+msgid "months reading"
+msgstr "months reading"
+
+msgid "day reading"
+msgstr "day reading"
+
+msgid "days reading"
+msgstr "days reading"
+
+msgid "week to go"
+msgstr "week to go"
+
+msgid "weeks to go"
+msgstr "weeks to go"
+
+msgid "month to go"
+msgstr "month to go"
+
+msgid "months to go"
+msgstr "months to go"
+
+msgid "day to go"
+msgstr "day to go"
+
+msgid "days to go"
+msgstr "days to go"
+
+msgid "page"
+msgstr "page"
+
+msgid "pages"
+msgstr "pages"
+
+msgid "page per minute"
+msgstr "page per minute"
+
+msgid "pages per minute"
+msgstr "pages per minute"
+
+msgid "less than"
+msgstr "less than"
+
+msgid "read so far"
+msgstr "read so far"
+
+msgid "reading time left"
+msgstr "reading time left"
+
+msgid "(%d day left)"
+msgstr "(%d day left)"
+
+msgid "(%d days left)"
+msgstr "(%d days left)"
+
+msgid "day of reading left"
+msgstr "day of reading left"
+
+msgid "days of reading left"
+msgstr "days of reading left"
+
+msgid "day since started"
+msgstr "day since started"
+
+msgid "days since started"
+msgstr "days since started"
