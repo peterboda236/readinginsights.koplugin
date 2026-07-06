@@ -439,7 +439,7 @@ msgid "Separator line color"
 msgstr "Elválasztó vonal színe"
 
 msgid "Label color"
-msgstr "Fejlécek színe"
+msgstr "Felirat színe"
 
 msgid "Value color"
 msgstr "Értékek színe"
@@ -493,7 +493,7 @@ msgid "Values (big numbers)"
 msgstr "Értékek (nagy számok)"
 
 msgid "Labels"
-msgstr "Fejlécek"
+msgstr "Feliratok"
 
 msgid "Chart/axis labels"
 msgstr "Diagram-/tengelyfeliratok"
