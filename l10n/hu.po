@@ -427,7 +427,7 @@ msgid "Trend chart line color"
 msgstr "Trend diagram vonalának színe"
 
 msgid "Label color"
-msgstr "Fejlécek színe"
+msgstr "Feliratok színe"
 
 msgid "Value color"
 msgstr "Értékek színe"
