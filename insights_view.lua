@@ -1066,15 +1066,9 @@ local function buildMonthlyChart(popup_self, monthly_data, layout, fonts)
             local bar_column = VerticalGroup:new{ align = "center" }
             table.insert(bar_column, centered_label)
             if bar_h > 0 then
-                table.insert(bar_column, LineWidget:new{
-                    dimen      = Geom:new{ w = bar_width, h = bar_h },
-                    background = bar_color,
-                })
+                table.insert(bar_column, Colors.newBar(bar_width, bar_h, bar_color))
             end
-            table.insert(bar_column, LineWidget:new{
-                dimen      = Geom:new{ w = bar_width, h = baseline_h },
-                background = bar_color,
-            })
+            table.insert(bar_column, Colors.newBar(bar_width, baseline_h, bar_color))
 
             local bar_container = BottomContainer:new{
                 dimen = Geom:new{ w = bar_width, h = total_bar_height },
@@ -1309,18 +1303,12 @@ local function buildLine8WeekChart(weeks, metric, chart_width, fonts)
         end
         table.insert(col_group, CenterContainer:new{
             dimen = Geom:new{ w = col_width, h = dot_size },
-            LineWidget:new{
-                dimen      = Geom:new{ w = dot_size, h = dot_size },
-                background = Colors.activeBar(),
-            },
+            Colors.newBar(dot_size, dot_size, Colors.activeBar()),
         })
         if dot_y_from_bottom > 0 then
             table.insert(col_group, VerticalSpan:new{ height = dot_y_from_bottom })
         end
-        table.insert(col_group, LineWidget:new{
-            dimen      = Geom:new{ w = col_width, h = baseline_h },
-            background = Colors.inactiveBar(),
-        })
+        table.insert(col_group, Colors.newBar(col_width, baseline_h, Colors.inactiveBar()))
 
         table.insert(bars_row, BottomContainer:new{
             dimen = Geom:new{ w = col_width, h = total_col_h },
@@ -1466,15 +1454,9 @@ local function buildWeeklyChart(popup_self, daily_data, layout, fonts)
         local bar_column = VerticalGroup:new{ align = "center" }
         table.insert(bar_column, centered_label)
         if bar_h > 0 then
-            table.insert(bar_column, LineWidget:new{
-                dimen      = Geom:new{ w = bar_width, h = bar_h },
-                background = bar_color,
-            })
+            table.insert(bar_column, Colors.newBar(bar_width, bar_h, bar_color))
         end
-        table.insert(bar_column, LineWidget:new{
-            dimen      = Geom:new{ w = bar_width, h = baseline_h },
-            background = bar_color,
-        })
+        table.insert(bar_column, Colors.newBar(bar_width, baseline_h, bar_color))
 
         local bar_container = BottomContainer:new{
             dimen = Geom:new{ w = bar_width, h = total_bar_height },

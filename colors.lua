@@ -39,10 +39,12 @@ Exposes:
 
 local Blitbuffer  = require("ffi/blitbuffer")
 local ConfirmBox  = require("ui/widget/confirmbox")
+local Geom        = require("ui/geometry")
 local InfoMessage = require("ui/widget/infomessage")
 local InputDialog = require("ui/widget/inputdialog")
 local LineWidget  = require("ui/widget/linewidget")
 local UIManager    = require("ui/uimanager")
+local Widget      = require("ui/widget/widget")
 
 local L10N = ...
 local _ = L10N._
@@ -91,6 +93,32 @@ if not LineWidget._reading_insights_rgb_patch then
     LineWidget._reading_insights_rgb_patch = true
 end
 -- ---------------------------------------------------------------------
+
+-- A small solid-color rectangle widget, used everywhere a bar/dot/
+-- baseline needs one of *our* user-configurable colors (active_bar,
+-- inactive_bar, ...). Deliberately independent from the LineWidget
+-- patch above (belt-and-braces): it always picks the right bb paint
+-- call itself, rather than relying on a monkey-patched shared class,
+-- so bar colors can't silently keep rendering black/gray if that patch
+-- ever fails to apply for any reason.
+local ColorBar = Widget:extend{
+    width  = nil,
+    height = nil,
+    color  = nil,
+}
+
+function ColorBar:getSize()
+    return Geom:new{ w = self.width, h = self.height }
+end
+
+function ColorBar:paintTo(bb, x, y)
+    if not self.color then return end
+    if Blitbuffer.isColor8(self.color) then
+        bb:paintRect(x, y, self.width, self.height, self.color)
+    else
+        bb:paintRectRGB32(x, y, self.width, self.height, self.color)
+    end
+end
 
 -- Order the "Colors" menu is built in.
 local KEY_ORDER = { "active_bar", "inactive_bar", "trend_line", "label", "value", "section", "small" }
@@ -166,6 +194,14 @@ function M.getColor(key)
     local color = buildColor(hex)
     _color_cache[key] = { hex = hex, color = color }
     return color
+end
+
+-- Solid-color rectangle (bar segment, baseline, trend dot, ...) that
+-- always renders the given color correctly - see the ColorBar widget
+-- above. `color` is a Blitbuffer color object, e.g. from getColor()/
+-- activeBar()/inactiveBar().
+function M.newBar(width, height, color)
+    return ColorBar:new{ width = width, height = height, color = color }
 end
 
 function M.setHex(key, hex)

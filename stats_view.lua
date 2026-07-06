@@ -643,23 +643,16 @@ local function buildChapterBar(chapter_info, full_width, padding_h, offset_overr
                 table.insert(bar_row, VerticalGroup:new{
                     align = "left",
                     VerticalSpan:new{ height = col_h_max - bh },
-                    unread_h > 0 and LineWidget:new{
-                        dimen      = Geom:new{ w = bar_w, h = unread_h },
-                        background = Colors.inactiveBar(),
-                    } or VerticalSpan:new{ height = 0 },
-                    read_h > 0 and LineWidget:new{
-                        dimen      = Geom:new{ w = bar_w, h = read_h },
-                        background = Colors.activeBar(),
-                    } or VerticalSpan:new{ height = 0 },
+                    unread_h > 0 and Colors.newBar(bar_w, unread_h, Colors.inactiveBar())
+                        or VerticalSpan:new{ height = 0 },
+                    read_h > 0 and Colors.newBar(bar_w, read_h, Colors.activeBar())
+                        or VerticalSpan:new{ height = 0 },
                 })
             else
                 table.insert(bar_row, VerticalGroup:new{
                     align = "left",
                     VerticalSpan:new{ height = col_h_max - bh },
-                    LineWidget:new{
-                        dimen      = Geom:new{ w = bar_w, h = bh },
-                        background = ch_idx < current and Colors.activeBar() or Colors.inactiveBar(),
-                    },
+                    Colors.newBar(bar_w, bh, ch_idx < current and Colors.activeBar() or Colors.inactiveBar()),
                 })
             end
         else
