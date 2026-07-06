@@ -58,8 +58,8 @@ A per-book overlay showing detailed progress and pace for the book you're curren
 
 - **Menu:** *Tools → Reading insights* — a submenu with "Show Reading
   insights", "Show Book progress" (book view only), and, below a
-  separator, a **Settings** submenu holding the two options below plus a
-  **Colors** submenu:
+  separator, a **Settings** submenu holding the two options below plus
+  **Colors** and **Fonts** submenus:
   - **Full-screen refresh on open/close** — toggle
   - **8-week chart order** — newest-first or oldest-first
   - **Colors** — pick your own hex color for every bar/line/label the two
@@ -67,6 +67,13 @@ A per-book overlay showing detailed progress and pace for the book you're curren
     column separator lines, and the label/value/section/chart-label text
     colors); each one can be reset back to its black-on-gray default
     individually or all at once.
+  - **Fonts** — pick your own font (name + size) for every text role in
+    both popups, grouped under **Reading insights** (section headers,
+    values, labels, chart/axis labels) and **Book progress** (section
+    headers, values, labels, chapter-bar arrows); choose from a
+    pick-from-list menu of every font file KOReader/you have installed,
+    or type a custom font name/alias manually; each role can be reset to
+    its bundled default individually or all at once.
 - **Gestures/shortcuts:** both popups are registered with `Dispatcher`, so
   they can be assigned under *Settings → Taps and gestures*:
   - `reading_insights_popup` — available everywhere (general action).
@@ -82,6 +89,9 @@ A per-book overlay showing detailed progress and pace for the book you're curren
 - `colors.lua` — shared chart/text color settings (the "Colors" submenu)
   used by both views, so there's a single place to configure every
   color.
+- `fonts.lua` — shared font settings (the "Fonts" submenu) used by both
+  views, so there's a single place to configure every text role's font
+  name and size.
 - `insights_view.lua` — the full-screen "Reading insights" popup.
 - `stats_view.lua` — the compact "Reading statistics: overview" popup.
 

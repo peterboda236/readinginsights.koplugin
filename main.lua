@@ -56,8 +56,13 @@ local _ = L10N._
 -- there's a single, unified place to configure them. See colors.lua.
 local Colors = loadModule("colors.lua", L10N)
 
-local Insights = loadModule("insights_view.lua", L10N, Colors)
-local StatsPopup = loadModule("stats_view.lua", L10N, Colors)
+-- Shared popup font settings (Fonts menu), same idea as Colors above but
+-- for the section/value/label/small text roles in both popups. See
+-- fonts.lua.
+local Fonts = loadModule("fonts.lua", L10N)
+
+local Insights = loadModule("insights_view.lua", L10N, Colors, Fonts)
+local StatsPopup = loadModule("stats_view.lua", L10N, Colors, Fonts)
 
 --[[
 Plugin wiring.
@@ -287,6 +292,15 @@ function ReadingInsights:addToMainMenu(menu_items)
         text = _("Colors"),
         keep_menu_open = true,
         sub_item_table = Colors.buildMenu(),
+    })
+
+    -- Unified font settings (name + size) for every text role in both
+    -- popups. Same idea as Colors above. Any change here applies to both,
+    -- next time each popup is (re)opened.
+    table.insert(settings_sub_item_table, {
+        text = _("Fonts"),
+        keep_menu_open = true,
+        sub_item_table = Fonts.buildMenu(),
     })
 
     table.insert(sub_item_table, {

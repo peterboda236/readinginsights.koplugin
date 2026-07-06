@@ -71,7 +71,6 @@ local Button = require("ui/widget/button")
 local CenterContainer = require("ui/widget/container/centercontainer")
 local DataStorage = require("datastorage")
 local Device = require("device")
-local Font = require("ui/font")
 local FrameContainer = require("ui/widget/container/framecontainer")
 local Geom = require("ui/geometry")
 local GestureRange = require("ui/gesturerange")
@@ -98,7 +97,7 @@ local T = require("ffi/util").template
 -- Shared translations/number-formatting, and shared chart/text color
 -- settings, both loaded once by main.lua and passed in as this chunk's
 -- arguments (see main.lua's loadModule() call for this file).
-local L10N, Colors = ...
+local L10N, Colors, Fonts = ...
 
 -- true: cache DB results (streaks/year_range per day, last-week per minute, yearly/monthly per day).
 -- false: always query DB fresh on open.
@@ -699,19 +698,19 @@ local function formatHHMMSS(seconds)
     return string.format("%02d:%02d:%02d", hh, mm, ss)
 end
 
-local function getSerifFace(font_name, fallback_name, size)
-    return Font:getFace(font_name, size) or Font:getFace(fallback_name, size)
-end
-
+-- Font faces for this popup's four text roles, sourced from the shared
+-- Fonts settings module (see fonts.lua) so they're user-configurable via
+-- the "Fonts" Tools-menu entry, the same way Colors.* works for colors.
+-- Fonts.getFace() already caches per-role, so this is cheap to call again
+-- on every popup (re)build - which is what keeps a just-changed font
+-- setting picked up immediately, without needing our own extra cache.
 local function buildSerifFonts()
     return {
-        section = getSerifFace("NotoSans-Bold.ttf", "tfont", 22),
-        value   = getSerifFace("NotoSans-Bold.ttf",    "tfont", 26),
-        label   = getSerifFace("NotoSans-Regular.ttf", "x_smallinfofont", 20),
-        small   = getSerifFace("NotoSans-Regular.ttf", "xx_smallinfofont", 15),
-
+        section = Fonts.getFace("insights_section"),
+        value   = Fonts.getFace("insights_value"),
+        label   = Fonts.getFace("insights_label"),
+        small   = Fonts.getFace("insights_small"),
     }
-
 end
 
 local function buildLayout(screen_w, padding_h, column_gap)
@@ -728,12 +727,16 @@ local function buildLayout(screen_w, padding_h, column_gap)
     }
 end
 
-local _cached_fonts  = nil
 local _cached_layout = nil
 
+-- Deliberately NOT cached at this module level (unlike getCachedLayout()
+-- below): fonts are user-configurable via the Fonts menu, and
+-- Fonts.getFace() already caches per-role internally, so rebuilding this
+-- small table on every popup (re)build is cheap and guarantees a
+-- just-changed font setting is picked up on the very next open, with no
+-- stale fonts left over from before the change.
 local function getCachedFonts()
-    if not _cached_fonts then _cached_fonts = buildSerifFonts() end
-    return _cached_fonts
+    return buildSerifFonts()
 end
 
 local function getCachedLayout()

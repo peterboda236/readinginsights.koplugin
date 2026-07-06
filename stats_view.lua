@@ -28,7 +28,6 @@ Controls:
 local Blitbuffer = require("ffi/blitbuffer")
 local DataStorage = require("datastorage")
 local Device = require("device")
-local Font = require("ui/font")
 local FrameContainer = require("ui/widget/container/framecontainer")
 local Geom = require("ui/geometry")
 local GestureRange = require("ui/gesturerange")
@@ -50,7 +49,7 @@ local Screen = Device.screen
 -- Shared translations/number-formatting, and shared chart/text color
 -- settings, both passed in as this chunk's arguments by main.lua (see the
 -- header comment above).
-local L10N, Colors = ...
+local L10N, Colors, Fonts = ...
 local _            = L10N._
 local N_           = L10N.N_
 local getLangBase  = L10N.getLangBase
@@ -432,15 +431,16 @@ local function getBookProgressCounts(ui)
     return progress.current_page, progress.total_pages
 end
 
-local function getSerifFace(font_name, fallback_name, size)
-    return Font:getFace(font_name, size) or Font:getFace(fallback_name, size)
-end
-
+-- Font faces for this popup's three text roles, sourced from the shared
+-- Fonts settings module (see fonts.lua) so they're user-configurable via
+-- the "Fonts" Tools-menu entry, the same way Colors.* works for colors.
+-- Rebuilt fresh on every popup init (like before), so a just-changed font
+-- setting is always picked up on the next open.
 local function buildSerifFonts()
     return {
-        section = getSerifFace("NotoSans-Bold.ttf", "tfont", 22),
-        value   = getSerifFace("NotoSans-Bold.ttf", "tfont", 26),
-        label   = getSerifFace("NotoSans-Regular.ttf", "x_smallinfofont", 20),
+        section = Fonts.getFace("stats_section"),
+        value   = Fonts.getFace("stats_value"),
+        label   = Fonts.getFace("stats_label"),
     }
 end
 
@@ -626,7 +626,7 @@ local function buildChapterBar(chapter_info, full_width, padding_h, offset_overr
     end
 
     local v_pad      = Size.padding.large
-    local arrow_face = Font:getFace("NotoSans-Regular.ttf", 22)
+    local arrow_face = Fonts.getFace("stats_arrow")
     local inner_pad  = Size.padding.default
 
     -- Measure arrow glyph width once; both arrows use the same face so width is identical.
