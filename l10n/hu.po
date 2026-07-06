@@ -186,6 +186,15 @@ msgstr "Összes olvasás"
 msgid "Last week"
 msgstr "Legutóbbi hét"
 
+msgid "Months"
+msgstr "Hónapok"
+
+msgid "Bar chart height"
+msgstr "Oszlopdiagram magassága"
+
+msgid "Set"
+msgstr "Beállítás"
+
 msgid "avg/day"
 msgstr "átlag oldal/nap"
 
