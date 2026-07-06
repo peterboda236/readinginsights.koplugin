@@ -426,8 +426,11 @@ msgstr "Inaktív oszlop színe"
 msgid "Trend chart line color"
 msgstr "Trend diagram vonalának színe"
 
+msgid "Separator line color"
+msgstr "Elválasztó vonal színe"
+
 msgid "Label color"
-msgstr "Feliratok színe"
+msgstr "Fejlécek színe"
 
 msgid "Value color"
 msgstr "Értékek színe"
