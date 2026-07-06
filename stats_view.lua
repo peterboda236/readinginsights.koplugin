@@ -167,7 +167,7 @@ local function getBookAndTodayStats(book_id)
     local today_book_sql = string.format([[
         SELECT count(*), sum(duration)
         FROM (
-            SELECT page, max(duration) AS duration
+            SELECT page, sum(duration) AS duration
             FROM   page_stat
             WHERE  strftime('%%Y-%%m-%%d', start_time, 'unixepoch', 'localtime')
                    = strftime('%%Y-%%m-%%d', 'now', 'localtime')
@@ -182,7 +182,7 @@ local function getBookAndTodayStats(book_id)
     local today_all_sql = [[
         SELECT count(*), sum(duration)
         FROM (
-            SELECT page, max(duration) AS duration
+            SELECT page, sum(duration) AS duration
             FROM   page_stat
             WHERE  strftime('%Y-%m-%d', start_time, 'unixepoch', 'localtime')
                    = strftime('%Y-%m-%d', 'now', 'localtime')
