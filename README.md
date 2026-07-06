@@ -6,8 +6,12 @@ More screenshots
 
 <img width="96" height="128" alt="FileManager_2026-07-02_083320" src="https://github.com/user-attachments/assets/8193ba8b-7f7e-4b35-9efb-81d0d4a1df8e" /><img width="96" height="128" alt="FileManager_2026-07-02_083306" src="https://github.com/user-attachments/assets/3026267b-d29d-4487-99a5-6efdcc4baa37" /><img width="96" height="128" alt="FileManager_2026-07-02_083257" src="https://github.com/user-attachments/assets/8a5857fb-f313-4d04-ab26-f604bdee7e52" />
 
+This plugin bundles two reading-stats popups, powered by KOReader's
+statistics database.
 
-A full-screen scrollable overlay with a comprehensive overview of your reading history, powered by KOReader's statistics database.
+### Reading insights (full-screen history)
+
+A full-screen scrollable overlay with a comprehensive overview of your reading history.
 
 **Highlights:**
 - **Today** — reading time and pages read so far today
@@ -19,27 +23,60 @@ A full-screen scrollable overlay with a comprehensive overview of your reading h
 
 **Controls:** swipe left/right to change year, tap bars to open book lists, tap the chart header to toggle hours/days mode, long-press to force-reload data.
 
-**Caching:** uses a stale-while-revalidate strategy — the popup opens instantly with cached data while fresh values load in the background.
+**Caching:** uses a stale-while-revalidate strategy — the popup opens instantly with cached data while fresh values load in the background. The last known values are also mirrored to disk, so this still holds true for the very first popup open after a KOReader restart — no blocking "Loading data..." wait.
+
+Available everywhere (book view and file manager).
+
+### Reading statistics: overview (per-book live stats, book view only)
+
+A compact overlay for the book you're currently reading: estimated time left
+for the current and next chapter, overall book progress/time left/time
+spent, a tappable/swipeable chapter bar, and today's pace (reading time and
+pages-per-minute). Since it needs an open document, it's only offered in
+the Tools menu while reading, and its gesture/shortcut action only shows up
+for assignment under *Settings → Taps and gestures → Reader* (not in the
+file manager's gesture list).
 
 ## Install
 
-1. Copy the whole Unpack the latest zip and copy the `readinginsights.koplugin` folder into your KOReader
-   `plugins/` directory, so you end up with:
+1. Unpack the latest zip and copy the `readinginsights.koplugin` folder into
+   your KOReader `plugins/` directory.
 2. Restart KOReader.
-3. If you still have `2-reading-insights-popup.lua` in your `patches/`
-   folder, **remove it** — running both at once will double-register the
-   `ShowReadingInsightsPopup` dispatcher action.
+3. If you still have `2-reading-insights-popup.lua` and/or
+   `2-reading-stats-popup.lua` in your `patches/` folder, **remove them** —
+   running the patches alongside this plugin will double-register the same
+   dispatcher actions.
 
 ## Where it shows up
 
-- **Menu:** *Tools → Reading insights* — 
-- **Gestures/shortcuts:** still available as before, via
-  *Settings → Taps and gestures → Reading insights* (it's registered
-  with `Dispatcher` under the internal name `reading_insights_popup`,
-  same as the original patch).
+- **Menu:** *Tools → Reading insights* — a submenu with "Show Reading
+  insights", "Reading statistics: overview" (book view only), and the two
+  settings toggles below.
+- **Gestures/shortcuts:** both popups are registered with `Dispatcher`, so
+  they can be assigned under *Settings → Taps and gestures*:
+  - `reading_insights_popup` — available everywhere (general action).
+  - `reading_stats_popup` — book view only (reader action), matching the
+    popup's requirement that a document be open.
+
+## File layout
+
+- `main.lua` — plugin entry point: loads the shared translation module and
+  both views, registers the two dispatcher actions, builds the Tools menu.
+- `l10n.lua` — shared translation lookup (`l10n/<lang>.po`) and locale-aware
+  number formatting, used by both views.
+- `insights_view.lua` — the full-screen "Reading insights" popup.
+- `stats_view.lua` — the compact "Reading statistics: overview" popup.
 
 ## Translations
 
-`l10n/en.po` and `l10n/hu.po` hold the ~80 short UI strings (month
-names, "Total read", streak labels, etc.) as plain `msgid`/`msgstr`
-pairs, e.g.:
+`l10n/en.po` and `l10n/hu.po` hold the UI strings for both popups (month
+names, "Total read", streak labels, chapter/pace labels, etc.) as plain
+`msgid`/`msgstr` pairs, e.g.:
+
+```
+msgid "Current streak"
+msgstr "Aktuális sorozat"
+```
+
+To add another language, drop a new `l10n/<lang>.po` file next to the
+existing ones — no code changes needed.
