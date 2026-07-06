@@ -52,8 +52,12 @@ end
 local L10N = loadModule("l10n.lua")
 local _ = L10N._
 
-local Insights = loadModule("insights_view.lua", L10N)
-local StatsPopup = loadModule("stats_view.lua", L10N)
+-- Shared chart/text color settings (Colors menu), used by both views so
+-- there's a single, unified place to configure them. See colors.lua.
+local Colors = loadModule("colors.lua", L10N)
+
+local Insights = loadModule("insights_view.lua", L10N, Colors)
+local StatsPopup = loadModule("stats_view.lua", L10N, Colors)
 
 --[[
 Plugin wiring.
@@ -205,6 +209,15 @@ function ReadingInsights:addToMainMenu(menu_items)
                 end,
             },
         },
+    })
+
+    -- Unified color settings for every chart/diagram and label in both
+    -- popups (insights and stats). Any change here applies to both, next
+    -- time each popup is (re)opened.
+    table.insert(sub_item_table, {
+        text = _("Colors"),
+        keep_menu_open = true,
+        sub_item_table = Colors.buildMenu(),
     })
 
     menu_items.reading_insights_popup = {

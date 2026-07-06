@@ -95,10 +95,10 @@ local WidgetContainer = require("ui/widget/container/widgetcontainer")
 local Screen = Device.screen
 local T = require("ffi/util").template
 
--- Shared translations/number-formatting, loaded once by main.lua and passed
--- in as the module argument (see the `return function(L10N) ... end` wrapper
--- at the bottom of this file).
-local L10N = ...
+-- Shared translations/number-formatting, and shared chart/text color
+-- settings, both loaded once by main.lua and passed in as this chunk's
+-- arguments (see main.lua's loadModule() call for this file).
+local L10N, Colors = ...
 
 -- true: cache DB results (streaks/year_range per day, last-week per minute, yearly/monthly per day).
 -- false: always query DB fresh on open.
@@ -722,7 +722,7 @@ end
 
 local function buildSectionHeader(font_section, text, width, left_padding)
     left_padding = left_padding or Size.padding.large
-    local text_widget = TextWidget:new{ text = text, face = font_section }
+    local text_widget = TextWidget:new{ text = text, face = font_section, fgcolor = Colors.section() }
     return FrameContainer:new{
         background    = Blitbuffer.COLOR_WHITE,
         bordersize    = 0,
@@ -743,12 +743,13 @@ local function buildValueLine(font_value, font_label, col_width, value, unit)
         return TextBoxWidget:new{
             text      = unit,
             face      = font_label,
+            fgcolor   = Colors.label(),
             width     = col_width,
             alignment = "left",
         }
     end
 
-    local value_widget = TextWidget:new{ text = value, face = font_value }
+    local value_widget = TextWidget:new{ text = value, face = font_value, fgcolor = Colors.value() }
     local value_width = value_widget:getSize().w
     local text_desc_width = col_width - value_width - Size.padding.large
     return HorizontalGroup:new{
@@ -758,6 +759,7 @@ local function buildValueLine(font_value, font_label, col_width, value, unit)
         TextBoxWidget:new{
             text      = unit,
             face      = font_label,
+            fgcolor   = Colors.label(),
             width     = text_desc_width,
             alignment = "left",
         },
@@ -852,6 +854,7 @@ local function buildYearHeader(font_section, layout, year_range, selected_year)
     local year_label = TextWidget:new{
         text = tostring(selected_year),
         face = font_section,
+        fgcolor = Colors.section(),
     }
 
     local function makeSlot(yr, arrow_glyph, left, visible)
@@ -862,12 +865,12 @@ local function buildYearHeader(font_section, layout, year_range, selected_year)
         local arrow_tw = TextWidget:new{
             text    = arrow_glyph,
             face    = font_section,
-            fgcolor = Blitbuffer.COLOR_BLACK,
+            fgcolor = Colors.section(),
         }
         local yr_tw = TextWidget:new{
             text    = tostring(yr),
             face    = font_section,
-            fgcolor = Blitbuffer.COLOR_BLACK,
+            fgcolor = Colors.section(),
         }
 
         local parts
@@ -1043,7 +1046,7 @@ local function buildMonthlyChart(popup_self, monthly_data, layout, fonts)
             if bar_h == 0 and value > 0 then bar_h = 1 end
 
             local is_current = (popup_self.selected_year == current_year) and (m.month == current_month)
-            local bar_color  = is_current and Blitbuffer.COLOR_BLACK or Blitbuffer.COLOR_GRAY
+            local bar_color  = is_current and Colors.activeBar() or Colors.inactiveBar()
 
             local bar_label_str
             if popup_self.mode == INSIGHTS_MODE_HOURS then
@@ -1054,7 +1057,7 @@ local function buildMonthlyChart(popup_self, monthly_data, layout, fonts)
                 bar_label_str = string.format("%02d:%02d", mo_h, mo_m)
             else
                 bar_label_str = formatNumber(value)
-            end            local value_label   = TextWidget:new{ text = bar_label_str, face = font_small }
+            end            local value_label   = TextWidget:new{ text = bar_label_str, face = font_small, fgcolor = Colors.small() }
             local centered_label = CenterContainer:new{
                 dimen  = Geom:new{ w = bar_width, h = label_height },
                 value_label,
@@ -1097,7 +1100,7 @@ local function buildMonthlyChart(popup_self, monthly_data, layout, fonts)
 
             table.insert(bars_row, tappable_bar)
 
-            local month_label_widget = TextWidget:new{ text = m.label, face = font_small }
+            local month_label_widget = TextWidget:new{ text = m.label, face = font_small, fgcolor = Colors.small() }
             table.insert(month_labels_row, CenterContainer:new{
                 dimen = Geom:new{ w = bar_width, h = month_label_widget:getSize().h },
                 month_label_widget,
@@ -1157,7 +1160,7 @@ end
 
 function LineChartWidget:paintTo(bb, x, y)
     if not self.points or #self.points == 0 then return end
-    local color = self.line_color or Blitbuffer.COLOR_BLACK
+    local color = self.line_color or Colors.trendLine()
 
     if #self.points > 1 then
         for i = 1, #self.points - 1 do
@@ -1288,7 +1291,7 @@ local function buildLine8WeekChart(weeks, metric, chart_width, fonts)
         local dot_y_from_bottom = math.floor(ratio * (bar_height - dot_size))
         local val_str = formatWeekValue(metric, weeks[i])
 
-        local value_label    = TextWidget:new{ text = val_str, face = font_small }
+        local value_label    = TextWidget:new{ text = val_str, face = font_small, fgcolor = Colors.small() }
         local centered_label = CenterContainer:new{
             dimen = Geom:new{ w = col_width, h = label_height },
             value_label,
@@ -1304,7 +1307,7 @@ local function buildLine8WeekChart(weeks, metric, chart_width, fonts)
             dimen = Geom:new{ w = col_width, h = dot_size },
             LineWidget:new{
                 dimen      = Geom:new{ w = dot_size, h = dot_size },
-                background = Blitbuffer.COLOR_BLACK,
+                background = Colors.activeBar(),
             },
         })
         if dot_y_from_bottom > 0 then
@@ -1312,7 +1315,7 @@ local function buildLine8WeekChart(weeks, metric, chart_width, fonts)
         end
         table.insert(col_group, LineWidget:new{
             dimen      = Geom:new{ w = col_width, h = baseline_h },
-            background = Blitbuffer.COLOR_GRAY,
+            background = Colors.inactiveBar(),
         })
 
         table.insert(bars_row, BottomContainer:new{
@@ -1330,7 +1333,7 @@ local function buildLine8WeekChart(weeks, metric, chart_width, fonts)
         width      = num_points * col_width,
         height     = total_col_h,
         points     = points,
-        line_color = Blitbuffer.COLOR_BLACK,
+        line_color = Colors.trendLine(),
     }
 
     local chart_area = OverlapGroup:new{
@@ -1344,7 +1347,7 @@ local function buildLine8WeekChart(weeks, metric, chart_width, fonts)
     local date_labels_row = HorizontalGroup:new{ align = "top" }
     for col = 1, num_points do
         local i = ascending and col or (num_points - col + 1)
-        local start_lbl = TextWidget:new{ text = formatShortDate(weeks[i].start_date), face = font_small }
+        local start_lbl = TextWidget:new{ text = formatShortDate(weeks[i].start_date), face = font_small, fgcolor = Colors.small() }
         local col_dates  = CenterContainer:new{
             dimen = Geom:new{ w = col_width, h = start_lbl:getSize().h },
             start_lbl,
@@ -1443,14 +1446,14 @@ local function buildWeeklyChart(popup_self, daily_data, layout, fonts)
         local bar_h = math.floor(ratio * bar_height + 0.5)
         if bar_h == 0 and value > 0 then bar_h = 1 end
 
-        local bar_color = (WEEKLY_CHART_HIGHLIGHT_TODAY and i == 1) and Blitbuffer.COLOR_BLACK or Blitbuffer.COLOR_GRAY
+        local bar_color = (WEEKLY_CHART_HIGHLIGHT_TODAY and i == 1) and Colors.activeBar() or Colors.inactiveBar()
 
         local secs = tonumber(d.seconds) or 0
         local total_mins = math.floor(secs / 60 + 0.5)
         local h = math.floor(total_mins / 60)
         local m = total_mins % 60
         local val_str = string.format("%02d:%02d", h, m)
-        local value_label   = TextWidget:new{ text = val_str, face = font_small }
+        local value_label   = TextWidget:new{ text = val_str, face = font_small, fgcolor = Colors.small() }
         local centered_label = CenterContainer:new{
             dimen  = Geom:new{ w = bar_width, h = label_height },
             value_label,
@@ -1491,7 +1494,7 @@ local function buildWeeklyChart(popup_self, daily_data, layout, fonts)
             table.insert(bars_row, bar_container)
         end
 
-        local day_label_widget = TextWidget:new{ text = d.label, face = font_small }
+        local day_label_widget = TextWidget:new{ text = d.label, face = font_small, fgcolor = Colors.small() }
         table.insert(day_labels_row, CenterContainer:new{
             dimen = Geom:new{ w = bar_width, h = day_label_widget:getSize().h },
             day_label_widget,
@@ -1616,9 +1619,9 @@ local function showStreakDatePopup(dates, is_weekly, is_current)
     local title_w
     if is_current ~= nil then
         local label = is_current and _("Current streak") or _("Best streak")
-        title_w = TextWidget:new{ text = label, face = fonts.section }
+        title_w = TextWidget:new{ text = label, face = fonts.section, fgcolor = Colors.section() }
     end
-    local date_w = TextWidget:new{ text = start_str .. " – " .. end_str, face = fonts.label }
+    local date_w = TextWidget:new{ text = start_str .. " – " .. end_str, face = fonts.label, fgcolor = Colors.label() }
 
     -- Measure each value/label row at its own natural (unwrapped) width.
     local function naturalRowWidth(value, unit)
@@ -2669,12 +2672,12 @@ function ReadingInsightsPopup:showWeeklyTrendPopup(metric)
     local box_width   = math.floor(Screen:getWidth() * 0.86)
     local chart_width = box_width - 2 * inner_padding
 
-    local title_w = TextWidget:new{ text = trendTitle(metric), face = fonts.section }
+    local title_w = TextWidget:new{ text = trendTitle(metric), face = fonts.section, fgcolor = Colors.section() }
     local title_centered = CenterContainer:new{
         dimen = Geom:new{ w = chart_width, h = title_w:getSize().h }, title_w,
     }
 
-    local value_w = TextWidget:new{ text = totalForMetric(metric, weeks), face = fonts.value }
+    local value_w = TextWidget:new{ text = totalForMetric(metric, weeks), face = fonts.value, fgcolor = Colors.value() }
     local value_centered = CenterContainer:new{
         dimen = Geom:new{ w = chart_width, h = value_w:getSize().h }, value_w,
     }
@@ -3231,6 +3234,7 @@ function ReadingInsightsPopup:_buildUI()
                     TextWidget:new{
                         text = _("Loading data…"),
                         face = fonts.label,
+                        fgcolor = Colors.label(),
                     },
                 },
             },

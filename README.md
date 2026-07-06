@@ -9,6 +9,8 @@ More screenshots
 This plugin bundles two reading-stats popups, powered by KOReader's
 statistics database.
 
+### Reading insights (full-screen history)
+
 A full-screen scrollable overlay with a comprehensive overview of your reading history.
 
 **Highlights:**
@@ -25,12 +27,6 @@ A full-screen scrollable overlay with a comprehensive overview of your reading h
 
 Available everywhere (book view and file manager).
 
-**Controls:** tap to toggle between percentage/page view, long-press to force-reload data.
-
-**Caching:** shares the same stale-while-revalidate approach as Reading insights — instant open with cached data, refreshed in the background.
-
----
-
 ### 📖 Book progress stats
 
 <img width="384" height="512" alt="Reader_Az Elso Torveny vilaga 1  - Hidegen talalva - Abercrombie, Joe #p(878) epub_p1117_2026-07-06_084654" src="https://github.com/user-attachments/assets/555ab8c6-d9ce-4ebc-a6ac-cfdf097ec51d" />
@@ -44,7 +40,9 @@ A per-book overlay showing detailed progress and pace for the book you're curren
 - **Session stats** — time spent reading this book today and across recent sessions
 - **Chapter breakdown** — progress and time spent per chapter (if chapter metadata is available)
 
----
+**Controls:** tap to toggle between percentage/page view, long-press to force-reload data.
+
+**Caching:** shares the same stale-while-revalidate approach as Reading insights — instant open with cached data, refreshed in the background.
 
 ## Install
 

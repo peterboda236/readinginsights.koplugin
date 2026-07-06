@@ -47,9 +47,10 @@ local VerticalGroup = require("ui/widget/verticalgroup")
 local VerticalSpan = require("ui/widget/verticalspan")
 local Screen = Device.screen
 
--- Shared translations/number-formatting, passed in as the module argument
--- by main.lua (see the header comment above).
-local L10N = ...
+-- Shared translations/number-formatting, and shared chart/text color
+-- settings, both passed in as this chunk's arguments by main.lua (see the
+-- header comment above).
+local L10N, Colors = ...
 local _            = L10N._
 local N_           = L10N.N_
 local getLangBase  = L10N.getLangBase
@@ -453,7 +454,7 @@ end
 -- No radius, left-aligned text with padding_left; width comes from parent.
 local function buildSectionHeader(font_section, text, width, left_padding)
     left_padding = left_padding or Size.padding.large
-    local text_widget = TextWidget:new{ text = text, face = font_section }
+    local text_widget = TextWidget:new{ text = text, face = font_section, fgcolor = Colors.section() }
     return FrameContainer:new{
         background     = Blitbuffer.COLOR_WHITE,
         bordersize     = 0,
@@ -473,6 +474,7 @@ local function buildValueLine(font_value, font_label, col_width, time_data, labe
         return TextBoxWidget:new{
             text      = time_data.unit,
             face      = font_label,
+            fgcolor   = Colors.label(),
             width     = col_width,
             alignment = "left",
         }
@@ -486,7 +488,7 @@ local function buildValueLine(font_value, font_label, col_width, time_data, labe
             desc = label
         end
     end
-    local value_widget    = TextWidget:new{ text = time_data.value, face = font_value }
+    local value_widget    = TextWidget:new{ text = time_data.value, face = font_value, fgcolor = Colors.value() }
     local value_width     = value_widget:getSize().w
     local text_desc_width = col_width - value_width - Size.padding.large
     if text_desc_width <= 0 then
@@ -496,6 +498,7 @@ local function buildValueLine(font_value, font_label, col_width, time_data, labe
             TextBoxWidget:new{
                 text      = desc,
                 face      = font_label,
+                fgcolor   = Colors.label(),
                 width     = col_width,
                 alignment = "left",
             },
@@ -508,6 +511,7 @@ local function buildValueLine(font_value, font_label, col_width, time_data, labe
         TextBoxWidget:new{
             text      = desc,
             face      = font_label,
+            fgcolor   = Colors.label(),
             width     = text_desc_width,
             alignment = "left",
         },
@@ -641,11 +645,11 @@ local function buildChapterBar(chapter_info, full_width, padding_h, offset_overr
                     VerticalSpan:new{ height = col_h_max - bh },
                     unread_h > 0 and LineWidget:new{
                         dimen      = Geom:new{ w = bar_w, h = unread_h },
-                        background = Blitbuffer.COLOR_GRAY_D,
+                        background = Colors.inactiveBar(),
                     } or VerticalSpan:new{ height = 0 },
                     read_h > 0 and LineWidget:new{
                         dimen      = Geom:new{ w = bar_w, h = read_h },
-                        background = Blitbuffer.COLOR_BLACK,
+                        background = Colors.activeBar(),
                     } or VerticalSpan:new{ height = 0 },
                 })
             else
@@ -654,7 +658,7 @@ local function buildChapterBar(chapter_info, full_width, padding_h, offset_overr
                     VerticalSpan:new{ height = col_h_max - bh },
                     LineWidget:new{
                         dimen      = Geom:new{ w = bar_w, h = bh },
-                        background = ch_idx < current and Blitbuffer.COLOR_BLACK or Blitbuffer.COLOR_GRAY_D,
+                        background = ch_idx < current and Colors.activeBar() or Colors.inactiveBar(),
                     },
                 })
             end
