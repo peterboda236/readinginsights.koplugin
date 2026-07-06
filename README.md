@@ -27,15 +27,22 @@ A full-screen scrollable overlay with a comprehensive overview of your reading h
 
 Available everywhere (book view and file manager).
 
-### Reading statistics: overview (per-book live stats, book view only)
+### 📖 Book progress stats
 
-A compact overlay for the book you're currently reading: estimated time left
-for the current and next chapter, overall book progress/time left/time
-spent, a tappable/swipeable chapter bar, and today's pace (reading time and
-pages-per-minute). Since it needs an open document, it's only offered in
-the Tools menu while reading, and its gesture/shortcut action only shows up
-for assignment under *Settings → Taps and gestures → Reader* (not in the
-file manager's gesture list).
+<img width="384" height="512" alt="Reader_Az Elso Torveny vilaga 1  - Hidegen talalva - Abercrombie, Joe #p(878) epub_p1117_2026-07-06_084654" src="https://github.com/user-attachments/assets/555ab8c6-d9ce-4ebc-a6ac-cfdf097ec51d" />
+
+A per-book overlay showing detailed progress and pace for the book you're currently reading, built on top of the same statistics database as Reading insights.
+
+**Highlights:**
+- **Progress** — pages/percentage read in the current book, plus pages remaining
+- **Pace** — your average reading speed for this book (pages/hour or minutes/page)
+- **Estimated finish** — projected time or date to finish, based on recent pace
+- **Session stats** — time spent reading this book today and across recent sessions
+- **Chapter breakdown** — progress and time spent per chapter (if chapter metadata is available)
+
+**Controls:** tap to toggle between percentage/page view, long-press to force-reload data.
+
+**Caching:** shares the same stale-while-revalidate approach as Reading insights — instant open with cached data, refreshed in the background.
 
 ## Install
 
