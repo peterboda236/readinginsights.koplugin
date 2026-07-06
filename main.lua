@@ -144,7 +144,8 @@ end
 
 -- Adds "Reading insights" under Tools as a submenu.
 -- Sub-entries: open the insights popup, open the stats popup (book view
--- only), plus two persistent settings for the insights popup.
+-- only), a separator, then a "Settings" submenu holding the two
+-- persistent settings for the insights popup plus the Colors submenu.
 function ReadingInsights:addToMainMenu(menu_items)
     local sub_item_table = {
         {
@@ -156,7 +157,8 @@ function ReadingInsights:addToMainMenu(menu_items)
         },
     }
 
-    if self:_hasOpenDocument() then
+    local has_open_document = self:_hasOpenDocument()
+    if has_open_document then
         table.insert(sub_item_table, {
             text = _("Show Book progress"),
             keep_menu_open = false,
@@ -166,7 +168,13 @@ function ReadingInsights:addToMainMenu(menu_items)
         })
     end
 
-    table.insert(sub_item_table, {
+    -- Separator after the two "open a popup" entries, before the
+    -- settings submenu below.
+    sub_item_table[#sub_item_table].separator = true
+
+    local settings_sub_item_table = {}
+
+    table.insert(settings_sub_item_table, {
         text = _("Full-screen refresh on open/close"),
         keep_menu_open = true,
         checked_func = function()
@@ -177,7 +185,7 @@ function ReadingInsights:addToMainMenu(menu_items)
         end,
     })
 
-    table.insert(sub_item_table, {
+    table.insert(settings_sub_item_table, {
         text_func = function()
             local order = Insights.readAscendingSetting()
                 and _("Oldest first")
@@ -214,10 +222,16 @@ function ReadingInsights:addToMainMenu(menu_items)
     -- Unified color settings for every chart/diagram and label in both
     -- popups (insights and stats). Any change here applies to both, next
     -- time each popup is (re)opened.
-    table.insert(sub_item_table, {
+    table.insert(settings_sub_item_table, {
         text = _("Colors"),
         keep_menu_open = true,
         sub_item_table = Colors.buildMenu(),
+    })
+
+    table.insert(sub_item_table, {
+        text = _("Settings"),
+        keep_menu_open = true,
+        sub_item_table = settings_sub_item_table,
     })
 
     menu_items.reading_insights_popup = {
