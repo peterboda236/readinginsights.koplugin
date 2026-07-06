@@ -407,3 +407,51 @@ msgstr "day since started"
 
 msgid "days since started"
 msgstr "days since started"
+
+msgid "Colors"
+msgstr "Colors"
+
+msgid "Active column color"
+msgstr "Active column color"
+
+msgid "Inactive column color"
+msgstr "Inactive column color"
+
+msgid "Trend chart line color"
+msgstr "Trend chart line color"
+
+msgid "Label color"
+msgstr "Label color"
+
+msgid "Value color"
+msgstr "Value color"
+
+msgid "Section color"
+msgstr "Section color"
+
+msgid "Chart label color"
+msgstr "Chart label color"
+
+msgid "Reset all colors to default"
+msgstr "Reset all colors to default"
+
+msgid "Cancel"
+msgstr "Cancel"
+
+msgid "Default"
+msgstr "Default"
+
+msgid "Save"
+msgstr "Save"
+
+msgid "Enter a hex color code (e.g. #1E90FF), the way KOReader expects it."
+msgstr "Enter a hex color code (e.g. #1E90FF), the way KOReader expects it."
+
+msgid "Not a valid hex color code, e.g. #1E90FF."
+msgstr "Not a valid hex color code, e.g. #1E90FF."
+
+msgid "Reset all colors to their default values?"
+msgstr "Reset all colors to their default values?"
+
+msgid "Reset"
+msgstr "Reset"
