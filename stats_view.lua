@@ -47,9 +47,10 @@ local VerticalGroup = require("ui/widget/verticalgroup")
 local VerticalSpan = require("ui/widget/verticalspan")
 local Screen = Device.screen
 
--- Shared translations/number-formatting, passed in as the module argument
--- by main.lua (see the header comment above).
-local L10N = ...
+-- Shared translations/number-formatting, and shared chart/text color
+-- settings, both passed in as this chunk's arguments by main.lua (see the
+-- header comment above).
+local L10N, Colors = ...
 local _            = L10N._
 local N_           = L10N.N_
 local getLangBase  = L10N.getLangBase
@@ -440,10 +441,7 @@ local function buildColumnSeparator(column_gap, height)
         VerticalGroup:new{
             align = "center",
             VerticalSpan:new{ height = v_padding },
-            LineWidget:new{
-                dimen      = Geom:new{ w = Size.line.medium, h = height - 2 * v_padding },
-                background = Blitbuffer.COLOR_GRAY,
-            },
+            Colors.newBar(Size.line.medium, height - 2 * v_padding, Colors.separator()),
             VerticalSpan:new{ height = v_padding },
         },
         HorizontalSpan:new{ width = column_gap },
@@ -453,7 +451,7 @@ end
 -- No radius, left-aligned text with padding_left; width comes from parent.
 local function buildSectionHeader(font_section, text, width, left_padding)
     left_padding = left_padding or Size.padding.large
-    local text_widget = TextWidget:new{ text = text, face = font_section }
+    local text_widget = TextWidget:new{ text = text, face = font_section, fgcolor = Colors.section() }
     return FrameContainer:new{
         background     = Blitbuffer.COLOR_WHITE,
         bordersize     = 0,
@@ -473,6 +471,7 @@ local function buildValueLine(font_value, font_label, col_width, time_data, labe
         return TextBoxWidget:new{
             text      = time_data.unit,
             face      = font_label,
+            fgcolor   = Colors.label(),
             width     = col_width,
             alignment = "left",
         }
@@ -486,7 +485,7 @@ local function buildValueLine(font_value, font_label, col_width, time_data, labe
             desc = label
         end
     end
-    local value_widget    = TextWidget:new{ text = time_data.value, face = font_value }
+    local value_widget    = TextWidget:new{ text = time_data.value, face = font_value, fgcolor = Colors.value() }
     local value_width     = value_widget:getSize().w
     local text_desc_width = col_width - value_width - Size.padding.large
     if text_desc_width <= 0 then
@@ -496,6 +495,7 @@ local function buildValueLine(font_value, font_label, col_width, time_data, labe
             TextBoxWidget:new{
                 text      = desc,
                 face      = font_label,
+                fgcolor   = Colors.label(),
                 width     = col_width,
                 alignment = "left",
             },
@@ -508,6 +508,7 @@ local function buildValueLine(font_value, font_label, col_width, time_data, labe
         TextBoxWidget:new{
             text      = desc,
             face      = font_label,
+            fgcolor   = Colors.label(),
             width     = text_desc_width,
             alignment = "left",
         },
@@ -563,10 +564,8 @@ end
 local function addSectionWithRow(sections, header_widget, row, layout)
     table.insert(sections, header_widget)
     table.insert(sections, VerticalSpan:new{ height = Size.padding.default })
-    table.insert(sections, padded(layout.padding_h, LineWidget:new{
-        dimen      = Geom:new{ w = layout.full_width - 2 * layout.padding_h, h = Size.line.thin },
-        background = Blitbuffer.COLOR_GRAY,
-    }))
+    table.insert(sections, padded(layout.padding_h,
+        Colors.newBar(layout.full_width - 2 * layout.padding_h, Size.line.thin, Colors.separator())))
     table.insert(sections, padded(layout.padding_h, row))
     table.insert(sections, VerticalSpan:new{ height = Size.padding.large })
 end
@@ -639,23 +638,16 @@ local function buildChapterBar(chapter_info, full_width, padding_h, offset_overr
                 table.insert(bar_row, VerticalGroup:new{
                     align = "left",
                     VerticalSpan:new{ height = col_h_max - bh },
-                    unread_h > 0 and LineWidget:new{
-                        dimen      = Geom:new{ w = bar_w, h = unread_h },
-                        background = Blitbuffer.COLOR_GRAY_D,
-                    } or VerticalSpan:new{ height = 0 },
-                    read_h > 0 and LineWidget:new{
-                        dimen      = Geom:new{ w = bar_w, h = read_h },
-                        background = Blitbuffer.COLOR_BLACK,
-                    } or VerticalSpan:new{ height = 0 },
+                    unread_h > 0 and Colors.newBar(bar_w, unread_h, Colors.inactiveBar())
+                        or VerticalSpan:new{ height = 0 },
+                    read_h > 0 and Colors.newBar(bar_w, read_h, Colors.activeBar())
+                        or VerticalSpan:new{ height = 0 },
                 })
             else
                 table.insert(bar_row, VerticalGroup:new{
                     align = "left",
                     VerticalSpan:new{ height = col_h_max - bh },
-                    LineWidget:new{
-                        dimen      = Geom:new{ w = bar_w, h = bh },
-                        background = ch_idx < current and Blitbuffer.COLOR_BLACK or Blitbuffer.COLOR_GRAY_D,
-                    },
+                    Colors.newBar(bar_w, bh, ch_idx < current and Colors.activeBar() or Colors.inactiveBar()),
                 })
             end
         else
@@ -774,10 +766,8 @@ local function buildSections(stats, fonts, layout, popup)
             popup:_rebuildUI()
         end or nil
     )
-    table.insert(sections, padded(layout.padding_h, LineWidget:new{
-        dimen      = Geom:new{ w = layout.full_width - 2 * layout.padding_h, h = Size.line.thick },
-        background = Blitbuffer.COLOR_GRAY,
-    }))
+    table.insert(sections, padded(layout.padding_h,
+        Colors.newBar(layout.full_width - 2 * layout.padding_h, Size.line.thick, Colors.separator())))
     local this_book_header = buildSectionHeader(fonts.section, _("This book"), layout.full_width)
     if popup then
         popup._this_book_header = this_book_header
@@ -797,22 +787,16 @@ local function buildSections(stats, fonts, layout, popup)
 
     if chapter_bar then
         if popup then popup._chapter_bar = chapter_bar end
-            table.insert(sections, padded(layout.padding_h, LineWidget:new{
-                dimen      = Geom:new{ w = layout.full_width - 2 * layout.padding_h, h = Size.line.thin },
-                background = Blitbuffer.COLOR_GRAY,
-            }))
+            table.insert(sections, padded(layout.padding_h,
+                Colors.newBar(layout.full_width - 2 * layout.padding_h, Size.line.thin, Colors.separator())))
         table.insert(sections, chapter_bar)
     end
-    table.insert(sections, padded(layout.padding_h, LineWidget:new{
-        dimen      = Geom:new{ w = layout.full_width - 2 * layout.padding_h, h = Size.line.thick },
-        background = Blitbuffer.COLOR_GRAY,
-    }))
+    table.insert(sections, padded(layout.padding_h,
+        Colors.newBar(layout.full_width - 2 * layout.padding_h, Size.line.thick, Colors.separator())))
     table.insert(sections, buildSectionHeader(fonts.section, _("Pace"), layout.full_width))
     table.insert(sections, VerticalSpan:new{ height = Size.padding.default })
-    table.insert(sections, padded(layout.padding_h, LineWidget:new{
-        dimen      = Geom:new{ w = layout.full_width - 2 * layout.padding_h, h = Size.line.thin },
-        background = Blitbuffer.COLOR_GRAY,
-    }))
+    table.insert(sections, padded(layout.padding_h,
+        Colors.newBar(layout.full_width - 2 * layout.padding_h, Size.line.thin, Colors.separator())))
     table.insert(sections, padded(layout.padding_h, pace_row))
 
     -- Last row: "started N days ago" | "N days of reading left".
