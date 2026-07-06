@@ -145,6 +145,47 @@ local function saveAscendingSetting(value)
     saveBoolSetting(SETTINGS_KEY_8W_ASCENDING, value)
 end
 
+-- Bar-chart height settings (Settings ▸ "Oszlopdiagram magassága" / "Bar
+-- chart height"). Values are the same "points" number previously hardcoded
+-- into Screen:scaleBySize(...) at each chart's call site, so restoring the
+-- default here reproduces the exact original look.
+local SETTINGS_KEY_WEEKLY_BAR_HEIGHT  = "reading_insights_weekly_bar_height"
+local SETTINGS_KEY_MONTHLY_BAR_HEIGHT = "reading_insights_monthly_bar_height"
+
+local DEFAULT_WEEKLY_BAR_HEIGHT  = 44
+local DEFAULT_MONTHLY_BAR_HEIGHT = 44
+
+local function readNumSetting(key, default)
+    if G_reader_settings and G_reader_settings.readSetting then
+        local v = G_reader_settings:readSetting(key)
+        if v == nil then return default end
+        return v
+    end
+    return default
+end
+
+local function saveNumSetting(key, value)
+    if G_reader_settings and G_reader_settings.saveSetting then
+        G_reader_settings:saveSetting(key, value)
+    end
+end
+
+local function readWeeklyBarHeightSetting()
+    return readNumSetting(SETTINGS_KEY_WEEKLY_BAR_HEIGHT, DEFAULT_WEEKLY_BAR_HEIGHT)
+end
+
+local function saveWeeklyBarHeightSetting(value)
+    saveNumSetting(SETTINGS_KEY_WEEKLY_BAR_HEIGHT, value)
+end
+
+local function readMonthlyBarHeightSetting()
+    return readNumSetting(SETTINGS_KEY_MONTHLY_BAR_HEIGHT, DEFAULT_MONTHLY_BAR_HEIGHT)
+end
+
+local function saveMonthlyBarHeightSetting(value)
+    saveNumSetting(SETTINGS_KEY_MONTHLY_BAR_HEIGHT, value)
+end
+
 local _cache = {
     streaks                = nil,
     streaks_date           = nil,
@@ -1014,7 +1055,7 @@ local function buildMonthlyChart(popup_self, monthly_data, layout, fonts)
     end
 
     local chart_width  = layout.content_width
-    local bar_height   = tonumber(Screen:scaleBySize(48))
+    local bar_height   = tonumber(Screen:scaleBySize(readMonthlyBarHeightSetting()))
     local bar_width    = math.floor(chart_width / 6) - tonumber(Screen:scaleBySize(8))
     local bar_gap      = math.floor((chart_width - bar_width * 6) / 5)
     local font_small   = fonts.small
@@ -1402,7 +1443,7 @@ local function buildWeeklyChart(popup_self, daily_data, layout, fonts)
 
     local chart_width  = layout.content_width
 
-    local bar_height   = tonumber(Screen:scaleBySize(48))
+    local bar_height   = tonumber(Screen:scaleBySize(readWeeklyBarHeightSetting()))
     local num_bars     = 7
     local bar_width    = math.floor(chart_width / num_bars) - tonumber(Screen:scaleBySize(6))
     local bar_gap      = math.floor((chart_width - bar_width * num_bars) / (num_bars - 1))
@@ -3627,9 +3668,15 @@ end
 -- helpers are exposed too because main.lua's Tools-menu entries (full-screen
 -- refresh toggle, 8-week chart order) read/write the same settings keys.
 return {
-    Popup                   = ReadingInsightsPopup,
-    readFullRefreshSetting  = readFullRefreshSetting,
-    readAscendingSetting    = readAscendingSetting,
-    saveFullRefreshSetting  = saveFullRefreshSetting,
-    saveAscendingSetting    = saveAscendingSetting,
+    Popup                       = ReadingInsightsPopup,
+    readFullRefreshSetting      = readFullRefreshSetting,
+    readAscendingSetting        = readAscendingSetting,
+    saveFullRefreshSetting      = saveFullRefreshSetting,
+    saveAscendingSetting        = saveAscendingSetting,
+    readWeeklyBarHeightSetting  = readWeeklyBarHeightSetting,
+    saveWeeklyBarHeightSetting  = saveWeeklyBarHeightSetting,
+    readMonthlyBarHeightSetting = readMonthlyBarHeightSetting,
+    saveMonthlyBarHeightSetting = saveMonthlyBarHeightSetting,
+    DEFAULT_WEEKLY_BAR_HEIGHT   = DEFAULT_WEEKLY_BAR_HEIGHT,
+    DEFAULT_MONTHLY_BAR_HEIGHT  = DEFAULT_MONTHLY_BAR_HEIGHT,
 }

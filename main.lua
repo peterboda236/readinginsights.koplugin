@@ -219,6 +219,67 @@ function ReadingInsights:addToMainMenu(menu_items)
         },
     })
 
+    -- Bar-chart height settings: one entry per chart, each opening a
+    -- SpinWidget (KOReader's standard numeric-value picker) with the
+    -- current value pre-filled and a "default" value to reset to. The
+    -- default matches the value that was hardcoded before this setting
+    -- existed, so "reset to default" reproduces the original look exactly.
+    local function buildBarHeightMenuEntry(text, read_fn, save_fn, default_value, value_min, value_max)
+        return {
+            text_func = function()
+                return text .. ": " .. tostring(read_fn())
+            end,
+            keep_menu_open = true,
+            callback = function(touchmenu_instance)
+                local SpinWidget = require("ui/widget/spinwidget")
+                UIManager:show(SpinWidget:new{
+                    title_text    = text,
+                    value         = read_fn(),
+                    value_min     = value_min,
+                    value_max     = value_max,
+                    value_step    = 1,
+                    value_hold_step = 5,
+                    default_value = default_value,
+                    ok_text       = _("Set"),
+                    callback      = function(spin)
+                        save_fn(spin.value)
+                        if touchmenu_instance then
+                            touchmenu_instance:updateItems()
+                        end
+                    end,
+                })
+            end,
+        }
+    end
+
+    table.insert(settings_sub_item_table, {
+        text = _("Bar chart height"),
+        keep_menu_open = true,
+        sub_item_table = {
+            buildBarHeightMenuEntry(
+                _("Reading insights") .. ": " .. _("Last week"),
+                Insights.readWeeklyBarHeightSetting,
+                Insights.saveWeeklyBarHeightSetting,
+                Insights.DEFAULT_WEEKLY_BAR_HEIGHT,
+                10, 200
+            ),
+            buildBarHeightMenuEntry(
+                _("Reading insights") .. ": " .. _("Months"),
+                Insights.readMonthlyBarHeightSetting,
+                Insights.saveMonthlyBarHeightSetting,
+                Insights.DEFAULT_MONTHLY_BAR_HEIGHT,
+                10, 200
+            ),
+            buildBarHeightMenuEntry(
+                _("Book progress") .. ": " .. _("Chapters"),
+                StatsPopup.readChapterBarHeightSetting,
+                StatsPopup.saveChapterBarHeightSetting,
+                StatsPopup.DEFAULT_CHAPTER_BAR_HEIGHT,
+                10, 200
+            ),
+        },
+    })
+
     -- Unified color settings for every chart/diagram and label in both
     -- popups (insights and stats). Any change here applies to both, next
     -- time each popup is (re)opened.

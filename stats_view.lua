@@ -57,6 +57,28 @@ local getLangBase  = L10N.getLangBase
 local formatNumber = L10N.formatNumber
 local formatCount  = L10N.formatCount
 
+-- Chapter-bar height setting (Settings ▸ "Oszlopdiagram magassága" /
+-- "Bar chart height" ▸ "Book progress: Fejezetek"). Same "points" value
+-- previously hardcoded into Screen:scaleBySize(46) below; restoring the
+-- default reproduces the exact original look.
+local SETTINGS_KEY_CHAPTER_BAR_HEIGHT = "reading_insights_chapter_bar_height"
+local DEFAULT_CHAPTER_BAR_HEIGHT      = 46
+
+local function readChapterBarHeightSetting()
+    if G_reader_settings and G_reader_settings.readSetting then
+        local v = G_reader_settings:readSetting(SETTINGS_KEY_CHAPTER_BAR_HEIGHT)
+        if v == nil then return DEFAULT_CHAPTER_BAR_HEIGHT end
+        return v
+    end
+    return DEFAULT_CHAPTER_BAR_HEIGHT
+end
+
+local function saveChapterBarHeightSetting(value)
+    if G_reader_settings and G_reader_settings.saveSetting then
+        G_reader_settings:saveSetting(SETTINGS_KEY_CHAPTER_BAR_HEIGHT, value)
+    end
+end
+
 local stats_db_path = DataStorage:getSettingsDir() .. "/statistics.sqlite3"
 
 local function emptyValue()
@@ -585,7 +607,7 @@ local function buildChapterBar(chapter_info, full_width, padding_h, offset_overr
     local page_counts            = chapter_info.page_counts
     local chapter_progress_ratio = chapter_info.chapter_progress_ratio or 0.0
 
-    local col_h_max = Screen:scaleBySize(46)
+    local col_h_max = Screen:scaleBySize(readChapterBarHeightSetting())
 
     local max_pages = 0
     if page_counts then
@@ -1181,4 +1203,12 @@ end
 -- ReaderUI.registerKeyEvents: as a proper plugin event handler,
 -- main.lua's onShowReadingStatsPopup() is enough to reach this popup
 -- from both the menu and the gesture/dispatcher system.
+--
+-- The chapter-bar height setting helpers are attached as static fields so
+-- main.lua can reach them as StatsPopup.readChapterBarHeightSetting() etc,
+-- the same way Insights.readFullRefreshSetting() works for the other view.
+ReadingStatsPopup.readChapterBarHeightSetting = readChapterBarHeightSetting
+ReadingStatsPopup.saveChapterBarHeightSetting = saveChapterBarHeightSetting
+ReadingStatsPopup.DEFAULT_CHAPTER_BAR_HEIGHT  = DEFAULT_CHAPTER_BAR_HEIGHT
+
 return ReadingStatsPopup
