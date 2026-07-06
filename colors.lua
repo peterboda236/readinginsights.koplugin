@@ -9,6 +9,7 @@ settings driving every chart/diagram and label in the plugin:
                 month, the current chapter's read portion, the trend dot)
   inactive_bar  every other bar/point, and chart baselines
   trend_line    the connecting line in the "last 8 weeks" trend chart
+  separator     the divider lines between sections/columns in both popups
   label         "label" font role   (units/descriptions next to a value)
   value         "value" font role   (the big numbers)
   section       "section" font role (section headers, year header)
@@ -121,7 +122,7 @@ function ColorBar:paintTo(bb, x, y)
 end
 
 -- Order the "Colors" menu is built in.
-local KEY_ORDER = { "active_bar", "inactive_bar", "trend_line", "label", "value", "section", "small" }
+local KEY_ORDER = { "active_bar", "inactive_bar", "trend_line", "separator", "label", "value", "section", "small" }
 
 -- These match what was previously hard-coded directly in the two view
 -- files (Blitbuffer.COLOR_BLACK = "#000000", Blitbuffer.COLOR_GRAY = "#AAAAAA"),
@@ -131,6 +132,7 @@ local DEFAULTS = {
     active_bar   = "#000000",
     inactive_bar = "#AAAAAA",
     trend_line   = "#000000",
+    separator    = "#AAAAAA",
     label        = "#000000",
     value        = "#000000",
     section      = "#000000",
@@ -226,6 +228,7 @@ end
 function M.activeBar()   return M.getColor("active_bar")   end
 function M.inactiveBar() return M.getColor("inactive_bar") end
 function M.trendLine()   return M.getColor("trend_line")   end
+function M.separator()   return M.getColor("separator")    end
 function M.label()       return M.getColor("label")        end
 function M.value()       return M.getColor("value")        end
 function M.section()     return M.getColor("section")      end
@@ -238,6 +241,7 @@ local function labelFor(key)
         active_bar   = _("Active column color"),
         inactive_bar = _("Inactive column color"),
         trend_line   = _("Trend chart line color"),
+        separator    = _("Separator line color"),
         label        = _("Label color"),
         value        = _("Value color"),
         section      = _("Section color"),

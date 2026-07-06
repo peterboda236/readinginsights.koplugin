@@ -441,10 +441,7 @@ local function buildColumnSeparator(column_gap, height)
         VerticalGroup:new{
             align = "center",
             VerticalSpan:new{ height = v_padding },
-            LineWidget:new{
-                dimen      = Geom:new{ w = Size.line.medium, h = height - 2 * v_padding },
-                background = Blitbuffer.COLOR_GRAY,
-            },
+            Colors.newBar(Size.line.medium, height - 2 * v_padding, Colors.separator()),
             VerticalSpan:new{ height = v_padding },
         },
         HorizontalSpan:new{ width = column_gap },
@@ -567,10 +564,8 @@ end
 local function addSectionWithRow(sections, header_widget, row, layout)
     table.insert(sections, header_widget)
     table.insert(sections, VerticalSpan:new{ height = Size.padding.default })
-    table.insert(sections, padded(layout.padding_h, LineWidget:new{
-        dimen      = Geom:new{ w = layout.full_width - 2 * layout.padding_h, h = Size.line.thin },
-        background = Blitbuffer.COLOR_GRAY,
-    }))
+    table.insert(sections, padded(layout.padding_h,
+        Colors.newBar(layout.full_width - 2 * layout.padding_h, Size.line.thin, Colors.separator())))
     table.insert(sections, padded(layout.padding_h, row))
     table.insert(sections, VerticalSpan:new{ height = Size.padding.large })
 end
@@ -771,10 +766,8 @@ local function buildSections(stats, fonts, layout, popup)
             popup:_rebuildUI()
         end or nil
     )
-    table.insert(sections, padded(layout.padding_h, LineWidget:new{
-        dimen      = Geom:new{ w = layout.full_width - 2 * layout.padding_h, h = Size.line.thick },
-        background = Blitbuffer.COLOR_GRAY,
-    }))
+    table.insert(sections, padded(layout.padding_h,
+        Colors.newBar(layout.full_width - 2 * layout.padding_h, Size.line.thick, Colors.separator())))
     local this_book_header = buildSectionHeader(fonts.section, _("This book"), layout.full_width)
     if popup then
         popup._this_book_header = this_book_header
@@ -794,22 +787,16 @@ local function buildSections(stats, fonts, layout, popup)
 
     if chapter_bar then
         if popup then popup._chapter_bar = chapter_bar end
-            table.insert(sections, padded(layout.padding_h, LineWidget:new{
-                dimen      = Geom:new{ w = layout.full_width - 2 * layout.padding_h, h = Size.line.thin },
-                background = Blitbuffer.COLOR_GRAY,
-            }))
+            table.insert(sections, padded(layout.padding_h,
+                Colors.newBar(layout.full_width - 2 * layout.padding_h, Size.line.thin, Colors.separator())))
         table.insert(sections, chapter_bar)
     end
-    table.insert(sections, padded(layout.padding_h, LineWidget:new{
-        dimen      = Geom:new{ w = layout.full_width - 2 * layout.padding_h, h = Size.line.thick },
-        background = Blitbuffer.COLOR_GRAY,
-    }))
+    table.insert(sections, padded(layout.padding_h,
+        Colors.newBar(layout.full_width - 2 * layout.padding_h, Size.line.thick, Colors.separator())))
     table.insert(sections, buildSectionHeader(fonts.section, _("Pace"), layout.full_width))
     table.insert(sections, VerticalSpan:new{ height = Size.padding.default })
-    table.insert(sections, padded(layout.padding_h, LineWidget:new{
-        dimen      = Geom:new{ w = layout.full_width - 2 * layout.padding_h, h = Size.line.thin },
-        background = Blitbuffer.COLOR_GRAY,
-    }))
+    table.insert(sections, padded(layout.padding_h,
+        Colors.newBar(layout.full_width - 2 * layout.padding_h, Size.line.thin, Colors.separator())))
     table.insert(sections, padded(layout.padding_h, pace_row))
 
     -- Last row: "started N days ago" | "N days of reading left".

@@ -710,10 +710,7 @@ local function buildColumnSeparator(column_gap, height)
         VerticalGroup:new{
             align = "center",
             VerticalSpan:new{ height = v_padding },
-            LineWidget:new{
-                dimen = Geom:new{ w = Size.line.medium, h = height - 2 * v_padding },
-                background = Blitbuffer.COLOR_GRAY,
-            },
+            Colors.newBar(Size.line.medium, height - 2 * v_padding, Colors.separator()),
             VerticalSpan:new{ height = v_padding },
         },
         HorizontalSpan:new{ width = column_gap },
@@ -819,18 +816,14 @@ local function addSectionWithRow(sections, header_widget, row, layout, opts)
     table.insert(sections, header_widget)
     table.insert(sections, VerticalSpan:new{ height = Size.padding.default })
     if add_divider and not no_top_line then
-        table.insert(sections, padded(layout.padding_h, LineWidget:new{
-            dimen      = Geom:new{ w = layout.content_width, h = Size.line.thin },
-            background = Blitbuffer.COLOR_GRAY,
-        }))
+        table.insert(sections, padded(layout.padding_h,
+            Colors.newBar(layout.content_width, Size.line.thin, Colors.separator())))
     end
     table.insert(sections, pad_row and padded(layout.padding_h, row) or row)
     table.insert(sections, VerticalSpan:new{ height = Size.padding.large })
     if add_divider and not no_bottom_line then
-        table.insert(sections, padded(layout.padding_h, LineWidget:new{
-            dimen      = Geom:new{ w = layout.content_width, h = Size.line.thick },
-            background = Blitbuffer.COLOR_GRAY,
-        }))
+        table.insert(sections, padded(layout.padding_h,
+            Colors.newBar(layout.content_width, Size.line.thick, Colors.separator())))
     end
 end
 
@@ -1643,10 +1636,7 @@ local function showStreakDatePopup(dates, is_weekly, is_current)
         dimen = Geom:new{ w = content_width, h = date_w:getSize().h }, date_w,
     })
     table.insert(content, VerticalSpan:new{ height = Size.padding.default })
-    table.insert(content, LineWidget:new{
-        dimen      = Geom:new{ w = content_width, h = Size.line.thin },
-        background = Blitbuffer.COLOR_GRAY,
-    })
+    table.insert(content, Colors.newBar(content_width, Size.line.thin, Colors.separator()))
     table.insert(content, VerticalSpan:new{ height = Size.padding.large })
 
     local value_lines = VerticalGroup:new{ align = "left" }
@@ -3260,10 +3250,7 @@ function ReadingInsightsPopup:_buildUI()
     local content = VerticalGroup:new{
         align = "left",
         title_bar,
-        padded(layout.padding_h, LineWidget:new{
-            dimen      = Geom:new{ w = layout.content_width, h = Size.line.thick },
-            background = Blitbuffer.COLOR_GRAY,
-        }),
+        padded(layout.padding_h, Colors.newBar(layout.content_width, Size.line.thick, Colors.separator())),
         sections,
         VerticalSpan:new{ height = title_bar:getSize().h },
     }
