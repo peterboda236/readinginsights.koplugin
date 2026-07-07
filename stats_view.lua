@@ -1194,8 +1194,9 @@ function ReadingStatsPopup:gatherStats()
             local bl_secs = stats.book_time_left_raw
             if bl_secs and bl_secs > 0 and total_time and total_time > 0 then
                 local avg_secs_per_day = total_time / total_days
-                stats.finish_days_left = math.ceil(bl_secs / avg_secs_per_day)
-                stats.finish_timestamp = os.time() + math.floor(bl_secs + 0.5)
+                local days_left_fraction = bl_secs / avg_secs_per_day
+                stats.finish_days_left = math.ceil(days_left_fraction)
+                stats.finish_timestamp = os.time() + math.floor(days_left_fraction * 86400 + 0.5)
             end
         end
 
