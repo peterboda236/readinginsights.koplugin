@@ -44,6 +44,7 @@ local TextWidget = require("ui/widget/textwidget")
 local UIManager = require("ui/uimanager")
 local VerticalGroup = require("ui/widget/verticalgroup")
 local VerticalSpan = require("ui/widget/verticalspan")
+local InfoMessage = require("ui/widget/infomessage")
 local Screen = Device.screen
 
 -- Shared translations/number-formatting, and shared chart/text color
@@ -125,6 +126,59 @@ local function formatDaysLeftSuffix(days_left)
     )
 end
 
+-- Weekday names (os.date("*t").wday: 1=Sunday .. 7=Saturday) a "kezdve" /
+-- "várható befejezés" felugró dátumsorokhoz. Nem magyar nyelveknél _()-n
+-- keresztül fordítva; magyarnál a lenti kisbetűs alakok kellenek, mert a
+-- teljes dátum után a nap neve kisbetűvel áll ("2026.06.24. szerda").
+local WEEKDAY_NAMES = {
+    "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday",
+}
+local WEEKDAY_NAMES_HU_LC = {
+    "vasárnap", "hétfő", "kedd", "szerda", "csütörtök", "péntek", "szombat",
+}
+
+local function formatEventDateTime(timestamp)
+    if not timestamp then return "" end
+    local t   = os.date("*t", timestamp)
+    local now = os.date("*t")
+
+    local function midnight(tt)
+        return os.time{ year = tt.year, month = tt.month, day = tt.day, hour = 0, min = 0, sec = 0 }
+    end
+    local day_diff = math.floor((midnight(t) - midnight(now)) / 86400 + 0.5)
+
+    if day_diff == 0  then return _("Today") end
+    if day_diff == -1 then return _("Yesterday") end
+    if day_diff == 1  then return _("Tomorrow") end
+
+    local function mondayOf(tt)
+        local days_since_monday = (tt.wday + 5) % 7  -- tt.wday: 1=Sun..7=Sat
+        return os.time{ year = tt.year, month = tt.month, day = tt.day - days_since_monday,
+                        hour = 0, min = 0, sec = 0 }
+    end
+    local same_week = mondayOf(t) == mondayOf(now)
+    local is_hu = (getLangBase() == "hu")
+
+    if same_week then
+        return _(WEEKDAY_NAMES[t.wday])
+    end
+
+    if is_hu then
+        return os.date("%Y.%m.%d.", timestamp) .. " " .. WEEKDAY_NAMES_HU_LC[t.wday]
+    end
+    return _(WEEKDAY_NAMES[t.wday]) .. ", " .. os.date("%d/%m/%Y", timestamp)
+end
+
+local function tappableWrap(widget, width)
+    return FrameContainer:new{
+        background = Blitbuffer.COLOR_WHITE,
+        bordersize = 0,
+        padding    = 0,
+        dimen      = Geom:new{ w = width, h = widget:getSize().h },
+        widget,
+    }
+end
+
 -- Format seconds as HH:MM (same style as insights_view).
 -- Returns { value = "HH:MM", unit = "" } so it fits the buildValueLine API.
 local function formatTimeHHMM(seconds)
@@ -168,10 +222,10 @@ end
 
 -- Single DB connection, all stats fetched at once.
 local function getBookAndTodayStats(book_id)
-    if not book_id then return nil, nil, nil, nil, nil, nil end
+    if not book_id then return nil, nil, nil, nil, nil, nil, nil end
 
     local conn = SQ3.open(stats_db_path)
-    if not conn then return nil, nil, nil, nil, nil, nil end
+    if not conn then return nil, nil, nil, nil, nil, nil, nil end
 
     local days_sql = string.format([[
         SELECT count(*)
@@ -217,18 +271,20 @@ local function getBookAndTodayStats(book_id)
     -- Days elapsed since this book's very first page_stat entry (i.e. since
     -- reading it was started). Used for the "N days since started" cell.
     local first_read_sql = string.format([[
-        SELECT CAST(julianday('now', 'localtime')
+        SELECT start_time,
+               CAST(julianday('now', 'localtime')
                     - julianday(date(start_time, 'unixepoch', 'localtime')) AS INTEGER)
         FROM   page_stat
         WHERE  id_book = %d
         ORDER  BY start_time ASC
         LIMIT  1
     ]], book_id)
-    local days_since_start = conn:rowexec(first_read_sql)
-    days_since_start = days_since_start and tonumber(days_since_start) or nil
+    local started_timestamp, days_since_start = conn:rowexec(first_read_sql)
+    started_timestamp = started_timestamp and tonumber(started_timestamp) or nil
+    days_since_start  = days_since_start  and tonumber(days_since_start)  or nil
 
     conn:close()
-    return total_days, today_pages, today_time, today_pages_all, today_time_all, days_since_start
+    return total_days, today_pages, today_time, today_pages_all, today_time_all, days_since_start, started_timestamp
 end
 
 -- TOC cache: single entry keyed by book_id, validated against total page count.
@@ -836,28 +892,36 @@ local function buildSections(stats, fonts, layout, popup)
                   unit  = N_("day of reading left", "days of reading left", stats.finish_days_left) },
                 ""
             )
+            local started_tap = tappableWrap(started_widget, layout.col_width)
+            local finish_tap  = tappableWrap(finish_widget, layout.col_width)
+            if popup then
+                popup._started_widget = started_tap
+                popup._finish_widget  = finish_tap
+            end
             table.insert(sections, VerticalSpan:new{ height = Size.padding.small })
-            table.insert(sections, padded(layout.padding_h, buildTwoColRow(started_widget, finish_widget, layout)))
+            table.insert(sections, padded(layout.padding_h, buildTwoColRow(started_tap, finish_tap, layout)))
             table.insert(sections, VerticalSpan:new{ height = Size.padding.default })
         elseif started_widget then
             local started_full_widget = buildValueLine(
                 fonts.value, fonts.label, layout.full_width - 2 * layout.padding_h,
                 stats.started_days_ago, ""
             )
+            local started_tap = tappableWrap(started_full_widget, layout.full_width - 2 * layout.padding_h)
+            if popup then popup._started_widget = started_tap end
             table.insert(sections, VerticalSpan:new{ height = Size.padding.small })
-            table.insert(sections, padded(layout.padding_h, started_full_widget))
+            table.insert(sections, padded(layout.padding_h, started_tap))
             table.insert(sections, VerticalSpan:new{ height = Size.padding.default })
         elseif stats.finish_days_left then
-            -- Shouldn't normally happen (a finish estimate implies at least
-            -- one page_stat entry), but handled for robustness.
             local finish_widget = buildValueLine(
                 fonts.value, fonts.label, layout.full_width - 2 * layout.padding_h,
                 { value = formatCount(stats.finish_days_left),
                   unit  = N_("day of reading left", "days of reading left", stats.finish_days_left) },
                 ""
             )
+            local finish_tap = tappableWrap(finish_widget, layout.full_width - 2 * layout.padding_h)
+            if popup then popup._finish_widget = finish_tap end
             table.insert(sections, VerticalSpan:new{ height = Size.padding.small })
-            table.insert(sections, padded(layout.padding_h, finish_widget))
+            table.insert(sections, padded(layout.padding_h, finish_tap))
             table.insert(sections, VerticalSpan:new{ height = Size.padding.default })
         end
     end
@@ -867,6 +931,12 @@ local function buildSections(stats, fonts, layout, popup)
         background = Blitbuffer.COLOR_BLACK,
     })
     return sections
+end
+
+local function hitTest(widget, x, y)
+    local d = widget and widget.dimen
+    if not d then return false end
+    return x >= d.x and x <= d.x + d.w and y >= d.y and y <= d.y + d.h
 end
 
 -- Dispatcher action registration for this view lives in main.lua (alongside
@@ -1099,7 +1169,7 @@ function ReadingStatsPopup:gatherStats()
             stats.book_time_spent_hhmm = formatTimeHHMM(total_time)
         end
 
-        local total_days, today_p, today_t, all_p, all_t, days_since_start =
+        local total_days, today_p, today_t, all_p, all_t, days_since_start, started_timestamp =
             getBookAndTodayStats(plugin.id_curr_book)
 
         -- "Started N days ago": only shown when there is at least one
@@ -1109,6 +1179,7 @@ function ReadingStatsPopup:gatherStats()
                 value = formatCount(days_since_start),
                 unit  = N_("day since started", "days since started", days_since_start),
             }
+            stats.started_timestamp = started_timestamp
         end
 
         if total_days ~= nil then
@@ -1124,6 +1195,7 @@ function ReadingStatsPopup:gatherStats()
             if bl_secs and bl_secs > 0 and total_time and total_time > 0 then
                 local avg_secs_per_day = total_time / total_days
                 stats.finish_days_left = math.ceil(bl_secs / avg_secs_per_day)
+                stats.finish_timestamp = os.time() + math.floor(bl_secs + 0.5)
             end
         end
 
@@ -1162,9 +1234,14 @@ function ReadingStatsPopup:gatherStats()
 end
 
 function ReadingStatsPopup:onSwipe(arg, ges_ev)
+    local dir = ges_ev and ges_ev.direction
+    if dir == "south" or dir == "down" then
+        UIManager:close(self)
+        return true
+    end
+
     local cb = self._chapter_bar
     if cb and ges_ev then
-        local dir = ges_ev.direction
         if (dir == "west" or dir == "left") and cb._on_swipe_left then
             cb._on_swipe_left()
             return true
@@ -1177,14 +1254,28 @@ function ReadingStatsPopup:onSwipe(arg, ges_ev)
 end
 
 function ReadingStatsPopup:onTapClose(arg, ges_ev)
-    if ges_ev and self._this_book_header and self._this_book_header.dimen then
-        local hdr = self._this_book_header.dimen
+    if ges_ev then
         local x, y = ges_ev.pos.x, ges_ev.pos.y
-        if x >= hdr.x and x <= hdr.x + hdr.w and y >= hdr.y and y <= hdr.y + hdr.h then
+
+        if hitTest(self._this_book_header, x, y) then
             UIManager:close(self)
             if self.ui then
                 self.ui:handleEvent(require("ui/event"):new("ShowBookStats"))
             end
+            return true
+        end
+
+        if hitTest(self._started_widget, x, y) and self._stats and self._stats.started_timestamp then
+            UIManager:show(InfoMessage:new{
+                text = _("Started:") .. " " .. formatEventDateTime(self._stats.started_timestamp),
+            })
+            return true
+        end
+
+        if hitTest(self._finish_widget, x, y) and self._stats and self._stats.finish_timestamp then
+            UIManager:show(InfoMessage:new{
+                text = _("Expected finish:") .. " " .. formatEventDateTime(self._stats.finish_timestamp),
+            })
             return true
         end
     end
