@@ -439,7 +439,7 @@ msgid "Separator line color"
 msgstr "Elválasztó vonal színe"
 
 msgid "Label color"
-msgstr "Felirat színe"
+msgstr "Fejlécek színe"
 
 msgid "Value color"
 msgstr "Értékek színe"
@@ -493,7 +493,7 @@ msgid "Values (big numbers)"
 msgstr "Értékek (nagy számok)"
 
 msgid "Labels"
-msgstr "Feliratok"
+msgstr "Fejlécek"
 
 msgid "Chart/axis labels"
 msgstr "Diagram-/tengelyfeliratok"
@@ -527,3 +527,33 @@ msgstr "Biztosan visszaállítod az összes betűtípust az alapértelmezettre?"
 
 msgid "Set"
 msgstr "Beállít"
+
+msgid "Tomorrow"
+msgstr "Holnap"
+
+msgid "Monday"
+msgstr "Hétfő"
+
+msgid "Tuesday"
+msgstr "Kedd"
+
+msgid "Wednesday"
+msgstr "Szerda"
+
+msgid "Thursday"
+msgstr "Csütörtök"
+
+msgid "Friday"
+msgstr "Péntek"
+
+msgid "Saturday"
+msgstr "Szombat"
+
+msgid "Sunday"
+msgstr "Vasárnap"
+
+msgid "Started:"
+msgstr "Elkezdve:"
+
+msgid "Expected finish:"
+msgstr "Várható befejezés:"
