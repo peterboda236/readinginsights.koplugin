@@ -15,11 +15,12 @@ A full-screen scrollable overlay with a comprehensive overview of your reading h
 
 **Highlights:**
 - **Today** — reading time and pages read so far today
-- **Last week** — 7-day average time and pages per day; (tap a value to see an 8-week trend popup)
+- **Last week** — 7-day average time and pages per day; tap either value to open its own 8-week trend popup (time trend or pages trend)
 - **Streaks** — current and best daily & weekly reading streaks
 - **Yearly view** — hours or days read + pages, navigable by year
 - **Monthly chart** — bar chart of reading activity per month (tappable to see books)
 - **All-time totals** — cumulative hours and pages across all years
+- **Use as sleep screen** — show this same popup instead of KOReader's own lock screen when the device suspends, with no double flash (see **Sleep screen** below)
 
 **Controls:** swipe left/right to change year, tap bars to open book lists, tap the chart header to toggle hours/days mode, long-press to force-reload data.
 
@@ -44,6 +45,24 @@ A per-book overlay showing detailed progress and pace for the book you're curren
 
 **Caching:** shares the same stale-while-revalidate approach as Reading insights — instant open with cached data, refreshed in the background.
 
+## 😴 Sleep screen
+
+Reading insights can replace KOReader's own sleep/lock screen with itself, so
+the last thing you see before the device sleeps is your reading progress
+instead of a generic cover or logo.
+
+- **Use as sleep screen** (*Settings → Use as sleep screen*): **Off**
+  (default), **Only when locking from the file manager** (book view keeps
+  your normal screensaver), or **File manager and book view** (always).
+- **Transition** (*Settings → Use as sleep screen → Transition*): **Instant**
+  (default) or **Slight delay (0.1s)**, in case some other plugin/screensaver
+  setup needs a moment before this popup takes over.
+- No double flash: while active, KOReader's own screensaver (including any
+  "Sleeping" message overlay) is fully suppressed for that suspend/resume
+  cycle and cleanly restored afterwards — so only this popup's own single
+  full-screen refresh happens, instead of the stock screensaver painting
+  first and then immediately getting replaced.
+
 ## Install
 
 1. Unpack the latest zip and copy the `readinginsights.koplugin` folder into
@@ -62,6 +81,10 @@ A per-book overlay showing detailed progress and pace for the book you're curren
   **Colors** and **Fonts** submenus:
   - **Full-screen refresh on open/close** — toggle
   - **8-week chart order** — newest-first or oldest-first
+  - **Use as sleep screen** — Off / File manager only / File manager + book
+    (see [Sleep screen](#-sleep-screen) above)
+  - **Transition** — Instant / Slight delay (0.1s), controls how quickly the
+    sleep-screen popup takes over on suspend
   - **Colors** — pick your own hex color for every bar/line/label the two
     popups draw (active/inactive bars, the 8-week trend line, section/
     column separator lines, and the label/value/section/chart-label text
