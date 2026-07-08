@@ -151,7 +151,21 @@ local SCREENSAVER_PREV_TYPE_SETTING        = "readinginsights_screensaver_prev_t
 local SCREENSAVER_PREV_SHOW_MSG_SETTING    = "readinginsights_screensaver_prev_show_message"
 
 local function suppressCoreScreensaver()
-    if G_reader_settings:isTrue(SCREENSAVER_OVERRIDE_ACTIVE_SETTING) then return end -- already applied
+    -- If our override is already flagged active, check whether the live
+    -- screensaver_type is still what we forced it to ("disable"). If the
+    -- user has since gone into KOReader's own Settings > Screen > Sleep
+    -- screen menu and changed it there, the live value will no longer be
+    -- "disable" even though our flag says "already applied". In that case
+    -- our previously saved "prev" snapshot is stale - it holds whatever
+    -- was set *before* the user's latest change, not the user's latest
+    -- change itself. Re-snapshot now so we don't clobber it later in
+    -- restoreCoreScreensaver().
+    if G_reader_settings:isTrue(SCREENSAVER_OVERRIDE_ACTIVE_SETTING) then
+        if G_reader_settings:readSetting("screensaver_type") == "disable" then
+            return -- already applied, and still ours - nothing to do
+        end
+        -- else: fall through and re-snapshot the user's new live value
+    end
     G_reader_settings:saveSetting(SCREENSAVER_PREV_TYPE_SETTING, G_reader_settings:readSetting("screensaver_type"))
     G_reader_settings:saveSetting(SCREENSAVER_PREV_SHOW_MSG_SETTING, G_reader_settings:isTrue("screensaver_show_message"))
     G_reader_settings:makeTrue(SCREENSAVER_OVERRIDE_ACTIVE_SETTING)
@@ -161,6 +175,18 @@ end
 
 local function restoreCoreScreensaver()
     if not G_reader_settings:isTrue(SCREENSAVER_OVERRIDE_ACTIVE_SETTING) then return end
+    -- If the live screensaver_type is no longer "disable", the user must
+    -- have gone into KOReader's own Sleep screen menu and changed it
+    -- themselves while our override was active. That live value is what
+    -- the user actually wants now, so leave it untouched instead of
+    -- overwriting it with our (now stale) saved prev_type - just clear
+    -- our bookkeeping keys as if the override never happened.
+    if G_reader_settings:readSetting("screensaver_type") ~= "disable" then
+        G_reader_settings:delSetting(SCREENSAVER_PREV_TYPE_SETTING)
+        G_reader_settings:delSetting(SCREENSAVER_PREV_SHOW_MSG_SETTING)
+        G_reader_settings:makeFalse(SCREENSAVER_OVERRIDE_ACTIVE_SETTING)
+        return
+    end
     G_reader_settings:saveSetting("screensaver_type", G_reader_settings:readSetting(SCREENSAVER_PREV_TYPE_SETTING))
     G_reader_settings:delSetting(SCREENSAVER_PREV_TYPE_SETTING)
     -- Only touch screensaver_show_message if we actually recorded an
