@@ -76,6 +76,49 @@ local function saveScreensaverDelayMode(mode)
 end
 
 --[[
+Update settings (Updates menu). Mirrors bookshelf.koplugin's approach
+(bookshelf_updater.lua + Bookshelf:checkForUpdates, editDevBranch,
+resetToStableRelease, backgroundUpdateCheck): lets the user pull new
+plugin code straight from GitHub without an SSH push from a computer.
+
+  readinginsights_dev_branch          empty for stable, branch name for
+                                       the dev-branch install path
+  readinginsights_last_install_source "release" or "branch:<name>"
+  readinginsights_check_updates       boolean: silent wake-time check
+]]--
+local DEV_BRANCH_SETTING          = "readinginsights_dev_branch"
+local LAST_INSTALL_SOURCE_SETTING = "readinginsights_last_install_source"
+local CHECK_UPDATES_SETTING       = "readinginsights_check_updates"
+
+local function readDevBranch()
+    return G_reader_settings:readSetting(DEV_BRANCH_SETTING) or ""
+end
+
+local function saveDevBranch(branch)
+    G_reader_settings:saveSetting(DEV_BRANCH_SETTING, branch)
+end
+
+local function readLastInstallSource()
+    return G_reader_settings:readSetting(LAST_INSTALL_SOURCE_SETTING) or "release"
+end
+
+local function saveLastInstallSource(source)
+    G_reader_settings:saveSetting(LAST_INSTALL_SOURCE_SETTING, source)
+end
+
+local function readCheckUpdates()
+    return G_reader_settings:isTrue(CHECK_UPDATES_SETTING)
+end
+
+local function saveCheckUpdates(value)
+    if value then
+        G_reader_settings:makeTrue(CHECK_UPDATES_SETTING)
+    else
+        G_reader_settings:makeFalse(CHECK_UPDATES_SETTING)
+    end
+end
+
+--[[
 Suppressing KOReader's own built-in sleep screen for the duration of a
 single suspend, so it doesn't paint (full e-ink refresh) and then get
 immediately replaced by our own popup (another full refresh) a moment
@@ -171,6 +214,10 @@ local Fonts = loadModule("fonts.lua", L10N)
 local Insights = loadModule("insights_view.lua", L10N, Colors, Fonts)
 local StatsPopup = loadModule("stats_view.lua", L10N, Colors, Fonts)
 
+-- In-app updater (Updates menu): lets the user check for and install new
+-- releases of this plugin straight from GitHub. See updater.lua.
+local Updater = loadModule("updater.lua", L10N)
+
 --[[
 Plugin wiring.
 
@@ -258,6 +305,10 @@ function ReadingInsights:init()
 
     self.ui.menu:registerToMainMenu(self)
     self:onDispatcherRegisterActions()
+    -- Silent wake-time check also fires once at startup (opt-in via
+    -- "Notify on wake when update available"), so a newly-available update
+    -- can surface without waiting for the first suspend/resume cycle.
+    self:backgroundUpdateCheck()
     -- Force this plugin's entry to the top of the Tools menu
     -- (both in Reader view and in the File manager)
     UIManager:scheduleIn(1, function()
@@ -373,6 +424,185 @@ function ReadingInsights:onResume()
         UIManager:close(self._screensaver_widget)
         self._screensaver_widget = nil
     end
+    -- Wake-from-sleep also fires a silent background update check, mirroring
+    -- bookshelf.koplugin. Updater's own 1-hour internal cache prevents
+    -- wake-spam.
+    self:backgroundUpdateCheck()
+end
+
+-- ---------------------------------------------------------------------------
+-- Updates / dev-branch install
+-- ---------------------------------------------------------------------------
+-- Mirrors bookshelf.koplugin's update flow (lib/bookshelf_updater.lua +
+-- Bookshelf:checkForUpdates, editDevBranch, resetToStableRelease,
+-- backgroundUpdateCheck). Lets the user bring new plugin code onto the
+-- device without an SSH push from a computer - useful when away from the
+-- home network.
+
+-- Branch-aware update entry: if a dev branch is configured, install that
+-- branch's latest tip (no release needed). Otherwise hit the GitHub
+-- releases API and offer the latest stable. Both paths share the same
+-- download / unpack / restart-prompt pipeline inside Updater.install.
+function ReadingInsights:checkForUpdates()
+    local branch = readDevBranch()
+    if branch ~= "" then
+        Updater.installBranch(branch, function()
+            saveLastInstallSource("branch:" .. branch)
+        end)
+    else
+        Updater.check(function()
+            saveLastInstallSource("release")
+        end)
+    end
+end
+
+-- Open a single-line dialog to set / change / clear the dev branch.
+function ReadingInsights:editDevBranch(touchmenu_instance)
+    local InputDialog = require("ui/widget/inputdialog")
+    local dlg
+    dlg = InputDialog:new{
+        title       = _("Development branch"),
+        input       = readDevBranch(),
+        input_hint  = _("Branch name (leave empty for stable)"),
+        buttons = {{
+            {
+                text     = _("Cancel"),
+                id       = "close",
+                callback = function() UIManager:close(dlg) end,
+            },
+            {
+                text             = _("Save"),
+                is_enter_default = true,
+                callback         = function()
+                    local raw = dlg:getInputText() or ""
+                    local trimmed = raw:gsub("^%s+", ""):gsub("%s+$", "")
+                    saveDevBranch(trimmed)
+                    UIManager:close(dlg)
+                    if touchmenu_instance and touchmenu_instance.updateItems then
+                        touchmenu_instance:updateItems()
+                    end
+                end,
+            },
+        }},
+    }
+    UIManager:show(dlg)
+    dlg:onShowKeyboard()
+end
+
+-- Clear dev branch + install latest stable release. Used when escaping a
+-- broken branch back to a known-good release.
+function ReadingInsights:resetToStableRelease()
+    local ConfirmBox = require("ui/widget/confirmbox")
+    UIManager:show(ConfirmBox:new{
+        text = _("This will clear the development branch setting and install the latest stable release of Reading insights, then restart KOReader. Continue?"),
+        ok_text = _("Reset"),
+        ok_callback = function()
+            saveDevBranch("")
+            Updater.installLatestStable(function()
+                saveLastInstallSource("release")
+            end)
+        end,
+    })
+end
+
+-- Silent background poll: checks at most once an hour, only when the user
+-- has opted in via "Notify on wake when update available". Surfaces a
+-- short notification if a newer release tag is found.
+function ReadingInsights:backgroundUpdateCheck()
+    if not readCheckUpdates() then return end
+    Updater.checkBackground(function(ver)
+        local Notification = require("ui/widget/notification")
+        Notification:notify(_("Reading insights update available: v") .. ver,
+            Notification.SOURCE_ALWAYS_SHOW)
+    end)
+end
+
+-- Drill-down menu for the in-app updater: a "Notify" toggle, a primary
+-- update row that auto-relabels when an update is queued, and a
+-- "Developer updates" pocket for the dev-branch picker + reset-to-stable.
+--
+-- Reads every value fresh from G_reader_settings (via readDevBranch() /
+-- readLastInstallSource() / readCheckUpdates()) rather than caching on
+-- self: this plugin runs one instance per context (Reader and File
+-- manager, is_doc_only = false), and both build this same menu, so a
+-- self-cached value edited in one instance would go stale in the other
+-- until the next restart. Same reasoning as the screensaver-mode settings
+-- above.
+function ReadingInsights:_updateSubItems()
+    local outer = self
+    return {
+        {
+            text         = _("Notify on wake when update available"),
+            checked_func = function() return readCheckUpdates() end,
+            callback     = function()
+                saveCheckUpdates(not readCheckUpdates())
+            end,
+        },
+        {
+            text_func = function()
+                local current   = Updater.getInstalledVersion()
+                local available = Updater.getAvailableUpdate()
+                local source    = readLastInstallSource()
+                local source_suffix = ""
+                if source ~= "release" then
+                    local branch = source:match("^branch:(.+)$") or source
+                    source_suffix = " (branch: " .. branch .. ")"
+                end
+                if available then
+                    return _("Update available") .. ": v" .. current .. source_suffix
+                        .. " \xE2\x86\x92 v" .. available
+                end
+                return _("Installed version") .. ": v" .. current .. source_suffix
+            end,
+            keep_menu_open = true,
+            callback = function() outer:checkForUpdates() end,
+        },
+        {
+            text = _("Developer updates"),
+            sub_item_table = {
+                {
+                    text_func = function()
+                        local b = readDevBranch()
+                        if b == "" then return _("Development branch") end
+                        return _("Development branch") .. ": " .. b
+                    end,
+                    keep_menu_open = true,
+                    callback = function(touchmenu_instance)
+                        outer:editDevBranch(touchmenu_instance)
+                    end,
+                },
+                {
+                    text_func = function()
+                        local b = readDevBranch()
+                        if b == "" then return _("Check for updates") end
+                        return _("Install branch") .. ": " .. b
+                    end,
+                    keep_menu_open = true,
+                    callback = function() outer:checkForUpdates() end,
+                },
+                {
+                    text           = _("Reset to latest stable release"),
+                    keep_menu_open = true,
+                    callback       = function() outer:resetToStableRelease() end,
+                },
+                {
+                    -- Disabled status row: shows "Installed: vX (release)" /
+                    -- "(branch: foo)". Tap is a no-op via enabled_func=false.
+                    text_func = function()
+                        local current = Updater.getInstalledVersion()
+                        local source  = readLastInstallSource()
+                        if source == "release" then
+                            return _("Installed: v") .. current .. " (release)"
+                        end
+                        local branch = source:match("^branch:(.+)$") or source
+                        return _("Installed: v") .. current .. " (branch: " .. branch .. ")"
+                    end,
+                    enabled_func   = function() return false end,
+                    keep_menu_open = true,
+                },
+            },
+        },
+    }
 end
 
 -- A document has just finished opening (Reader view): re-sync, since
@@ -657,6 +887,14 @@ function ReadingInsights:addToMainMenu(menu_items)
         text = _("Settings"),
         keep_menu_open = true,
         sub_item_table = settings_sub_item_table,
+    })
+
+    -- In-app updater: check for / install new releases straight from
+    -- GitHub. See updater.lua and the ReadingInsights:_updateSubItems()
+    -- family of methods above.
+    table.insert(sub_item_table, {
+        text                = _("Updates"),
+        sub_item_table_func = function() return self:_updateSubItems() end,
     })
 
     menu_items.reading_insights_popup = {
