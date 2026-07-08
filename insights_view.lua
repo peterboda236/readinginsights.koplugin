@@ -477,6 +477,33 @@ local function monthKeyPrefixForMode(mode)
     return "days:"
 end
 
+-- "Last week" chart mode: tapping the "Last week" header toggles the daily
+-- bar chart between reading time (HH:MM) and pages read per day. The choice
+-- is persisted so the popup remembers it instead of always defaulting to time.
+local SETTINGS_KEY_WEEKLY_CHART_MODE = "reading_insights_weekly_chart_mode"
+local WEEKLY_CHART_MODE_TIME  = "time"
+local WEEKLY_CHART_MODE_PAGES = "pages"
+
+local function normalizeWeeklyChartMode(mode)
+    if mode == WEEKLY_CHART_MODE_PAGES then
+        return WEEKLY_CHART_MODE_PAGES
+    end
+    return WEEKLY_CHART_MODE_TIME
+end
+
+local function readWeeklyChartMode()
+    if G_reader_settings and G_reader_settings.readSetting then
+        return normalizeWeeklyChartMode(G_reader_settings:readSetting(SETTINGS_KEY_WEEKLY_CHART_MODE, WEEKLY_CHART_MODE_TIME))
+    end
+    return WEEKLY_CHART_MODE_TIME
+end
+
+local function saveWeeklyChartMode(mode)
+    if G_reader_settings and G_reader_settings.saveSetting then
+        G_reader_settings:saveSetting(SETTINGS_KEY_WEEKLY_CHART_MODE, mode)
+    end
+end
+
 local function readInsightsMode()
     if G_reader_settings and G_reader_settings.readSetting then
         return normalizeInsightsMode(G_reader_settings:readSetting(INSIGHTS_MODE_KEY, INSIGHTS_MODE_HOURS))
@@ -1436,12 +1463,14 @@ function WeeklyTrendPopup:onAnyKeyPressed() UIManager:close(self) return true en
 
 -- Weekly bar chart: 7 bars, index 1 = today (leftmost), index 7 = 6 days ago.
 -- Labels: "Today", "Yesterday", then weekday abbreviations.
-local function buildWeeklyChart(popup_self, daily_data, layout, fonts)
+local function buildWeeklyChart(popup_self, daily_data, layout, fonts, mode)
     if not daily_data or #daily_data == 0 then return nil end
+    mode = normalizeWeeklyChartMode(mode)
+    local show_pages = (mode == WEEKLY_CHART_MODE_PAGES)
 
     -- Pad to exactly 7 entries.
     while #daily_data < 7 do
-        table.insert(daily_data, { hours = 0, label = "" })
+        table.insert(daily_data, { hours = 0, seconds = 0, pages = 0, label = "" })
     end
 
     local chart_width  = layout.content_width
@@ -1458,7 +1487,7 @@ local function buildWeeklyChart(popup_self, daily_data, layout, fonts)
 
     local max_value = 0
     for _, d in ipairs(daily_data) do
-        local v = tonumber(d.seconds) or 0
+        local v = show_pages and (tonumber(d.pages) or 0) or (tonumber(d.seconds) or 0)
         if v > max_value then max_value = v end
     end
     if max_value < 0.1 then max_value = 1 end  -- avoid division by zero
@@ -1470,18 +1499,24 @@ local function buildWeeklyChart(popup_self, daily_data, layout, fonts)
 
     for i = 1, num_bars do
         local d = daily_data[i]
-        local value = tonumber(d.seconds) or 0
+        local value = show_pages and (tonumber(d.pages) or 0) or (tonumber(d.seconds) or 0)
         local ratio = value / max_value
         local bar_h = math.floor(ratio * bar_height + 0.5)
         if bar_h == 0 and value > 0 then bar_h = 1 end
 
         local bar_color = (WEEKLY_CHART_HIGHLIGHT_TODAY and i == 1) and Colors.activeBar() or Colors.inactiveBar()
 
-        local secs = tonumber(d.seconds) or 0
-        local total_mins = math.floor(secs / 60 + 0.5)
-        local h = math.floor(total_mins / 60)
-        local m = total_mins % 60
-        local val_str = string.format("%02d:%02d", h, m)
+        local val_str
+        if show_pages then
+            local pages = math.floor((tonumber(d.pages) or 0) + 0.5)
+            val_str = string.format(_("%d p"), pages)
+        else
+            local secs = tonumber(d.seconds) or 0
+            local total_mins = math.floor(secs / 60 + 0.5)
+            local h = math.floor(total_mins / 60)
+            local m = total_mins % 60
+            val_str = string.format("%02d:%02d", h, m)
+        end
         local value_label   = TextWidget:new{ text = val_str, face = font_small, fgcolor = Colors.small() }
         local centered_label = CenterContainer:new{
             dimen  = Geom:new{ w = bar_width, h = label_height },
@@ -1772,7 +1807,8 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
                     layout.col_width, function() popup_self:showWeeklyTrendPopup("pages_total") end),
                 layout)
 
-            local weekly_chart = buildWeeklyChart(popup_self, last_week_daily, layout, fonts)
+            local weekly_chart_mode = normalizeWeeklyChartMode(popup_self.weekly_chart_mode)
+            local weekly_chart = buildWeeklyChart(popup_self, last_week_daily, layout, fonts, weekly_chart_mode)
             local last_week_content = VerticalGroup:new{
                 align = "left",
                 padded(layout.padding_h, total_row),
@@ -1784,8 +1820,23 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
                 table.insert(last_week_content, padded(layout.padding_h, weekly_chart))
             end
 
+            -- Tapping the header toggles the chart above between reading
+            -- time and pages read per day (see toggleWeeklyChartMode()).
+            local last_week_header = buildSectionHeader(fonts.section, _("Last week"), layout.full_width)
+            local tappable_last_week_header = InputContainer:new{
+                dimen = Geom:new{ x = 0, y = 0, w = last_week_header:getSize().w, h = last_week_header:getSize().h },
+                last_week_header,
+            }
+            tappable_last_week_header.ges_events = {
+                Tap = { GestureRange:new{ ges = "tap", range = tappable_last_week_header.dimen } },
+            }
+            function tappable_last_week_header:onTap()
+                popup_self:toggleWeeklyChartMode()
+                return true
+            end
+
             addSectionWithRow(sections,
-                buildSectionHeader(fonts.section, _("Last week"), layout.full_width),
+                tappable_last_week_header,
                 last_week_content, layout, { pad_row = false })
         end
     end
@@ -1910,7 +1961,8 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
             or (popup_self.mode == INSIGHTS_MODE_BOOKS
             and _("Books read per month"))
             or _("Days read per month")
-        chart_header_text = chart_header_text .. " \xe2\x80\xba"
+        chart_header_text = chart_header_text
+        --.. " \xe2\x80\xba"
         local chart_header = buildSectionHeader(fonts.section, chart_header_text, layout.full_width)
         local tappable_chart_header = InputContainer:new{
             dimen = Geom:new{ x = 0, y = 0, w = chart_header:getSize().w, h = chart_header:getSize().h },
@@ -1987,6 +2039,15 @@ local ReadingInsightsPopup = InputContainer:extend{
     height        = nil,
     selected_year = nil,
     mode          = nil,
+    -- When true, the popup is being used as sleep-screen content: swipe-down,
+    -- "any key", and the title bar's close tap are ignored so a stray touch
+    -- or the wake key itself doesn't dismiss it early. Year navigation
+    -- (left/right swipe or key) still works. Actually closing this instance
+    -- is then the caller's responsibility (see main.lua's onResume).
+    readonly      = false,
+    -- Optional text shown in place of the (hidden, since readonly) close
+    -- button, e.g. "sleeping…" / nil/"" shows nothing there.
+    screensaver_label = nil,
 }
 
 function ReadingInsightsPopup:calculateStreaks(shared_conn)
@@ -2492,7 +2553,7 @@ end
 
 -- Returns both last-week stats in one DB connection:
 --   last_week:       { avg_seconds, avg_pages }
---   last_week_daily: array[7] of { hours, seconds, label, midnight_ts }, index 1 = today
+--   last_week_daily: array[7] of { hours, seconds, pages, label, midnight_ts }, index 1 = today
 function ReadingInsightsPopup:getLastWeekAll(shared_conn)
     local minute = currentMinute()
     local lw_ok    = getMinuteCache(_cache, "last_week", "last_week_minute", minute) ~= nil
@@ -2579,6 +2640,7 @@ function ReadingInsightsPopup:getLastWeekAll(shared_conn)
                 daily_result[i] = {
                     hours       = hours_by_date[di.date_str]   or 0,
                     seconds     = seconds_by_date[di.date_str] or 0,
+                    pages       = pages_by_date[di.date_str]   or 0,
                     label       = di.label,
                     midnight_ts = di.midnight_ts,
                 }
@@ -2590,7 +2652,7 @@ function ReadingInsightsPopup:getLastWeekAll(shared_conn)
         daily_result = {}
         for i = 1, 7 do
             local di = date_info[i]
-            daily_result[i] = { hours = 0, seconds = 0, label = di.label, midnight_ts = di.midnight_ts }
+            daily_result[i] = { hours = 0, seconds = 0, pages = 0, label = di.label, midnight_ts = di.midnight_ts }
         end
     end
 
@@ -3216,6 +3278,17 @@ function ReadingInsightsPopup:showBooksForYear(year)
         T(N_("%1 - book read %2", "%1 - books read %2", #books), year, formatCount(#books)) .. " (" .. formatHHMMSS(total_secs) .. ")")
 end
 
+-- Normally just "Reading insights"; when shown as a sleep-screen (readonly)
+-- with a text indicator configured, appends it, e.g. "Reading insights
+-- (sleeping…)".
+function ReadingInsightsPopup:_titleBarText()
+    local title = _("Reading insights")
+    if self.readonly and self.screensaver_label and self.screensaver_label ~= "" then
+        title = title .. " (" .. self.screensaver_label .. ")"
+    end
+    return title
+end
+
 function ReadingInsightsPopup:_buildUI()
     local screen_w = Screen:getWidth()
     local screen_h = Screen:getHeight()
@@ -3231,8 +3304,8 @@ function ReadingInsightsPopup:_buildUI()
             fullscreen     = true,
             width          = screen_w,
             align          = "left",
-            title          = _("Reading insights"),
-            close_callback = function() UIManager:close(self) end,
+            title          = self:_titleBarText(),
+            close_callback = (not self.readonly) and function() UIManager:close(self) end or nil,
             show_parent    = self,
             top_v_padding    = Size.padding.default,
             bottom_v_padding = Size.padding.default,
@@ -3279,8 +3352,8 @@ function ReadingInsightsPopup:_buildUI()
         fullscreen     = true,
         width          = screen_w,
         align          = "left",
-        title          = _("Reading insights"),
-        close_callback = function() UIManager:close(self) end,
+        title          = self:_titleBarText(),
+        close_callback = (not self.readonly) and function() UIManager:close(self) end or nil,
         show_parent    = self,
         top_v_padding    = Size.padding.default,
         bottom_v_padding = Size.padding.default,
@@ -3471,6 +3544,7 @@ function ReadingInsightsPopup:init()
     end
 
     self.mode = normalizeInsightsMode(self.mode or readInsightsMode())
+    self.weekly_chart_mode = normalizeWeeklyChartMode(self.weekly_chart_mode or readWeeklyChartMode())
 
     -- True only on a genuine cold start (e.g. right after a KOReader restart):
     -- no fresh cache and no stale fallback for any of the core stats. In that
@@ -3512,7 +3586,11 @@ function ReadingInsightsPopup:onSwipe(arg, ges_ev)
     local dir = ges_ev.direction
     if dir == "west" or dir == "left"  then return self:onGoToNextYear() end
     if dir == "east" or dir == "right" then return self:onGoToPrevYear() end
-    if dir == "south" or dir == "down" then UIManager:close(self) return true end
+    if dir == "south" or dir == "down" then
+        if self.readonly then return true end
+        UIManager:close(self)
+        return true
+    end
     return false
 end
 
@@ -3589,6 +3667,24 @@ function ReadingInsightsPopup:toggleInsightsMode()
     return self:cycleInsightsMode()
 end
 
+-- Toggles the "Last week" bar chart between reading time and pages read per
+-- day. No DB re-query is needed: both values are already fetched together
+-- by getLastWeekAll(), so this just flips the persisted display mode and
+-- rebuilds the UI.
+function ReadingInsightsPopup:toggleWeeklyChartMode()
+    local new_mode = (self.weekly_chart_mode == WEEKLY_CHART_MODE_PAGES)
+        and WEEKLY_CHART_MODE_TIME or WEEKLY_CHART_MODE_PAGES
+
+    self.weekly_chart_mode = new_mode
+    saveWeeklyChartMode(new_mode)
+
+    self:_buildUI()
+    UIManager:setDirty(self, function()
+        return "ui", self.popup_frame.dimen
+    end)
+    return true
+end
+
 -- Shared implementation for year navigation: moves selected_year by `delta`
 -- (-1 or +1), staying within the known year range, serves stale yearly/
 -- monthly data for the new year immediately, then reloads for real.
@@ -3627,6 +3723,7 @@ function ReadingInsightsPopup:onAnyKeyPressed(_, key)
     if key and key:match({ { "RPgBack", "LPgBack", "Left"  } }) then return self:onGoToPrevYear() end
     if key and key:match({ { "RPgFwd",  "LPgFwd",  "Right" } }) then return self:onGoToNextYear() end
     if key and key:match({ { "Press" } }) then return self:toggleInsightsMode() end
+    if self.readonly then return true end
     UIManager:close(self)
     return true
 end
@@ -3649,6 +3746,7 @@ function ReadingInsightsPopup:onShow()
 end
 
 function ReadingInsightsPopup:onTapClose()
+    if self.readonly then return true end
     UIManager:close(self)
     return true
 end
