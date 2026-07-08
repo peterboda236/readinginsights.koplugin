@@ -542,3 +542,47 @@ msgstr "Started:"
 
 msgid "Expected finish:"
 msgstr "Expected finish:"
+msgid "Use as sleep screen"
+msgstr "Use as sleep screen"
+
+msgid "Off"
+msgstr "Off"
+
+msgid "File manager only"
+msgstr "File manager only"
+
+msgid "File manager + book"
+msgstr "File manager + book"
+
+msgid "Only when locking from the file manager"
+msgstr "Only when locking from the file manager"
+
+msgid "File manager and book view"
+msgstr "File manager and book view"
+
+msgid "Transition"
+msgstr "Transition"
+
+msgid "Slight delay"
+msgstr "Slight delay"
+
+msgid "Instant"
+msgstr "Instant"
+
+msgid "Slight delay (0.1s)"
+msgstr "Slight delay (0.1s)"
+
+msgid "sleeping…"
+msgstr "sleeping…"
+
+msgid "Indicator"
+msgstr "Indicator"
+
+msgid "\"(sleeping…)\" after the title"
+msgstr "\"(sleeping…)\" after the title"
+
+msgid "None"
+msgstr "None"
+
+msgid "%d p"
+msgstr "%d p"

@@ -557,3 +557,47 @@ msgstr "Elkezdve:"
 
 msgid "Expected finish:"
 msgstr "Várható befejezés:"
+msgid "Use as sleep screen"
+msgstr "Használat alvó képernyőként"
+
+msgid "Off"
+msgstr "Ki"
+
+msgid "File manager only"
+msgstr "Csak fájlkezelőből"
+
+msgid "File manager + book"
+msgstr "Fájlkezelőből és könyvből is"
+
+msgid "Only when locking from the file manager"
+msgstr "Csak akkor, ha fájlkezelőből alszik el a készülék"
+
+msgid "File manager and book view"
+msgstr "Fájlkezelőből és könyv olvasása közben is"
+
+msgid "Transition"
+msgstr "Átmenet"
+
+msgid "Slight delay"
+msgstr "Kis késleltetés"
+
+msgid "Instant"
+msgstr "Azonnali"
+
+msgid "Slight delay (0.1s)"
+msgstr "Kis késleltetés (0,1 mp)"
+
+msgid "sleeping…"
+msgstr "alvó mód…"
+
+msgid "Indicator"
+msgstr "Jelzés"
+
+msgid "\"(sleeping…)\" after the title"
+msgstr "„(alvó mód…)” a cím után"
+
+msgid "None"
+msgstr "Semmi"
+
+msgid "%d p"
+msgstr "%d o"
