@@ -601,3 +601,108 @@ msgstr "Semmi"
 
 msgid "%d p"
 msgstr "%d o"
+
+msgid "Updates"
+msgstr "Frissítések"
+
+msgid "Notify on wake when update available"
+msgstr "Értesítés ébredéskor, ha van elérhető frissítés"
+
+msgid "Update available"
+msgstr "Elérhető frissítés"
+
+msgid "Installed version"
+msgstr "Telepített verzió"
+
+msgid "Developer updates"
+msgstr "Fejlesztői frissítések"
+
+msgid "Development branch"
+msgstr "Fejlesztői ág"
+
+msgid "Branch name (leave empty for stable)"
+msgstr "Ág neve (üresen hagyva a stabil verzió)"
+
+msgid "Check for updates"
+msgstr "Frissítések keresése"
+
+msgid "Install branch"
+msgstr "Ág telepítése"
+
+msgid "Reset to latest stable release"
+msgstr "Visszaállítás a legújabb stabil kiadásra"
+
+msgid "Installed: v"
+msgstr "Telepítve: v"
+
+msgid "This will clear the development branch setting and install the latest stable release of Reading insights, then restart KOReader. Continue?"
+msgstr "Ez törli a fejlesztői ág beállítást, telepíti a Reading insights legújabb stabil kiadását, majd újraindítja a KOReadert. Folytatod?"
+
+msgid "Reading insights update available: v"
+msgstr "Reading insights frissítés elérhető: v"
+
+msgid "Open the releases page in a browser?"
+msgstr "Megnyitod a kiadások oldalát böngészőben?"
+
+msgid "Open"
+msgstr "Megnyitás"
+
+msgid "Checking for updates..."
+msgstr "Frissítések keresése…"
+
+msgid "Could not check for updates."
+msgstr "Nem sikerült ellenőrizni a frissítéseket."
+
+msgid "Reading insights is up to date."
+msgstr "A Reading insights naprakész."
+
+msgid "Version: "
+msgstr "Verzió: "
+
+msgid "Update available!"
+msgstr "Elérhető frissítés!"
+
+msgid "Installed: "
+msgstr "Telepítve: "
+
+msgid "Latest: "
+msgstr "Legújabb: "
+
+msgid "Close"
+msgstr "Bezárás"
+
+msgid "Update and restart"
+msgstr "Frissítés és újraindítás"
+
+msgid "No download available for this release."
+msgstr "Ehhez a kiadáshoz nincs letölthető fájl."
+
+msgid "Downloading update..."
+msgstr "Frissítés letöltése…"
+
+msgid "Download failed."
+msgstr "A letöltés sikertelen."
+
+msgid "Installation failed: "
+msgstr "A telepítés sikertelen: "
+
+msgid "Reading insights updated to v"
+msgstr "A Reading insights frissítve erre: v"
+
+msgid "Restart KOReader now?"
+msgstr "Újraindítod most a KOReadert?"
+
+msgid "Restart"
+msgstr "Újraindítás"
+
+msgid "Could not install branch:"
+msgstr "Nem sikerült telepíteni az ágat:"
+
+msgid "Downloading latest release..."
+msgstr "Legújabb kiadás letöltése…"
+
+msgid "Could not fetch latest release."
+msgstr "Nem sikerült lekérni a legújabb kiadást."
+
+msgid "Latest release has no downloadable zip."
+msgstr "A legújabb kiadáshoz nincs letölthető zip fájl."
