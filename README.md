@@ -1,5 +1,3 @@
-Based on: https://github.com/quanganhdo/koreader-user-patches
-
 ### 📊 Reading insights
 
 <img width="384" height="512" alt="reading-insights-v2-0-0-new-book-progress-popup-colors-v0-zoh19sw42rbh1" src="https://github.com/user-attachments/assets/52f851b7-8955-4739-b3a7-96ff8c2cbfe6" />
@@ -165,3 +163,5 @@ msgstr "Aktuális sorozat"
 
 To add another language, drop a new `l10n/<lang>.po` file next to the
 existing ones — no code changes needed.
+
+Based on: https://github.com/quanganhdo/koreader-user-patches
