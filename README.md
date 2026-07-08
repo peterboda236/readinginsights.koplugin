@@ -65,6 +65,30 @@ instead of a generic cover or logo.
   full-screen refresh happens, instead of the stock screensaver painting
   first and then immediately getting replaced.
 
+## Updates
+
+*Tools → Reading insights → Updates* checks GitHub for new releases and can
+install them directly on the device — no computer/SSH needed:
+
+- **Notify on wake when update available** — opt-in silent background check
+  (at most once an hour), fired at startup and on every wake from sleep;
+  shows a small notification when a newer release is found.
+- The main **Installed version** / **Update available** row shows the
+  currently installed version and, when applicable, the version it would
+  update to; tapping it fetches the release notes for every release newer
+  than what's installed and offers **Update and restart**.
+- **Developer updates** — a pocket for testing pre-release code:
+  - **Development branch** — point the updater at a specific branch instead
+    of the latest stable release; the update row above then installs that
+    branch's current tip.
+  - **Reset to latest stable release** — clears the development branch and
+    reinstalls the latest non-prerelease release.
+
+Behind the scenes this downloads the release/branch zip from
+[peterboda236/readinginsights.koplugin](https://github.com/peterboda236/readinginsights.koplugin),
+unpacks it over the installed plugin folder, and prompts to restart
+KOReader to load the new code.
+
 ## Install
 
 1. Unpack the latest zip and copy the `readinginsights.koplugin` folder into
@@ -74,6 +98,9 @@ instead of a generic cover or logo.
    `2-reading-stats-popup.lua` in your `patches/` folder, **remove them** —
    running the patches alongside this plugin will double-register the same
    dispatcher actions.
+
+Once installed, future updates can be installed in-app — see
+[Updates](#updates) above.
 
 ## Where it shows up
 
@@ -99,6 +126,9 @@ instead of a generic cover or logo.
     pick-from-list menu of every font file KOReader/you have installed,
     or type a custom font name/alias manually; each role can be reset to
     its bundled default individually or all at once.
+  - **Updates** — check for and install new releases (or dev-branch
+    builds) straight from GitHub, no computer needed (see
+    [Updates](#updates) above).
 - **Gestures/shortcuts:** both popups are registered with `Dispatcher`, so
   they can be assigned under *Settings → Taps and gestures*:
   - `reading_insights_popup` — available everywhere (general action).
@@ -119,6 +149,8 @@ instead of a generic cover or logo.
   name and size.
 - `insights_view.lua` — the full-screen "Reading insights" popup.
 - `stats_view.lua` — the compact "Reading statistics: overview" popup.
+- `updater.lua` — the in-app updater (the "Updates" submenu): checks
+  GitHub for new releases/branches and installs them on the device.
 
 ## Translations
 
