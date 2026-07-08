@@ -1,6 +1,8 @@
 --[[
 Reading Insights - in-app updater.
 
+Updater based on https://github.com/AndyHazz/bookshelf.koplugin updater
+
 Mirrors bookshelf.koplugin's lib/bookshelf_updater.lua: lets the user check
 for and install new releases of this plugin directly from GitHub, without
 having to plug the device into a computer. Also supports pulling a specific
