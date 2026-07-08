@@ -1,3 +1,5 @@
+Based on: https://github.com/quanganhdo/koreader-user-patches
+
 ### 📊 Reading insights
 
 <img width="384" height="512" alt="reading-insights-v2-0-0-new-book-progress-popup-colors-v0-zoh19sw42rbh1" src="https://github.com/user-attachments/assets/52f851b7-8955-4739-b3a7-96ff8c2cbfe6" />

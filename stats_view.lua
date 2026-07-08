@@ -88,35 +88,6 @@ end
 local function formatFraction(numerator, denominator)
     return string.format("%s / %s", formatCount(numerator), formatCount(denominator))
 end
-local function formatTimeHuman(seconds)
-    if not seconds or seconds ~= seconds then
-        return emptyValue()
-    end
-
-    if seconds < 0 then
-        return { value = formatCount(0), unit = N_("minute", "minutes", 0) }
-    end
-    if seconds == 0 then
-        return { value = "< 1", unit = N_("minute", "minutes", 1) }
-    end
-
-    local rounded_minutes = Math.round(seconds / 60)
-    if rounded_minutes <= 0 then
-        return { value = "< 1", unit = N_("minute", "minutes", 1) }
-    elseif rounded_minutes < 60 then
-        return {
-            value = formatCount(rounded_minutes),
-            unit  = N_("minute", "minutes", rounded_minutes)
-        }
-    end
-
-    local h = math.floor(rounded_minutes / 60 * 10) / 10
-    return {
-        value = formatNumber(h, 1),
-        unit  = N_("hour", "hours", h)
-    }
-end
-
 -- Format "(N days left)" suffix for the finish date (translatable).
 local function formatDaysLeftSuffix(days_left)
     if not days_left or days_left < 0 then return "" end
@@ -179,18 +150,15 @@ local function tappableWrap(widget, width)
     }
 end
 
--- Format seconds as HH:MM (same style as insights_view).
--- Returns { value = "HH:MM", unit = "" } so it fits the buildValueLine API.
+-- Format seconds as a clock-style duration honouring KOReader's global
+-- "duration_format" setting (classic "1:30", modern "1h30'", ...) - see
+-- L10N.formatDuration() in l10n.lua for details.
+-- Returns { value = "<formatted>", unit = "" } so it fits the buildValueLine API.
 local function formatTimeHHMM(seconds)
     if not seconds or seconds ~= seconds then
         return emptyValue()
     end
-    if seconds < 0 then seconds = 0 end
-    local total_minutes = Math.round(seconds / 60)
-    if total_minutes < 0 then total_minutes = 0 end
-    local h = math.floor(total_minutes / 60)
-    local m = total_minutes % 60
-    return { value = string.format("%02d:%02d", h, m), unit = "" }
+    return { value = L10N.formatDuration(seconds, true), unit = "" }
 end
 
 local function dayCountLabel(kind, unit, count)
@@ -1020,7 +988,6 @@ function ReadingStatsPopup:onShow()
 end
 
 function ReadingStatsPopup:gatherStats()
-    local zero_minutes          = { value = formatCount(0), unit = N_("minute", "minutes", 0) }
     local zero_pages_per_minute = { value = formatCount(0), unit = N_("page per minute", "pages per minute", 0) }
     local zero_days_reading     = humanizeDayCount(0, "reading")
     local zero_days_to_go       = humanizeDayCount(0, "to_go")
@@ -1032,26 +999,19 @@ function ReadingStatsPopup:gatherStats()
     -- "—:—" rather than the misleading "00:00".
     local na_hhmm = { value = "—:—", unit = "" }
     local stats = {
-        chapter_time_left      = zero_minutes,
         chapter_time_left_hhmm = na_hhmm,
-        next_chapter_time      = emptyValue(),
         next_chapter_time_hhmm = emptyValue(),
-        book_time_left         = zero_minutes,
         book_time_left_hhmm    = na_hhmm,
-        book_time_spent        = zero_minutes,
         book_time_spent_hhmm   = zero_hhmm,
         book_progress          = zero_progress,
         book_pages_read        = zero_pages_read,
-        avg_time_per_day       = zero_minutes,
         avg_time_per_day_hhmm  = na_hhmm,
         pages_per_minute       = zero_pages_per_minute,
         days_reading           = zero_days_reading,
         days_to_go             = zero_days_to_go,
         today_pages            = emptyValue(),
-        today_time             = emptyValue(),
         today_time_hhmm        = zero_hhmm,
         today_pages_all        = emptyValue(),
-        today_time_all         = emptyValue(),
         today_time_all_hhmm    = zero_hhmm,
         chapter_info           = nil,
         has_next_chapter       = false,
@@ -1096,7 +1056,6 @@ function ReadingStatsPopup:gatherStats()
     local next_chapter_start = toc and toc:getNextChapter(pageno)
     if next_chapter_start then
         stats.has_next_chapter        = true
-        stats.next_chapter_time       = na_hhmm
         stats.next_chapter_time_hhmm  = na_hhmm
     end
 
@@ -1104,7 +1063,6 @@ function ReadingStatsPopup:gatherStats()
         local chapter_pages_left = getChapterPagesLeft(ui, pageno)
         if chapter_pages_left and chapter_pages_left >= 0 then
             local ch_secs = chapter_pages_left * avg_time
-            stats.chapter_time_left      = formatTimeHuman(ch_secs)
             stats.chapter_time_left_hhmm = formatTimeHHMM(ch_secs)
         end
 
@@ -1120,7 +1078,6 @@ function ReadingStatsPopup:gatherStats()
             if next_chapter_pages < 0 then next_chapter_pages = 0 end
             if next_chapter_pages >= 0 then
                 local nc_secs = next_chapter_pages * avg_time
-                stats.next_chapter_time      = formatTimeHuman(nc_secs)
                 stats.next_chapter_time_hhmm = formatTimeHHMM(nc_secs)
             end
         end
@@ -1130,13 +1087,11 @@ function ReadingStatsPopup:gatherStats()
         pages_left = getBookPagesLeft(ui)
         if pages_left and pages_left > 0 then
             local bl_secs = (pages_left + 1) * avg_time
-            stats.book_time_left      = formatTimeHuman(bl_secs)
             stats.book_time_left_hhmm = formatTimeHHMM(bl_secs)
             stats.book_time_left_raw  = bl_secs
         elseif pages_left then
             -- Pace data exists and the book is genuinely finished (no pages
             -- left) - 00:00 is correct here, unlike the "no data" case above.
-            stats.book_time_left      = formatTimeHuman(0)
             stats.book_time_left_hhmm = zero_hhmm
             stats.book_time_left_raw  = 0
         end
@@ -1165,7 +1120,6 @@ function ReadingStatsPopup:gatherStats()
             total_time = tonumber(time_val) or 0
         end
         if total_time and total_time > 0 then
-            stats.book_time_spent      = formatTimeHuman(total_time)
             stats.book_time_spent_hhmm = formatTimeHHMM(total_time)
         end
 
@@ -1185,7 +1139,6 @@ function ReadingStatsPopup:gatherStats()
         if total_days ~= nil then
             if total_time and total_time > 0 then
                 local avg_secs = total_time / total_days
-                stats.avg_time_per_day      = formatTimeHuman(avg_secs)
                 stats.avg_time_per_day_hhmm = formatTimeHHMM(avg_secs)
             end
             stats.days_reading = humanizeDayCount(total_days, "reading")
@@ -1207,7 +1160,6 @@ function ReadingStatsPopup:gatherStats()
             }
         end
         if today_t and today_t > 0 then
-            stats.today_time      = formatTimeHuman(today_t)
             stats.today_time_hhmm = formatTimeHHMM(today_t)
         end
 
@@ -1218,7 +1170,6 @@ function ReadingStatsPopup:gatherStats()
             }
         end
         if all_t and all_t > 0 then
-            stats.today_time_all      = formatTimeHuman(all_t)
             stats.today_time_all_hhmm = formatTimeHHMM(all_t)
         end
 

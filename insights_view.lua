@@ -680,49 +680,11 @@ end
 
 local Math = require("optmath")
 
-local function formatTimeRead(seconds)
-    if not seconds or seconds <= 0 then
-        return "", ""
-    end
-    
-    if seconds < 60 then
-        local s = Math.round(seconds)  -- Math.round instead of math.floor
-        return formatNumber(s, 0),
-               N_("second read", "seconds read", s)
-
-    elseif seconds < 3600 then
-        local m = Math.round(seconds / 60)
-        return formatNumber(m, 0),
-               N_("minute read", "minutes read", m)
-
-    else
-        local rounded_minutes = Math.round(seconds / 60)
-        local h = math.floor(rounded_minutes / 60 * 10) / 10
-        return formatNumber(h, 1),
-               N_("hour read", "hours read", h)
-    end
-end
-
-local function formatHoursRead(seconds)
-    if not seconds or seconds <= 0 then
-        return "0", N_("hour read", "hours read", 0)
-    end
-
-    local rounded_minutes = Math.round(seconds / 60)
-    local h = math.floor(rounded_minutes / 60 * 10) / 10
-    h = math.floor(h)  -- drop decimal
-    return formatNumber(h, 0),
-           N_("hour read", "hours read", h)
-end
-
--- Format seconds as HH:MM:SS for book list display.
+-- Format seconds as a clock-style duration for book list display, honouring
+-- KOReader's global "duration_format" setting (classic "1:30:10", modern
+-- "1h30'10\"", ...) - see L10N.formatDuration() in l10n.lua for details.
 local function formatHHMMSS(seconds)
-    if not seconds or seconds <= 0 then return "00:00:00" end
-    local s = math.floor(seconds)
-    local hh = math.floor(s / 3600)
-    local mm = math.floor((s % 3600) / 60)
-    local ss = s % 60
-    return string.format("%02d:%02d:%02d", hh, mm, ss)
+    return L10N.formatDuration(seconds, false)
 end
 
 -- Font faces for this popup's four text roles, sourced from the shared
@@ -992,10 +954,7 @@ local function buildYearlyRow(popup_self, yearly_stats, fonts, layout)
     local left_unit  = ""
     if popup_self.mode == INSIGHTS_MODE_HOURS then
         local yr_secs = yearly_stats.duration or 0
-        local yr_total_mins = math.floor(yr_secs / 60 + 0.5)
-        local yr_h = math.floor(yr_total_mins / 60)
-        local yr_m = yr_total_mins % 60
-        left_value = string.format("%02d:%02d", yr_h, yr_m)
+        left_value = L10N.formatDuration(yr_secs, true)
         left_unit  = _("reading time")
     elseif popup_self.mode == INSIGHTS_MODE_BOOKS then
         left_value = formatCount(yearly_stats.books_started)
@@ -1115,10 +1074,7 @@ local function buildMonthlyChart(popup_self, monthly_data, layout, fonts)
             local bar_label_str
             if popup_self.mode == INSIGHTS_MODE_HOURS then
                 local mo_secs = tonumber(m.seconds) or math.floor((tonumber(m.hours) or 0) * 3600 + 0.5)
-                local mo_mins = math.floor(mo_secs / 60 + 0.5)
-                local mo_h = math.floor(mo_mins / 60)
-                local mo_m = mo_mins % 60
-                bar_label_str = string.format("%02d:%02d", mo_h, mo_m)
+                bar_label_str = L10N.formatDuration(mo_secs, true)
             else
                 bar_label_str = formatNumber(value)
             end            local value_label   = TextWidget:new{ text = bar_label_str, face = font_small, fgcolor = Colors.small() }
@@ -1255,10 +1211,7 @@ local function formatWeekValue(metric, week_entry)
     if metric == "time_total" or metric == "time_avg" then
         local secs = week_entry.seconds or 0
         if metric == "time_avg" then secs = secs / 7 end
-        local mins = math.floor(secs / 60 + 0.5)
-        local h = math.floor(mins / 60)
-        local m = mins % 60
-        return string.format("%02d:%02d", h, m), secs
+        return L10N.formatDuration(secs, true), secs
     else
         local pages = week_entry.pages or 0
         if metric == "pages_avg" then
@@ -1288,12 +1241,10 @@ local function totalForMetric(metric, weeks)
         total_pages = total_pages + (w.pages or 0)
     end
     if metric == "time_total" then
-        local mins = math.floor(total_secs / 60 + 0.5)
-        return string.format("%02d:%02d", math.floor(mins / 60), mins % 60)
+        return L10N.formatDuration(total_secs, true)
     elseif metric == "time_avg" then
         local avg_secs = total_secs / (7 * #weeks)
-        local mins = math.floor(avg_secs / 60 + 0.5)
-        return string.format("%02d:%02d", math.floor(mins / 60), mins % 60)
+        return L10N.formatDuration(avg_secs, true)
     elseif metric == "pages_total" then
         return formatCount(total_pages)
     else -- pages_avg
@@ -1512,10 +1463,7 @@ local function buildWeeklyChart(popup_self, daily_data, layout, fonts, mode)
             val_str = string.format(_("%d p"), pages)
         else
             local secs = tonumber(d.seconds) or 0
-            local total_mins = math.floor(secs / 60 + 0.5)
-            local h = math.floor(total_mins / 60)
-            local m = total_mins % 60
-            val_str = string.format("%02d:%02d", h, m)
+            val_str = L10N.formatDuration(secs, true)
         end
         local value_label   = TextWidget:new{ text = val_str, face = font_small, fgcolor = Colors.small() }
         local centered_label = CenterContainer:new{
@@ -1653,11 +1601,8 @@ local function showStreakDatePopup(dates, is_weekly, is_current)
     local num_days = daysBetweenInclusive(range_start, range_end)
     local avg_seconds = num_days > 0 and (period.duration / num_days) or 0
 
-    local total_mins = math.floor(period.duration / 60 + 0.5)
-    local total_time_val = string.format("%02d:%02d", math.floor(total_mins / 60), total_mins % 60)
-
-    local avg_mins = math.floor(avg_seconds / 60 + 0.5)
-    local avg_time_val = string.format("%02d:%02d", math.floor(avg_mins / 60), avg_mins % 60)
+    local total_time_val = L10N.formatDuration(period.duration, true)
+    local avg_time_val = L10N.formatDuration(avg_seconds, true)
 
     local book_count = period.books
     local book_label
@@ -1756,10 +1701,7 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
         if has_week then
 
             local avg_secs = lw.avg_seconds or 0
-            local avg_total_mins = math.floor(avg_secs / 60 + 0.5)
-            local avg_h = math.floor(avg_total_mins / 60)
-            local avg_m = avg_total_mins % 60
-            local week_time_val = string.format("%02d:%02d", avg_h, avg_m)
+            local week_time_val = L10N.formatDuration(avg_secs, true)
             local week_time_unit_full = _("read time avg/day")
 
             local avg_pages_rounded
@@ -1787,11 +1729,8 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
                     layout.col_width, function() popup_self:showWeeklyTrendPopup("pages_avg") end),
                 layout)
 
-            local total_secs = math.floor((lw.avg_seconds or 0) * 7 + 0.5)
-            local total_mins = math.floor(total_secs / 60 + 0.5)
-            local total_hh = math.floor(total_mins / 60)
-            local total_mm = total_mins % 60
-            local total_time_val = string.format("%02d:%02d", total_hh, total_mm)
+            local total_secs = (lw.avg_seconds or 0) * 7
+            local total_time_val = L10N.formatDuration(total_secs, true)
             local total_time_unit = _("reading time")
 
             local total_pages_raw = math.floor((lw.avg_pages or 0) * 7 + 0.5)
@@ -1983,10 +1922,7 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
         local all_pages = all_time_stats and all_time_stats.pages or 0
 
         local all_secs_approx = (all_time_stats and all_time_stats.duration) or (all_hours * 3600)
-        local all_total_mins = math.floor(all_secs_approx / 60 + 0.5)
-        local all_hh = math.floor(all_total_mins / 60)
-        local all_mm = all_total_mins % 60
-        local all_time_val  = string.format("%02d:%02d", all_hh, all_mm)
+        local all_time_val  = L10N.formatDuration(all_secs_approx, true)
         local all_time_unit = _("reading time")
         local all_pages_val  = formatCount(all_pages)
         local all_pages_unit = N_("page read", "pages read", all_pages)

@@ -144,11 +144,33 @@ local function formatCount(value)
     return tostring(value)
 end
 
+-- Formats a duration (in seconds) as "HH:MM" (without_seconds = true) or
+-- "HH:MM:SS" (without_seconds = false / omitted), honouring KOReader's
+-- global "duration_format" setting (Settings ▸ Time and date ▸ Duration
+-- format) - the same setting the built-in statistics plugin uses:
+--   "classic"  -> "1:30:10" / "1:30"
+--   "modern"   -> "1h30'10\"" / "1h30'"
+--   "letters"  -> "1h 30m 10s" / "1h 30m"
+-- This is what makes clock-style time displays in this plugin (chapter/book
+-- time left, time spent, etc.) match whatever format the user picked for
+-- the rest of KOReader, instead of always showing a hardcoded "HH:MM".
+local function formatDuration(seconds, without_seconds)
+    seconds = tonumber(seconds) or 0
+    if seconds < 0 then seconds = 0 end
+    local duration_format = "classic"
+    if G_reader_settings and G_reader_settings.readSetting then
+        duration_format = G_reader_settings:readSetting("duration_format", "classic")
+    end
+    local datetime = require("datetime")
+    return datetime.secondsToClockDuration(duration_format, seconds, without_seconds, false, false)
+end
+
 return {
-    pluginDir    = pluginDir,
-    _            = _,
-    N_           = N_,
-    getLangBase  = getLangBase,
-    formatNumber = formatNumber,
-    formatCount  = formatCount,
+    pluginDir      = pluginDir,
+    _              = _,
+    N_             = N_,
+    getLangBase    = getLangBase,
+    formatNumber   = formatNumber,
+    formatCount    = formatCount,
+    formatDuration = formatDuration,
 }
