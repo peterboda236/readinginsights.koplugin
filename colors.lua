@@ -14,6 +14,11 @@ settings driving every chart/diagram and label in the plugin:
   value         "value" font role   (the big numbers)
   section       "section" font role (section headers, year header)
   small         "small" font role   (chart axis/value labels, small print)
+  heatmap_0     year heatmap cell color - no reading (0% of the year's peak day)
+  heatmap_25    year heatmap cell color - low activity   (up to 25% of the peak day)
+  heatmap_50    year heatmap cell color - medium activity (up to 50% of the peak day)
+  heatmap_75    year heatmap cell color - high activity   (up to 75% of the peak day)
+  heatmap_100   year heatmap cell color - peak activity   (75-100% of the peak day)
 
 Colors are stored as "#RRGGBB" hex strings in G_reader_settings - the same
 format KOReader itself accepts (see Blitbuffer.colorFromString), so any
@@ -121,8 +126,22 @@ function ColorBar:paintTo(bb, x, y)
     end
 end
 
--- Order the "Colors" menu is built in.
-local KEY_ORDER = { "active_bar", "inactive_bar", "trend_line", "separator", "label", "value", "section", "small" }
+-- Order the "Colors" menu is built in (flat entries only - the 5 heatmap
+-- shades live in their own "Heatmap" submenu, see HEATMAP_KEY_ORDER below).
+local KEY_ORDER = {
+    "active_bar", "inactive_bar", "trend_line", "separator", "label", "value", "section", "small",
+}
+
+-- The year-heatmap shades, grouped together under one "Heatmap" submenu
+-- entry in the Colors menu instead of being listed flat alongside the
+-- other colors (there are 5 of them, one per activity level).
+local HEATMAP_KEY_ORDER = { "heatmap_0", "heatmap_25", "heatmap_50", "heatmap_75", "heatmap_100" }
+
+-- Every color key that exists, flat + heatmap combined - used wherever the
+-- code needs to touch *all* colors (e.g. "reset all colors to default").
+local ALL_KEY_ORDER = {}
+for _, key in ipairs(KEY_ORDER) do table.insert(ALL_KEY_ORDER, key) end
+for _, key in ipairs(HEATMAP_KEY_ORDER) do table.insert(ALL_KEY_ORDER, key) end
 
 -- These match what was previously hard-coded directly in the two view
 -- files (Blitbuffer.COLOR_BLACK = "#000000", Blitbuffer.COLOR_GRAY = "#AAAAAA"),
@@ -137,6 +156,14 @@ local DEFAULTS = {
     value        = "#000000",
     section      = "#000000",
     small        = "#000000",
+    -- Year heatmap cell shades, each named after its percentage of black
+    -- (0% = white/no reading that day, 100% = pure black = the day(s)
+    -- with the most reading time in the shown year).
+    heatmap_0    = "#FFFFFF",
+    heatmap_25   = "#BFBFBF",
+    heatmap_50   = "#808080",
+    heatmap_75   = "#404040",
+    heatmap_100  = "#000000",
 }
 
 local SETTINGS_PREFIX = "reading_insights_color_"
@@ -233,6 +260,11 @@ function M.label()       return M.getColor("label")        end
 function M.value()       return M.getColor("value")        end
 function M.section()     return M.getColor("section")      end
 function M.small()       return M.getColor("small")        end
+function M.heatmap0()    return M.getColor("heatmap_0")    end
+function M.heatmap25()   return M.getColor("heatmap_25")   end
+function M.heatmap50()   return M.getColor("heatmap_50")   end
+function M.heatmap75()   return M.getColor("heatmap_75")   end
+function M.heatmap100()  return M.getColor("heatmap_100")  end
 
 -- Menu ---------------------------------------------------------------
 
@@ -246,6 +278,11 @@ local function labelFor(key)
         value        = _("Value color"),
         section      = _("Section color"),
         small        = _("Chart label color"),
+        heatmap_0    = _("No reading (0%)"),
+        heatmap_25   = _("Low activity (25%)"),
+        heatmap_50   = _("Medium activity (50%)"),
+        heatmap_75   = _("High activity (75%)"),
+        heatmap_100  = _("Peak activity (100%)"),
     }
     return labels[key] or key
 end
@@ -298,6 +335,21 @@ local function showHexInputDialog(key, touchmenu_instance, on_change)
     dialog:onShowKeyboard()
 end
 
+-- Returns the sub_item_table for one flat color entry (used both for the
+-- top-level Colors menu items and for the entries inside the "Heatmap"
+-- submenu, which share the exact same "tap to edit hex" behaviour).
+local function colorItem(key, on_change)
+    return {
+        text_func = function()
+            return labelFor(key) .. ": " .. M.getHex(key)
+        end,
+        keep_menu_open = true,
+        callback = function(touchmenu_instance)
+            showHexInputDialog(key, touchmenu_instance, on_change)
+        end,
+    }
+end
+
 -- Returns the sub_item_table for a "Colors" menu entry. on_change (optional)
 -- is invoked every time a color is changed or reset, so the caller can e.g.
 -- close/refresh any currently open popup. The menu itself is always kept
@@ -305,16 +357,19 @@ end
 function M.buildMenu(on_change)
     local sub_item_table = {}
     for _, key in ipairs(KEY_ORDER) do
-        table.insert(sub_item_table, {
-            text_func = function()
-                return labelFor(key) .. ": " .. M.getHex(key)
-            end,
-            keep_menu_open = true,
-            callback = function(touchmenu_instance)
-                showHexInputDialog(key, touchmenu_instance, on_change)
-            end,
-        })
+        table.insert(sub_item_table, colorItem(key, on_change))
     end
+
+    local heatmap_sub_item_table = {}
+    for _, key in ipairs(HEATMAP_KEY_ORDER) do
+        table.insert(heatmap_sub_item_table, colorItem(key, on_change))
+    end
+    table.insert(sub_item_table, {
+        text = _("Reading heatmap"),
+        keep_menu_open = true,
+        sub_item_table = heatmap_sub_item_table,
+    })
+
     table.insert(sub_item_table, {
         text = _("Reset all colors to default"),
         keep_menu_open = true,
@@ -324,7 +379,7 @@ function M.buildMenu(on_change)
                 text = _("Reset all colors to their default values?"),
                 ok_text = _("Reset"),
                 ok_callback = function()
-                    for _, key in ipairs(KEY_ORDER) do
+                    for _, key in ipairs(ALL_KEY_ORDER) do
                         M.resetToDefault(key)
                     end
                     if touchmenu_instance then touchmenu_instance:updateItems() end

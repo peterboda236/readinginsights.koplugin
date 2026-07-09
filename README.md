@@ -20,10 +20,16 @@ A full-screen scrollable overlay with a comprehensive overview of your reading h
 - **Streaks** — current and best daily & weekly reading streaks
 - **Yearly view** — hours or days read + pages, navigable by year
 - **Monthly chart** — bar chart of reading activity per month (tappable to see books)
-- **All-time totals** — cumulative hours and pages across all years
+- **All-time totals** — cumulative hours and pages across all years; tap
+  the "Total read" header to open a GitHub-style reading heatmap of the
+  most recent half-year (5 shades from no reading to that period's
+  busiest day, with a "Less…More" legend and month-start labels along the
+  top), swipeable left/right to page through older/newer half-years as
+  far back as there's data (the popup's own header shows the year, or a
+  year range if the period spans a Dec/Jan boundary)
 - **Use as sleep screen** — show this same popup instead of KOReader's own lock screen when the device suspends, with no double flash (see **Sleep screen** below)
 
-**Controls:** swipe left/right to change year, tap bars to open book lists, tap the chart header to toggle hours/days mode, long-press to force-reload data.
+**Controls:** swipe left/right to change year, tap the "Total read" header to open the reading heatmap, tap bars to open book lists, tap the chart header to toggle hours/days mode, long-press to force-reload data.
 
 **Caching:** uses a stale-while-revalidate strategy — the popup opens instantly with cached data while fresh values load in the background. The last known values are also mirrored to disk, so this still holds true for the very first popup open after a KOReader restart — no blocking "Loading data..." wait.
 
@@ -115,9 +121,10 @@ Once installed, future updates can be installed in-app — see
     sleep-screen popup takes over on suspend
   - **Colors** — pick your own hex color for every bar/line/label the two
     popups draw (active/inactive bars, the 8-week trend line, section/
-    column separator lines, and the label/value/section/chart-label text
-    colors); each one can be reset back to its black-on-gray default
-    individually or all at once.
+    column separator lines, the label/value/section/chart-label text
+    colors, and the 5 year-heatmap shades - defaulting to 0/25/50/75/100%
+    black); each one can be reset back to its default individually or all
+    at once.
   - **Fonts** — pick your own font (name + size) for every text role in
     both popups, grouped under **Reading insights** (section headers,
     values, labels, chart/axis labels) and **Book progress** (section
