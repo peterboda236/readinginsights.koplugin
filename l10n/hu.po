@@ -273,6 +273,21 @@ msgstr "Teljes képernyő frissítés megnyitáskor/bezáráskor"
 msgid "8-week chart order"
 msgstr "8 hetes grafikon sorrendje"
 
+msgid "Advanced settings"
+msgstr "Speciális beállítások"
+
+msgid "Reading heatmap range"
+msgstr "Heatmap időtartama"
+
+msgid "3 months"
+msgstr "3 hónap"
+
+msgid "4 months"
+msgstr "4 hónap"
+
+msgid "6 months"
+msgstr "6 hónap"
+
 msgid "Newest first"
 msgstr "Legújabb először"
 
