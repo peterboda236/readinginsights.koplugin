@@ -706,3 +706,27 @@ msgstr "Nem sikerült lekérni a legújabb kiadást."
 
 msgid "Latest release has no downloadable zip."
 msgstr "A legújabb kiadáshoz nincs letölthető zip fájl."
+
+msgid "Reading heatmap"
+msgstr "Olvasási hőtérkép"
+
+msgid "Less"
+msgstr "Kevesebb"
+
+msgid "More"
+msgstr "Több"
+
+msgid "No reading (0%)"
+msgstr "Nincs olvasás (0%)"
+
+msgid "Low activity (25%)"
+msgstr "Alacsony aktivitás (25%)"
+
+msgid "Medium activity (50%)"
+msgstr "Közepes aktivitás (50%)"
+
+msgid "High activity (75%)"
+msgstr "Magas aktivitás (75%)"
+
+msgid "Peak activity (100%)"
+msgstr "Csúcsaktivitás (100%)"
