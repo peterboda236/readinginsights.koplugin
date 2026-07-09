@@ -5,7 +5,9 @@
 
 More screenshots
 
-<img width="96" height="128" alt="reading-insights-v2-0-0-new-book-progress-popup-colors-v0-zoh19sw42rbh1" src="https://github.com/user-attachments/assets/52f851b7-8955-4739-b3a7-96ff8c2cbfe6" /><img width="96" height="128" alt="FileManager_2026-06-30_074746" src="https://github.com/user-attachments/assets/cf248698-75d0-4948-8d9c-70ea5c69fd5e" /><img width="96" height="128" alt="FileManager_2026-07-02_083320" src="https://github.com/user-attachments/assets/8193ba8b-7f7e-4b35-9efb-81d0d4a1df8e" /><img width="96" height="128" alt="FileManager_2026-07-02_083306" src="https://github.com/user-attachments/assets/3026267b-d29d-4487-99a5-6efdcc4baa37" /><img width="96" height="128" alt="FileManager_2026-07-02_083257" src="https://github.com/user-attachments/assets/8a5857fb-f313-4d04-ab26-f604bdee7e52" />
+<img width="96" height="128" alt="reading-insights-v2-0-0-new-book-progress-popup-colors-v0-zoh19sw42rbh1" src="https://github.com/user-attachments/assets/52f851b7-8955-4739-b3a7-96ff8c2cbfe6" /><img width="96" height="128" alt="FileManager_2026-06-30_074746" src="https://github.com/user-attachments/assets/cf248698-75d0-4948-8d9c-70ea5c69fd5e" /><img width="96" height="128" alt="FileManager_2026-07-02_083320" src="https://github.com/user-attachments/assets/8193ba8b-7f7e-4b35-9efb-81d0d4a1df8e" /><img width="96" height="128" alt="FileManager_2026-07-02_083306" src="https://github.com/user-attachments/assets/3026267b-d29d-4487-99a5-6efdcc4baa37" />
+<img width="96" height="128" alt="FileManager_2026-07-02_083257" src="https://github.com/user-attachments/assets/8a5857fb-f313-4d04-ab26-f604bdee7e52" /><img width="96" height="128" alt="FileManager_2026-07-09_124519" src="https://github.com/user-attachments/assets/151433ca-e506-41e0-b9ea-af8f7d9595c7" />
+
 
 This plugin bundles two reading-stats popups, powered by KOReader's
 statistics database.
@@ -20,10 +22,17 @@ A full-screen scrollable overlay with a comprehensive overview of your reading h
 - **Streaks** — current and best daily & weekly reading streaks
 - **Yearly view** — hours or days read + pages, navigable by year
 - **Monthly chart** — bar chart of reading activity per month (tappable to see books)
-- **All-time totals** — cumulative hours and pages across all years
+- **All-time totals** — cumulative hours and pages across all years; tap
+  the "Total read" header to open a GitHub-style reading heatmap of the
+  most recent half-year (5 shades from no reading to that period's
+  busiest day, with month-start labels along the top and Mon/Wed/Fri
+  labels down the left side), swipeable left/right to page through
+  older/newer half-years as far back as there's data (the popup's own
+  header shows the year, or a year range on its own line if the period
+  spans a Dec/Jan boundary)
 - **Use as sleep screen** — show this same popup instead of KOReader's own lock screen when the device suspends, with no double flash (see **Sleep screen** below)
 
-**Controls:** swipe left/right to change year, tap bars to open book lists, tap the chart header to toggle hours/days mode, long-press to force-reload data.
+**Controls:** swipe left/right to change year, tap the "Total read" header to open the reading heatmap, tap bars to open book lists, tap the chart header to toggle hours/days mode, long-press to force-reload data.
 
 **Caching:** uses a stale-while-revalidate strategy — the popup opens instantly with cached data while fresh values load in the background. The last known values are also mirrored to disk, so this still holds true for the very first popup open after a KOReader restart — no blocking "Loading data..." wait.
 
@@ -115,9 +124,10 @@ Once installed, future updates can be installed in-app — see
     sleep-screen popup takes over on suspend
   - **Colors** — pick your own hex color for every bar/line/label the two
     popups draw (active/inactive bars, the 8-week trend line, section/
-    column separator lines, and the label/value/section/chart-label text
-    colors); each one can be reset back to its black-on-gray default
-    individually or all at once.
+    column separator lines, the label/value/section/chart-label text
+    colors, and the 5 year-heatmap shades - defaulting to 0/25/50/75/100%
+    black); each one can be reset back to its default individually or all
+    at once.
   - **Fonts** — pick your own font (name + size) for every text role in
     both popups, grouped under **Reading insights** (section headers,
     values, labels, chart/axis labels) and **Book progress** (section

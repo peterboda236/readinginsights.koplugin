@@ -691,3 +691,27 @@ msgstr "Could not fetch latest release."
 
 msgid "Latest release has no downloadable zip."
 msgstr "Latest release has no downloadable zip."
+
+msgid "Reading heatmap"
+msgstr "Reading heatmap"
+
+msgid "Less"
+msgstr "Less"
+
+msgid "More"
+msgstr "More"
+
+msgid "No reading (0%)"
+msgstr "No reading (0%)"
+
+msgid "Low activity (25%)"
+msgstr "Low activity (25%)"
+
+msgid "Medium activity (50%)"
+msgstr "Medium activity (50%)"
+
+msgid "High activity (75%)"
+msgstr "High activity (75%)"
+
+msgid "Peak activity (100%)"
+msgstr "Peak activity (100%)"
