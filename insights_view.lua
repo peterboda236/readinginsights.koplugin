@@ -1512,12 +1512,13 @@ local function buildRangeHeatmapGrid(daily_map, start_t, end_t)
         local col_days = {}
         for row = 1, 7 do
             local dstr = os.date("%Y-%m-%d", t)
-            local _, d_month, d_day = parseDateYMD(dstr)
+            local d_year, d_month, d_day = parseDateYMD(dstr)
             local in_range = (dstr >= start_str and dstr <= end_str)
             col_days[row] = {
                 in_range        = in_range,
                 is_month_start  = (in_range and d_day == 1),
                 month           = d_month,
+                year            = d_year,
                 seconds         = daily_map[dstr] or 0,
             }
             t = t + 86400
@@ -1602,27 +1603,97 @@ local function buildRangeHeatmapWidget(daily_map, start_t, end_t, fonts, max_wid
     local label_h = sample_label:getSize().h
     sample_label:free()
 
-    local labels_row = HorizontalGroup:new{ align = "bottom" }
-    table.insert(labels_row, HorizontalSpan:new{ width = wd_label_w + gap })
+    -- First pass: which column (if any) gets a month-start label, same
+    -- one-per-month logic as before, but split out from widget-building
+    -- so the second pass can also see Dec->Jan boundaries ahead of time.
+    local month_label_col = {}   -- col -> { month = n, year = n }
     local last_month_labeled = nil
     for col = 1, num_cols do
-        local label_text = nil
         for _, d in ipairs(cols[col]) do
             if d.is_month_start and d.month ~= last_month_labeled then
-                label_text = MONTH_NAMES_SHORT[d.month]
+                month_label_col[col] = { month = d.month, year = d.year }
                 last_month_labeled = d.month
                 break
             end
         end
-        if label_text then
-            table.insert(labels_row, LeftContainer:new{
-                dimen = Geom:new{ w = cell_size, h = label_h },
-                TextWidget:new{ text = label_text, face = fonts.small, fgcolor = Colors.small() },
-            })
-        else
-            table.insert(labels_row, HorizontalSpan:new{ width = cell_size })
+    end
+
+    -- Slot a "YYYY" year label into the gap between a December label
+    -- and the January label that follows it, so the year is visible
+    -- right where the row rolls over into a new one (e.g. "... Dec.
+    -- 2026 Jan. Febr. ..."). Spans and centers within *all* the free
+    -- columns between the two labels (not just one), since "Dec." and
+    -- "Jan." are each wider than a single column and would otherwise
+    -- get overlapped by a lopsided year label. If there's no free
+    -- column at all between them, the year is prefixed onto the
+    -- January label instead ("2026 Jan.") so it's never lost.
+    local year_label_span = nil   -- { start_col, end_col, text }
+    local prev_col, prev_month = nil, nil
+    for col = 1, num_cols do
+        local d = month_label_col[col]
+        if d then
+            if d.month == 1 and prev_month == 12 then
+                local free_cols = col - prev_col - 1
+                if free_cols >= 1 then
+                    year_label_span = { start_col = prev_col + 1, end_col = col - 1, text = tostring(d.year) }
+                else
+                    d.combined = tostring(d.year) .. " " .. MONTH_NAMES_SHORT[d.month]
+                end
+            end
+            prev_col, prev_month = col, d.month
         end
-        if col < num_cols then
+    end
+
+    local labels_row = HorizontalGroup:new{ align = "bottom" }
+    table.insert(labels_row, HorizontalSpan:new{ width = wd_label_w + gap })
+    local col = 1
+    while col <= num_cols do
+        if year_label_span and col == year_label_span.start_col then
+            local span_cols = year_label_span.end_col - year_label_span.start_col + 1
+            local span_w    = span_cols * cell_size + (span_cols - 1) * gap
+
+            -- Plain centering puts the label closer to "Dec." than to
+            -- "Jan.": "Dec." is drawn from its own column and overflows
+            -- rightward past that column's width, eating into the left
+            -- side of this gap, while "Jan." doesn't reach backward into
+            -- it at all. Nudge the centering right by that overflow so
+            -- the label reads as visually centered between the two.
+            local dec_label = TextWidget:new{ text = MONTH_NAMES_SHORT[12], face = fonts.small }
+            local dec_overflow = math.max(0, dec_label:getSize().w - cell_size)
+            dec_label:free()
+
+            local year_widget = TextWidget:new{ text = year_label_span.text, face = fonts.small, fgcolor = Colors.label() }
+            local text_w = year_widget:getSize().w
+            if dec_overflow > span_w - text_w then dec_overflow = math.max(0, span_w - text_w) end
+            local left_pad  = dec_overflow + math.floor((span_w - text_w - dec_overflow) / 2)
+            if left_pad < 0 then left_pad = 0 end
+            local right_pad = span_w - text_w - left_pad
+            if right_pad < 0 then right_pad = 0 end
+
+            table.insert(labels_row, HorizontalGroup:new{
+                HorizontalSpan:new{ width = left_pad },
+                year_widget,
+                HorizontalSpan:new{ width = right_pad },
+            })
+            col = year_label_span.end_col + 1
+        else
+            local widget = nil
+            local d = month_label_col[col]
+            if d then
+                widget = TextWidget:new{ text = d.combined or MONTH_NAMES_SHORT[d.month],
+                    face = fonts.small, fgcolor = Colors.small() }
+            end
+            if widget then
+                table.insert(labels_row, LeftContainer:new{
+                    dimen = Geom:new{ w = cell_size, h = label_h },
+                    widget,
+                })
+            else
+                table.insert(labels_row, HorizontalSpan:new{ width = cell_size })
+            end
+            col = col + 1
+        end
+        if col <= num_cols then
             table.insert(labels_row, HorizontalSpan:new{ width = gap })
         end
     end
@@ -2716,21 +2787,10 @@ local function buildHeatmapBoxContent(popup_self, periods_back)
     local box_width      = math.floor(Screen:getWidth() * 0.94)
     local content_width  = box_width - 2 * inner_padding
 
-    local year_start = tonumber(os.date("%Y", start_t))
-    local year_end   = tonumber(os.date("%Y", end_t))
-    local year_text  = (year_start == year_end)
-        and tostring(year_end)
-        or (tostring(year_start) .. "–" .. tostring(year_end))
-
-    -- Year always sits on its own line below the heading (rather than
-    -- only falling back to two lines when the wide two-year variant like
-    -- "2025–2026" wouldn't fit on one line next to the title).
-    local title_widget = VerticalGroup:new{
-        align = "center",
-        TextWidget:new{ text = _("Reading heatmap"), face = fonts.section, fgcolor = Colors.section() },
-        VerticalSpan:new{ height = Size.padding.small },
-        TextWidget:new{ text = year_text, face = fonts.label, fgcolor = Colors.label() },
-    }
+    -- Year is shown inline in the label row (see buildRangeHeatmapWidget)
+    -- when the period crosses a Dec/Jan boundary; no separate subtitle
+    -- here at all, even for periods that stay within one year.
+    local title_widget = TextWidget:new{ text = _("Reading heatmap"), face = fonts.section, fgcolor = Colors.section() }
     local title_centered = CenterContainer:new{
         dimen = Geom:new{ w = content_width, h = title_widget:getSize().h }, title_widget,
     }
