@@ -89,6 +89,7 @@ local InfoMessage = require("ui/widget/infomessage")
 local InputContainer = require("ui/widget/container/inputcontainer")
 local LeftContainer = require("ui/widget/container/leftcontainer")
 local LineWidget = require("ui/widget/linewidget")
+local logger = require("logger")
 local OverlapGroup = require("ui/widget/overlapgroup")
 local Size = require("ui/size")
 local SQ3 = require("lua-ljsqlite3/init")
@@ -272,6 +273,21 @@ end
 -- refreshing the popup's data. This way the popup can always open instantly
 -- with the last known numbers, then refresh in the background and redraw -
 -- restart or not.
+--
+-- The "up to yesterday" base aggregates (_alltime_base_cache,
+-- _yearly_base_cache, _monthly_base_cache) are mirrored to disk as well, for
+-- a different reason: they aren't needed for instant display (the stale
+-- cache above already covers that), but without a disk copy each of them is
+-- nil right after a restart, so the first getAllTimeStats() /
+-- getYearlyStats() / getMonthlyReading*() call of the day has to rescan the
+-- entire page_stat history from scratch (expensive, and it makes the
+-- on-screen total visibly jump once that rescan finishes and replaces the
+-- stale placeholder). Restoring them from disk means a restart only has to
+-- redo the cheap today-only query, same as any other same-day cache hit.
+-- Each entry already carries its own `date` field (see makeCachedBase()), so
+-- a stale (yesterday-or-older) entry loaded from disk is simply ignored by
+-- getCachedBase() and recomputed once, exactly as if it had never been
+-- persisted.
 local LuaSettings = require("luasettings")
 local DISK_CACHE_PATH = DataStorage:getSettingsDir() .. "/reading_insights_cache.lua"
 
@@ -282,6 +298,9 @@ local function loadDiskCache()
     local stale_cache   = settings:readSetting("stale_cache")
     local stale_yearly  = settings:readSetting("stale_yearly")
     local stale_monthly = settings:readSetting("stale_monthly")
+    local alltime_base  = settings:readSetting("alltime_base")
+    local yearly_base   = settings:readSetting("yearly_base")
+    local monthly_base  = settings:readSetting("monthly_base")
 
     if type(stale_cache) == "table" then
         for k, v in pairs(stale_cache) do _stale_cache[k] = v end
@@ -292,17 +311,75 @@ local function loadDiskCache()
     if type(stale_monthly) == "table" then
         for k, v in pairs(stale_monthly) do _stale_monthly[k] = v end
     end
+    -- alltime_base is the single un-keyed base-cache entry itself (a
+    -- { date, data } table, or nil); the other two are keyed tables of such
+    -- entries, so they're merged key by key like the stale caches above.
+    if type(alltime_base) == "table" then
+        _alltime_base_cache = alltime_base
+    end
+    -- getYearlyStats()/getMonthlyBookCounts() unconditionally index
+    -- base.book_ids / base.current_month_book_ids without a nil check,
+    -- since a freshly-queried base always has them. A disk-loaded entry is
+    -- defensively backfilled with an empty table here (instead of trusting
+    -- the file to always contain them) so a cache file written by an older
+    -- plugin version, or edited/truncated by hand, can't crash those
+    -- lookups - worst case it just treats every book as "new" for one
+    -- lookup, same as an empty history would.
+    if type(yearly_base) == "table" then
+        for k, v in pairs(yearly_base) do
+            if type(v) == "table" and type(v.data) == "table" and v.data.book_ids == nil then
+                v.data.book_ids = {}
+            end
+            _yearly_base_cache[k] = v
+        end
+    end
+    if type(monthly_base) == "table" then
+        for k, v in pairs(monthly_base) do
+            if type(v) == "table" and type(v.data) == "table" and v.data.current_month_book_ids == nil then
+                v.data.current_month_book_ids = {}
+            end
+            _monthly_base_cache[k] = v
+        end
+    end
 end
 
 -- Best-effort save; any failure (full disk, odd permissions, ...) is
 -- silently ignored so it can never break the popup itself.
+--
+-- LuaSettings only serializes its whole in-memory table once, on flush().
+-- That means a single bad value anywhere in that table can make the *whole*
+-- flush() fail (and flush() is wrapped in pcall below, so that failure is
+-- silent) - which would drop even the already-reliable stale_cache /
+-- _stale_yearly / _stale_monthly placeholders that the "no Loading data...
+-- after restart" behavior depends on, just because one of the newer,
+-- lower-priority base-cache entries turned out to be unexpectedly shaped or
+-- oversized.
+--
+-- To make sure the essential placeholders can never be taken down by a
+-- problem in the base caches, they're saved and flushed to disk in their
+-- own pass first; the base caches (a pure performance optimization, see the
+-- big comment above loadDiskCache()) are only added and flushed afterwards,
+-- as a second, independent pass on the same file.
 local function saveDiskCache()
     local ok, settings = pcall(function() return LuaSettings:open(DISK_CACHE_PATH) end)
     if not ok or not settings then return end
+
     settings:saveSetting("stale_cache", _stale_cache)
     settings:saveSetting("stale_yearly", _stale_yearly)
     settings:saveSetting("stale_monthly", _stale_monthly)
-    pcall(function() settings:flush() end)
+    local stale_flush_ok, stale_flush_err = pcall(function() settings:flush() end)
+    if not stale_flush_ok then
+        logger.warn("ReadingInsights: failed to flush stale-cache placeholders: " .. tostring(stale_flush_err))
+        return -- don't even attempt the base caches against a settings object that just failed to flush
+    end
+
+    settings:saveSetting("alltime_base", _alltime_base_cache)
+    settings:saveSetting("yearly_base", _yearly_base_cache)
+    settings:saveSetting("monthly_base", _monthly_base_cache)
+    local base_flush_ok, base_flush_err = pcall(function() settings:flush() end)
+    if not base_flush_ok then
+        logger.warn("ReadingInsights: failed to flush base caches: " .. tostring(base_flush_err))
+    end
 end
 
 -- Seed the in-memory stale caches from disk immediately, so even the very
@@ -2470,7 +2547,7 @@ function ReadingInsightsPopup:getMonthlyReadingDays(year, shared_conn)
 
             base = {}
             withStatement(conn, sql, function(stmt)
-                for row in stmt:rows() do base[row[1]] = row[2] end
+                for row in stmt:rows() do base[row[1]] = tonumber(row[2]) or 0 end
             end)
         end
 
@@ -2540,7 +2617,7 @@ function ReadingInsightsPopup:getMonthlyReadingHours(year, shared_conn)
 
             base = {}
             withStatement(conn, sql, function(stmt)
-                for row in stmt:rows() do base[row[1]] = row[2] end
+                for row in stmt:rows() do base[row[1]] = tonumber(row[2]) or 0 end
             end)
         end
 
@@ -2660,7 +2737,7 @@ function ReadingInsightsPopup:getYearlyStats(year, shared_conn)
                     t.duration     = t.duration + (tonumber(row[3]) or 0)
                     t.has_activity = true
                     local id_book = tostring(row[1])
-                    if not base.book_ids[id_book] and not seen[id_book] then
+                    if not (base.book_ids and base.book_ids[id_book]) and not seen[id_book] then
                         seen[id_book] = true
                         t.new_books = t.new_books + 1
                     end
@@ -3705,7 +3782,7 @@ function ReadingInsightsPopup:getMonthlyBookCounts(year, shared_conn)
 
             local counts = {}
             withStatement(conn, sql, function(stmt)
-                for row in stmt:rows() do counts[row[1]] = row[2] end
+                for row in stmt:rows() do counts[row[1]] = tonumber(row[2]) or 0 end
             end)
 
             local ids_sql = string.format([[
@@ -3729,7 +3806,7 @@ function ReadingInsightsPopup:getMonthlyBookCounts(year, shared_conn)
         ]], today), function(stmt)
             for row in stmt:rows() do
                 local id_book = tostring(row[1])
-                if not base.current_month_book_ids[id_book] then
+                if not (base.current_month_book_ids and base.current_month_book_ids[id_book]) then
                     new_books_today = new_books_today + 1
                 end
             end
