@@ -796,40 +796,6 @@ function ReadingInsights:addToMainMenu(menu_items)
         end,
     })
 
-    table.insert(settings_sub_item_table, {
-        text_func = function()
-            local order = Insights.readAscendingSetting()
-                and _("Oldest first")
-                or  _("Newest first")
-            return _("8-week chart order") .. ": " .. order
-        end,
-        keep_menu_open = true,
-        sub_item_table = {
-            {
-                text = _("Newest first (descending)"),
-                keep_menu_open = true,
-                radio = true,
-                checked_func = function()
-                    return not Insights.readAscendingSetting()
-                end,
-                callback = function()
-                    Insights.saveAscendingSetting(false)
-                end,
-            },
-            {
-                text = _("Oldest first (ascending)"),
-                keep_menu_open = true,
-                radio = true,
-                checked_func = function()
-                    return Insights.readAscendingSetting()
-                end,
-                callback = function()
-                    Insights.saveAscendingSetting(true)
-                end,
-            },
-        },
-    })
-
     -- Bar-chart height settings: one entry per chart, each opening a
     -- SpinWidget (KOReader's standard numeric-value picker) with the
     -- current value pre-filled and a "default" value to reset to. The
@@ -863,7 +829,33 @@ function ReadingInsights:addToMainMenu(menu_items)
         }
     end
 
+    -- Unified color settings for every chart/diagram and label in both
+    -- popups (insights and stats). Any change here applies to both, next
+    -- time each popup is (re)opened.
     table.insert(settings_sub_item_table, {
+        text = _("Colors"),
+        keep_menu_open = true,
+        sub_item_table = Colors.buildMenu(),
+    })
+
+    -- Unified font settings (name + size) for every text role in both
+    -- popups. Same idea as Colors above. Any change here applies to both,
+    -- next time each popup is (re)opened.
+    table.insert(settings_sub_item_table, {
+        text = _("Fonts"),
+        keep_menu_open = true,
+        separator = true,
+        sub_item_table = Fonts.buildMenu(),
+    })
+
+    -- "Advanced settings": less commonly touched settings, tucked away in
+    -- their own submenu (bar chart height, reading heatmap range, and the
+    -- 8-week chart order, in that order - no separators inside). A
+    -- separator is placed above this entry itself (set on the preceding
+    -- "Fonts" entry) to set it apart from the rest of the Settings menu.
+    local advanced_settings_sub_item_table = {}
+
+    table.insert(advanced_settings_sub_item_table, {
         text = _("Bar chart height"),
         keep_menu_open = true,
         sub_item_table = {
@@ -891,22 +883,79 @@ function ReadingInsights:addToMainMenu(menu_items)
         },
     })
 
-    -- Unified color settings for every chart/diagram and label in both
-    -- popups (insights and stats). Any change here applies to both, next
-    -- time each popup is (re)opened.
-    table.insert(settings_sub_item_table, {
-        text = _("Colors"),
+    table.insert(advanced_settings_sub_item_table, {
+        text_func = function()
+            local months = Insights.readHeatmapMonthsSetting()
+            local label
+            if months == 3 then label = _("3 months")
+            elseif months == 6 then label = _("6 months")
+            else label = _("4 months") end
+            return _("Reading heatmap range") .. ": " .. label
+        end,
         keep_menu_open = true,
-        sub_item_table = Colors.buildMenu(),
+        sub_item_table = {
+            {
+                text = _("3 months"),
+                keep_menu_open = true,
+                radio = true,
+                checked_func = function() return Insights.readHeatmapMonthsSetting() == 3 end,
+                callback = function() Insights.saveHeatmapMonthsSetting(3) end,
+            },
+            {
+                text = _("4 months"),
+                keep_menu_open = true,
+                radio = true,
+                checked_func = function() return Insights.readHeatmapMonthsSetting() == 4 end,
+                callback = function() Insights.saveHeatmapMonthsSetting(4) end,
+            },
+            {
+                text = _("6 months"),
+                keep_menu_open = true,
+                radio = true,
+                checked_func = function() return Insights.readHeatmapMonthsSetting() == 6 end,
+                callback = function() Insights.saveHeatmapMonthsSetting(6) end,
+            },
+        },
     })
 
-    -- Unified font settings (name + size) for every text role in both
-    -- popups. Same idea as Colors above. Any change here applies to both,
-    -- next time each popup is (re)opened.
-    table.insert(settings_sub_item_table, {
-        text = _("Fonts"),
+    table.insert(advanced_settings_sub_item_table, {
+        text_func = function()
+            local order = Insights.readAscendingSetting()
+                and _("Oldest first")
+                or  _("Newest first")
+            return _("8-week chart order") .. ": " .. order
+        end,
         keep_menu_open = true,
-        sub_item_table = Fonts.buildMenu(),
+        sub_item_table = {
+            {
+                text = _("Newest first (descending)"),
+                keep_menu_open = true,
+                radio = true,
+                checked_func = function()
+                    return not Insights.readAscendingSetting()
+                end,
+                callback = function()
+                    Insights.saveAscendingSetting(false)
+                end,
+            },
+            {
+                text = _("Oldest first (ascending)"),
+                keep_menu_open = true,
+                radio = true,
+                checked_func = function()
+                    return Insights.readAscendingSetting()
+                end,
+                callback = function()
+                    Insights.saveAscendingSetting(true)
+                end,
+            },
+        },
+    })
+
+    table.insert(settings_sub_item_table, {
+        text = _("Advanced settings"),
+        keep_menu_open = true,
+        sub_item_table = advanced_settings_sub_item_table,
     })
 
     table.insert(sub_item_table, {

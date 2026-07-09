@@ -264,6 +264,21 @@ msgstr "Full-screen refresh on open/close"
 msgid "8-week chart order"
 msgstr "8-week chart order"
 
+msgid "Advanced settings"
+msgstr "Advanced settings"
+
+msgid "Reading heatmap range"
+msgstr "Reading heatmap range"
+
+msgid "3 months"
+msgstr "3 months"
+
+msgid "4 months"
+msgstr "4 months"
+
+msgid "6 months"
+msgstr "6 months"
+
 msgid "Newest first"
 msgstr "Newest first"
 
