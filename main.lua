@@ -920,6 +920,66 @@ function ReadingInsights:addToMainMenu(menu_items)
 
     table.insert(advanced_settings_sub_item_table, {
         text_func = function()
+            local fmt = Insights.readHeatmapHourFormatSetting() == "12"
+                and _("12-hour (AM/PM)")
+                or  _("24-hour")
+            return _("Heatmap hour format") .. ": " .. fmt
+        end,
+        keep_menu_open = true,
+        sub_item_table = {
+            {
+                text = _("24-hour"),
+                keep_menu_open = true,
+                radio = true,
+                checked_func = function()
+                    return Insights.readHeatmapHourFormatSetting() == "24"
+                end,
+                callback = function() Insights.saveHeatmapHourFormatSetting("24") end,
+            },
+            {
+                text = _("12-hour (AM/PM)"),
+                keep_menu_open = true,
+                radio = true,
+                checked_func = function()
+                    return Insights.readHeatmapHourFormatSetting() == "12"
+                end,
+                callback = function() Insights.saveHeatmapHourFormatSetting("12") end,
+            },
+        },
+    })
+
+    table.insert(advanced_settings_sub_item_table, {
+        text_func = function()
+            local start_day = Insights.readWeekStartSetting() == "sunday"
+                and _("Sunday")
+                or  _("Monday")
+            return _("Week start day") .. ": " .. start_day
+        end,
+        keep_menu_open = true,
+        sub_item_table = {
+            {
+                text = _("Monday"),
+                keep_menu_open = true,
+                radio = true,
+                checked_func = function()
+                    return Insights.readWeekStartSetting() == "monday"
+                end,
+                callback = function() Insights.saveWeekStartSetting("monday") end,
+            },
+            {
+                text = _("Sunday"),
+                keep_menu_open = true,
+                radio = true,
+                checked_func = function()
+                    return Insights.readWeekStartSetting() == "sunday"
+                end,
+                callback = function() Insights.saveWeekStartSetting("sunday") end,
+            },
+        },
+    })
+
+    table.insert(advanced_settings_sub_item_table, {
+        text_func = function()
             local order = Insights.readAscendingSetting()
                 and _("Oldest first")
                 or  _("Newest first")
