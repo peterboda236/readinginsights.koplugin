@@ -144,6 +144,43 @@ local function formatCount(value)
     return tostring(value)
 end
 
+-- Long-duration display (Settings ▸ Advanced settings ▸ "Show long
+-- durations as days"). Off by default (existing "51:03"-style clock
+-- format is unchanged); when the user turns it on, any duration this
+-- plugin formats that reaches 24h or more is shown as a day count instead
+-- ("2.1 days" / "2,1 nap"). Read by formatDuration() every time a
+-- duration is formatted, so a change takes effect immediately.
+local SETTINGS_KEY_DURATION_DAYS = "reading_insights_duration_over_24h_as_days"
+local DEFAULT_DURATION_DAYS      = false
+local SECONDS_PER_DAY            = 86400
+
+local function readDurationDaysSetting()
+    if G_reader_settings and G_reader_settings.has and G_reader_settings.isTrue then
+        if G_reader_settings:has(SETTINGS_KEY_DURATION_DAYS) then
+            return G_reader_settings:isTrue(SETTINGS_KEY_DURATION_DAYS)
+        end
+    end
+    return DEFAULT_DURATION_DAYS
+end
+
+local function saveDurationDaysSetting(value)
+    if G_reader_settings and G_reader_settings.saveSetting then
+        if value then
+            G_reader_settings:makeTrue(SETTINGS_KEY_DURATION_DAYS)
+        else
+            G_reader_settings:makeFalse(SETTINGS_KEY_DURATION_DAYS)
+        end
+    end
+end
+
+-- Truncates (never rounds up) n to the given number of decimal places, so
+-- e.g. 2.99 days at 0 decimals reads "2 days", not "3 days" - a duration
+-- isn't a full extra day until it's actually elapsed.
+local function floorToDecimals(n, decimals)
+    local mult = 10 ^ decimals
+    return math.floor(n * mult) / mult
+end
+
 -- Formats a duration (in seconds) as "HH:MM" (without_seconds = true) or
 -- "HH:MM:SS" (without_seconds = false / omitted), honouring KOReader's
 -- global "duration_format" setting (Settings ▸ Time and date ▸ Duration
@@ -154,23 +191,60 @@ end
 -- This is what makes clock-style time displays in this plugin (chapter/book
 -- time left, time spent, etc.) match whatever format the user picked for
 -- the rest of KOReader, instead of always showing a hardcoded "HH:MM".
-local function formatDuration(seconds, without_seconds)
+--
+-- If "Show long durations as days" is enabled and seconds reaches 24h or
+-- more, this instead returns a day count with one decimal place
+-- ("2.1 days" / "2,1 nap"), rounded down rather than to the nearest,
+-- since "51:03" stops being a useful clock reading once it crosses a day.
+--
+-- Returns { value = "<number part>", unit = "<trailing word, or \"\">" }
+-- so callers that render the value/unit in different styles (e.g. the
+-- stats popup's bold-number + plain-label layout) can keep "7,3" bold
+-- without also bolding "nap". Plain formatDuration() below just joins
+-- the two back into a single string for callers that don't need that
+-- split.
+local function formatDaysParts(seconds)
+    local decimals = 1
+    local days = floorToDecimals(seconds / SECONDS_PER_DAY, decimals)
+    local value_str = formatNumber(days, decimals)
+    local unit_str = N_("day", "days", (days == 1) and 1 or 2)
+    return { value = value_str, unit = unit_str }
+end
+
+local function formatDurationParts(seconds, without_seconds)
     seconds = tonumber(seconds) or 0
     if seconds < 0 then seconds = 0 end
+
+    if seconds >= SECONDS_PER_DAY and readDurationDaysSetting() then
+        return formatDaysParts(seconds)
+    end
+
     local duration_format = "classic"
     if G_reader_settings and G_reader_settings.readSetting then
         duration_format = G_reader_settings:readSetting("duration_format", "classic")
     end
     local datetime = require("datetime")
-    return datetime.secondsToClockDuration(duration_format, seconds, without_seconds, false, false)
+    local clock_str = datetime.secondsToClockDuration(duration_format, seconds, without_seconds, false, false)
+    return { value = clock_str, unit = "" }
+end
+
+local function formatDuration(seconds, without_seconds)
+    local parts = formatDurationParts(seconds, without_seconds)
+    if parts.unit == "" then
+        return parts.value
+    end
+    return parts.value .. " " .. parts.unit
 end
 
 return {
-    pluginDir      = pluginDir,
-    _              = _,
-    N_             = N_,
-    getLangBase    = getLangBase,
-    formatNumber   = formatNumber,
-    formatCount    = formatCount,
-    formatDuration = formatDuration,
+    pluginDir                  = pluginDir,
+    _                          = _,
+    N_                         = N_,
+    getLangBase                = getLangBase,
+    formatNumber               = formatNumber,
+    formatCount                = formatCount,
+    formatDuration             = formatDuration,
+    formatDurationParts        = formatDurationParts,
+    readDurationDaysSetting    = readDurationDaysSetting,
+    saveDurationDaysSetting    = saveDurationDaysSetting,
 }
