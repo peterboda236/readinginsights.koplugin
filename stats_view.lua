@@ -154,11 +154,15 @@ end
 -- "duration_format" setting (classic "1:30", modern "1h30'", ...) - see
 -- L10N.formatDuration() in l10n.lua for details.
 -- Returns { value = "<formatted>", unit = "" } so it fits the buildValueLine API.
+-- When the "24h+ as days" setting is on and the duration crosses a day,
+-- L10N.formatDurationParts() splits the trailing "day"/"nap" word into
+-- `unit`, so buildValueLine renders it in the plain label style instead of
+-- bolding it along with the number.
 local function formatTimeHHMM(seconds)
     if not seconds or seconds ~= seconds then
         return emptyValue()
     end
-    return { value = L10N.formatDuration(seconds, true), unit = "" }
+    return L10N.formatDurationParts(seconds, true)
 end
 
 local function dayCountLabel(kind, unit, count)

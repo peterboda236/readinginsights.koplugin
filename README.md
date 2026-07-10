@@ -130,6 +130,10 @@ Once installed, future updates can be installed in-app — see
   **Colors** and **Fonts** submenus:
   - **Full-screen refresh on open/close** — toggle
   - **8-week chart order** — newest-first or oldest-first
+  - **Show long durations (24h+) as days** — off by default; when on, any
+    duration of 24h or more (yearly/streak totals, weekly averages,
+    all-time totals, book progress) is shown as a day count with one
+    decimal place (e.g. "1.2 days") instead of clock time
   - **Use as sleep screen** — Off / File manager only / File manager + book
     (see [Sleep screen](#-sleep-screen) above)
   - **Transition** — Instant / Slight delay (0.1s), controls how quickly the

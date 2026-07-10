@@ -1012,6 +1012,15 @@ function ReadingInsights:addToMainMenu(menu_items)
         },
     })
 
+    table.insert(advanced_settings_sub_item_table, {
+        text         = _("Show long durations (24h+) as days"),
+        keep_menu_open = true,
+        checked_func = function() return L10N.readDurationDaysSetting() end,
+        callback     = function()
+            L10N.saveDurationDaysSetting(not L10N.readDurationDaysSetting())
+        end,
+    })
+
     table.insert(settings_sub_item_table, {
         text = _("Advanced settings"),
         keep_menu_open = true,

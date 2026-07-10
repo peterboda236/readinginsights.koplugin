@@ -866,6 +866,24 @@ local function formatHHMMSS(seconds)
     return L10N.formatDuration(seconds, false)
 end
 
+-- Splits a formatted duration into a bold "value" and a plain "unit" for
+-- the value/label row layout used throughout this popup (bold number +
+-- plain description, e.g. "7.3" + "days reading time"). Normally the
+-- number is just the clock string and unit is exactly `base_label`
+-- unchanged. But when "Show long durations (24h+) as days" is on and the
+-- duration crosses a day, L10N.formatDurationParts() returns a trailing
+-- "day"/"nap" word that must NOT be bold - so it's merged into the plain
+-- `unit` ahead of the row's usual label instead of staying glued to the
+-- bold number.
+local function splitDurationValueUnit(seconds, base_label)
+    local parts = L10N.formatDurationParts(seconds, true)
+    local unit = base_label or ""
+    if parts.unit ~= "" then
+        unit = (unit ~= "" and (parts.unit .. " " .. unit)) or parts.unit
+    end
+    return parts.value, unit
+end
+
 -- Font faces for this popup's four text roles, sourced from the shared
 -- Fonts settings module (see fonts.lua) so they're user-configurable via
 -- the "Fonts" Tools-menu entry, the same way Colors.* works for colors.
@@ -1137,8 +1155,7 @@ local function buildYearlyRow(popup_self, yearly_stats, fonts, layout)
     local left_unit  = ""
     if popup_self.mode == INSIGHTS_MODE_HOURS then
         local yr_secs = yearly_stats.duration or 0
-        left_value = L10N.formatDuration(yr_secs, true)
-        left_unit  = _("reading time")
+        left_value, left_unit = splitDurationValueUnit(yr_secs, _("reading time"))
     elseif popup_self.mode == INSIGHTS_MODE_BOOKS then
         left_value = formatCount(yearly_stats.books_started)
         left_unit  = N_("book read", "books read", yearly_stats.books_started)
@@ -2309,8 +2326,8 @@ local function showStreakDatePopup(dates, is_weekly, is_current)
     local num_days = daysBetweenInclusive(range_start, range_end)
     local avg_seconds = num_days > 0 and (period.duration / num_days) or 0
 
-    local total_time_val = L10N.formatDuration(period.duration, true)
-    local avg_time_val = L10N.formatDuration(avg_seconds, true)
+    local total_time_val, total_time_unit = splitDurationValueUnit(period.duration, _("total reading time"))
+    local avg_time_val, avg_time_unit = splitDurationValueUnit(avg_seconds, _("avg time/day"))
 
     local book_count = period.books
     local book_label
@@ -2342,8 +2359,8 @@ local function showStreakDatePopup(dates, is_weekly, is_current)
     end
 
     local row_width = math.max(
-        naturalRowWidth(total_time_val, _("total reading time")),
-        naturalRowWidth(avg_time_val, _("avg time/day")),
+        naturalRowWidth(total_time_val, total_time_unit),
+        naturalRowWidth(avg_time_val, avg_time_unit),
         naturalRowWidth(tostring(book_count), book_label)
     )
 
@@ -2373,10 +2390,10 @@ local function showStreakDatePopup(dates, is_weekly, is_current)
 
     local value_lines = VerticalGroup:new{ align = "left" }
     table.insert(value_lines, buildValueLine(fonts.value, fonts.label, row_width,
-        total_time_val, _("total reading time")))
+        total_time_val, total_time_unit))
     table.insert(value_lines, VerticalSpan:new{ height = Size.padding.default })
     table.insert(value_lines, buildValueLine(fonts.value, fonts.label, row_width,
-        avg_time_val, _("avg time/day")))
+        avg_time_val, avg_time_unit))
     table.insert(value_lines, VerticalSpan:new{ height = Size.padding.default })
     table.insert(value_lines, buildValueLine(fonts.value, fonts.label, row_width,
         tostring(book_count), book_label))
@@ -2409,8 +2426,7 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
         if has_week then
 
             local avg_secs = lw.avg_seconds or 0
-            local week_time_val = L10N.formatDuration(avg_secs, true)
-            local week_time_unit_full = _("read time avg/day")
+            local week_time_val, week_time_unit_full = splitDurationValueUnit(avg_secs, _("read time avg/day"))
 
             local avg_pages_rounded
             if lw.avg_pages >= 10 then
@@ -2438,8 +2454,7 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
                 layout)
 
             local total_secs = (lw.avg_seconds or 0) * 7
-            local total_time_val = L10N.formatDuration(total_secs, true)
-            local total_time_unit = _("reading time")
+            local total_time_val, total_time_unit = splitDurationValueUnit(total_secs, _("reading time"))
 
             local total_pages_raw = math.floor((lw.avg_pages or 0) * 7 + 0.5)
             local total_pages_val = formatCount(total_pages_raw)
@@ -2630,8 +2645,7 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
         local all_pages = all_time_stats and all_time_stats.pages or 0
 
         local all_secs_approx = (all_time_stats and all_time_stats.duration) or (all_hours * 3600)
-        local all_time_val  = L10N.formatDuration(all_secs_approx, true)
-        local all_time_unit = _("reading time")
+        local all_time_val, all_time_unit = splitDurationValueUnit(all_secs_approx, _("reading time"))
         local all_pages_val  = formatCount(all_pages)
         local all_pages_unit = N_("page read", "pages read", all_pages)
 
