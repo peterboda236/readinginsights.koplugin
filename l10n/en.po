@@ -748,3 +748,15 @@ msgstr "High activity (75%)"
 
 msgid "Peak activity (100%)"
 msgstr "Peak activity (100%)"
+
+msgid "Show long durations (24h+) as days"
+msgstr "Show long durations (24h+) as days"
+
+msgid "day"
+msgstr "day"
+
+msgid "days"
+msgstr "days"
+
+msgid "Show day count with one decimal (2.4 vs 2)"
+msgstr "Show day count with one decimal (2.4 vs 2)"

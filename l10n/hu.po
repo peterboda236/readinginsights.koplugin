@@ -763,3 +763,15 @@ msgstr "Magas aktivitás (75%)"
 
 msgid "Peak activity (100%)"
 msgstr "Csúcsaktivitás (100%)"
+
+msgid "Show long durations (24h+) as days"
+msgstr "24 óra feletti időtartamok napokban"
+
+msgid "day"
+msgstr "nap"
+
+msgid "days"
+msgstr "nap"
+
+msgid "Show day count with one decimal (2.4 vs 2)"
+msgstr "Nap tizedesjeggyel (2,4 vs 2)"
