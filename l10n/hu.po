@@ -772,6 +772,3 @@ msgstr "nap"
 
 msgid "days"
 msgstr "nap"
-
-msgid "Show day count with one decimal (2.4 vs 2)"
-msgstr "Nap tizedesjeggyel (2,4 vs 2)"
