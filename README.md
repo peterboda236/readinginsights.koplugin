@@ -7,7 +7,8 @@ More screenshots
 
 <img width="96" height="128" alt="reading-insights-v2-0-0-new-book-progress-popup-colors-v0-zoh19sw42rbh1" src="https://github.com/user-attachments/assets/52f851b7-8955-4739-b3a7-96ff8c2cbfe6" /><img width="96" height="128" alt="FileManager_2026-06-30_074746" src="https://github.com/user-attachments/assets/cf248698-75d0-4948-8d9c-70ea5c69fd5e" /><img width="96" height="128" alt="FileManager_2026-07-02_083320" src="https://github.com/user-attachments/assets/8193ba8b-7f7e-4b35-9efb-81d0d4a1df8e" /><img width="96" height="128" alt="FileManager_2026-07-02_083306" src="https://github.com/user-attachments/assets/3026267b-d29d-4487-99a5-6efdcc4baa37" />
 
-<img width="96" height="128" alt="FileManager_2026-07-02_083257" src="https://github.com/user-attachments/assets/8a5857fb-f313-4d04-ab26-f604bdee7e52" /><img width="96" height="128" alt="FileManager_2026-07-09_124519" src="https://github.com/user-attachments/assets/151433ca-e506-41e0-b9ea-af8f7d9595c7" />
+<img width="96" height="128" alt="FileManager_2026-07-02_083257" src="https://github.com/user-attachments/assets/8a5857fb-f313-4d04-ab26-f604bdee7e52" /><img width="96" height="128" alt="FileManager_2026-07-10_103932" src="https://github.com/user-attachments/assets/ee35d8c8-7160-4e57-998a-2d4e3a26fa70" />
+
 
 
 This plugin bundles two reading-stats popups, powered by KOReader's
@@ -24,14 +25,24 @@ A full-screen scrollable overlay with a comprehensive overview of your reading h
 - **Yearly view** — hours or days read + pages, navigable by year
 - **Monthly chart** — bar chart of reading activity per month (tappable to see books)
 - **All-time totals** — cumulative hours and pages across all years; tap
-  the "Total read" header to open a GitHub-style reading heatmap of the
-  most recent half-year (5 shades from no reading to that period's
-  busiest day, with month-start labels along the top and Mon/Wed/Fri
-  labels down the left side), swipeable left/right to page through
-  older/newer half-years as far back as there's data (the popup's own
-  header shows the year, or a year range on its own line if the period
-  spans a Dec/Jan boundary)
+  the "Total read" header to open a reading heatmap popup with two grids:
+  a GitHub-style **calendar heatmap** covering the most recent period (3,
+  4, or 6 months — configurable, see **Settings** below), with 5 shades
+  from no reading to that period's busiest day, month-start labels along
+  the top, and Mon/Wed/Fri labels down the left side; and a **time of day
+  heatmap** below it, showing the same period's reading activity broken
+  down by weekday and hour (shaded the same way, hour labels honouring the
+  24-hour/12-hour setting). Swipeable left/right to page through
+  older/newer periods as far back as there's data (the popup's own header
+  shows the year, or a year range on its own line if the period spans a
+  Dec/Jan boundary)
 - **Use as sleep screen** — show this same popup instead of KOReader's own lock screen when the device suspends, with no double flash (see **Sleep screen** below)
+- **Reading heatmap range** — how many months the calendar/time-of-day
+    heatmap grids show at once: 3, 4, or 6
+  - **Heatmap hour format** — 24-hour or 12-hour (AM/PM) labels for the
+    time-of-day heatmap's hour columns
+  - **Week start day** — Monday or Sunday, controls which day starts each
+    row in both heatmap grids
 
 **Controls:** swipe left/right to change year, tap the "Total read" header to open the reading heatmap, tap bars to open book lists, tap the chart header to toggle hours/days mode, long-press to force-reload data.
 
