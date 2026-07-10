@@ -1842,7 +1842,60 @@ local function buildRangeHeatmapWidget(daily_map, start_t, end_t, fonts, max_wid
         VerticalSpan:new{ height = Size.padding.small },
         grid,
     }
-    return widget, cell_size
+    -- cell_size and the wd_label_w + gap offset (where the first day
+    -- column starts) are both handed back so the legend built below can
+    -- match the grid exactly, however it's currently sized (see
+    -- buildHeatmapLegendWidget).
+    return widget, cell_size, wd_label_w + gap
+end
+
+-- Color legend for the reading heatmap: a "Less" label, the same five
+-- shades used by the grid squares above (see heatmapLevelColor /
+-- Colors.heatmap0..100), and a "More" label - so it's clear at a glance
+-- which end of the scale a given square's color falls on. The swatches
+-- are sized as a fraction of the heatmap's own month/weekday label text
+-- height (fonts.small - see the "Xxx" sample-label measurement in
+-- buildRangeHeatmapWidget above, done the same way here) rather than a
+-- fixed pixel value, so if the user changes that font's size in the
+-- Fonts settings, the legend swatches scale along with it - but at
+-- SWATCH_SIZE_RATIO of that height, so they stay visibly smaller than
+-- the label text (and the grid's own cells) instead of matching it
+-- 1-for-1. They're spaced apart from each other by Size.padding.small.
+-- The whole row starts at left_offset, the same x position as the
+-- grid's first day column, so it always lines up with the heatmap above
+-- it regardless of how many months are currently shown.
+local SWATCH_SIZE_RATIO = 0.55
+
+local function buildHeatmapLegendWidget(fonts, left_offset)
+    local label_gap    = Screen:scaleBySize(2)
+    local swatch_gap    = Size.padding.small
+    local border        = Size.line.thin
+
+    local less_label = TextWidget:new{ text = _("Less"), face = fonts.small, fgcolor = Colors.small() }
+
+    local sample_label = TextWidget:new{ text = "Xxx", face = fonts.small }
+    local label_h = sample_label:getSize().h
+    sample_label:free()
+    local swatch_size = math.max(Screen:scaleBySize(6), math.floor(label_h * SWATCH_SIZE_RATIO))
+
+    local swatch_colors = {
+        Colors.heatmap0(), Colors.heatmap25(), Colors.heatmap50(),
+        Colors.heatmap75(), Colors.heatmap100(),
+    }
+
+    local row = HorizontalGroup:new{ align = "center" }
+    table.insert(row, HorizontalSpan:new{ width = left_offset })
+    table.insert(row, less_label)
+    table.insert(row, HorizontalSpan:new{ width = label_gap })
+    for i, color in ipairs(swatch_colors) do
+        table.insert(row, buildHeatmapCell(swatch_size, border, color))
+        if i < #swatch_colors then
+            table.insert(row, HorizontalSpan:new{ width = swatch_gap })
+        end
+    end
+    table.insert(row, HorizontalSpan:new{ width = label_gap })
+    table.insert(row, TextWidget:new{ text = _("More"), face = fonts.small, fgcolor = Colors.small() })
+    return row
 end
 
 -- Weekly bar chart: 7 bars, index 1 = today (leftmost), index 7 = 6 days ago.
@@ -2874,7 +2927,7 @@ function ReadingInsightsPopup:getDailyReadingDataForRange(start_t, end_t, shared
     return merged
 end
 
--- Builds the box_content (title + grid + legend + best-day line) for the
+-- Builds the box_content (title + grid + legend) for the
 -- "Reading heatmap" popup showing the half-year period `periods_back`
 -- half-years before the current one (0 = most recent, ending today - see
 -- getHeatmapPeriodRange). The title shows just the year, or a "start–end"
@@ -2898,13 +2951,36 @@ local function buildHeatmapBoxContent(popup_self, periods_back)
         dimen = Geom:new{ w = content_width, h = title_widget:getSize().h }, title_widget,
     }
 
-    local heatmap_widget = buildRangeHeatmapWidget(daily_map, start_t, end_t, fonts, content_width)
+    local heatmap_widget, unused_cell_size, left_offset =
+        buildRangeHeatmapWidget(daily_map, start_t, end_t, fonts, content_width)
+
+    -- The heatmap grid ends up centered (as a block) within content_width
+    -- rather than flush against the box's left edge, so its first day
+    -- column doesn't sit at a fixed x. To keep the legend and best-day
+    -- line lined up with that column regardless of where centering puts
+    -- it, every one of these three widgets is wrapped in a same-width
+    -- (heatmap_widget's own width) left-aligned box before being handed
+    -- to the outer, center-aligned VerticalGroup below - so all three get
+    -- centered by the exact same amount, keeping their left_offset
+    -- (weekday-label column + gap) spacers aligned with each other.
+    local heatmap_w = heatmap_widget:getSize().w
+    local function matchHeatmapWidth(widget)
+        if not widget then return nil end
+        return LeftContainer:new{
+            dimen = Geom:new{ w = heatmap_w, h = widget:getSize().h },
+            widget,
+        }
+    end
+
+    local legend_widget = buildHeatmapLegendWidget(fonts, left_offset)
 
     local content = VerticalGroup:new{
         align = "center",
         title_centered,
         VerticalSpan:new{ height = Size.padding.large + Size.padding.default },
-        heatmap_widget,
+        matchHeatmapWidth(heatmap_widget),
+        VerticalSpan:new{ height = Size.padding.default },
+        matchHeatmapWidth(legend_widget),
     }
 
     local box = FrameContainer:new{
