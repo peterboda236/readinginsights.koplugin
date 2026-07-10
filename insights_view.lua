@@ -213,6 +213,58 @@ local function saveHeatmapMonthsSetting(value)
     saveNumSetting(SETTINGS_KEY_HEATMAP_MONTHS, value)
 end
 
+-- Time-of-day heatmap hour format (Settings ▸ Advanced settings ▸ "Heatmap
+-- hour format" - 24-hour or 12-hour AM/PM). Previously the hour header
+-- always showed 24-hour labels ("00".."21"); this is now an explicit,
+-- language-independent setting instead of silently following the
+-- interface language. Read by buildDayPartHeatmapWidget every time the
+-- time-of-day heatmap is built.
+local SETTINGS_KEY_HEATMAP_HOUR_FORMAT = "reading_insights_heatmap_hour_format"
+local DEFAULT_HEATMAP_HOUR_FORMAT      = "24"
+local VALID_HEATMAP_HOUR_FORMAT        = { ["24"] = true, ["12"] = true }
+
+local function readHeatmapHourFormatSetting()
+    local v = G_reader_settings and G_reader_settings.readSetting
+        and G_reader_settings:readSetting(SETTINGS_KEY_HEATMAP_HOUR_FORMAT)
+    if not VALID_HEATMAP_HOUR_FORMAT[v] then return DEFAULT_HEATMAP_HOUR_FORMAT end
+    return v
+end
+
+local function saveHeatmapHourFormatSetting(value)
+    if G_reader_settings and G_reader_settings.saveSetting then
+        G_reader_settings:saveSetting(SETTINGS_KEY_HEATMAP_HOUR_FORMAT, value)
+    end
+end
+
+-- Week start day for both reading heatmaps (Settings ▸ Advanced settings ▸
+-- "Week start day" - Monday or Sunday). Controls which day each grid's
+-- row 1 represents; read by buildRangeHeatmapGrid (calendar heatmap) and
+-- buildDayPartHeatmapWidget (time-of-day heatmap) every time either grid
+-- is built, so a change takes effect the next time the popup (re)opens.
+local SETTINGS_KEY_WEEK_START = "reading_insights_heatmap_week_start"
+local DEFAULT_WEEK_START      = "monday"
+local VALID_WEEK_START        = { monday = true, sunday = true }
+
+local function readWeekStartSetting()
+    local v = G_reader_settings and G_reader_settings.readSetting
+        and G_reader_settings:readSetting(SETTINGS_KEY_WEEK_START)
+    if not VALID_WEEK_START[v] then return DEFAULT_WEEK_START end
+    return v
+end
+
+local function saveWeekStartSetting(value)
+    if G_reader_settings and G_reader_settings.saveSetting then
+        G_reader_settings:saveSetting(SETTINGS_KEY_WEEK_START, value)
+    end
+end
+
+-- 0 = Sunday, 1 = Monday (os.date("%w") convention) for the currently
+-- configured week start day - the shared building block both heatmap
+-- grids use to lay their rows/columns out.
+local function weekStartWday()
+    return readWeekStartSetting() == "sunday" and 0 or 1
+end
+
 local _cache = {
     streaks                = nil,
     streaks_date           = nil,
@@ -553,6 +605,27 @@ local function findStaleByPrefix(stale_table, prefix)
         end
     end
     return nil
+end
+
+-- Used by every base/today merge function below (getYearlyStats,
+-- getAllTimeStats, getMonthlyReading*, getMonthlyBookCounts) when their
+-- "today" DB read fails - most often a transient statistics.sqlite3 lock
+-- right after a KOReader restart, while KOReader's own built-in
+-- statistics plugin is also touching the file. Without this, the caller's
+-- own fallback merges `base` (which excludes today by definition) with an
+-- all-zero "today" slice, silently dropping today's already-known
+-- activity - and since that regressed result looks like legitimate fresh
+-- data, it gets cached and displayed, causing the numbers on screen to
+-- briefly drop before a later, successful read corrects them again.
+-- Prefers this session's own cache (session_cache[key]) over the last
+-- value persisted to disk (stale_table, matched by prefix - see
+-- findStaleByPrefix), and returns nil only when there's genuinely nothing
+-- better yet (e.g. the very first run, before anything has been cached).
+local function bestKnownFullResult(session_cache, key, stale_table, stale_prefix)
+    if session_cache and key and session_cache[key] then
+        return session_cache[key]
+    end
+    return findStaleByPrefix(stale_table, stale_prefix)
 end
 
 local db_path = DataStorage:getSettingsDir() .. "/statistics.sqlite3"
@@ -1536,8 +1609,9 @@ function WeeklyTrendPopup:onAnyKeyPressed() UIManager:close(self) return true en
 --   25-50%                       -> Colors.heatmap50()
 --   50-75%                       -> Colors.heatmap75()
 --   75-100%                      -> Colors.heatmap100()
--- Each column is one week (Monday first); the row above the grid labels
--- the column each month starts in, exactly like GitHub's own graph.
+-- Each column is one week (starting on the configured week start day -
+-- see weekStartWday); the row above the grid labels the column each
+-- month starts in, exactly like GitHub's own graph.
 -- The popup itself (HeatmapPopup, further below) is paginated in
 -- steps of that same period length, swipe left/right, as far back as
 -- there's reading data - see getHeatmapPeriodRange / heatmapMaxPeriodsBack.
@@ -1588,18 +1662,23 @@ local function heatmapMaxPeriodsBack(min_year, min_month)
     return periods_back
 end
 
--- Lays [start_t, end_t] out into Monday-first week columns, padded at
--- both ends so every column has a full 7 days (leading/trailing days
--- outside the period are kept but marked in_range = false so they
--- render as blank spacer cells rather than colored squares).
+-- Lays [start_t, end_t] out into week columns starting on the configured
+-- week start day (Settings ▸ Advanced settings ▸ "Week start day" - see
+-- weekStartWday), padded at both ends so every column has a full 7 days
+-- (leading/trailing days outside the period are kept but marked
+-- in_range = false so they render as blank spacer cells rather than
+-- colored squares).
 local function buildRangeHeatmapGrid(daily_map, start_t, end_t)
-    local start_wd   = tonumber(os.date("%w", start_t))  -- 0=Sun..6=Sat
-    local mon_offset = (start_wd + 6) % 7                 -- days back to Monday
-    local grid_start = start_t - mon_offset * 86400
+    local week_start_wd = weekStartWday()          -- 0=Sun, 1=Mon
+    local week_end_wd   = (week_start_wd + 6) % 7  -- last weekday of a row
 
-    local end_wd     = tonumber(os.date("%w", end_t))
-    local sun_offset = (7 - end_wd) % 7                   -- days forward to Sunday
-    local grid_end   = end_t + sun_offset * 86400
+    local start_wd    = tonumber(os.date("%w", start_t))  -- 0=Sun..6=Sat
+    local start_offset = (start_wd - week_start_wd + 7) % 7  -- days back to week start
+    local grid_start   = start_t - start_offset * 86400
+
+    local end_wd      = tonumber(os.date("%w", end_t))
+    local end_offset  = (week_end_wd - end_wd + 7) % 7  -- days forward to week end
+    local grid_end    = end_t + end_offset * 86400
 
     local total_days = math.floor((grid_end - grid_start) / 86400) + 1
     local num_cols   = math.ceil(total_days / 7)
@@ -1660,6 +1739,35 @@ local function buildHeatmapCell(cell_size, border, fill_color)
     }
 end
 
+-- Mon/Wed/Fri labels run down the left side of both heatmap grids, three
+-- rows apart, same as GitHub's contribution graph (the in-between rows
+-- get no label). Which row each label lands on depends on the configured
+-- week start day (Settings ▸ Advanced settings ▸ "Week start day"): row 1
+-- is Monday when weeks start on Monday (labels on rows 1/3/5), or Sunday
+-- when weeks start on Sunday (labels shift down a row, to rows 2/4/6).
+-- Shared by the calendar heatmap (buildRangeHeatmapWidget) and the
+-- time-of-day heatmap (buildDayPartHeatmapWidget) below, so both grids
+-- use identical labels/rows.
+local function getWeekdayRowLabels()
+    if readWeekStartSetting() == "sunday" then
+        return { [2] = _("Mon"), [4] = _("Wed"), [6] = _("Fri") }
+    end
+    return { [1] = _("Mon"), [3] = _("Wed"), [5] = _("Fri") }
+end
+
+-- Width of the fixed-width weekday-label column - sized to the widest of
+-- the three weekday-row-label strings in the given font - reserved
+-- before sizing either grid, so the cells still fit within max_width.
+local function getWeekdayLabelWidth(fonts)
+    local wd_label_w = 0
+    for _, text in pairs(getWeekdayRowLabels()) do
+        local tw = TextWidget:new{ text = text, face = fonts.small }
+        wd_label_w = math.max(wd_label_w, tw:getSize().w)
+        tw:free()
+    end
+    return wd_label_w
+end
+
 -- Builds the month-start label row + the 7-row/num_cols-column grid for
 -- [start_t, end_t]. Returns the combined widget plus the cell_size
 -- actually used (so the legend below can draw matching squares).
@@ -1669,18 +1777,7 @@ local function buildRangeHeatmapWidget(daily_map, start_t, end_t, fonts, max_wid
     local gap    = Screen:scaleBySize(2)
     local border = Size.line.thin
 
-    -- Mon/Wed/Fri labels run down the left side of the grid (row 1 = Mon,
-    -- row 3 = Wed, row 5 = Fri; the in-between rows get no label, same as
-    -- GitHub's contribution graph). Reserve a fixed-width column for them
-    -- - sized to the widest of the three - before sizing the grid itself,
-    -- so the cells still fit within max_width.
-    local WEEKDAY_ROW_LABELS = { [1] = _("Mon"), [3] = _("Wed"), [5] = _("Fri") }
-    local wd_label_w = 0
-    for _, text in pairs(WEEKDAY_ROW_LABELS) do
-        local tw = TextWidget:new{ text = text, face = fonts.small }
-        wd_label_w = math.max(wd_label_w, tw:getSize().w)
-        tw:free()
-    end
+    local wd_label_w = getWeekdayLabelWidth(fonts)
 
     local grid_width = max_width - wd_label_w - gap
     local cell_size = math.floor((grid_width - (num_cols - 1) * gap) / num_cols)
@@ -1801,13 +1898,15 @@ local function buildRangeHeatmapWidget(daily_map, start_t, end_t, fonts, max_wid
         end
     end
 
-    -- 7-row grid, Monday (row 1) at the top through Sunday (row 7), each
+    -- 7-row grid, week start day (row 1) at the top through the last day
+    -- of the week (row 7) - see weekStartWday/buildRangeHeatmapGrid - each
     -- row prefixed with its weekday label slot (blank unless it's one of
-    -- the WEEKDAY_ROW_LABELS rows).
+    -- the getWeekdayRowLabels rows).
+    local row_labels = getWeekdayRowLabels()
     local grid = VerticalGroup:new{ align = "left" }
     for row = 1, 7 do
         local row_group = HorizontalGroup:new{ align = "center" }
-        local wd_text = WEEKDAY_ROW_LABELS[row]
+        local wd_text = row_labels[row]
         if wd_text then
             table.insert(row_group, LeftContainer:new{
                 dimen = Geom:new{ w = wd_label_w, h = cell_size },
@@ -1847,6 +1946,129 @@ local function buildRangeHeatmapWidget(daily_map, start_t, end_t, fonts, max_wid
     -- match the grid exactly, however it's currently sized (see
     -- buildHeatmapLegendWidget).
     return widget, cell_size, wd_label_w + gap
+end
+
+-- Formats hour `h` (0-23) as a column label, honouring Settings ▸ Advanced
+-- settings ▸ "Heatmap hour format": "24" -> "00".."23", "12" -> "12a",
+-- "3a", ..., "9p" (compact AM/PM, since these labels only get a single
+-- cell-width slot every 3 columns). Independent of the interface language.
+local function formatHeatmapHourLabel(h)
+    if readHeatmapHourFormatSetting() == "12" then
+        local h12 = h % 12
+        if h12 == 0 then h12 = 12 end
+        local suffix = h < 12 and "AM" or "PM"
+        return tostring(h12) .. suffix
+    end
+    return string.format("%02d", h)
+end
+
+-- Maps time-of-day-heatmap grid row (1-7) to the weekday index used by
+-- weekday_hour_map (1 = Monday .. 7 = Sunday, see
+-- ReadingInsightsPopup:getWeekdayHourReadingData), honouring the
+-- configured week start day: Monday-first keeps rows 1-7 = Mon-Sun as-is;
+-- Sunday-first shifts to rows 1-7 = Sun, Mon, ..., Sat.
+local function weekdayRowOrder()
+    if readWeekStartSetting() == "sunday" then
+        return { 7, 1, 2, 3, 4, 5, 6 }
+    end
+    return { 1, 2, 3, 4, 5, 6, 7 }
+end
+
+-- Builds the hour-of-day label row + the 7-row/24-column "time of day"
+-- grid: one column per hour (0-23), one row per weekday (order and start
+-- day set by Settings ▸ Advanced settings ▸ "Week start day" - see
+-- weekdayRowOrder/getWeekdayRowLabels; hour labels honour "Heatmap hour
+-- format" - see formatHeatmapHourLabel), each cell shaded by total
+-- reading time in that weekday+hour slot relative to the busiest slot
+-- anywhere in the grid. weekday_hour_map is { [1..7] = { [0..23] =
+-- seconds } }, 1 = Monday (see ReadingInsightsPopup:getWeekdayHourReadingData).
+-- Returns the combined widget plus the wd_label_w + gap offset (where the
+-- first hour column starts), same shape as buildRangeHeatmapWidget's own
+-- return, so the legend below can be pinned to whichever of the two
+-- grids it should align with.
+local function buildDayPartHeatmapWidget(weekday_hour_map, fonts, max_width)
+    local num_cols = 24
+    local gap      = Screen:scaleBySize(2)
+    local border   = Size.line.thin
+
+    local wd_label_w = getWeekdayLabelWidth(fonts)
+
+    local grid_width = max_width - wd_label_w - gap
+    local cell_size   = math.floor((grid_width - (num_cols - 1) * gap) / num_cols)
+    local min_cell    = Screen:scaleBySize(8)
+    if cell_size < min_cell then cell_size = min_cell end
+
+    local max_seconds = 0
+    for wd = 1, 7 do
+        for h = 0, 23 do
+            local secs = weekday_hour_map[wd][h] or 0
+            if secs > max_seconds then max_seconds = secs end
+        end
+    end
+
+    -- Hour labels every 3 columns ("00", "03", ... "21" in 24-hour format,
+    -- or "12a", "3a", ... "9p" in 12-hour format - see
+    -- formatHeatmapHourLabel/Settings ▸ Advanced settings ▸ "Heatmap hour
+    -- format"), same slot width as the grid below so each label lines up
+    -- with its column, prefixed with a spacer matching the weekday-label
+    -- column + gap.
+    local sample_label = TextWidget:new{ text = "00", face = fonts.small }
+    local label_h = sample_label:getSize().h
+    sample_label:free()
+
+    local labels_row = HorizontalGroup:new{ align = "bottom" }
+    table.insert(labels_row, HorizontalSpan:new{ width = wd_label_w + gap })
+    for h = 0, num_cols - 1 do
+        if h % 3 == 0 then
+            table.insert(labels_row, LeftContainer:new{
+                dimen = Geom:new{ w = cell_size, h = label_h },
+                TextWidget:new{ text = formatHeatmapHourLabel(h), face = fonts.small, fgcolor = Colors.small() },
+            })
+        else
+            table.insert(labels_row, HorizontalSpan:new{ width = cell_size })
+        end
+        if h < num_cols - 1 then
+            table.insert(labels_row, HorizontalSpan:new{ width = gap })
+        end
+    end
+
+    local row_order = weekdayRowOrder()
+    local row_labels = getWeekdayRowLabels()
+
+    local grid = VerticalGroup:new{ align = "left" }
+    for row = 1, 7 do
+        local wd = row_order[row]
+        local row_group = HorizontalGroup:new{ align = "center" }
+        local wd_text = row_labels[row]
+        if wd_text then
+            table.insert(row_group, LeftContainer:new{
+                dimen = Geom:new{ w = wd_label_w, h = cell_size },
+                TextWidget:new{ text = wd_text, face = fonts.small, fgcolor = Colors.small() },
+            })
+        else
+            table.insert(row_group, HorizontalSpan:new{ width = wd_label_w })
+        end
+        table.insert(row_group, HorizontalSpan:new{ width = gap })
+
+        for h = 0, num_cols - 1 do
+            local secs = weekday_hour_map[wd][h] or 0
+            table.insert(row_group, buildHeatmapCell(cell_size, border, heatmapLevelColor(secs, max_seconds)))
+            if h < num_cols - 1 then
+                table.insert(row_group, HorizontalSpan:new{ width = gap })
+            end
+        end
+        table.insert(grid, row_group)
+        if row < 7 then
+            table.insert(grid, VerticalSpan:new{ height = gap })
+        end
+    end
+
+    return VerticalGroup:new{
+        align = "left",
+        labels_row,
+        VerticalSpan:new{ height = Size.padding.small },
+        grid,
+    }, wd_label_w + gap
 end
 
 -- Color legend for the reading heatmap: a "Less" label, the same five
@@ -2642,6 +2864,8 @@ function ReadingInsightsPopup:getMonthlyReadingDays(year, shared_conn)
         return { base = base, today_has_activity = today_has_activity }
     end)
     if not merged then
+        local known_good = bestKnownFullResult(_monthly_cache, key, _stale_monthly, base_key .. ":")
+        if known_good then return known_good end
         merged = { base = cached_base or {}, today_has_activity = false }
     end
 
@@ -2715,6 +2939,8 @@ function ReadingInsightsPopup:getMonthlyReadingHours(year, shared_conn)
         return { base = base, today_seconds = today_seconds }
     end)
     if not merged then
+        local known_good = bestKnownFullResult(_monthly_cache, key, _stale_monthly, base_key .. ":")
+        if known_good then return known_good end
         merged = { base = cached_base or {}, today_seconds = 0 }
     end
 
@@ -2827,6 +3053,8 @@ function ReadingInsightsPopup:getYearlyStats(year, shared_conn)
         return { base = base, today_stats = t }
     end)
     if not merged then
+        local known_good = bestKnownFullResult(_yearly_cache, key, _stale_yearly, base_key .. ":")
+        if known_good then return known_good end
         merged = {
             base        = cached_base or { days = 0, pages = 0, duration = 0, books_started = 0, book_ids = {} },
             today_stats = { pages = 0, duration = 0, has_activity = false, new_books = 0 },
@@ -2927,6 +3155,50 @@ function ReadingInsightsPopup:getDailyReadingDataForRange(start_t, end_t, shared
     return merged
 end
 
+-- Returns a { [1..7] = { [0..23] = seconds_read } } map (1 = Monday) for
+-- the inclusive [start_t, end_t] range - the same period the calendar
+-- heatmap above it covers - used to build the time-of-day heatmap (see
+-- buildDayPartHeatmapWidget). Grouped by book/page/day/hour first, same
+-- dedup approach as getDailyReadingData, so a page re-read across
+-- multiple sessions in the same hour isn't double counted.
+function ReadingInsightsPopup:getWeekdayHourReadingData(start_t, end_t, shared_conn)
+    local start_str = os.date("%Y-%m-%d", start_t)
+    local end_str   = os.date("%Y-%m-%d", end_t)
+
+    local data = {}
+    for wd = 1, 7 do
+        data[wd] = {}
+        for h = 0, 23 do data[wd][h] = 0 end
+    end
+
+    return withDb(shared_conn, data, function(conn)
+        local sql = string.format([[
+            SELECT dow, hour, SUM(dur) AS duration
+            FROM (
+                SELECT id_book, page,
+                       strftime('%%w', start_time, 'unixepoch', 'localtime') AS dow,
+                       CAST(strftime('%%H', start_time, 'unixepoch', 'localtime') AS INTEGER) AS hour,
+                       date(start_time, 'unixepoch', 'localtime') AS day,
+                       SUM(duration) AS dur
+                FROM page_stat
+                WHERE date(start_time, 'unixepoch', 'localtime') BETWEEN '%s' AND '%s'
+                GROUP BY id_book, page, day, dow, hour
+            )
+            GROUP BY dow, hour
+        ]], start_str, end_str)
+
+        withStatement(conn, sql, function(stmt)
+            for row in stmt:rows() do
+                local dow_sun0 = tonumber(row[1]) or 0  -- 0=Sun..6=Sat
+                local wd = ((dow_sun0 + 6) % 7) + 1     -- 1=Mon..7=Sun
+                local hour = tonumber(row[2]) or 0
+                data[wd][hour] = tonumber(row[3]) or 0
+            end
+        end)
+        return data
+    end)
+end
+
 -- Builds the box_content (title + grid + legend) for the
 -- "Reading heatmap" popup showing the half-year period `periods_back`
 -- half-years before the current one (0 = most recent, ending today - see
@@ -2936,51 +3208,85 @@ end
 -- swipe navigation.
 local function buildHeatmapBoxContent(popup_self, periods_back)
     local start_t, end_t = getHeatmapPeriodRange(periods_back)
-    local daily_map = popup_self:getDailyReadingDataForRange(start_t, end_t)
+    local daily_map        = popup_self:getDailyReadingDataForRange(start_t, end_t)
+    local weekday_hour_map = popup_self:getWeekdayHourReadingData(start_t, end_t)
 
     local fonts = getCachedFonts()
     local inner_padding = Size.padding.large
     local box_width      = math.floor(Screen:getWidth() * 0.94)
     local content_width  = box_width - 2 * inner_padding
 
-    -- Year is shown inline in the label row (see buildRangeHeatmapWidget)
-    -- when the period crosses a Dec/Jan boundary; no separate subtitle
-    -- here at all, even for periods that stay within one year.
-    local title_widget = TextWidget:new{ text = _("Reading heatmap"), face = fonts.section, fgcolor = Colors.section() }
-    local title_centered = CenterContainer:new{
-        dimen = Geom:new{ w = content_width, h = title_widget:getSize().h }, title_widget,
-    }
+    -- Small helper: a centered section header (same font/color as every
+    -- other section header in this file) above one of the two grids.
+    local function sectionTitle(text)
+        local w = TextWidget:new{ text = text, face = fonts.section, fgcolor = Colors.section() }
+        return CenterContainer:new{
+            dimen = Geom:new{ w = content_width, h = w:getSize().h }, w,
+        }
+    end
 
-    local heatmap_widget, unused_cell_size, left_offset =
-        buildRangeHeatmapWidget(daily_map, start_t, end_t, fonts, content_width)
+    -- Blank row between the two grids, the height of a (blank) section
+    -- header - no visible line, just the same cushion of space that used
+    -- to sit around the separator line, so removing the line doesn't
+    -- also shrink the gap between the two heatmaps.
+    local function sectionSeparator()
+        local sample = TextWidget:new{ text = "", face = fonts.section }
+        local row_h = sample:getSize().h
+        sample:free()
+        return VerticalSpan:new{ height = row_h }
+    end
 
-    -- The heatmap grid ends up centered (as a block) within content_width
-    -- rather than flush against the box's left edge, so its first day
-    -- column doesn't sit at a fixed x. To keep the legend and best-day
-    -- line lined up with that column regardless of where centering puts
-    -- it, every one of these three widgets is wrapped in a same-width
-    -- (heatmap_widget's own width) left-aligned box before being handed
-    -- to the outer, center-aligned VerticalGroup below - so all three get
-    -- centered by the exact same amount, keeping their left_offset
-    -- (weekday-label column + gap) spacers aligned with each other.
-    local heatmap_w = heatmap_widget:getSize().w
-    local function matchHeatmapWidth(widget)
+    -- Each grid ends up centered (as a block) within content_width rather
+    -- than flush against the box's left edge. Wrapping it in a same-width
+    -- (the grid's own width) left-aligned box before handing it to the
+    -- outer, center-aligned VerticalGroup below keeps its internal
+    -- column/row labels lined up with themselves - it doesn't need to
+    -- match the *other* grid's width, since the two are visually
+    -- independent sections (the legend below is pinned to the
+    -- time-of-day grid specifically - see day_part_left_offset below).
+    local function matchOwnWidth(widget)
         if not widget then return nil end
         return LeftContainer:new{
-            dimen = Geom:new{ w = heatmap_w, h = widget:getSize().h },
+            dimen = Geom:new{ w = widget:getSize().w, h = widget:getSize().h },
             widget,
         }
     end
 
-    local legend_widget = buildHeatmapLegendWidget(fonts, left_offset)
+    -- Year is shown inline in the calendar grid's own label row (see
+    -- buildRangeHeatmapWidget) when the period crosses a Dec/Jan
+    -- boundary; no separate subtitle needed here, even for periods that
+    -- stay within one year.
+    local calendar_widget = buildRangeHeatmapWidget(daily_map, start_t, end_t, fonts, content_width)
+
+    local day_part_widget, day_part_left_offset =
+        buildDayPartHeatmapWidget(weekday_hour_map, fonts, content_width)
+
+    -- The shared legend/caption is pinned to the time-of-day grid
+    -- specifically (not centered on its own): wrapping it in a box the
+    -- same width as day_part_widget, with its own left_offset spacer
+    -- (weekday-label column + gap, same as buildDayPartHeatmapWidget's
+    -- own internal grid), means it gets centered as a block by the same
+    -- amount as that grid below - so the legend's first swatch starts
+    -- exactly under the grid's first hour column.
+    local legend_row = buildHeatmapLegendWidget(fonts, day_part_left_offset)
+    local legend_widget = LeftContainer:new{
+        dimen = Geom:new{ w = day_part_widget:getSize().w, h = legend_row:getSize().h },
+        legend_row,
+    }
 
     local content = VerticalGroup:new{
         align = "center",
-        title_centered,
+        sectionTitle(_("Calendar heatmap")),
         VerticalSpan:new{ height = Size.padding.large + Size.padding.default },
-        matchHeatmapWidth(heatmap_widget),
-        VerticalSpan:new{ height = Size.padding.default },
-        matchHeatmapWidth(legend_widget),
+        matchOwnWidth(calendar_widget),
+        VerticalSpan:new{ height = 2 * Size.padding.large },
+        sectionSeparator(),
+        VerticalSpan:new{ height = 2 * Size.padding.large },
+        sectionTitle(_("Time of day heatmap")),
+        VerticalSpan:new{ height = Size.padding.large + Size.padding.default },
+        matchOwnWidth(day_part_widget),
+        VerticalSpan:new{ height = 2 * Size.padding.large },
+        legend_widget,
     }
 
     local box = FrameContainer:new{
@@ -3213,6 +3519,11 @@ function ReadingInsightsPopup:getAllTimeStats(shared_conn)
         return { base = base, today_stats = t }
     end)
     if not merged then
+        -- Not prefix-keyed like the yearly/monthly caches (there's only
+        -- ever one all-time total), so check the two single-value slots
+        -- directly instead of going through bestKnownFullResult.
+        if _cache.all_time then return _cache.all_time end
+        if _stale_cache.all_time then return _stale_cache.all_time end
         merged = {
             base        = cached_base or { duration = 0, pages = 0, book_count = 0 },
             today_stats = { duration = 0, new_pages = 0, new_books = 0 },
@@ -3923,6 +4234,8 @@ function ReadingInsightsPopup:getMonthlyBookCounts(year, shared_conn)
         return { base = base, new_books_today = new_books_today }
     end)
     if not merged then
+        local known_good = bestKnownFullResult(_monthly_cache, key, _stale_monthly, base_key .. ":")
+        if known_good then return known_good end
         merged = { base = cached_base or { counts = {}, current_month_book_ids = {} }, new_books_today = 0 }
     end
 
@@ -4467,6 +4780,10 @@ return {
     saveMonthlyBarHeightSetting = saveMonthlyBarHeightSetting,
     readHeatmapMonthsSetting    = readHeatmapMonthsSetting,
     saveHeatmapMonthsSetting    = saveHeatmapMonthsSetting,
+    readHeatmapHourFormatSetting = readHeatmapHourFormatSetting,
+    saveHeatmapHourFormatSetting = saveHeatmapHourFormatSetting,
+    readWeekStartSetting        = readWeekStartSetting,
+    saveWeekStartSetting        = saveWeekStartSetting,
     DEFAULT_WEEKLY_BAR_HEIGHT   = DEFAULT_WEEKLY_BAR_HEIGHT,
     DEFAULT_MONTHLY_BAR_HEIGHT  = DEFAULT_MONTHLY_BAR_HEIGHT,
     DEFAULT_HEATMAP_MONTHS      = DEFAULT_HEATMAP_MONTHS,

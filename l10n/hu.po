@@ -288,6 +288,18 @@ msgstr "4 hónap"
 msgid "6 months"
 msgstr "6 hónap"
 
+msgid "Heatmap hour format"
+msgstr "Heatmap óraformátuma"
+
+msgid "24-hour"
+msgstr "24 órás"
+
+msgid "12-hour (AM/PM)"
+msgstr "12 órás (AM/PM)"
+
+msgid "Week start day"
+msgstr "Hét kezdő napja"
+
 msgid "Newest first"
 msgstr "Legújabb először"
 
@@ -724,6 +736,12 @@ msgstr "A legújabb kiadáshoz nincs letölthető zip fájl."
 
 msgid "Reading heatmap"
 msgstr "Olvasási hőtérkép"
+
+msgid "Time of day heatmap"
+msgstr "Napszak szerinti hőtérkép"
+
+msgid "Calendar heatmap"
+msgstr "Naptár hőtérkép"
 
 msgid "Less"
 msgstr "Kevesebb"

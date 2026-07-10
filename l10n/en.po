@@ -279,6 +279,18 @@ msgstr "4 months"
 msgid "6 months"
 msgstr "6 months"
 
+msgid "Heatmap hour format"
+msgstr "Heatmap hour format"
+
+msgid "24-hour"
+msgstr "24-hour"
+
+msgid "12-hour (AM/PM)"
+msgstr "12-hour (AM/PM)"
+
+msgid "Week start day"
+msgstr "Week start day"
+
 msgid "Newest first"
 msgstr "Newest first"
 
@@ -709,6 +721,12 @@ msgstr "Latest release has no downloadable zip."
 
 msgid "Reading heatmap"
 msgstr "Reading heatmap"
+
+msgid "Time of day heatmap"
+msgstr "Time of day heatmap"
+
+msgid "Calendar heatmap"
+msgstr "Calendar heatmap"
 
 msgid "Less"
 msgstr "Less"
