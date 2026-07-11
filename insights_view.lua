@@ -594,17 +594,32 @@ local function buildMonthlyArray(year, entry_fn)
     return months
 end
 
--- Scans a stale-cache table for the first entry whose key starts with
--- `prefix`. Used as a fallback when no fresh/minute-cached value is
--- available yet (e.g. right after a restart, mode switch, or year change).
+-- Scans a stale-cache table for the entry whose key starts with `prefix`
+-- and has the most recent date suffix. Used as a fallback when no
+-- fresh/minute-cached value is available yet (e.g. right after a restart,
+-- mode switch, or year change).
+--
+-- Entries are never pruned from these tables (each calendar day adds a new
+-- date-suffixed key rather than overwriting the previous one - see
+-- setMinuteCache), so a given prefix (e.g. "2026:v3:") can match several
+-- entries at once, one per day the plugin has ever run. pairs() iteration
+-- order is undefined, so simply returning the first match found could just
+-- as easily return yesterday's (or older) entry as today's, which is
+-- exactly what caused the "yesterday's value flashes briefly after
+-- restart" bug: the date suffix is an ISO "YYYY-MM-DD" string, so the
+-- lexicographically greatest matching key is also the chronologically
+-- most recent one - that's the one we want.
 local function findStaleByPrefix(stale_table, prefix)
     if not ENABLE_CACHE then return nil end
+    local best_key, best_val
     for k, v in pairs(stale_table) do
         if k:sub(1, #prefix) == prefix then
-            return v
+            if not best_key or k > best_key then
+                best_key, best_val = k, v
+            end
         end
     end
-    return nil
+    return best_val
 end
 
 -- Used by every base/today merge function below (getYearlyStats,
