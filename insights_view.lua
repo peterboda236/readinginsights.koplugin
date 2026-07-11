@@ -200,7 +200,7 @@ end
 -- getHeatmapPeriodRange below every time a heatmap page is built, so a
 -- change takes effect the next time the popup (re)opens/pages.
 local SETTINGS_KEY_HEATMAP_MONTHS = "reading_insights_heatmap_months_per_period"
-local DEFAULT_HEATMAP_MONTHS      = 4
+local DEFAULT_HEATMAP_MONTHS      = 6
 local VALID_HEATMAP_MONTHS        = { [3] = true, [4] = true, [6] = true }
 
 local function readHeatmapMonthsSetting()
@@ -3360,16 +3360,34 @@ function HeatmapPopup:_rebuild()
     }
 end
 
+-- Returns the screen rectangle a CenterContainer of size self.dimen
+-- would actually paint the given child widget at - mirrors
+-- CenterContainer's own centering math. Takes the widget itself (not
+-- widget.dimen): a FrameContainer without an explicit width/height
+-- (like box_content - see buildHeatmapBoxContent) only gets its .dimen
+-- field populated as a side effect of actually being painted, so
+-- relying on .dimen here crashes with a nil index if this runs before
+-- the box has ever been drawn (e.g. the user swipes right after the
+-- popup opens, before the first paint tick). getSize() computes the
+-- size directly and safely, with no painting required.
+function HeatmapPopup:_centeredRect(widget)
+    local size = widget:getSize()
+    local w, h = size.w, size.h
+    local x = self.dimen.x + math.floor((self.dimen.w - w) / 2)
+    local y = self.dimen.y + math.floor((self.dimen.h - h) / 2)
+    return Geom:new{ x = x, y = y, w = w, h = h }
+end
+
 function HeatmapPopup:onShow()
     UIManager:setDirty(self, function()
-        return "ui", self.box_content.dimen
+        return "ui", self:_centeredRect(self.box_content)
     end)
     return true
 end
 
 function HeatmapPopup:onCloseWidget()
     UIManager:setDirty(nil, function()
-        return "ui", self.box_content.dimen
+        return "ui", self:_centeredRect(self.box_content)
     end)
 end
 
@@ -3379,10 +3397,31 @@ function HeatmapPopup:_goToPeriod(delta)
     if delta < 0 and not self._newer_available then return true end
     if delta > 0 and not self._older_available then return true end
 
+    -- Remember where the box we're about to replace was actually drawn,
+    -- so we can make sure that area gets a fresh repaint even if the
+    -- new box (a different half-year can have a different number of
+    -- calendar week-rows) ends up smaller and no longer covers it.
+    local old_rect = self:_centeredRect(self.box_content)
+
     self.periods_back = self.periods_back + delta
     self:_rebuild()
-    UIManager:setDirty(self, function()
-        return "ui", self.box_content.dimen
+
+    local new_rect = self:_centeredRect(self.box_content)
+    local x1 = math.min(old_rect.x, new_rect.x)
+    local y1 = math.min(old_rect.y, new_rect.y)
+    local x2 = math.max(old_rect.x + old_rect.w, new_rect.x + new_rect.w)
+    local y2 = math.max(old_rect.y + old_rect.h, new_rect.y + new_rect.h)
+    local refresh_region = Geom:new{ x = x1, y = y1, w = x2 - x1, h = y2 - y1 }
+
+    -- "all" (rather than self) tells UIManager to repaint the *whole*
+    -- window stack - including whatever sits behind this popup - for
+    -- that region, not just this widget. That's what actually erases
+    -- the old box's leftover edge where it stuck out past the new,
+    -- smaller one, restoring whatever should show through there
+    -- (instead of painting an opaque backdrop over the whole screen,
+    -- which would lose the floating-popup look).
+    UIManager:setDirty("all", function()
+        return "ui", refresh_region
     end)
     return true
 end
