@@ -1,0 +1,783 @@
+# Reading Insights plugin translation (de)
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+
+msgid "Jan"
+msgstr "Jan"
+
+msgid "Feb"
+msgstr "Feb"
+
+msgid "Mar"
+msgstr "Mär"
+
+msgid "Apr"
+msgstr "Apr"
+
+msgid "May"
+msgstr "Mai"
+
+msgid "Jun"
+msgstr "Jun"
+
+msgid "Jul"
+msgstr "Jul"
+
+msgid "Aug"
+msgstr "Aug"
+
+msgid "Sep"
+msgstr "Sep"
+
+msgid "Oct"
+msgstr "Okt"
+
+msgid "Nov"
+msgstr "Nov"
+
+msgid "Dec"
+msgstr "Dez"
+
+msgid "January"
+msgstr "Januar"
+
+msgid "February"
+msgstr "Februar"
+
+msgid "March"
+msgstr "März"
+
+msgid "April"
+msgstr "April"
+
+msgid "May "
+msgstr "Mai"
+
+msgid "June"
+msgstr "Juni"
+
+msgid "July"
+msgstr "Juli"
+
+msgid "August"
+msgstr "August"
+
+msgid "September"
+msgstr "September"
+
+msgid "October"
+msgstr "Oktober"
+
+msgid "November"
+msgstr "November"
+
+msgid "December"
+msgstr "Dezember"
+
+msgid "second read"
+msgstr "Sekunde gelesen"
+
+msgid "seconds read"
+msgstr "Sekunden gelesen"
+
+msgid "minute read"
+msgstr "Minute gelesen"
+
+msgid "minutes read"
+msgstr "Minuten gelesen"
+
+msgid "hour read"
+msgstr "Stunde gelesen"
+
+msgid "hours read"
+msgstr "Stunden gelesen"
+
+msgid "day read"
+msgstr "Tag gelesen"
+
+msgid "days read"
+msgstr "Tage gelesen"
+
+msgid "book read"
+msgstr "Buch gelesen"
+
+msgid "books read"
+msgstr "Bücher gelesen"
+
+msgid "day/book avg"
+msgstr "Ø Tage/Buch"
+
+msgid "days/book avg"
+msgstr "Ø Tage/Buch"
+
+msgid "of days read"
+msgstr "der Lesetage"
+
+msgid "page read"
+msgstr "Seite gelesen"
+
+msgid "pages read"
+msgstr "Seiten gelesen"
+
+msgid "week in a row"
+msgstr "Woche in Folge"
+
+msgid "weeks in a row"
+msgstr "Wochen in Folge"
+
+msgid "day in a row"
+msgstr "Tag in Folge"
+
+msgid "days in a row"
+msgstr "Tage in Folge"
+
+msgid "No weekly streak"
+msgstr "Keine wöchentliche Serie"
+
+msgid "No daily streak"
+msgstr "Keine tägliche Serie"
+
+msgid "Current streak"
+msgstr "Aktuelle Serie"
+
+msgid "Best streak"
+msgstr "Beste Serie"
+
+msgid "Days read per month"
+msgstr "Lesetage pro Monat"
+
+msgid "Time read per month"
+msgstr "Lesezeit pro Monat"
+
+msgid "Books read per month"
+msgstr "Gelesene Bücher pro Monat"
+
+msgid "Unknown"
+msgstr "Unbekannt"
+
+msgid "No books read"
+msgstr "Keine Bücher gelesen"
+
+msgid "No books read in %1"
+msgstr "Keine Bücher gelesen in %1"
+
+msgid "No books read in "
+msgstr "Keine Bücher gelesen in "
+
+msgid "%1 - book read %2"
+msgstr "%1 - 1 Buch gelesen %2"
+
+msgid "%1 - books read %2"
+msgstr "%1 - Bücher gelesen %2"
+
+msgid "Reloading data..."
+msgstr "Daten werden neu geladen..."
+
+msgid "Reading insights"
+msgstr "Leseeinblicke"
+
+msgid "All books read %1"
+msgstr "Alle gelesenen Bücher %1"
+
+msgid "TOTAL READ"
+msgstr "GESAMT GELESEN"
+
+msgid "LAST WEEK"
+msgstr "LETZTE WOCHE"
+
+msgid "avg/day"
+msgstr "Ø/Tag"
+
+msgid "Today"
+msgstr "Heute"
+
+msgid "Yesterday"
+msgstr "Gestern"
+
+msgid "Mon"
+msgstr "Mo"
+
+msgid "Tue"
+msgstr "Di"
+
+msgid "Wed"
+msgstr "Mi"
+
+msgid "Thu"
+msgstr "Do"
+
+msgid "Fri"
+msgstr "Fr"
+
+msgid "Sat"
+msgstr "Sa"
+
+msgid "Sun"
+msgstr "So"
+
+msgid "read time avg/day"
+msgstr "Ø Lesezeit/Tag"
+
+msgid "reading time"
+msgstr "Lesezeit"
+
+msgid "No streak dates"
+msgstr "Keine Serien-Daten"
+
+msgid "CalendarView not available"
+msgstr "Kalenderansicht nicht verfügbar"
+
+msgid "Reading time over the last 8 weeks"
+msgstr "Lesezeit der letzten 8 Wochen"
+
+msgid "Pages read over the last 8 weeks"
+msgstr "Gelesene Seiten der letzten 8 Wochen"
+
+msgid "Average daily reading time, last 8 weeks"
+msgstr "Durchschnittliche tägliche Lesezeit der letzten 8 Wochen"
+
+msgid "Average daily pages, last 8 weeks"
+msgstr "Durchschnittlich gelesene Seiten pro Tag der letzten 8 Wochen"
+
+msgid "No reading data in the last 8 weeks"
+msgstr "Keine Lesedaten in den letzten 8 Wochen"
+
+msgid "total reading time"
+msgstr "Gesamte Lesezeit"
+
+msgid "avg time/day"
+msgstr "Ø Zeit/Tag"
+
+msgid "book read in this streak"
+msgstr "Buch in dieser Serie gelesen"
+
+msgid "books read in this streak"
+msgstr "Bücher in dieser Serie gelesen"
+
+msgid "Show Reading insights"
+msgstr "Leseeinblicke anzeigen"
+
+msgid "Full-screen refresh on open/close"
+msgstr "Vollbild beim Öffnen/Schließen aktualisieren"
+
+msgid "8-week chart order"
+msgstr "Reihenfolge des 8-Wochen-Diagramms"
+
+msgid "Advanced settings"
+msgstr "Erweiterte Einstellungen"
+
+msgid "Reading heatmap range"
+msgstr "Zeitraum der Lese-Heatmap"
+
+msgid "3 months"
+msgstr "3 Monate"
+
+msgid "4 months"
+msgstr "4 Monate"
+
+msgid "6 months"
+msgstr "6 Monate"
+
+msgid "Heatmap hour format"
+msgstr "Stundenformat der Heatmap"
+
+msgid "24-hour"
+msgstr "24-Stunden"
+
+msgid "12-hour (AM/PM)"
+msgstr "12-Stunden (AM/PM)"
+
+msgid "Week start day"
+msgstr "Wochenbeginn"
+
+msgid "Newest first"
+msgstr "Neueste zuerst"
+
+msgid "Oldest first"
+msgstr "Älteste zuerst"
+
+msgid "Newest first (descending)"
+msgstr "Neueste zuerst (absteigend)"
+
+msgid "Oldest first (ascending)"
+msgstr "Älteste zuerst (aufsteigend)"
+
+msgid "Loading data…"
+msgstr "Daten werden geladen…"
+
+msgid "Book progress"
+msgstr "Buchfortschritt"
+
+msgid "Show Book progress"
+msgstr "Buchfortschritt anzeigen"
+
+msgid "Show Book progress calendar"
+msgstr "Buchfortschrittskalender anzeigen"
+
+msgid "Book progress calendar"
+msgstr "Buchfortschrittskalender"
+
+msgid "No reading data for this book yet."
+msgstr "Für dieses Buch sind noch keine Lesedaten vorhanden."
+
+msgid "This chapter"
+msgstr "Dieses Kapitel"
+
+msgid "Next chapter"
+msgstr "Nächstes Kapitel"
+
+msgid "This book"
+msgstr "Dieses Buch"
+
+msgid "Pace"
+msgstr "Lesetempo"
+
+msgid "Chapters"
+msgstr "Kapitel"
+
+msgid "today for all books"
+msgstr "heute für alle Bücher"
+
+msgid "to go"
+msgstr "verbleibend"
+
+msgid "to read"
+msgstr "zu lesen"
+
+msgid "read"
+msgstr "gelesen"
+
+msgid "read today"
+msgstr "heute gelesen"
+
+msgid "read time"
+msgstr "Lesezeit"
+
+msgid "per day"
+msgstr "pro Tag"
+
+msgid "minute"
+msgstr "Minute"
+
+msgid "minutes"
+msgstr "Minuten"
+
+msgid "hour"
+msgstr "Stunde"
+
+msgid "hours"
+msgstr "Stunden"
+
+msgid "week reading"
+msgstr "Lesewoche"
+
+msgid "weeks reading"
+msgstr "Lesewochen"
+
+msgid "month reading"
+msgstr "Lesemonat"
+
+msgid "months reading"
+msgstr "Lesemonate"
+
+msgid "day reading"
+msgstr "Lesetag"
+
+msgid "days reading"
+msgstr "Lesetage"
+
+msgid "week to go"
+msgstr "Woche verbleibend"
+
+msgid "weeks to go"
+msgstr "Wochen verbleibend"
+
+msgid "month to go"
+msgstr "Monat verbleibend"
+
+msgid "months to go"
+msgstr "Monate verbleibend"
+
+msgid "day to go"
+msgstr "Tag verbleibend"
+
+msgid "days to go"
+msgstr "Tage verbleibend"
+
+msgid "page"
+msgstr "Seite"
+
+msgid "pages"
+msgstr "Seiten"
+
+msgid "page per minute"
+msgstr "Seite pro Minute"
+
+msgid "pages per minute"
+msgstr "Seiten pro Minute"
+
+msgid "less than"
+msgstr "weniger als"
+
+msgid "read so far"
+msgstr "bisher gelesen"
+
+msgid "reading time left"
+msgstr "Verbleibende Lesezeit"
+
+msgid "(%d day left)"
+msgstr "(%d Tag verbleibend)"
+
+msgid "(%d days left)"
+msgstr "(%d Tage verbleibend)"
+
+msgid "day of reading left"
+msgstr "Lesetag verbleibend"
+
+msgid "days of reading left"
+msgstr "Lesetage verbleibend"
+
+msgid "day since started"
+msgstr "Tag seit Beginn"
+
+msgid "days since started"
+msgstr "Tage seit Beginn"
+
+msgid "Colors"
+msgstr "Farben"
+
+msgid "Active column color"
+msgstr "Farbe der aktiven Spalte"
+
+msgid "Inactive column color"
+msgstr "Farbe der inaktiven Spalte"
+
+msgid "Trend chart line color"
+msgstr "Linienfarbe des Trenddiagramms"
+
+msgid "Separator line color"
+msgstr "Farbe der Trennlinie"
+
+msgid "Label color"
+msgstr "Beschriftungsfarbe"
+
+msgid "Value color"
+msgstr "Wertfarbe"
+
+msgid "Section color"
+msgstr "Abschnittsfarbe"
+
+msgid "Chart label color"
+msgstr "Diagrammbeschriftungsfarbe"
+
+msgid "Settings"
+msgstr "Einstellungen"
+
+msgid "Reset all colors to default"
+msgstr "Alle Farben auf Standard zurücksetzen"
+
+msgid "Cancel"
+msgstr "Abbrechen"
+
+msgid "Default"
+msgstr "Standard"
+
+msgid "Save"
+msgstr "Speichern"
+
+msgid "Enter a hex color code (e.g. #1E90FF), the way KOReader expects it."
+msgstr "Gib einen hexadezimalen Farbcode ein (z. B. #1E90FF), wie ihn KOReader erwartet."
+
+msgid "Not a valid hex color code, e.g. #1E90FF."
+msgstr "Kein gültiger hexadezimaler Farbcode (z. B. #1E90FF)."
+
+msgid "Reset all colors to their default values?"
+msgstr "Alle Farben auf ihre Standardwerte zurücksetzen?"
+
+msgid "Reset"
+msgstr "Zurücksetzen"
+
+msgid "Font"
+msgstr "Schriftart"
+
+msgid "Fonts"
+msgstr "Schriftarten"
+
+msgid "Choose a font"
+msgstr "Schriftart auswählen"
+
+msgid "Section headers"
+msgstr "Abschnittsüberschriften"
+
+msgid "Values (big numbers)"
+msgstr "Werte (große Zahlen)"
+
+msgid "Labels"
+msgstr "Beschriftungen"
+
+msgid "Chart/axis labels"
+msgstr "Diagramm-/Achsenbeschriftungen"
+
+msgid "Chapter-bar arrows"
+msgstr "Pfeile der Kapitelanzeige"
+
+msgid "Font name"
+msgstr "Schriftartname"
+
+msgid "Enter a bundled font file name (e.g. NotoSans-Bold.ttf) or a KOReader font alias (e.g. tfont, cfont). If it can't be found, this role falls back to its default font."
+msgstr "Gib den Namen einer mitgelieferten Schriftdatei (z. B. NotoSans-Bold.ttf) oder einen KOReader-Schriftalias (z. B. tfont, cfont) ein. Falls die Schriftart nicht gefunden wird, wird die Standardschrift verwendet."
+
+msgid "Please enter a non-empty font name."
+msgstr "Bitte gib einen Schriftartnamen ein."
+
+msgid "Font size"
+msgstr "Schriftgröße"
+
+msgid "Custom font name (type manually)"
+msgstr "Benutzerdefinierter Schriftartname (manuell eingeben)"
+
+msgid "Reset to default"
+msgstr "Auf Standard zurücksetzen"
+
+msgid "Reset all fonts to default"
+msgstr "Alle Schriftarten auf Standard zurücksetzen"
+
+msgid "Reset all fonts to their default values?"
+msgstr "Alle Schriftarten auf ihre Standardwerte zurücksetzen?"
+
+msgid "Set"
+msgstr "Festlegen"
+
+msgid "Tomorrow"
+msgstr "Morgen"
+
+msgid "Monday"
+msgstr "Montag"
+
+msgid "Tuesday"
+msgstr "Dienstag"
+
+msgid "Wednesday"
+msgstr "Mittwoch"
+
+msgid "Thursday"
+msgstr "Donnerstag"
+
+msgid "Friday"
+msgstr "Freitag"
+
+msgid "Saturday"
+msgstr "Samstag"
+
+msgid "Sunday"
+msgstr "Sonntag"
+
+msgid "Started:"
+msgstr "Begonnen:"
+
+msgid "Expected finish:"
+msgstr "Voraussichtliches Ende:"
+msgid "Use as sleep screen"
+msgstr "Als Schlafbildschirm verwenden"
+
+msgid "Off"
+msgstr "Aus"
+
+msgid "File manager only"
+msgstr "Nur Dateimanager"
+
+msgid "File manager + book"
+msgstr "Dateimanager + Buch"
+
+msgid "Only when locking from the file manager"
+msgstr "Nur beim Sperren aus dem Dateimanager"
+
+msgid "File manager and book view"
+msgstr "Dateimanager und Buchansicht"
+
+msgid "Transition"
+msgstr "Übergang"
+
+msgid "Slight delay"
+msgstr "Kurze Verzögerung"
+
+msgid "Instant"
+msgstr "Sofort"
+
+msgid "Slight delay (0.1s)"
+msgstr "Kurze Verzögerung (0,1 s)"
+
+msgid "sleeping…"
+msgstr "Ruhezustand…"
+
+msgid "Indicator"
+msgstr "Anzeige"
+
+msgid "\"(sleeping…)\" after the title"
+msgstr "\"(Ruhezustand…)\" nach dem Titel"
+
+msgid "None"
+msgstr "Keine"
+
+msgid "%d p"
+msgstr "%d S."
+
+msgid "Updates"
+msgstr "Updates"
+
+msgid "Notify on wake when update available"
+msgstr "Beim Aufwachen über verfügbare Updates informieren"
+
+msgid "Update available"
+msgstr "Update verfügbar"
+
+msgid "Installed version"
+msgstr "Installierte Version"
+
+msgid "Developer updates"
+msgstr "Entwickler-Updates"
+
+msgid "Development branch"
+msgstr "Entwicklungszweig"
+
+msgid "Branch name (leave empty for stable)"
+msgstr "Branch-Name (für stabile Version leer lassen)"
+
+msgid "Check for updates"
+msgstr "Nach Updates suchen"
+
+msgid "Install branch"
+msgstr "Branch installieren"
+
+msgid "Reset to latest stable release"
+msgstr "Auf die neueste stabile Version zurücksetzen"
+
+msgid "Installed: v"
+msgstr "Installiert: v"
+
+msgid "This will clear the development branch setting and install the latest stable release of Reading insights, then restart KOReader. Continue?"
+msgstr "Dadurch wird die Einstellung für den Entwicklungszweig gelöscht, die neueste stabile Version von Reading Insights installiert und KOReader neu gestartet. Fortfahren?"
+
+msgid "Reading insights update available: v"
+msgstr "Reading-Insights-Update verfügbar: v"
+
+msgid "Open the releases page in a browser?"
+msgstr "Die Veröffentlichungsseite im Browser öffnen?"
+
+msgid "Open"
+msgstr "Öffnen"
+
+msgid "Checking for updates..."
+msgstr "Suche nach Updates..."
+
+msgid "Could not check for updates."
+msgstr "Nach Updates konnte nicht gesucht werden."
+
+msgid "Reading insights is up to date."
+msgstr "Reading Insights ist auf dem neuesten Stand."
+
+msgid "Version: "
+msgstr "Version: "
+
+msgid "Update available!"
+msgstr "Update verfügbar!"
+
+msgid "Installed: "
+msgstr "Installiert: "
+
+msgid "Latest: "
+msgstr "Neueste: "
+
+msgid "Close"
+msgstr "Schließen"
+
+msgid "Update and restart"
+msgstr "Aktualisieren und neu starten"
+
+msgid "No download available for this release."
+msgstr "Für diese Version ist kein Download verfügbar."
+
+msgid "Downloading update..."
+msgstr "Update wird heruntergeladen..."
+
+msgid "Download failed."
+msgstr "Download fehlgeschlagen."
+
+msgid "Installation failed: "
+msgstr "Installation fehlgeschlagen: "
+
+msgid "Reading insights updated to v"
+msgstr "Reading Insights wurde auf Version v aktualisiert"
+
+msgid "Restart KOReader now?"
+msgstr "KOReader jetzt neu starten?"
+
+msgid "Restart"
+msgstr "Neu starten"
+
+msgid "Could not install branch:"
+msgstr "Branch konnte nicht installiert werden:"
+
+msgid "Downloading latest release..."
+msgstr "Neueste Version wird heruntergeladen..."
+
+msgid "Could not fetch latest release."
+msgstr "Neueste Version konnte nicht abgerufen werden."
+
+msgid "Latest release has no downloadable zip."
+msgstr "Die neueste Version enthält keine herunterladbare ZIP-Datei."
+
+msgid "Reading heatmap"
+msgstr "Lese-Heatmap"
+
+msgid "Time of day heatmap"
+msgstr "Tageszeit-Heatmap"
+
+msgid "Calendar heatmap"
+msgstr "Kalender-Heatmap"
+
+msgid "Less"
+msgstr "Weniger"
+
+msgid "More"
+msgstr "Mehr"
+
+msgid "No reading (0%)"
+msgstr "Keine Leseaktivität (0 %)"
+
+msgid "Low activity (25%)"
+msgstr "Geringe Aktivität (25 %)"
+
+msgid "Medium activity (50%)"
+msgstr "Mittlere Aktivität (50 %)"
+
+msgid "High activity (75%)"
+msgstr "Hohe Aktivität (75 %)"
+
+msgid "Peak activity (100%)"
+msgstr "Maximale Aktivität (100 %)"
+
+msgid "Show long durations (24h+) as days"
+msgstr "Lange Zeitspannen (24 Std. oder mehr) als Tage anzeigen"
+
+msgid "Calendar cell content"
+msgstr "Inhalt der Kalenderzellen"
+
+msgid "Percent"
+msgstr "Prozent"
+
+msgid "Pages"
+msgstr "Seiten"
+
+msgid "Time"
+msgstr "Zeit"
+
+msgid "day"
+msgstr "Tag"
+
+msgid "days"
+msgstr "Tage"
+
+msgid "No reading on this day."
+msgstr "An diesem Tag wurde nicht gelesen."
