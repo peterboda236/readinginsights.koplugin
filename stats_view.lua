@@ -869,25 +869,37 @@ local function buildChapterBar(chapter_info, full_width, padding_h, offset_overr
         local tw      = TextWidget:new{ text = symbol, face = arrow_face, fgcolor = fgcolor }
         local gh      = tw:getSize().h
         local top_pad = math.floor((col_h_max - gh) / 2)
-        return VerticalGroup:new{
-            align = "left",
-            VerticalSpan:new{ height = top_pad },
-            HorizontalGroup:new{
-                align = "center",
-                HorizontalSpan:new{ width = inner_pad },
-                tw,
-                HorizontalSpan:new{ width = inner_pad },
+        return FrameContainer:new{
+            background     = nil,
+            bordersize     = 0,
+            padding_top    = 0,
+            padding_bottom = 0,
+            padding_left   = 0,
+            padding_right  = 0,
+            margin         = 0,
+            VerticalGroup:new{
+                align = "left",
+                VerticalSpan:new{ height = top_pad },
+                HorizontalGroup:new{
+                    align = "center",
+                    HorizontalSpan:new{ width = inner_pad },
+                    tw,
+                    HorizontalSpan:new{ width = inner_pad },
+                },
+                VerticalSpan:new{ height = col_h_max - gh - top_pad },
             },
-            VerticalSpan:new{ height = col_h_max - gh - top_pad },
         }
     end
 
     -- Layout: padding_h | left_arrow | [PAGE_SIZE slots] | right_arrow | padding_h + remainder
+    local left_arrow_widget  = makeArrowSpan("\xe2\x80\xb9", left_arrow_color)
+    local right_arrow_widget = makeArrowSpan("\xe2\x80\xba", right_arrow_color)
+
     local flat_row = HorizontalGroup:new{ align = "center" }
     table.insert(flat_row, HorizontalSpan:new{ width = padding_h })
-    table.insert(flat_row, makeArrowSpan("\xe2\x80\xb9", left_arrow_color))
+    table.insert(flat_row, left_arrow_widget)
     table.insert(flat_row, bar_row)
-    table.insert(flat_row, makeArrowSpan("\xe2\x80\xba", right_arrow_color))
+    table.insert(flat_row, right_arrow_widget)
     table.insert(flat_row, HorizontalSpan:new{ width = padding_h + remainder })
 
     local bar_h = col_h_max + 2 * Size.padding.default
@@ -911,7 +923,7 @@ local function buildChapterBar(chapter_info, full_width, padding_h, offset_overr
     }
     result._on_swipe_left  = can_go_right and on_next or nil
     result._on_swipe_right = can_go_left  and on_prev or nil
-    return result
+    return result, left_arrow_widget, right_arrow_widget, can_go_left, can_go_right
 end
 
 -- Main section builder.
@@ -953,20 +965,24 @@ local function buildSections(stats, fonts, layout, popup)
 
     addSectionWithRow(sections, chapter_headers, chapter_values, layout, true)
 
-    local chapter_bar = buildChapterBar(
-        stats.chapter_info,
-        layout.full_width,
-        layout.padding_h,
-        popup and popup.chapter_bar_offset or nil,
-        popup and function()
-            popup.chapter_bar_offset = math.max(1, (popup.chapter_bar_offset or 1) - CHAPTER_BAR_PAGE_SIZE)
-            popup:_rebuildUI()
-        end or nil,
-        popup and function()
-            popup.chapter_bar_offset = math.max(1, (popup.chapter_bar_offset or 1) + CHAPTER_BAR_PAGE_SIZE)
-            popup:_rebuildUI()
-        end or nil
-    )
+    local chapter_on_prev = popup and function()
+        popup.chapter_bar_offset = math.max(1, (popup.chapter_bar_offset or 1) - CHAPTER_BAR_PAGE_SIZE)
+        popup:_rebuildUI()
+    end or nil
+    local chapter_on_next = popup and function()
+        popup.chapter_bar_offset = math.max(1, (popup.chapter_bar_offset or 1) + CHAPTER_BAR_PAGE_SIZE)
+        popup:_rebuildUI()
+    end or nil
+
+    local chapter_bar, chapter_left_arrow, chapter_right_arrow, chapter_can_go_left, chapter_can_go_right =
+        buildChapterBar(
+            stats.chapter_info,
+            layout.full_width,
+            layout.padding_h,
+            popup and popup.chapter_bar_offset or nil,
+            chapter_on_prev,
+            chapter_on_next
+        )
     table.insert(sections, padded(layout.padding_h,
         Colors.newBar(layout.full_width - 2 * layout.padding_h, Size.line.thick, Colors.separator())))
     local this_book_header = buildSectionHeader(fonts.section, _("This book"), layout.full_width)
@@ -987,7 +1003,13 @@ local function buildSections(stats, fonts, layout, popup)
     )
 
     if chapter_bar then
-        if popup then popup._chapter_bar = chapter_bar end
+        if popup then
+            popup._chapter_bar = chapter_bar
+            popup._chapter_bar_prev_arrow = chapter_can_go_left  and chapter_left_arrow  or nil
+            popup._chapter_bar_next_arrow = chapter_can_go_right and chapter_right_arrow or nil
+            popup._chapter_bar_on_prev    = chapter_on_prev
+            popup._chapter_bar_on_next    = chapter_on_next
+        end
             table.insert(sections, padded(layout.padding_h,
                 Colors.newBar(layout.full_width - 2 * layout.padding_h, Size.line.thin, Colors.separator())))
         table.insert(sections, chapter_bar)
@@ -1062,6 +1084,16 @@ local function hitTest(widget, x, y)
     local d = widget and widget.dimen
     if not d then return false end
     return x >= d.x and x <= d.x + d.w and y >= d.y and y <= d.y + d.h
+end
+
+-- Same as hitTest, but grows the widget's box by `pad` on every side before
+-- testing. Used for small tap targets - like the ‹ / › paging arrows - where
+-- the visible glyph is much smaller than a comfortable finger-sized tap
+-- area, without having to make the arrow itself visually bigger.
+local function hitTestPadded(widget, x, y, pad)
+    local d = widget and widget.dimen
+    if not d then return false end
+    return x >= d.x - pad and x <= d.x + d.w + pad and y >= d.y - pad and y <= d.y + d.h + pad
 end
 
 -- ---------------------------------------------------------------------
@@ -1347,7 +1379,7 @@ local function buildBookCalendarHeader(title_str, content_width, section_font, p
         right_widget,
     }
 
-    return header_row, left_frame, right_frame
+    return header_row, left_frame, right_frame, left_widget:getSize().w, right_widget:getSize().w, header_row:getSize().h
 end
 
 local BookCalendarPopup = InputContainer:extend{
@@ -1400,16 +1432,8 @@ function BookCalendarPopup:_rebuild()
     if prev_month < 1 then prev_month = 12; prev_year = prev_year - 1 end
     local prev_available = bookCalendarMonthHasData(self.book_id, prev_year, prev_month)
 
-    local title_row, left_arrow_frame, right_arrow_frame = buildBookCalendarHeader(
+    local title_row, left_arrow_frame, right_arrow_frame, left_w, right_w, header_h = buildBookCalendarHeader(
         title_str, content_width, Fonts.getFace("stats_section"), prev_available, next_available)
-
-    self._nav_zones = {}
-    if left_arrow_frame then
-        table.insert(self._nav_zones, { frame = left_arrow_frame, delta = -1 })
-    end
-    if right_arrow_frame then
-        table.insert(self._nav_zones, { frame = right_arrow_frame, delta = 1 })
-    end
 
     local daily_map = getBookDailyStatsForMonth(self.book_id, self.year, self.month)
     local cumulative_ratios = getBookCumulativeProgressForMonth(
@@ -1440,6 +1464,41 @@ function BookCalendarPopup:_rebuild()
         dimen = self.dimen,
         self.box_content,
     }
+
+    -- Absolute tap zones for the ‹ / › arrows, computed from geometry
+    -- rather than from left_arrow_frame.dimen/right_arrow_frame.dimen (see
+    -- comment above this function for why the latter can be stale/unset
+    -- when this popup is opened from inside the stats popup instead of
+    -- directly from the menu/gesture).
+    local box_rect = self:_centeredRect(self.box_content)
+    local border_w = Size.border.window
+    local header_x = box_rect.x + border_w + inner_padding
+    local header_y = box_rect.y + border_w + inner_padding
+    local tap_pad  = Screen:scaleBySize(14)
+
+    self._nav_zones = {}
+    if left_arrow_frame then
+        table.insert(self._nav_zones, {
+            dimen = Geom:new{
+                x = header_x - tap_pad,
+                y = header_y - tap_pad,
+                w = left_w + 2 * tap_pad,
+                h = header_h + 2 * tap_pad,
+            },
+            delta = -1,
+        })
+    end
+    if right_arrow_frame then
+        table.insert(self._nav_zones, {
+            dimen = Geom:new{
+                x = header_x + content_width - right_w - tap_pad,
+                y = header_y - tap_pad,
+                w = right_w + 2 * tap_pad,
+                h = header_h + 2 * tap_pad,
+            },
+            delta = 1,
+        })
+    end
 end
 
 function BookCalendarPopup:_centeredRect(widget)
@@ -1517,7 +1576,8 @@ function BookCalendarPopup:onTap(arg, ges_ev)
     if ges_ev then
         local x, y = ges_ev.pos.x, ges_ev.pos.y
         for _, zone in ipairs(self._nav_zones or {}) do
-            if hitTest(zone.frame, x, y) then
+            if zone.dimen and x >= zone.dimen.x and x <= zone.dimen.x + zone.dimen.w
+               and y >= zone.dimen.y and y <= zone.dimen.y + zone.dimen.h then
                 return self:_goToMonth(zone.delta)
             end
         end
@@ -1960,6 +2020,16 @@ function ReadingStatsPopup:onTapClose(arg, ges_ev)
 
         if hitTest(self._pace_header, x, y) and self._stats and self._stats.book_id then
             self:openBookCalendar()
+            return true
+        end
+
+        if self._chapter_bar_prev_arrow and hitTestPadded(self._chapter_bar_prev_arrow, x, y, Screen:scaleBySize(14)) then
+            self._chapter_bar_on_prev()
+            return true
+        end
+
+        if self._chapter_bar_next_arrow and hitTestPadded(self._chapter_bar_next_arrow, x, y, Screen:scaleBySize(14)) then
+            self._chapter_bar_on_next()
             return true
         end
 
