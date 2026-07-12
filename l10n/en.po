@@ -312,6 +312,15 @@ msgstr "Book progress"
 msgid "Show Book progress"
 msgstr "Show Book progress"
 
+msgid "Show Book progress calendar"
+msgstr "Show Book progress calendar"
+
+msgid "Book progress calendar"
+msgstr "Book progress calendar"
+
+msgid "No reading data for this book yet."
+msgstr "No reading data for this book yet."
+
 msgid "This chapter"
 msgstr "This chapter"
 
@@ -752,8 +761,23 @@ msgstr "Peak activity (100%)"
 msgid "Show long durations (24h+) as days"
 msgstr "Show long durations (24h+) as days"
 
+msgid "Calendar cell content"
+msgstr "Calendar cell content"
+
+msgid "Percent"
+msgstr "Percent"
+
+msgid "Pages"
+msgstr "Pages"
+
+msgid "Time"
+msgstr "Time"
+
 msgid "day"
 msgstr "day"
 
 msgid "days"
 msgstr "days"
+
+msgid "No reading on this day."
+msgstr "No reading on this day."
