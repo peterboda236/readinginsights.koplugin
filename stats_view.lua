@@ -141,11 +141,16 @@ local WEEKDAY_NAMES_HU_LC = {
 -- translated in l10n/<lang>.po (reused from elsewhere in the plugin), so
 -- no new translation strings are needed for these.
 local WEEKDAY_SHORT = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" }
-local MONTH_SHORT = {
-    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+
+-- Full month names for the per-book reading calendar's header (see
+-- BookCalendarPopup below). These are translated via l10n/<lang>.po like
+-- everything else - note the trailing space on "May " below, which mirrors
+-- the .po files and disambiguates the month name from the modal verb "May".
+local MONTH_FULL = {
+    "January", "February", "March", "April", "May ", "June",
+    "July", "August", "September", "October", "November", "December",
 }
-local MONTH_SHORT_HU_LC = {
+local MONTH_FULL_HU_LC = {
     "január", "február", "március", "április", "május", "június",
     "július", "augusztus", "szeptember", "október", "november", "december",
 }
@@ -1108,14 +1113,23 @@ end
 
 -- ---------------------------------------------------------------------
 
--- Cumulative "how far into the book have I gotten" ratio (0..1) as of the
--- end of each day in the given month - the highest page reached by any
--- page_stat entry up to and including that day, divided by total_pages.
--- This is the book's *position*, not that day's own page count, so the
--- calendar cell's progress bar can show "with that day's reading, how far
--- did I get out of the whole book" rather than just that day's share.
+-- "How far into the book had I gotten, as of the last page I reached on
+-- this day" ratio (0..1) - the page from that day's chronologically LAST
+-- page_stat entry (i.e. wherever reading actually stopped that day),
+-- divided by total_pages. Deliberately NOT the day's highest page
+-- reached: some books have an explanatory note/glossary at the very end
+-- that readers jump to mid-chapter and then jump back from, which would
+-- otherwise make MAX(page) spike to ~100% on a day where the actual
+-- reading position was still early in the book. It's also NOT a
+-- running/ratchet carried over from other days or earlier months: an
+-- earlier attempt at this used a monotonic "highest page ever reached"
+-- that never decreased, which meant any day (or whole later month) after
+-- the book's highest-ever point stayed pinned there regardless of where
+-- that day's reading actually left off (e.g. rereading an earlier
+-- chapter, or continuing a book that was skimmed to the end once
+-- before) - not what the bar is meant to show.
 -- Only returns an entry for days that actually have reading recorded
--- (days with nothing new don't move the bar, so they're left blank).
+-- (days with nothing read are left blank).
 local function getBookCumulativeProgressForMonth(book_id, year, month, total_pages)
     local ratios = {}
     if not book_id or not total_pages or total_pages <= 0 then return ratios end
@@ -1125,47 +1139,36 @@ local function getBookCumulativeProgressForMonth(book_id, year, month, total_pag
 
     local year_month = string.format("%04d-%02d", year, month)
 
-    local baseline_sql = string.format([[
-        SELECT MAX(page) FROM page_stat
-        WHERE  id_book = %d
-        AND    strftime('%%Y-%%m', start_time, 'unixepoch', 'localtime') < '%s'
-    ]], book_id, year_month)
-    local baseline_result = conn:rowexec(baseline_sql)
-    local baseline = tonumber(baseline_result) or 0
-
-    local day_max_sql = string.format([[
-        SELECT strftime('%%d', start_time, 'unixepoch', 'localtime') AS day, MAX(page)
+    -- Ordered by start_time ASC so that, as we walk the rows in the loop
+    -- below, each day's entry in day_last_page keeps getting overwritten
+    -- by later and later entries - the value left after the loop is each
+    -- day's chronologically last page, with no separate MAX/window-
+    -- function query needed.
+    local day_rows_sql = string.format([[
+        SELECT strftime('%%d', start_time, 'unixepoch', 'localtime') AS day, page
         FROM   page_stat
         WHERE  id_book = %d
         AND    strftime('%%Y-%%m', start_time, 'unixepoch', 'localtime') = '%s'
-        GROUP  BY day
-        ORDER  BY day
+        ORDER  BY start_time ASC
     ]], book_id, year_month)
 
-    local day_max = {}
-    local ok, stmt = pcall(function() return conn:prepare(day_max_sql) end)
+    local day_last_page = {}
+    local ok, stmt = pcall(function() return conn:prepare(day_rows_sql) end)
     if ok and stmt then
         for row in stmt:rows() do
-            local day = tonumber(row[1])
-            local mx  = tonumber(row[2])
-            if day and mx then day_max[day] = mx end
+            local day  = tonumber(row[1])
+            local page = tonumber(row[2])
+            if day and page then day_last_page[day] = page end
         end
         stmt:close()
     end
     conn:close()
 
-    local days_in_month = tonumber(os.date("%d", os.time{ year = year, month = month + 1, day = 0, hour = 12 }))
-    local running = baseline
-    for day = 1, days_in_month do
-        if day_max[day] and day_max[day] > running then
-            running = day_max[day]
-        end
-        if day_max[day] then
-            local ratio = running / total_pages
-            if ratio > 1 then ratio = 1 end
-            if ratio < 0 then ratio = 0 end
-            ratios[day] = ratio
-        end
+    for day, page in pairs(day_last_page) do
+        local ratio = page / total_pages
+        if ratio > 1 then ratio = 1 end
+        if ratio < 0 then ratio = 0 end
+        ratios[day] = ratio
     end
 
     return ratios
@@ -1342,18 +1345,30 @@ end
 local function buildBookCalendarHeader(title_str, content_width, section_font, prev_available, next_available)
     local arrow_pad = Size.padding.default
 
+    -- Both arrows always occupy the same fixed-width slot, whether or not
+    -- they're actually visible. Without this, a hidden arrow used to
+    -- collapse to zero width, which (a) threw the title off-center
+    -- whenever only one side had an arrow, since the two slots then had
+    -- different widths, and (b) made the whole header jump sideways while
+    -- paging, whenever an arrow appeared or disappeared (e.g. hitting the
+    -- earliest/latest available month).
+    local left_glyph_w  = TextWidget:new{ text = "\xe2\x80\xb9", face = section_font }:getSize().w
+    local right_glyph_w = TextWidget:new{ text = "\xe2\x80\xba", face = section_font }:getSize().w
+    local slot_w = math.max(left_glyph_w, right_glyph_w) + 2 * arrow_pad
+
     local function makeArrow(glyph, visible)
         if not visible then
-            return HorizontalSpan:new{ width = 0 }, nil
+            return HorizontalSpan:new{ width = slot_w }, nil
         end
         local tw = TextWidget:new{ text = glyph, face = section_font, fgcolor = Colors.section() }
+        local extra = slot_w - 2 * arrow_pad - tw:getSize().w
         local frame = FrameContainer:new{
             background     = nil,
             bordersize     = 0,
             padding_top    = 0,
             padding_bottom = 0,
-            padding_left   = arrow_pad,
-            padding_right  = arrow_pad,
+            padding_left   = arrow_pad + math.floor(extra / 2),
+            padding_right  = arrow_pad + math.ceil(extra / 2),
             margin         = 0,
             tw,
         }
@@ -1417,8 +1432,8 @@ function BookCalendarPopup:_rebuild()
 
     local is_hu = (getLangBase() == "hu")
     local title_str = is_hu
-        and string.format("%04d. %s", self.year, MONTH_SHORT_HU_LC[self.month])
-        or  (_(MONTH_SHORT[self.month]) .. " " .. tostring(self.year))
+        and string.format("%04d. %s", self.year, MONTH_FULL_HU_LC[self.month])
+        or  (_(MONTH_FULL[self.month]) .. " " .. tostring(self.year))
 
     -- Next month is hidden once we're on the current calendar month (same
     -- bound _goToMonth enforces for swipe/key navigation).
