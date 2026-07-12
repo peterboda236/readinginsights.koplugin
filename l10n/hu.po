@@ -321,6 +321,15 @@ msgstr "Könyv haladás"
 msgid "Show Book progress"
 msgstr "Könyv haladás megnyitása"
 
+msgid "Show Book progress calendar"
+msgstr "Könyv haladás naptár megnyitása"
+
+msgid "Book progress calendar"
+msgstr "Könyv haladás naptár"
+
+msgid "No reading data for this book yet."
+msgstr "Ehhez a könyvhöz még nincs olvasási adat."
+
 msgid "This chapter"
 msgstr "Aktuális fejezet"
 
@@ -767,8 +776,23 @@ msgstr "Csúcsaktivitás (100%)"
 msgid "Show long durations (24h+) as days"
 msgstr "24 óra feletti időtartamok napokban"
 
+msgid "Calendar cell content"
+msgstr "Naptár cella tartalma"
+
+msgid "Percent"
+msgstr "Százalék"
+
+msgid "Pages"
+msgstr "Oldal"
+
+msgid "Time"
+msgstr "Idő"
+
 msgid "day"
 msgstr "nap"
 
 msgid "days"
 msgstr "nap"
+
+msgid "No reading on this day."
+msgstr "Ezen a napon nem volt olvasás."

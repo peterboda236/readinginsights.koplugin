@@ -314,6 +314,16 @@ function ReadingInsights:onDispatcherRegisterActions()
         title    = _("Book progress"),
         reader   = true,
     })
+    -- reader = true: opens the per-book reading calendar directly (see
+    -- StatsPopup.openBookCalendarForUI in stats_view.lua), skipping the
+    -- "This book" popup - lets a gesture/shortcut jump straight to the
+    -- calendar instead of needing to tap through the progress row first.
+    Dispatcher:registerAction("reading_calendar_popup", {
+        category = "none",
+        event    = "ShowBookCalendarPopup",
+        title    = _("Book progress calendar"),
+        reader   = true,
+    })
 end
 
 function ReadingInsights:init()
@@ -661,6 +671,15 @@ function ReadingInsights:onShowReadingStatsPopup()
     return true
 end
 
+-- Book-view only, same restriction as onShowReadingStatsPopup above: opens
+-- the per-book reading calendar directly, without going through "This
+-- book" first.
+function ReadingInsights:onShowBookCalendarPopup()
+    if not self:_hasOpenDocument() then return true end
+    StatsPopup.openBookCalendarForUI(self.ui)
+    return true
+end
+
 -- Adds "Reading insights" under Tools as a submenu.
 -- Sub-entries: open the insights popup, open the stats popup (book view
 -- only), a separator, then a "Settings" submenu holding the two
@@ -683,6 +702,13 @@ function ReadingInsights:addToMainMenu(menu_items)
             keep_menu_open = false,
             callback = function()
                 self:onShowReadingStatsPopup()
+            end,
+        })
+        table.insert(sub_item_table, {
+            text = _("Show Book progress calendar"),
+            keep_menu_open = false,
+            callback = function()
+                self:onShowBookCalendarPopup()
             end,
         })
     end
@@ -1019,6 +1045,51 @@ function ReadingInsights:addToMainMenu(menu_items)
         callback     = function()
             L10N.saveDurationDaysSetting(not L10N.readDurationDaysSetting())
         end,
+    })
+
+    -- What the per-book reading calendar's day cells show: cumulative
+    -- "+13%" progress through the whole book (default), that day's own
+    -- page count ("+101o"), or that day's own time spent (honoring
+    -- KOReader's global "Duration format" setting) - see
+    -- StatsPopup.readCalendarCellModeSetting in stats_view.lua.
+    table.insert(advanced_settings_sub_item_table, {
+        text_func = function()
+            local mode_key = StatsPopup.readCalendarCellModeSetting()
+            local mode = (mode_key == "pages" and _("Pages"))
+                or (mode_key == "time" and _("Time"))
+                or _("Percent")
+            return _("Calendar cell content") .. ": " .. mode
+        end,
+        keep_menu_open = true,
+        sub_item_table = {
+            {
+                text = _("Percent"),
+                keep_menu_open = true,
+                radio = true,
+                checked_func = function()
+                    return StatsPopup.readCalendarCellModeSetting() == "percent"
+                end,
+                callback = function() StatsPopup.saveCalendarCellModeSetting("percent") end,
+            },
+            {
+                text = _("Pages"),
+                keep_menu_open = true,
+                radio = true,
+                checked_func = function()
+                    return StatsPopup.readCalendarCellModeSetting() == "pages"
+                end,
+                callback = function() StatsPopup.saveCalendarCellModeSetting("pages") end,
+            },
+            {
+                text = _("Time"),
+                keep_menu_open = true,
+                radio = true,
+                checked_func = function()
+                    return StatsPopup.readCalendarCellModeSetting() == "time"
+                end,
+                callback = function() StatsPopup.saveCalendarCellModeSetting("time") end,
+            },
+        },
     })
 
     table.insert(settings_sub_item_table, {

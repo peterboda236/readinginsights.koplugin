@@ -62,8 +62,24 @@ A per-book overlay showing detailed progress and pace for the book you're curren
 - **Estimated finish** — projected time or date to finish, based on recent pace
 - **Session stats** — time spent reading this book today and across recent sessions
 - **Chapter breakdown** — progress and time spent per chapter (if chapter metadata is available)
+- **Reading calendar** — tap the "Pace" section title (or use the "Show Book
+  progress calendar" menu entry/gesture — see [Where it shows
+  up](#where-it-shows-up) below) to open a month grid for this book,
+  colored like a heatmap and showing a bottom progress bar per day (days
+  with no reading are left blank — no bar at all); tap a day to see its
+  exact pages/time/percent, swipe or use the arrows to page between
+  months. What the small text under each day number shows is configurable
+  (*Settings → Advanced settings → Calendar cell content*):
+  - **Percent** (default) — cumulative progress through the whole book as
+    of that day, e.g. "+13%"
+  - **Pages** — that day's own page count, e.g. "+101" + the localized
+    page abbreviation (e.g. "o" for Hungarian "oldal")
+  - **Time** — that day's own time spent, formatted the same way as
+    KOReader's global *Duration format* setting (classic "0:23", modern
+    "23'", or letters "23m")
 
-**Controls:** tap to toggle between percentage/page view, long-press to force-reload data.
+**Controls:** tap to toggle between percentage/page view, tap the "Pace"
+title to open the reading calendar, long-press to force-reload data.
 
 **Caching:** shares the same stale-while-revalidate approach as Reading insights — instant open with cached data, refreshed in the background.
 
@@ -125,45 +141,58 @@ Once installed, future updates can be installed in-app — see
 ## Where it shows up
 
 - **Menu:** *Tools → Reading insights* — a submenu with "Show Reading
-  insights", "Show Book progress" (book view only), and, below a
-  separator, a **Settings** submenu holding the two options below plus
-  **Colors** and **Fonts** submenus:
-  - **Full-screen refresh on open/close** — toggle
-  - **8-week chart order** — newest-first or oldest-first
-  - **Show long durations (24h+) as days** — off by default; when on, any
-    duration of 24h or more (yearly/streak totals, weekly averages,
-    all-time totals, book progress) is shown as a day count with one
-    decimal place (e.g. "1.2 days") instead of clock time
-  - **Use as sleep screen** — Off / File manager only / File manager + book
-    (see [Sleep screen](#-sleep-screen) above)
-  - **Transition** — Instant / Slight delay (0.1s), controls how quickly the
-    sleep-screen popup takes over on suspend
-  - **Colors** — pick your own hex color for every bar/line/label the two
-    popups draw (active/inactive bars, the 8-week trend line, section/
-    column separator lines, the label/value/section/chart-label text
-    colors, and the 5 year-heatmap shades - defaulting to 0/25/50/75/100%
-    black); each one can be reset back to its default individually or all
-    at once.
-  - **Fonts** — pick your own font (name + size) for every text role in
-    both popups, grouped under **Reading insights** (section headers,
-    values, labels, chart/axis labels) and **Book progress** (section
-    headers, values, labels, chapter-bar arrows); choose from a
-    pick-from-list menu of every font file KOReader/you have installed,
-    or type a custom font name/alias manually; each role can be reset to
-    its bundled default individually or all at once.
-  - **Updates** — check for and install new releases (or dev-branch
-    builds) straight from GitHub, no computer needed (see
-    [Updates](#updates) above).
-- **Gestures/shortcuts:** both popups are registered with `Dispatcher`, so
-  they can be assigned under *Settings → Taps and gestures*:
+  insights", "Show Book progress" and "Show Book progress calendar" (both
+  book view only), and, below a separator, a **Settings** submenu and an
+  **Updates** submenu (see [Updates](#updates) above).
+  - **Settings** holds:
+    - **Use as sleep screen** — Off / File manager only / File manager +
+      book (see [Sleep screen](#-sleep-screen) above), plus nested
+      **Transition** (Instant / Slight delay) and **Indicator** options
+    - **Full-screen refresh on open/close** — toggle
+    - **Colors** — pick your own hex color for every bar/line/label the
+      two popups draw (active/inactive bars, the 8-week trend line,
+      section/column separator lines, the label/value/section/
+      chart-label text colors, and the 5 year-heatmap shades - defaulting
+      to 0/25/50/75/100% black); each one can be reset back to its
+      default individually or all at once.
+    - **Fonts** — pick your own font (name + size) for every text role in
+      both popups, grouped under **Reading insights** (section headers,
+      values, labels, chart/axis labels) and **Book progress** (section
+      headers, values, labels, chapter-bar arrows); choose from a
+      pick-from-list menu of every font file KOReader/you have installed,
+      or type a custom font name/alias manually; each role can be reset
+      to its bundled default individually or all at once.
+    - **Advanced settings** holds:
+      - **Bar chart height** — per-chart bar height (Reading insights: Last
+        week / Months; Book progress: Chapters)
+      - **Reading heatmap range** — how many months the calendar/time-of-
+        day heatmap grids show at once: 3, 4, or 6
+      - **Heatmap hour format** — 24-hour or 12-hour (AM/PM) labels for the
+        time-of-day heatmap's hour columns
+      - **Week start day** — Monday or Sunday, controls which day starts
+        each row in both heatmap grids
+      - **8-week chart order** — newest-first or oldest-first
+      - **Show long durations (24h+) as days** — off by default; when on,
+        any duration of 24h or more (yearly/streak totals, weekly
+        averages, all-time totals, book progress) is shown as a day count
+        with one decimal place (e.g. "1.2 days") instead of clock time
+      - **Calendar cell content** — Percent (default), Pages, or Time;
+        controls what the per-book reading calendar's day cells show (see
+        [Reading calendar](#-book-progress-stats) above)
+- **Gestures/shortcuts:** all three actions below are registered with
+  `Dispatcher`, so they can be assigned under *Settings → Taps and
+  gestures*:
   - `reading_insights_popup` — available everywhere (general action).
   - `reading_stats_popup` — book view only (reader action), matching the
     popup's requirement that a document be open.
+  - `reading_calendar_popup` — book view only (reader action); opens the
+    per-book reading calendar directly, without going through "Show Book
+    progress" first.
 
 ## File layout
 
 - `main.lua` — plugin entry point: loads the shared translation module and
-  both views, registers the two dispatcher actions, builds the Tools menu.
+  both views, registers the three dispatcher actions, builds the Tools menu.
 - `l10n.lua` — shared translation lookup (`l10n/<lang>.po`) and locale-aware
   number formatting, used by both views.
 - `colors.lua` — shared chart/text color settings (the "Colors" submenu)
