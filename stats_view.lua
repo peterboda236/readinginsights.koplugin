@@ -896,16 +896,22 @@ local function buildChapterBar(chapter_info, full_width, padding_h, offset_overr
         }
     end
 
-    -- Layout: padding_h | left_arrow | [PAGE_SIZE slots] | right_arrow | padding_h + remainder
+    -- Layout: (padding_h + remainder/2) | left_arrow | [PAGE_SIZE slots] | right_arrow | (padding_h + remainder/2)
+    -- The leftover rounding pixels from col_w's floor() are split evenly between
+    -- both sides (any odd extra pixel goes to the right) so the empty space
+    -- around the two arrows stays visually symmetric.
+    local remainder_left  = math.floor(remainder / 2)
+    local remainder_right = remainder - remainder_left
+    
     local left_arrow_widget  = makeArrowSpan("\xe2\x80\xb9", left_arrow_color)
     local right_arrow_widget = makeArrowSpan("\xe2\x80\xba", right_arrow_color)
-
+    
     local flat_row = HorizontalGroup:new{ align = "center" }
-    table.insert(flat_row, HorizontalSpan:new{ width = padding_h })
+    table.insert(flat_row, HorizontalSpan:new{ width = padding_h + remainder_left })
     table.insert(flat_row, left_arrow_widget)
     table.insert(flat_row, bar_row)
     table.insert(flat_row, right_arrow_widget)
-    table.insert(flat_row, HorizontalSpan:new{ width = padding_h + remainder })
+    table.insert(flat_row, HorizontalSpan:new{ width = padding_h + remainder_right })
 
     local bar_h = col_h_max + 2 * Size.padding.default
 
