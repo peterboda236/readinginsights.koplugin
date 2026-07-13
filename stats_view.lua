@@ -1553,17 +1553,17 @@ function BookCalendarPopup:_showDayDetail(day, data)
         return
     end
 
-    local pages_line = formatCount(data.pages) .. " " .. N_("page", "pages", data.pages)
+    local pages_line = "+" .. formatCount(data.pages) .. " " .. N_("page", "pages", data.pages)
     local time_td     = formatTimeHHMM(data.duration)
     local time_line   = time_td.value .. (time_td.unit ~= "" and (" " .. time_td.unit) or "")
     local percent_line = ""
     if self.total_pages and self.total_pages > 0 then
         local percent = Math.round(100 * data.pages / self.total_pages)
-        percent_line = formatCount(percent) .. "% " .. _("read")
+        percent_line = "+" .. formatCount(percent) .. "%"
     end
 
     UIManager:show(InfoMessage:new{
-        text = date_str .. "\n" .. pages_line .. " · " .. time_line .. " · " .. percent_line,
+        text = date_str .. "\n" .. pages_line .. " · " .. percent_line .. " · " .. time_line,
     })
 end
 
