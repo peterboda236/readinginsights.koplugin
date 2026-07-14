@@ -605,6 +605,12 @@ msgstr "Expected finish:"
 msgid "Use as sleep screen"
 msgstr "Use as sleep screen"
 
+msgid "Reading insights sleep screen"
+msgstr "Reading insights sleep screen"
+
+msgid "Sleep-screen indicator"
+msgstr "Sleep-screen indicator"
+
 msgid "Off"
 msgstr "Off"
 
@@ -785,8 +791,8 @@ msgstr "Peak activity (100%)"
 msgid "Show long durations (24h+) as days"
 msgstr "Show long durations (24h+) as days"
 
-msgid "Calendar cell content"
-msgstr "Calendar cell content"
+msgid "Book calendar cell content"
+msgstr "Book calendar cell content"
 
 msgid "Percent"
 msgstr "Percent"

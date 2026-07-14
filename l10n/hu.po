@@ -620,6 +620,12 @@ msgstr "Várható befejezés:"
 msgid "Use as sleep screen"
 msgstr "Használat alvó képernyőként"
 
+msgid "Reading insights sleep screen"
+msgstr "Olvasási áttekintés alvó képernyő"
+
+msgid "Sleep-screen indicator"
+msgstr "Alvó képernyő jelzés"
+
 msgid "Off"
 msgstr "Ki"
 
@@ -800,8 +806,8 @@ msgstr "Csúcsaktivitás (100%)"
 msgid "Show long durations (24h+) as days"
 msgstr "24 óra feletti időtartamok napokban"
 
-msgid "Calendar cell content"
-msgstr "Naptár cella tartalma"
+msgid "Book calendar cell content"
+msgstr "Könyv naptár cella tartalma"
 
 msgid "Percent"
 msgstr "Százalék"

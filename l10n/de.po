@@ -605,6 +605,12 @@ msgstr "Voraussichtliches Ende:"
 msgid "Use as sleep screen"
 msgstr "Als Schlafbildschirm verwenden"
 
+msgid "Reading insights sleep screen"
+msgstr "Lesestatistik-Ruhebildschirm"
+
+msgid "Sleep-screen indicator"
+msgstr "Ruhebildschirm-Anzeige"
+
 msgid "Off"
 msgstr "Aus"
 
@@ -785,8 +791,8 @@ msgstr "Maximale Aktivität (100 %)"
 msgid "Show long durations (24h+) as days"
 msgstr "Lange Zeitspannen (24 Std. oder mehr) als Tage anzeigen"
 
-msgid "Calendar cell content"
-msgstr "Inhalt der Kalenderzellen"
+msgid "Book calendar cell content"
+msgstr "Inhalt der Buchkalenderzellen"
 
 msgid "Percent"
 msgstr "Prozent"
