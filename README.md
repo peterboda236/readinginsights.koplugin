@@ -62,6 +62,10 @@ A per-book overlay showing detailed progress and pace for the book you're curren
 - **Pace** — your average reading speed for this book (pages/hour or minutes/page)
 - **Estimated finish** — projected time or date to finish, based on recent pace
 - **Session stats** — time spent reading this book today and across recent sessions
+- **This chapter / Next chapter** — estimated reading time left in the
+  current chapter and reading time for the next one; tap either value to
+  switch to pages left in this chapter / next chapter's page count instead
+  — tap again to switch back
 - **Chapter breakdown** — progress and time spent per chapter (if chapter metadata is available)
 - **Reading calendar** — tap the "Pace" section title (or use the "Show Book
   progress calendar" menu entry/gesture — see [Where it shows
@@ -79,8 +83,10 @@ A per-book overlay showing detailed progress and pace for the book you're curren
     KOReader's global *Duration format* setting (classic "0:23", modern
     "23'", or letters "23m")
 
-**Controls:** tap to toggle between percentage/page view, tap the "Pace"
-title to open the reading calendar, long-press to force-reload data.
+**Controls:** tap to toggle between percentage/page view, tap the "This
+chapter"/"Next chapter" row to toggle between reading time and pages left,
+tap the "Pace" title to open the reading calendar, long-press to
+force-reload data.
 
 **Caching:** shares the same stale-while-revalidate approach as Reading insights — instant open with cached data, refreshed in the background.
 
