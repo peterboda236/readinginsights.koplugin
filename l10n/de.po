@@ -177,6 +177,15 @@ msgstr "Daten werden neu geladen..."
 msgid "Reading insights"
 msgstr "Leseeinblicke"
 
+msgid "Reading insights: all time statistics"
+msgstr "Leseeinblicke: Gesamtstatistik"
+
+msgid "Reading insights: current book progress"
+msgstr "Leseeinblicke: aktueller Buchfortschritt"
+
+msgid "Reading insights: current book calendar"
+msgstr "Leseeinblicke: aktueller Buchkalender"
+
 msgid "All books read %1"
 msgstr "Alle gelesenen Bücher %1"
 
@@ -411,6 +420,12 @@ msgstr "Seite"
 msgid "pages"
 msgstr "Seiten"
 
+msgid "page left"
+msgstr "Seite verbleibend"
+
+msgid "pages left"
+msgstr "Seiten verbleibend"
+
 msgid "page per minute"
 msgstr "Seite pro Minute"
 
@@ -485,6 +500,15 @@ msgstr "Standard"
 
 msgid "Save"
 msgstr "Speichern"
+
+msgid "Pick with color wheel"
+msgstr "Mit Farbrad auswählen"
+
+msgid "Apply"
+msgstr "Übernehmen"
+
+msgid "Brightness: %d%%"
+msgstr "Helligkeit: %d%%"
 
 msgid "Enter a hex color code (e.g. #1E90FF), the way KOReader expects it."
 msgstr "Gib einen hexadezimalen Farbcode ein (z. B. #1E90FF), wie ihn KOReader erwartet."
@@ -580,6 +604,12 @@ msgid "Expected finish:"
 msgstr "Voraussichtliches Ende:"
 msgid "Use as sleep screen"
 msgstr "Als Schlafbildschirm verwenden"
+
+msgid "Reading insights sleep screen"
+msgstr "Lesestatistik-Ruhebildschirm"
+
+msgid "Sleep-screen indicator"
+msgstr "Ruhebildschirm-Anzeige"
 
 msgid "Off"
 msgstr "Aus"
@@ -761,8 +791,8 @@ msgstr "Maximale Aktivität (100 %)"
 msgid "Show long durations (24h+) as days"
 msgstr "Lange Zeitspannen (24 Std. oder mehr) als Tage anzeigen"
 
-msgid "Calendar cell content"
-msgstr "Inhalt der Kalenderzellen"
+msgid "Book calendar cell content"
+msgstr "Inhalt der Buchkalenderzellen"
 
 msgid "Percent"
 msgstr "Prozent"

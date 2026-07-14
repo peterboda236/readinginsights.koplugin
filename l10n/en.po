@@ -177,6 +177,15 @@ msgstr "Reloading data..."
 msgid "Reading insights"
 msgstr "Reading insights"
 
+msgid "Reading insights: all time statistics"
+msgstr "Reading insights: all time statistics"
+
+msgid "Reading insights: current book progress"
+msgstr "Reading insights: current book progress"
+
+msgid "Reading insights: current book calendar"
+msgstr "Reading insights: current book calendar"
+
 msgid "All books read %1"
 msgstr "All books read %1"
 
@@ -411,6 +420,12 @@ msgstr "page"
 msgid "pages"
 msgstr "pages"
 
+msgid "page left"
+msgstr "page left"
+
+msgid "pages left"
+msgstr "pages left"
+
 msgid "page per minute"
 msgstr "page per minute"
 
@@ -485,6 +500,15 @@ msgstr "Default"
 
 msgid "Save"
 msgstr "Save"
+
+msgid "Pick with color wheel"
+msgstr "Pick with color wheel"
+
+msgid "Apply"
+msgstr "Apply"
+
+msgid "Brightness: %d%%"
+msgstr "Brightness: %d%%"
 
 msgid "Enter a hex color code (e.g. #1E90FF), the way KOReader expects it."
 msgstr "Enter a hex color code (e.g. #1E90FF), the way KOReader expects it."
@@ -580,6 +604,12 @@ msgid "Expected finish:"
 msgstr "Expected finish:"
 msgid "Use as sleep screen"
 msgstr "Use as sleep screen"
+
+msgid "Reading insights sleep screen"
+msgstr "Reading insights sleep screen"
+
+msgid "Sleep-screen indicator"
+msgstr "Sleep-screen indicator"
 
 msgid "Off"
 msgstr "Off"
@@ -761,8 +791,8 @@ msgstr "Peak activity (100%)"
 msgid "Show long durations (24h+) as days"
 msgstr "Show long durations (24h+) as days"
 
-msgid "Calendar cell content"
-msgstr "Calendar cell content"
+msgid "Book calendar cell content"
+msgstr "Book calendar cell content"
 
 msgid "Percent"
 msgstr "Percent"

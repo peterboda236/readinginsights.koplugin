@@ -177,6 +177,15 @@ msgstr "Adatok újraolvasása..."
 msgid "Reading insights"
 msgstr "Olvasási áttekintés"
 
+msgid "Reading insights: all time statistics"
+msgstr "Olvasási áttekintés: összesített statisztika"
+
+msgid "Reading insights: current book progress"
+msgstr "Olvasási áttekintés: aktuális könyv haladása"
+
+msgid "Reading insights: current book calendar"
+msgstr "Olvasási áttekintés: aktuális könyv naptára"
+
 msgid "All books read %1"
 msgstr "Összesen: %1 könyv olvasva"
 
@@ -426,6 +435,12 @@ msgstr "oldal"
 msgid "pages"
 msgstr "oldal"
 
+msgid "page left"
+msgstr "hátralévő oldal"
+
+msgid "pages left"
+msgstr "hátralévő oldal"
+
 msgid "page per minute"
 msgstr "oldal percenként"
 
@@ -500,6 +515,15 @@ msgstr "Alapértelmezett"
 
 msgid "Save"
 msgstr "Mentés"
+
+msgid "Pick with color wheel"
+msgstr "Kiválasztás színkerékkel"
+
+msgid "Apply"
+msgstr "Alkalmaz"
+
+msgid "Brightness: %d%%"
+msgstr "Fényerő: %d%%"
 
 msgid "Enter a hex color code (e.g. #1E90FF), the way KOReader expects it."
 msgstr "Add meg a szín hex kódját (pl. #1E90FF), ahogy a KOReader is kezeli."
@@ -595,6 +619,12 @@ msgid "Expected finish:"
 msgstr "Várható befejezés:"
 msgid "Use as sleep screen"
 msgstr "Használat alvó képernyőként"
+
+msgid "Reading insights sleep screen"
+msgstr "Olvasási áttekintés alvó képernyő"
+
+msgid "Sleep-screen indicator"
+msgstr "Alvó képernyő jelzés"
 
 msgid "Off"
 msgstr "Ki"
@@ -776,8 +806,8 @@ msgstr "Csúcsaktivitás (100%)"
 msgid "Show long durations (24h+) as days"
 msgstr "24 óra feletti időtartamok napokban"
 
-msgid "Calendar cell content"
-msgstr "Naptár cella tartalma"
+msgid "Book calendar cell content"
+msgstr "Könyv naptár cella tartalma"
 
 msgid "Percent"
 msgstr "Százalék"

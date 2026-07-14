@@ -55,6 +55,26 @@ local Widget      = require("ui/widget/widget")
 local L10N = ...
 local _ = L10N._
 
+-- Load ColorWheelWidget from this plugin's own directory (not on
+-- package.path, so require() won't find it) - same loadfile() pattern
+-- main.lua uses for its own module files.
+local function pluginDir()
+    local src = debug.getinfo(1, "S").source
+    local dir = src:match("^@(.*/)")
+    return dir or "./"
+end
+
+local function loadLocal(name)
+    local path = pluginDir() .. name
+    local chunk, err = loadfile(path)
+    if not chunk then
+        error(("Reading Insights: failed to load %s: %s"):format(name, tostring(err)))
+    end
+    return chunk()
+end
+
+local ColorWheelWidget = loadLocal("colorwheelwidget.lua")
+
 -- ---------------------------------------------------------------------
 -- Custom hex colors need bb:paintRectRGB32, not bb:paintRect.
 --
@@ -178,6 +198,31 @@ local function normalizeHex(hex)
     return nil
 end
 
+-- Converts a "#RRGGBB" hex string to HSV (hue 0..360, saturation/value
+-- 0..1), so the color wheel can open already pointing at whatever color
+-- is currently set for `key`, instead of always resetting to red.
+local function hexToHsv(hex)
+    local n = normalizeHex(hex) or "#000000"
+    local r = tonumber(n:sub(2, 3), 16) / 255
+    local g = tonumber(n:sub(4, 5), 16) / 255
+    local b = tonumber(n:sub(6, 7), 16) / 255
+    local max, min = math.max(r, g, b), math.min(r, g, b)
+    local delta = max - min
+    local h = 0
+    if delta > 0 then
+        if max == r then
+            h = 60 * (((g - b) / delta) % 6)
+        elseif max == g then
+            h = 60 * (((b - r) / delta) + 2)
+        else
+            h = 60 * (((r - g) / delta) + 4)
+        end
+    end
+    if h < 0 then h = h + 360 end
+    local s = (max == 0) and 0 or (delta / max)
+    return h, s, max
+end
+
 local function readHex(key)
     if G_reader_settings and G_reader_settings.readSetting then
         local n = normalizeHex(G_reader_settings:readSetting(SETTINGS_PREFIX .. key))
@@ -287,6 +332,27 @@ local function labelFor(key)
     return labels[key] or key
 end
 
+-- Opens the color wheel for `key`, pre-set to its current color. Applying
+-- it saves the resulting hex straight away (same as "Save" in the hex
+-- input dialog) and refreshes the menu/open popups the same way.
+local function showColorWheel(key, touchmenu_instance, on_change)
+    local h, s, v = hexToHsv(M.getHex(key))
+    UIManager:show(ColorWheelWidget:new{
+        title_text = labelFor(key),
+        hue        = h,
+        saturation = s,
+        value      = v,
+        cancel_text       = _("Cancel"),
+        ok_text           = _("Apply"),
+        brightness_format = _("Brightness: %d%%"),
+        callback = function(hex)
+            M.setHex(key, hex)
+            if touchmenu_instance then touchmenu_instance:updateItems() end
+            if on_change then on_change() end
+        end,
+    })
+end
+
 local function showHexInputDialog(key, touchmenu_instance, on_change)
     local dialog
     dialog = InputDialog:new{
@@ -326,6 +392,15 @@ local function showHexInputDialog(key, touchmenu_instance, on_change)
                                 text = _("Not a valid hex color code, e.g. #1E90FF."),
                             })
                         end
+                    end,
+                },
+            },
+            {
+                {
+                    text = _("Pick with color wheel"),
+                    callback = function()
+                        UIManager:close(dialog)
+                        showColorWheel(key, touchmenu_instance, on_change)
                     end,
                 },
             },
