@@ -1806,8 +1806,15 @@ end
 local function buildRangeHeatmapWidget(daily_map, start_t, end_t, fonts, max_width)
     local cols, num_cols = buildRangeHeatmapGrid(daily_map, start_t, end_t)
 
-    local gap    = Screen:scaleBySize(2)
-    local border = Size.line.thin
+    local gap     = Screen:scaleBySize(2)
+    -- Vertical gap between grid rows - clearly wider than the horizontal
+    -- gap between columns (gap) so the rows read as visually distinct
+    -- bands rather than a near-continuous block, matching how the column
+    -- gaps already separate the day squares side by side. A flat
+    -- scaleBySize value (not a multiple of the tiny 2px column gap) so
+    -- it stays clearly visible even on high-density screens.
+    local row_gap = Screen:scaleBySize(2)
+    local border  = Size.line.thin
 
     local wd_label_w = getWeekdayLabelWidth(fonts)
 
@@ -1934,8 +1941,21 @@ local function buildRangeHeatmapWidget(daily_map, start_t, end_t, fonts, max_wid
     -- of the week (row 7) - see weekStartWday/buildRangeHeatmapGrid - each
     -- row prefixed with its weekday label slot (blank unless it's one of
     -- the getWeekdayRowLabels rows).
+    --
+    -- Row widgets + row_gap spans are appended directly as top-level
+    -- children of `widget` below (not wrapped in their own nested
+    -- VerticalGroup) - on-device testing showed VerticalSpans nested
+    -- two VerticalGroups deep were rendering with zero height (rows
+    -- stacked flush with no visible gap) even though the exact same
+    -- VerticalSpan pattern between labels_row and the row widgets one
+    -- level up rendered correctly. Flattening avoids the nested case
+    -- entirely.
     local row_labels = getWeekdayRowLabels()
-    local grid = VerticalGroup:new{ align = "left" }
+    local widget = VerticalGroup:new{
+        align = "left",
+        labels_row,
+        VerticalSpan:new{ height = Size.padding.small },
+    }
     for row = 1, 7 do
         local row_group = HorizontalGroup:new{ align = "center" }
         local wd_text = row_labels[row]
@@ -1961,18 +1981,12 @@ local function buildRangeHeatmapWidget(daily_map, start_t, end_t, fonts, max_wid
                 table.insert(row_group, HorizontalSpan:new{ width = gap })
             end
         end
-        table.insert(grid, row_group)
+        table.insert(widget, row_group)
         if row < 7 then
-            table.insert(grid, VerticalSpan:new{ height = gap })
+            table.insert(widget, VerticalSpan:new{ width = row_gap })
         end
     end
 
-    local widget = VerticalGroup:new{
-        align = "left",
-        labels_row,
-        VerticalSpan:new{ height = Size.padding.small },
-        grid,
-    }
     -- cell_size and the wd_label_w + gap offset (where the first day
     -- column starts) are both handed back so the legend built below can
     -- match the grid exactly, however it's currently sized (see
@@ -2021,6 +2035,10 @@ end
 local function buildDayPartHeatmapWidget(weekday_hour_map, fonts, max_width)
     local num_cols = 24
     local gap      = Screen:scaleBySize(2)
+    -- Vertical gap between grid rows - same fixed, clearly-visible value
+    -- as buildRangeHeatmapWidget's own row_gap above, so the two
+    -- heatmaps look consistent.
+    local row_gap  = Screen:scaleBySize(2)
     local border   = Size.line.thin
 
     local wd_label_w = getWeekdayLabelWidth(fonts)
@@ -2067,7 +2085,15 @@ local function buildDayPartHeatmapWidget(weekday_hour_map, fonts, max_width)
     local row_order = weekdayRowOrder()
     local row_labels = getWeekdayRowLabels()
 
-    local grid = VerticalGroup:new{ align = "left" }
+    -- Row widgets + row_gap spans appended directly as top-level children
+    -- of this VerticalGroup (not a separately nested one) - see the long
+    -- comment in buildRangeHeatmapWidget above for why: VerticalSpans
+    -- nested two VerticalGroups deep rendered with zero height on-device.
+    local widget = VerticalGroup:new{
+        align = "left",
+        labels_row,
+        VerticalSpan:new{ height = Size.padding.small },
+    }
     for row = 1, 7 do
         local wd = row_order[row]
         local row_group = HorizontalGroup:new{ align = "center" }
@@ -2089,18 +2115,13 @@ local function buildDayPartHeatmapWidget(weekday_hour_map, fonts, max_width)
                 table.insert(row_group, HorizontalSpan:new{ width = gap })
             end
         end
-        table.insert(grid, row_group)
+        table.insert(widget, row_group)
         if row < 7 then
-            table.insert(grid, VerticalSpan:new{ height = gap })
+            table.insert(widget, VerticalSpan:new{ width = row_gap })
         end
     end
 
-    return VerticalGroup:new{
-        align = "left",
-        labels_row,
-        VerticalSpan:new{ height = Size.padding.small },
-        grid,
-    }, wd_label_w + gap
+    return widget, wd_label_w + gap
 end
 
 -- Color legend for the reading heatmap: a "Less" label, the same five
@@ -3235,6 +3256,63 @@ end
 -- year range if the period spans a Dec/Jan boundary. Also returns
 -- whether an older/newer period exists, so HeatmapPopup can gate
 -- swipe navigation.
+-- Section header for the calendar heatmap grid, with optional ‹ / ›
+-- paging arrows at the left/right edges when there's an older/newer
+-- half-year to page to - same layout/style as stats_view.lua's own
+-- buildBookCalendarHeader (BookCalendarPopup's month header), so the
+-- paging controls look consistent across both popups. Both arrow slots
+-- are always reserved at their full width, whether or not that arrow is
+-- actually visible - see buildBookCalendarHeader's own comment: without
+-- this, the title jumps sideways whenever an arrow appears/disappears
+-- while paging (e.g. hitting the oldest available half-year).
+local function buildHeatmapSectionHeader(title_str, content_width, section_font, prev_available, next_available)
+    local arrow_pad = Size.padding.default
+
+    local left_glyph_w  = TextWidget:new{ text = "\xe2\x80\xb9", face = section_font }:getSize().w
+    local right_glyph_w = TextWidget:new{ text = "\xe2\x80\xba", face = section_font }:getSize().w
+    local slot_w = math.max(left_glyph_w, right_glyph_w) + 2 * arrow_pad
+
+    local function makeArrow(glyph, visible)
+        if not visible then
+            return HorizontalSpan:new{ width = slot_w }, nil
+        end
+        local tw = TextWidget:new{ text = glyph, face = section_font, fgcolor = Colors.section() }
+        local extra = slot_w - 2 * arrow_pad - tw:getSize().w
+        local frame = FrameContainer:new{
+            background     = nil,
+            bordersize     = 0,
+            padding_top    = 0,
+            padding_bottom = 0,
+            padding_left   = arrow_pad + math.floor(extra / 2),
+            padding_right  = arrow_pad + math.ceil(extra / 2),
+            margin         = 0,
+            tw,
+        }
+        return frame, frame
+    end
+
+    local left_widget,  left_frame  = makeArrow("\xe2\x80\xb9", prev_available)
+    local right_widget, right_frame = makeArrow("\xe2\x80\xba", next_available)
+
+    local title_w = TextWidget:new{ text = title_str, face = section_font, fgcolor = Colors.section() }
+
+    local remaining = content_width - left_widget:getSize().w - right_widget:getSize().w - title_w:getSize().w
+    if remaining < 0 then remaining = 0 end
+    local side_l = math.floor(remaining / 2)
+    local side_r = remaining - side_l
+
+    local header_row = HorizontalGroup:new{
+        align = "center",
+        left_widget,
+        HorizontalSpan:new{ width = side_l },
+        title_w,
+        HorizontalSpan:new{ width = side_r },
+        right_widget,
+    }
+
+    return header_row, left_frame, right_frame, left_widget:getSize().w, right_widget:getSize().w, header_row:getSize().h
+end
+
 local function buildHeatmapBoxContent(popup_self, periods_back)
     local start_t, end_t = getHeatmapPeriodRange(periods_back)
     local daily_map        = popup_self:getDailyReadingDataForRange(start_t, end_t)
@@ -3244,6 +3322,13 @@ local function buildHeatmapBoxContent(popup_self, periods_back)
     local inner_padding = Size.padding.large
     local box_width      = math.floor(Screen:getWidth() * 0.94)
     local content_width  = box_width - 2 * inner_padding
+
+    -- Older/newer availability, needed up front now (not just at the end)
+    -- since the calendar heatmap's own header needs it to decide whether
+    -- to show its ‹ / › paging arrows.
+    local year_range      = popup_self:getYearRange()
+    local older_available = periods_back < heatmapMaxPeriodsBack(year_range.min_year, year_range.min_month)
+    local newer_available = periods_back > 0
 
     -- Small helper: a centered section header (same font/color as every
     -- other section header in this file) above one of the two grids.
@@ -3303,9 +3388,19 @@ local function buildHeatmapBoxContent(popup_self, periods_back)
         legend_row,
     }
 
+    -- Calendar heatmap header: same title as before, now with ‹ / ›
+    -- paging arrows at the edges (shown only when there's an older/newer
+    -- half-year to page to - see older_available/newer_available above),
+    -- styled like BookCalendarPopup's own month header (see
+    -- buildHeatmapSectionHeader). cal_left_frame/cal_right_frame are nil
+    -- when the corresponding arrow is hidden; HeatmapPopup uses their
+    -- presence (not .dimen) to decide whether to register a tap zone.
+    local calendar_header, cal_left_frame, cal_right_frame, cal_left_w, cal_right_w, cal_header_h =
+        buildHeatmapSectionHeader(_("Calendar heatmap"), content_width, fonts.section, older_available, newer_available)
+
     local content = VerticalGroup:new{
         align = "center",
-        sectionTitle(_("Calendar heatmap")),
+        calendar_header,
         VerticalSpan:new{ height = Size.padding.large + Size.padding.default },
         matchOwnWidth(calendar_widget),
         VerticalSpan:new{ height = 2 * Size.padding.large },
@@ -3329,11 +3424,8 @@ local function buildHeatmapBoxContent(popup_self, periods_back)
         content,
     }
 
-    local year_range       = popup_self:getYearRange()
-    local older_available  = periods_back < heatmapMaxPeriodsBack(year_range.min_year, year_range.min_month)
-    local newer_available  = periods_back > 0
-
-    return box, older_available, newer_available
+    return box, older_available, newer_available,
+        cal_left_frame, cal_right_frame, cal_left_w, cal_right_w, cal_header_h
 end
 
 -- Full-screen "Reading heatmap" popup, paginated in half-year steps.
@@ -3365,7 +3457,8 @@ function HeatmapPopup:init()
 end
 
 function HeatmapPopup:_rebuild()
-    local box, older_available, newer_available = buildHeatmapBoxContent(self.popup_self, self.periods_back)
+    local box, older_available, newer_available, left_frame, right_frame, left_w, right_w, header_h =
+        buildHeatmapBoxContent(self.popup_self, self.periods_back)
     self.box_content      = box
     self._older_available = older_available
     self._newer_available = newer_available
@@ -3373,6 +3466,45 @@ function HeatmapPopup:_rebuild()
         dimen = self.dimen,
         self.box_content,
     }
+
+    -- Absolute tap zones for the calendar heatmap's ‹ / › paging arrows,
+    -- computed from geometry (box position + inner padding) rather than
+    -- from left_frame/right_frame.dimen - same reasoning as
+    -- BookCalendarPopup's own _nav_zones in stats_view.lua: a
+    -- FrameContainer without an explicit width/height only gets .dimen
+    -- populated once it's actually painted, so relying on it here could
+    -- crash if the user pages again before the first paint tick.
+    local inner_padding = Size.padding.large
+    local border_w      = Size.border.window
+    local box_rect       = self:_centeredRect(self.box_content)
+    local content_width  = box_rect.w - 2 * border_w - 2 * inner_padding
+    local header_x = box_rect.x + border_w + inner_padding
+    local header_y = box_rect.y + border_w + inner_padding
+    local tap_pad  = Screen:scaleBySize(14)
+
+    self._nav_zones = {}
+    if left_frame then
+        table.insert(self._nav_zones, {
+            dimen = Geom:new{
+                x = header_x - tap_pad,
+                y = header_y - tap_pad,
+                w = left_w + 2 * tap_pad,
+                h = header_h + 2 * tap_pad,
+            },
+            delta = 1, -- older
+        })
+    end
+    if right_frame then
+        table.insert(self._nav_zones, {
+            dimen = Geom:new{
+                x = header_x + content_width - right_w - tap_pad,
+                y = header_y - tap_pad,
+                w = right_w + 2 * tap_pad,
+                h = header_h + 2 * tap_pad,
+            },
+            delta = -1, -- newer
+        })
+    end
 end
 
 -- Returns the screen rectangle a CenterContainer of size self.dimen
@@ -3441,7 +3573,16 @@ function HeatmapPopup:_goToPeriod(delta)
     return true
 end
 
-function HeatmapPopup:onTap()
+function HeatmapPopup:onTap(arg, ges_ev)
+    if ges_ev then
+        local x, y = ges_ev.pos.x, ges_ev.pos.y
+        for _, zone in ipairs(self._nav_zones or {}) do
+            if zone.dimen and x >= zone.dimen.x and x <= zone.dimen.x + zone.dimen.w
+               and y >= zone.dimen.y and y <= zone.dimen.y + zone.dimen.h then
+                return self:_goToPeriod(zone.delta)
+            end
+        end
+    end
     UIManager:close(self)
     return true
 end
