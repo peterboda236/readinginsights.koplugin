@@ -516,6 +516,15 @@ msgstr "Alapértelmezett"
 msgid "Save"
 msgstr "Mentés"
 
+msgid "Pick with color wheel"
+msgstr "Kiválasztás színkerékkel"
+
+msgid "Apply"
+msgstr "Alkalmaz"
+
+msgid "Brightness: %d%%"
+msgstr "Fényerő: %d%%"
+
 msgid "Enter a hex color code (e.g. #1E90FF), the way KOReader expects it."
 msgstr "Add meg a szín hex kódját (pl. #1E90FF), ahogy a KOReader is kezeli."
 

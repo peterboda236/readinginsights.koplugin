@@ -501,6 +501,15 @@ msgstr "Default"
 msgid "Save"
 msgstr "Save"
 
+msgid "Pick with color wheel"
+msgstr "Pick with color wheel"
+
+msgid "Apply"
+msgstr "Apply"
+
+msgid "Brightness: %d%%"
+msgstr "Brightness: %d%%"
+
 msgid "Enter a hex color code (e.g. #1E90FF), the way KOReader expects it."
 msgstr "Enter a hex color code (e.g. #1E90FF), the way KOReader expects it."
 

@@ -501,6 +501,15 @@ msgstr "Standard"
 msgid "Save"
 msgstr "Speichern"
 
+msgid "Pick with color wheel"
+msgstr "Mit Farbrad auswählen"
+
+msgid "Apply"
+msgstr "Übernehmen"
+
+msgid "Brightness: %d%%"
+msgstr "Helligkeit: %d%%"
+
 msgid "Enter a hex color code (e.g. #1E90FF), the way KOReader expects it."
 msgstr "Gib einen hexadezimalen Farbcode ein (z. B. #1E90FF), wie ihn KOReader erwartet."
 
