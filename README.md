@@ -161,7 +161,11 @@ Once installed, future updates can be installed in-app — see
       section/column separator lines, the label/value/section/
       chart-label text colors, and the 5 year-heatmap shades - defaulting
       to 0/25/50/75/100% black); each one can be reset back to its
-      default individually or all at once.
+      default individually or all at once. Each color can be set either by
+      typing a hex code directly, or by tapping **Pick with color wheel**
+      to open a touch color wheel (hue/saturation dial plus a brightness
+      slider) that opens pre-set to the color's current value and shows a
+      live preview + hex readout while you drag.
     - **Fonts** — pick your own font (name + size) for every text role in
       both popups, grouped under **Reading insights** (section headers,
       values, labels, chart/axis labels) and **Book progress** (section
@@ -205,6 +209,9 @@ Once installed, future updates can be installed in-app — see
 - `colors.lua` — shared chart/text color settings (the "Colors" submenu)
   used by both views, so there's a single place to configure every
   color.
+- `colorwheelwidget.lua` — the touch color wheel dialog (hue/saturation
+  wheel + brightness slider + live hex preview) used by the "Pick with
+  color wheel" option in the Colors submenu.
 - `fonts.lua` — shared font settings (the "Fonts" submenu) used by both
   views, so there's a single place to configure every text role's font
   name and size.
