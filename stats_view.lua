@@ -15,14 +15,18 @@ chunk argument, so both views translate from the same l10n/<lang>.po files
 instead of each keeping a separate hard-coded translation table.
 
 Sections shown:
-  - This chapter / Next chapter   estimated time left and time to read next chapter
+  - This chapter / Next chapter   estimated time left and time to read next
+                                   chapter (tap to switch to pages left /
+                                   next chapter's page count; tap again to
+                                   switch back)
   - This book                     progress percentage, pages read, time spent, time left
   - Chapter bar                   visual bar chart of all chapters (tappable, swipeable)
   - Pace                          today's reading time and pages-per-minute rate
 
 Controls:
-  - Tap anywhere     dismiss
-  - Swipe left/right navigate the chapter bar
+  - Tap anywhere              dismiss
+  - Tap "This chapter" row    toggle between reading time left and pages left
+  - Swipe left/right          navigate the chapter bar
 ]]--
 
 local Blitbuffer = require("ffi/blitbuffer")
@@ -943,8 +947,28 @@ local function buildSections(stats, fonts, layout, popup)
         return buildValueLine(fonts.value, fonts.label, layout.col_width, time_data, label)
     end
 
-    local chapter_val1    = valueLine(stats.chapter_time_left_hhmm, _("reading time"))
-    local chapter_val2    = valueLine(stats.next_chapter_time_hhmm, _("reading time"))
+    -- "This chapter" / "Next chapter" can show either an estimated reading
+    -- time (default) or a page count - toggled by tapping the header/value
+    -- row (see ReadingStatsPopup:onTapClose). popup._chapter_view_mode is
+    -- nil/"time" by default; "pages" once toggled. Tapping again switches
+    -- back (see onTapClose).
+    local chapter_view_mode = (popup and popup._chapter_view_mode) or "time"
+    local chapter_val1, chapter_val2
+    if chapter_view_mode == "pages" then
+        local na_pages   = { value = "—", unit = "" }
+        local left_count = stats.chapter_pages_left_count
+        local left_data  = left_count and { value = formatCount(left_count), unit = "" } or na_pages
+        local left_label = N_("page left", "pages left", left_count or 0)
+        chapter_val1 = valueLine(left_data, left_label)
+
+        local next_count = stats.next_chapter_pages_count
+        local next_data  = next_count and { value = formatCount(next_count), unit = "" } or emptyValue()
+        local next_label = next_count and N_("page", "pages", next_count) or ""
+        chapter_val2 = valueLine(next_data, next_label)
+    else
+        chapter_val1 = valueLine(stats.chapter_time_left_hhmm, _("reading time left"))
+        chapter_val2 = valueLine(stats.next_chapter_time_hhmm, _("reading time"))
+    end
     local progress_label  = stats.book_progress.value ~= "" and _("read") or ""
     local book_progress   = valueLine(stats.book_progress, progress_label)
     local book_pages_read = valueLine(stats.book_pages_read, "")
@@ -963,8 +987,18 @@ local function buildSections(stats, fonts, layout, popup)
     end
     local days_col2 = valueLine(nonEmpty(today_time_data_hhmm), _("read today"))
 
-    local chapter_headers   = buildChapterHeaders(fonts.section, layout, stats.has_next_chapter)
-    local chapter_values    = buildTwoColRow(chapter_val1, chapter_val2, layout, not stats.has_next_chapter)
+    local chapter_headers_content = buildChapterHeaders(fonts.section, layout, stats.has_next_chapter)
+    local chapter_values_content  = buildTwoColRow(chapter_val1, chapter_val2, layout, not stats.has_next_chapter)
+    -- Wrapped in tappableWrap (fixed dimen) rather than used raw, so tapping
+    -- either row reliably hits (same reasoning as started_tap/finish_tap
+    -- below: a bare HorizontalGroup isn't guaranteed a usable .dimen for
+    -- hitTest the way a FrameContainer with an explicit dimen is).
+    local chapter_headers = tappableWrap(chapter_headers_content, chapter_headers_content:getSize().w)
+    local chapter_values  = tappableWrap(chapter_values_content, chapter_values_content:getSize().w)
+    if popup then
+        popup._chapter_headers = chapter_headers
+        popup._chapter_values  = chapter_values
+    end
     local book_progress_row = buildTwoColRow(book_progress, book_pages_read, layout)
     local book_progress_tap = book_progress_row
     local book_row          = buildTwoColRow(book_col1, book_col2, layout)
@@ -1641,6 +1675,7 @@ local ReadingStatsPopup = InputContainer:extend{
     chapter_bar_offset = nil,
     today_all_books    = false,
     _has_book_id       = false,
+    _chapter_view_mode = "time",
 }
 
 function ReadingStatsPopup:init()
@@ -1737,6 +1772,8 @@ function ReadingStatsPopup:gatherStats()
         today_time_all_hhmm    = zero_hhmm,
         chapter_info           = nil,
         has_next_chapter       = false,
+        chapter_pages_left_count = nil,
+        next_chapter_pages_count = nil,
     }
 
     local ui = self.ui
@@ -1785,11 +1822,19 @@ function ReadingStatsPopup:gatherStats()
         stats.next_chapter_time_hhmm  = na_hhmm
     end
 
-    if has_stats and toc then
+    -- Page counts (chapter_pages_left_count / next_chapter_pages_count) are
+    -- computed independently of has_stats (pace data isn't needed to know
+    -- how many pages are left) so the tap-to-toggle "pages" view in
+    -- buildSections works even before the reader has enough history for a
+    -- time estimate. The *_hhmm time estimates still need avg_time.
+    if toc then
         local chapter_pages_left = getChapterPagesLeft(ui, pageno)
         if chapter_pages_left and chapter_pages_left >= 0 then
-            local ch_secs = chapter_pages_left * avg_time
-            stats.chapter_time_left_hhmm = formatTimeHHMM(ch_secs)
+            stats.chapter_pages_left_count = chapter_pages_left
+            if has_stats then
+                local ch_secs = chapter_pages_left * avg_time
+                stats.chapter_time_left_hhmm = formatTimeHHMM(ch_secs)
+            end
         end
 
         if next_chapter_start then
@@ -1802,7 +1847,8 @@ function ReadingStatsPopup:gatherStats()
             end
             next_chapter_pages = next_chapter_pages - 1
             if next_chapter_pages < 0 then next_chapter_pages = 0 end
-            if next_chapter_pages >= 0 then
+            stats.next_chapter_pages_count = next_chapter_pages
+            if has_stats then
                 local nc_secs = next_chapter_pages * avg_time
                 stats.next_chapter_time_hhmm = formatTimeHHMM(nc_secs)
             end
@@ -2030,6 +2076,12 @@ end
 function ReadingStatsPopup:onTapClose(arg, ges_ev)
     if ges_ev then
         local x, y = ges_ev.pos.x, ges_ev.pos.y
+
+        if hitTest(self._chapter_headers, x, y) or hitTest(self._chapter_values, x, y) then
+            self._chapter_view_mode = (self._chapter_view_mode == "pages") and "time" or "pages"
+            self:_rebuildUI()
+            return true
+        end
 
         if hitTest(self._this_book_header, x, y) then
             UIManager:close(self)
