@@ -411,6 +411,12 @@ msgstr "page"
 msgid "pages"
 msgstr "pages"
 
+msgid "page left"
+msgstr "page left"
+
+msgid "pages left"
+msgstr "pages left"
+
 msgid "page per minute"
 msgstr "page per minute"
 

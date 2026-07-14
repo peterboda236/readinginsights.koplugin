@@ -426,6 +426,12 @@ msgstr "oldal"
 msgid "pages"
 msgstr "oldal"
 
+msgid "page left"
+msgstr "hátralévő oldal"
+
+msgid "pages left"
+msgstr "hátralévő oldal"
+
 msgid "page per minute"
 msgstr "oldal percenként"
 
