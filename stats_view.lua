@@ -1263,7 +1263,14 @@ end
 -- readable, regardless of how much was read), with a thin progress bar
 -- along the bottom showing cumulative_ratios[day] - how far into the
 -- book that day's reading got, out of the whole book.
-local function buildBookCalendarGrid(daily_map, year, month, day_font, small_font, content_width, total_pages, cumulative_ratios)
+--
+-- finish_day (optional): day-of-month of this book's estimated finish
+-- date, IF it falls within the month currently being rendered (callers
+-- pre-filter this - see BookCalendarPopup:_rebuild). That cell's day
+-- number is rendered in bold (Fonts.getBoldFace) so the projected finish
+-- day stands out on the calendar itself, not just in the "Expected
+-- finish" tap popup.
+local function buildBookCalendarGrid(daily_map, year, month, day_font, small_font, content_width, total_pages, cumulative_ratios, finish_day)
     local week_start_wd = bookCalendarWeekStartWday() -- 0=Sun, 1=Mon
     local gap    = Screen:scaleBySize(2)
     local cols   = 7
@@ -1273,6 +1280,8 @@ local function buildBookCalendarGrid(daily_map, year, month, day_font, small_fon
     local bar_h   = Screen:scaleBySize(4)
     local bar_pad = Screen:scaleBySize(3)
     local bar_w   = cell_w - 2 * bar_pad
+    local cell_radius = Screen:scaleBySize(6)
+    local day_font_bold = Fonts.getBoldFace("stats_label")
 
     local grid = VerticalGroup:new{ align = "center" }
     local day_cells = {}
@@ -1310,8 +1319,13 @@ local function buildBookCalendarGrid(daily_map, year, month, day_font, small_fon
                 local entry     = daily_map[cell_day]
                 local day_str   = string.format("%04d-%02d-%02d", year, month, cell_day)
                 local is_today  = (day_str == today_str)
+                local is_finish_day = (finish_day ~= nil and cell_day == finish_day)
 
-                local day_num_w = TextWidget:new{ text = tostring(cell_day), face = day_font, fgcolor = Colors.value() }
+                local day_num_w = TextWidget:new{
+                    text = tostring(cell_day),
+                    face = is_finish_day and day_font_bold or day_font,
+                    fgcolor = Colors.value(),
+                }
                 local pct_text = buildBookCalendarCellText(entry, total_pages)
                 -- Always include the percent line (even blank) so the day
                 -- number sits at the same vertical spot in every cell,
@@ -1358,7 +1372,7 @@ local function buildBookCalendarGrid(daily_map, year, month, day_font, small_fon
                     background = nil,
                     bordersize = border,
                     color      = is_today and Colors.activeBar() or Colors.separator(),
-                    radius     = Screen:scaleBySize(6),
+                    radius     = cell_radius,
                     padding    = 0,
                     margin     = 0,
                     width      = cell_w,
@@ -1438,6 +1452,11 @@ local function buildBookCalendarHeader(title_str, content_width, section_font, p
     return header_row, left_frame, right_frame, left_widget:getSize().w, right_widget:getSize().w, header_row:getSize().h
 end
 
+-- True if year/month (y1, m1) is chronologically after (y2, m2).
+local function monthIsAfter(y1, m1, y2, m2)
+    return (y1 > y2) or (y1 == y2 and m1 > m2)
+end
+
 local BookCalendarPopup = InputContainer:extend{
     modal     = true,
     ui        = nil,
@@ -1445,6 +1464,11 @@ local BookCalendarPopup = InputContainer:extend{
     total_pages = nil,
     year      = nil,
     month     = nil,
+    -- Estimated finish timestamp for this book (stats.finish_timestamp -
+    -- see the pace calculation above), or nil if there isn't enough data
+    -- yet. When set, forward navigation is allowed up to (and the finish
+    -- day is marked within) that month - see _rebuild/_goToMonth below.
+    finish_timestamp = nil,
 }
 
 function BookCalendarPopup:init()
@@ -1476,10 +1500,27 @@ function BookCalendarPopup:_rebuild()
         and string.format("%04d. %s", self.year, MONTH_FULL_HU_LC[self.month])
         or  (_(MONTH_FULL[self.month]) .. " " .. tostring(self.year))
 
-    -- Next month is hidden once we're on the current calendar month (same
-    -- bound _goToMonth enforces for swipe/key navigation).
+    -- Next month is hidden once we're on the current calendar month - UNLESS
+    -- this book has an estimated finish date in a later month, in which case
+    -- paging is allowed up to that month, so the projected finish day (see
+    -- finish_day below) is actually reachable. Same bound _goToMonth
+    -- enforces for swipe/key navigation.
     local now = os.date("*t")
-    local next_available = (self.year < now.year) or (self.year == now.year and self.month < now.month)
+    local max_year, max_month = now.year, now.month
+    local finish_year, finish_month, finish_day_of_month
+    if self.finish_timestamp then
+        local ft = os.date("*t", self.finish_timestamp)
+        finish_year, finish_month, finish_day_of_month = ft.year, ft.month, ft.day
+        if monthIsAfter(finish_year, finish_month, max_year, max_month) then
+            max_year, max_month = finish_year, finish_month
+        end
+    end
+    local next_available = monthIsAfter(max_year, max_month, self.year, self.month)
+
+    -- Only pass finish_day through when the finish date actually falls in
+    -- the month currently being rendered.
+    local finish_day = (finish_year == self.year and finish_month == self.month)
+        and finish_day_of_month or nil
 
     -- Previous month is hidden if this book has no reading recorded there
     -- (same bound _goToMonth enforces for swipe/key navigation), so the
@@ -1495,7 +1536,8 @@ function BookCalendarPopup:_rebuild()
     local cumulative_ratios = getBookCumulativeProgressForMonth(
         self.book_id, self.year, self.month, self.total_pages)
     local grid, day_cells = buildBookCalendarGrid(
-        daily_map, self.year, self.month, day_font, small_font, content_width, self.total_pages, cumulative_ratios)
+        daily_map, self.year, self.month, day_font, small_font, content_width, self.total_pages, cumulative_ratios,
+        finish_day)
     self._day_cells = day_cells
 
     local content = VerticalGroup:new{
@@ -1607,9 +1649,18 @@ function BookCalendarPopup:_goToMonth(delta)
     local y = self.year
     while m < 1 do m = m + 12; y = y - 1 end
     while m > 12 do m = m - 12; y = y + 1 end
-    -- Don't navigate past the current calendar month.
+    -- Don't navigate past the current calendar month - unless this book's
+    -- estimated finish date falls in a later month, matching the arrow
+    -- availability computed in _rebuild.
     local now = os.date("*t")
-    if y > now.year or (y == now.year and m > now.month) then return true end
+    local max_year, max_month = now.year, now.month
+    if self.finish_timestamp then
+        local ft = os.date("*t", self.finish_timestamp)
+        if monthIsAfter(ft.year, ft.month, max_year, max_month) then
+            max_year, max_month = ft.year, ft.month
+        end
+    end
+    if monthIsAfter(y, m, max_year, max_month) then return true end
     -- Don't navigate back into a month with no reading recorded for this book.
     if delta < 0 and not bookCalendarMonthHasData(self.book_id, y, m) then return true end
 
@@ -2030,6 +2081,7 @@ function ReadingStatsPopup:openBookCalendar()
     local saved_chapter_bar_offset = self.chapter_bar_offset
     local saved_book_id            = self._stats and self._stats.book_id
     local saved_total_pages        = self._stats and self._stats.total_pages_for_calendar
+    local saved_finish_timestamp   = self._stats and self._stats.finish_timestamp
 
     local open_year, open_month = getBookLastReadYearMonth(saved_book_id)
     if not open_year or not open_month then
@@ -2057,11 +2109,12 @@ function ReadingStatsPopup:openBookCalendar()
         end
 
         local popup = BookCalendarPopup:new{
-            ui          = saved_ui,
-            book_id     = saved_book_id,
-            total_pages = saved_total_pages,
-            year        = open_year,
-            month       = open_month,
+            ui               = saved_ui,
+            book_id          = saved_book_id,
+            total_pages      = saved_total_pages,
+            year             = open_year,
+            month            = open_month,
+            finish_timestamp = saved_finish_timestamp,
         }
         -- onCloseWidget fires on all dismiss paths (tap, swipe-close, key);
         -- the flag above prevents double-open.

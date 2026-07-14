@@ -178,6 +178,7 @@ local _face_cache = {}
 
 function M._invalidate(key)
     _face_cache[key] = nil
+    _face_cache[key .. "__bold"] = nil
 end
 
 -- Tries, in order: the given font (name/file or Font.fontmap key) at the
@@ -209,6 +210,28 @@ function M.getFace(key)
 
     local face = buildFace(defaults, name, size)
     _face_cache[key] = { cache_key = cache_key, face = face }
+    return face
+end
+
+-- Bold-weight variant of an existing role's face, at that role's current
+-- (possibly user-overridden) size. Used e.g. for the expected-finish day
+-- number in the per-book calendar (stats_view.lua), so that one occasional
+-- bold day number doesn't need a whole separate font role/menu entry of
+-- its own - it just piggybacks on whatever size the caller's role is set
+-- to, forcing NotoSans-Bold.ttf instead of that role's own file.
+function M.getBoldFace(key)
+    local defaults = DEFAULTS[key]
+    local size = M.getSize(key) or defaults.size
+
+    local cache_key = "bold@" .. size
+    local bold_key = key .. "__bold"
+    local cached = _face_cache[bold_key]
+    if cached and cached.cache_key == cache_key then
+        return cached.face
+    end
+
+    local face = buildFace(defaults, "NotoSans-Bold.ttf", size)
+    _face_cache[bold_key] = { cache_key = cache_key, face = face }
     return face
 end
 
