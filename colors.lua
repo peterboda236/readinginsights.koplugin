@@ -363,6 +363,15 @@ local function showHexInputDialog(key, touchmenu_instance, on_change)
         buttons = {
             {
                 {
+                    text = _("Pick with color wheel"),
+                    callback = function()
+                        UIManager:close(dialog)
+                        showColorWheel(key, touchmenu_instance, on_change)
+                    end,
+                },
+            },
+            {
+                {
                     text = _("Cancel"),
                     id   = "close",
                     callback = function()
@@ -392,15 +401,6 @@ local function showHexInputDialog(key, touchmenu_instance, on_change)
                                 text = _("Not a valid hex color code, e.g. #1E90FF."),
                             })
                         end
-                    end,
-                },
-            },
-            {
-                {
-                    text = _("Pick with color wheel"),
-                    callback = function()
-                        UIManager:close(dialog)
-                        showColorWheel(key, touchmenu_instance, on_change)
                     end,
                 },
             },
