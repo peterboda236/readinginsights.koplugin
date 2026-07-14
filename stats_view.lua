@@ -397,6 +397,28 @@ local function getBookLastReadYearMonth(book_id)
     return tonumber(y), tonumber(m)
 end
 
+-- This book's very first page_stat start_time (i.e. when reading it was
+-- started), or nil if there's no reading data yet. Lightweight counterpart
+-- to the started_timestamp computed inside getBookAndTodayStats above -
+-- used by openBookCalendarForUI, which opens the calendar directly without
+-- going through the full "This book" stats gathering first.
+local function getBookStartedTimestamp(book_id)
+    if not book_id then return nil end
+    local conn = SQ3.open(stats_db_path)
+    if not conn then return nil end
+
+    local sql = string.format([[
+        SELECT start_time
+        FROM   page_stat
+        WHERE  id_book = %d
+        ORDER  BY start_time ASC
+        LIMIT  1
+    ]], book_id)
+    local started_timestamp = conn:rowexec(sql)
+    conn:close()
+    return started_timestamp and tonumber(started_timestamp) or nil
+end
+
 -- Whether this book has any page_stat entry in the given year/month - used
 -- to stop the reading calendar from paging back into months with nothing
 -- to show (see BookCalendarPopup:_goToMonth and the header's left arrow).
@@ -1274,7 +1296,15 @@ end
 -- untouched and stays in its normal spot) so the projected finish day
 -- stands out on the calendar itself, not just in the "Expected finish"
 -- tap popup.
-local function buildBookCalendarGrid(daily_map, year, month, day_font, small_font, content_width, total_pages, cumulative_ratios, finish_day)
+--
+-- start_day (optional): day-of-month this book's reading was actually
+-- started, IF it falls within the month currently being rendered (same
+-- pre-filtering as finish_day - see BookCalendarPopup:_rebuild). That cell
+-- gets a matching white/hollow flag glyph, placed to the left of the day
+-- number (mirrored from the black finish flag on the right) so start and
+-- finish day both get an on-calendar marker without colliding if they
+-- ever land on the same day.
+local function buildBookCalendarGrid(daily_map, year, month, day_font, small_font, content_width, total_pages, cumulative_ratios, finish_day, start_day)
     local week_start_wd = bookCalendarWeekStartWday() -- 0=Sun, 1=Mon
     local gap    = Screen:scaleBySize(2)
     local cols   = 7
@@ -1324,6 +1354,7 @@ local function buildBookCalendarGrid(daily_map, year, month, day_font, small_fon
                 local day_str   = string.format("%04d-%02d-%02d", year, month, cell_day)
                 local is_today  = (day_str == today_str)
                 local is_finish_day = (finish_day ~= nil and cell_day == finish_day)
+                local is_start_day  = (start_day  ~= nil and cell_day == start_day)
 
                 local day_num_w = TextWidget:new{
                     text = tostring(cell_day),
@@ -1394,6 +1425,38 @@ local function buildBookCalendarGrid(daily_map, year, month, day_font, small_fon
                     -- inside the CenterContainer. cell_inner top =
                     -- (cell_h - cell_inner_h) / 2; we just want it near the
                     -- top of the number so use a small fixed top margin.
+                    local flag_y = Screen:scaleBySize(3)
+                    table.insert(cell_content, HorizontalGroup:new{
+                        HorizontalSpan:new{ width = flag_x },
+                        VerticalGroup:new{
+                            VerticalSpan:new{ height = flag_y },
+                            flag_glyph,
+                        },
+                    })
+                end
+                if is_start_day then
+                    -- Mirror image of the black finish flag above, placed
+                    -- immediately to the LEFT of the centered day number
+                    -- instead of to the right, using the same gap/top
+                    -- offset so the two line up visually if a book ever
+                    -- has both markers in view at once (they can't collide
+                    -- since one is pinned right of the number and the
+                    -- other left of it, even on the same day).
+                    local flag_pad = Screen:scaleBySize(2)
+                    local flag_glyph = TextWidget:new{
+                        text = "\xe2\x9a\x90", -- ⚐ WHITE FLAG
+                        face = small_font,
+                        fgcolor = Colors.value(),
+                    }
+                    local flag_size    = flag_glyph:getSize()
+                    local day_num_size = day_num_w:getSize()
+                    -- x offset from cell left edge to the flag's RIGHT edge:
+                    -- center of cell  -  half the day-number width  -  gap.
+                    -- We then subtract the flag's own width to get its left
+                    -- edge, so it sits flush against that point growing
+                    -- further left, mirroring the right-side flag's layout.
+                    local flag_right_x = math.floor(cell_w / 2) - math.floor(day_num_size.w / 2) - flag_pad
+                    local flag_x = flag_right_x - flag_size.w
                     local flag_y = Screen:scaleBySize(3)
                     table.insert(cell_content, HorizontalGroup:new{
                         HorizontalSpan:new{ width = flag_x },
@@ -1505,6 +1568,11 @@ local BookCalendarPopup = InputContainer:extend{
     -- yet. When set, forward navigation is allowed up to (and the finish
     -- day is marked within) that month - see _rebuild/_goToMonth below.
     finish_timestamp = nil,
+    -- Timestamp of this book's very first recorded reading (stats.started_timestamp
+    -- / getBookStartedTimestamp above), or nil if there's no reading data
+    -- yet. When set and it falls in the month being rendered, that day
+    -- gets marked with a white flag - see start_day/_rebuild below.
+    started_timestamp = nil,
 }
 
 function BookCalendarPopup:init()
@@ -1558,6 +1626,16 @@ function BookCalendarPopup:_rebuild()
     local finish_day = (finish_year == self.year and finish_month == self.month)
         and finish_day_of_month or nil
 
+    -- Same filtering for the started date's day-of-month - only passed
+    -- through to the grid when it falls in the month currently rendered.
+    local start_year, start_month, start_day_of_month
+    if self.started_timestamp then
+        local st = os.date("*t", self.started_timestamp)
+        start_year, start_month, start_day_of_month = st.year, st.month, st.day
+    end
+    local start_day = (start_year == self.year and start_month == self.month)
+        and start_day_of_month or nil
+
     -- Previous month is hidden if this book has no reading recorded there
     -- (same bound _goToMonth enforces for swipe/key navigation), so the
     -- calendar can't be paged back into empty months.
@@ -1573,7 +1651,7 @@ function BookCalendarPopup:_rebuild()
         self.book_id, self.year, self.month, self.total_pages)
     local grid, day_cells = buildBookCalendarGrid(
         daily_map, self.year, self.month, day_font, small_font, content_width, self.total_pages, cumulative_ratios,
-        finish_day)
+        finish_day, start_day)
     self._day_cells = day_cells
 
     local content = VerticalGroup:new{
@@ -2095,12 +2173,15 @@ function ReadingStatsPopup.openBookCalendarForUI(ui)
         open_year, open_month = now.year, now.month
     end
 
+    local started_timestamp = getBookStartedTimestamp(book_id)
+
     UIManager:show(BookCalendarPopup:new{
-        ui          = ui,
-        book_id     = book_id,
-        total_pages = total_page_count,
-        year        = open_year,
-        month       = open_month,
+        ui                = ui,
+        book_id           = book_id,
+        total_pages       = total_page_count,
+        year              = open_year,
+        month             = open_month,
+        started_timestamp = started_timestamp,
     })
 end
 
@@ -2118,6 +2199,7 @@ function ReadingStatsPopup:openBookCalendar()
     local saved_book_id            = self._stats and self._stats.book_id
     local saved_total_pages        = self._stats and self._stats.total_pages_for_calendar
     local saved_finish_timestamp   = self._stats and self._stats.finish_timestamp
+    local saved_started_timestamp  = self._stats and self._stats.started_timestamp
 
     local open_year, open_month = getBookLastReadYearMonth(saved_book_id)
     if not open_year or not open_month then
@@ -2145,12 +2227,13 @@ function ReadingStatsPopup:openBookCalendar()
         end
 
         local popup = BookCalendarPopup:new{
-            ui               = saved_ui,
-            book_id          = saved_book_id,
-            total_pages      = saved_total_pages,
-            year             = open_year,
-            month            = open_month,
-            finish_timestamp = saved_finish_timestamp,
+            ui                = saved_ui,
+            book_id           = saved_book_id,
+            total_pages       = saved_total_pages,
+            year              = open_year,
+            month             = open_month,
+            finish_timestamp  = saved_finish_timestamp,
+            started_timestamp = saved_started_timestamp,
         }
         -- onCloseWidget fires on all dismiss paths (tap, swipe-close, key);
         -- the flag above prevents double-open.
