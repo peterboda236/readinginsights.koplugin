@@ -74,7 +74,7 @@ A per-book overlay showing detailed progress and pace for the book you're curren
   with no reading are left blank — no bar at all); tap a day to see its
   exact pages/time/percent, swipe or use the arrows to page between
   months. What the small text under each day number shows is configurable
-  (*Settings → Advanced settings → Calendar cell content*):
+  (*Settings → Advanced settings → Book calendar cell content*):
   - **Percent** (default) — cumulative progress through the whole book as
     of that day, e.g. "+13%"
   - **Pages** — that day's own page count, e.g. "+101" + the localized
@@ -96,12 +96,14 @@ Reading insights can replace KOReader's own sleep/lock screen with itself, so
 the last thing you see before the device sleeps is your reading progress
 instead of a generic cover or logo.
 
-- **Use as sleep screen** (*Settings → Use as sleep screen*): **Off**
-  (default), **Only when locking from the file manager** (book view keeps
-  your normal screensaver), or **File manager and book view** (always).
-- **Transition** (*Settings → Use as sleep screen → Transition*): **Instant**
-  (default) or **Slight delay (0.1s)**, in case some other plugin/screensaver
-  setup needs a moment before this popup takes over.
+- **Enable it** from KOReader's own screen: *Settings → Screen → Sleep
+  screen → Wallpaper → **Reading insights*** (a radio option alongside
+  "Document cover", "Random image", "Leave screen as-is", etc.) — this is
+  the same `screensaver_type` setting core uses for all of its own
+  wallpaper choices, so it plays nicely with anything else that reads it.
+- **Sleep-screen indicator** (*Settings → Advanced settings*, top entry):
+  **None** (default) or **"(sleeping…)" after the title**, appended to the
+  popup's title while it's shown as the sleep screen.
 - No double flash: while active, KOReader's own screensaver (including any
   "Sleeping" message overlay) is fully suppressed for that suspend/resume
   cycle and cleanly restored afterwards — so only this popup's own single
@@ -152,9 +154,6 @@ Once installed, future updates can be installed in-app — see
   book view only), and, below a separator, a **Settings** submenu and an
   **Updates** submenu (see [Updates](#updates) above).
   - **Settings** holds:
-    - **Use as sleep screen** — Off / File manager only / File manager +
-      book (see [Sleep screen](#-sleep-screen) above), plus nested
-      **Transition** (Instant / Slight delay) and **Indicator** options
     - **Full-screen refresh on open/close** — toggle
     - **Colors** — pick your own hex color for every bar/line/label the
       two popups draw (active/inactive bars, the 8-week trend line,
@@ -174,6 +173,9 @@ Once installed, future updates can be installed in-app — see
       or type a custom font name/alias manually; each role can be reset
       to its bundled default individually or all at once.
     - **Advanced settings** holds:
+      - **Sleep-screen indicator** — None (default) or "(sleeping…)" after
+        the title, appended while the popup is shown as the sleep screen
+        (see [Sleep screen](#-sleep-screen) above)
       - **Bar chart height** — per-chart bar height (Reading insights: Last
         week / Months; Book progress: Chapters)
       - **Reading heatmap range** — how many months the calendar/time-of-
@@ -187,9 +189,9 @@ Once installed, future updates can be installed in-app — see
         any duration of 24h or more (yearly/streak totals, weekly
         averages, all-time totals, book progress) is shown as a day count
         with one decimal place (e.g. "1.2 days") instead of clock time
-      - **Calendar cell content** — Percent (default), Pages, or Time;
-        controls what the per-book reading calendar's day cells show (see
-        [Reading calendar](#-book-progress-stats) above)
+      - **Book calendar cell content** — Percent (default), Pages, or
+        Time; controls what the per-book reading calendar's day cells show
+        (see [Reading calendar](#-book-progress-stats) above)
 - **Gestures/shortcuts:** all three actions below are registered with
   `Dispatcher`, so they can be assigned under *Settings → Taps and
   gestures*:
