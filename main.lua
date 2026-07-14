@@ -303,7 +303,7 @@ function ReadingInsights:onDispatcherRegisterActions()
     Dispatcher:registerAction("reading_insights_popup", {
         category = "none",
         event    = "ShowReadingInsightsPopup",
-        title    = _("Reading insights"),
+        title    = _("Reading insights: all time statistics"),
         general  = true,
     })
     -- reader = true (not general): only assignable to gestures/shortcuts
@@ -311,7 +311,7 @@ function ReadingInsights:onDispatcherRegisterActions()
     Dispatcher:registerAction("reading_stats_popup", {
         category = "none",
         event    = "ShowReadingStatsPopup",
-        title    = _("Book progress"),
+        title    = _("Reading insights: current book progress"),
         reader   = true,
     })
     -- reader = true: opens the per-book reading calendar directly (see
@@ -321,7 +321,7 @@ function ReadingInsights:onDispatcherRegisterActions()
     Dispatcher:registerAction("reading_calendar_popup", {
         category = "none",
         event    = "ShowBookCalendarPopup",
-        title    = _("Book progress calendar"),
+        title    = _("Reading insights: current book calendar"),
         reader   = true,
     })
 end
