@@ -177,6 +177,15 @@ msgstr "Daten werden neu geladen..."
 msgid "Reading insights"
 msgstr "Leseeinblicke"
 
+msgid "Reading insights: all time statistics"
+msgstr "Leseeinblicke: Gesamtstatistik"
+
+msgid "Reading insights: current book progress"
+msgstr "Leseeinblicke: aktueller Buchfortschritt"
+
+msgid "Reading insights: current book calendar"
+msgstr "Leseeinblicke: aktueller Buchkalender"
+
 msgid "All books read %1"
 msgstr "Alle gelesenen Bücher %1"
 

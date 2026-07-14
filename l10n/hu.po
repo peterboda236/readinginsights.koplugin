@@ -177,6 +177,15 @@ msgstr "Adatok újraolvasása..."
 msgid "Reading insights"
 msgstr "Olvasási áttekintés"
 
+msgid "Reading insights: all time statistics"
+msgstr "Olvasási áttekintés: összesített statisztika"
+
+msgid "Reading insights: current book progress"
+msgstr "Olvasási áttekintés: aktuális könyv haladása"
+
+msgid "Reading insights: current book calendar"
+msgstr "Olvasási áttekintés: aktuális könyv naptára"
+
 msgid "All books read %1"
 msgstr "Összesen: %1 könyv olvasva"
 

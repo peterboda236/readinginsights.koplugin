@@ -177,6 +177,15 @@ msgstr "Reloading data..."
 msgid "Reading insights"
 msgstr "Reading insights"
 
+msgid "Reading insights: all time statistics"
+msgstr "Reading insights: all time statistics"
+
+msgid "Reading insights: current book progress"
+msgstr "Reading insights: current book progress"
+
+msgid "Reading insights: current book calendar"
+msgstr "Reading insights: current book calendar"
+
 msgid "All books read %1"
 msgstr "All books read %1"
 
