@@ -1264,12 +1264,16 @@ end
 -- along the bottom showing cumulative_ratios[day] - how far into the
 -- book that day's reading got, out of the whole book.
 --
+-- Today's cell gets its day number rendered in bold (Fonts.getBoldFace)
+-- plus a black border, so "where am I now" is unambiguous at a glance.
+--
 -- finish_day (optional): day-of-month of this book's estimated finish
 -- date, IF it falls within the month currently being rendered (callers
--- pre-filter this - see BookCalendarPopup:_rebuild). That cell's day
--- number is rendered in bold (Fonts.getBoldFace) so the projected finish
--- day stands out on the calendar itself, not just in the "Expected
--- finish" tap popup.
+-- pre-filter this - see BookCalendarPopup:_rebuild). That cell gets a
+-- small flag glyph in its top-right corner (the day number itself is
+-- untouched and stays in its normal spot) so the projected finish day
+-- stands out on the calendar itself, not just in the "Expected finish"
+-- tap popup.
 local function buildBookCalendarGrid(daily_map, year, month, day_font, small_font, content_width, total_pages, cumulative_ratios, finish_day)
     local week_start_wd = bookCalendarWeekStartWday() -- 0=Sun, 1=Mon
     local gap    = Screen:scaleBySize(2)
@@ -1323,7 +1327,7 @@ local function buildBookCalendarGrid(daily_map, year, month, day_font, small_fon
 
                 local day_num_w = TextWidget:new{
                     text = tostring(cell_day),
-                    face = is_finish_day and day_font_bold or day_font,
+                    face = is_today and day_font_bold or day_font,
                     fgcolor = Colors.value(),
                 }
                 local pct_text = buildBookCalendarCellText(entry, total_pages)
@@ -1367,11 +1371,43 @@ local function buildBookCalendarGrid(daily_map, year, month, day_font, small_fon
                         dimen = Geom:new{ w = cell_w, h = cell_h }, cell_inner,
                     },
                 }
+                if is_finish_day then
+                    -- Flag glyph placed immediately to the right of the
+                    -- centered day number. The day number is centered in
+                    -- cell_w, so its left edge sits at (cell_w - num_w) / 2
+                    -- and its right edge at (cell_w + num_w) / 2. We push
+                    -- the flag that far right plus a small gap, then overlay
+                    -- it at the top of the cell (same vertical start as
+                    -- cell_inner inside the CenterContainer).
+                    local flag_pad = Screen:scaleBySize(2)
+                    local flag_glyph = TextWidget:new{
+                        text = "\xe2\x9a\x91", -- ⚑ BLACK FLAG
+                        face = small_font,
+                        fgcolor = Colors.value(),
+                    }
+                    local flag_size   = flag_glyph:getSize()
+                    local day_num_size = day_num_w:getSize()
+                    -- x offset from cell left edge to the flag's left edge:
+                    -- center of cell  +  half the day-number width  +  gap
+                    local flag_x = math.floor(cell_w / 2) + math.floor(day_num_size.w / 2) + flag_pad
+                    -- y offset: align flag top with the top of cell_inner
+                    -- inside the CenterContainer. cell_inner top =
+                    -- (cell_h - cell_inner_h) / 2; we just want it near the
+                    -- top of the number so use a small fixed top margin.
+                    local flag_y = Screen:scaleBySize(3)
+                    table.insert(cell_content, HorizontalGroup:new{
+                        HorizontalSpan:new{ width = flag_x },
+                        VerticalGroup:new{
+                            VerticalSpan:new{ height = flag_y },
+                            flag_glyph,
+                        },
+                    })
+                end
                 local border = is_today and Size.line.medium or Size.line.thin
                 local frame = FrameContainer:new{
                     background = nil,
                     bordersize = border,
-                    color      = is_today and Colors.activeBar() or Colors.separator(),
+                    color      = is_today and Blitbuffer.COLOR_BLACK or Colors.separator(),
                     radius     = cell_radius,
                     padding    = 0,
                     margin     = 0,
