@@ -32,19 +32,19 @@ local WidgetContainer = require("ui/widget/container/widgetcontainer")
 local Device = require("device")
 local Screen = Device.screen
 
--- Sleep-screen setting: "off" (default), "filemanager" (only when locking
--- from the file manager, i.e. no book open), or "always" (file manager and
--- book view alike). Stored as a single G_reader_settings key so it survives
--- restarts, same as every other setting in this plugin.
-local SCREENSAVER_SETTING = "readinginsights_screensaver_mode"
+--[[
+Sleep-screen integration.
 
-local function readScreensaverMode()
-    return G_reader_settings:readSetting(SCREENSAVER_SETTING) or "off"
-end
-
-local function saveScreensaverMode(mode)
-    G_reader_settings:saveSetting(SCREENSAVER_SETTING, mode)
-end
+Reading insights now registers itself as a genuine value of KOReader's own
+"screensaver_type" setting - the same global setting its own Settings >
+Screen > Sleep screen menu writes to for "Cover", "Random image", etc. -
+instead of keeping a separate on/off setting and overriding/restoring
+screensaver_type behind the scenes on every suspend/resume. See
+patchCoreScreensaver() below for how the core Screensaver module is taught
+to recognize this value, and addToMainMenu() for how "Reading insights"
+gets added as a selectable entry directly in that core menu.
+]]--
+local SCREENSAVER_TYPE_VALUE = "readinginsights"
 
 -- What to show in the title, in place of the (hidden) close button, while
 -- acting as a sleep screen: "none" (default) or "text" (appends something
@@ -57,22 +57,6 @@ end
 
 local function saveScreensaverLabelMode(mode)
     G_reader_settings:saveSetting(SCREENSAVER_LABEL_SETTING, mode)
-end
-
--- Whether to wait a beat before showing the sleep-screen popup on suspend:
--- "none" (default - shows immediately, since the core screensaver no
--- longer paints anything once suppressed - see suppressCoreScreensaver()
--- below) or "delay" (the old behaviour: wait 0.1s first, in case some
--- other plugin/core codepath still ends up painting something first that
--- the popup should sit on top of instead of racing against).
-local SCREENSAVER_DELAY_SETTING = "readinginsights_screensaver_delay_mode"
-
-local function readScreensaverDelayMode()
-    return G_reader_settings:readSetting(SCREENSAVER_DELAY_SETTING) or "none"
-end
-
-local function saveScreensaverDelayMode(mode)
-    G_reader_settings:saveSetting(SCREENSAVER_DELAY_SETTING, mode)
 end
 
 --[[
@@ -119,91 +103,63 @@ local function saveCheckUpdates(value)
 end
 
 --[[
-Suppressing KOReader's own built-in sleep screen for the duration of a
-single suspend, so it doesn't paint (full e-ink refresh) and then get
-immediately replaced by our own popup (another full refresh) a moment
-later - the "flash of the other sleep screen" effect.
+Teaching KOReader's own core Screensaver module about the "readinginsights"
+screensaver_type value, so that once it's selected in Settings > Screen >
+Sleep screen, the core Power/Suspend codepath resolves it correctly on its
+own - no runtime save-then-restore of screensaver_type spanning the actual
+suspend/resume window, and therefore nothing that can be left stuck if a
+session crashes mid-sleep.
 
-This is only ever applied right before showing our own popup in onSuspend()
-below, and undone again in onResume(), so it's scoped to exactly the
-suspend/resume window where our popup is actually going to be shown. If,
-say, the sleep-screen mode is "filemanager" and the device suspends while a
-book is open, _screensaverShouldShow() is false, these functions are never
-called, and the user's own built-in screensaver (cover/image/message/etc.)
-runs completely untouched, as if this plugin didn't exist.
+Screensaver:setup() (called by core, straight off the raw Power/Suspend
+input event, well before the "Suspend" event is ever broadcast to widgets)
+normally just copies G_reader_settings' screensaver_type into
+self.screensaver_type and resolves any fallbacks for a handful of
+hardcoded values it knows about (e.g. "readingprogress" falling back to
+"random_image" if the Statistics plugin isn't available - see core's own
+screensaver.lua). It doesn't know "readinginsights", so left alone it
+would just fall through every branch untouched.
 
-Two separate core settings need overriding, not just one: screensaver_type
-== "disable" alone is *not* enough to stop KOReader's Screensaver:show()
-from painting something - if screensaver_show_message is also on, it still
-draws its own "Sleeping" text box on top of the (disabled) background
-before anything else happens, i.e. exactly the flash this is meant to
-avoid. Both are saved/restored together as a single override.
+This patch resolves our own value the same way core resolves its own
+built-in ones, with one wrinkle: for the "book view falls back to Cover"
+case, rather than reimplementing core's cover-mode resource setup
+ourselves (image lookup, background mode, etc. - all internal to setup()),
+it's simplest and most robust to let core's own logic do that work: swap
+the *global* setting to "cover" for the duration of this single, synchronous
+call to the original setup() (wrapped in pcall so the swap is always
+undone, even if setup() itself errors), then put "readinginsights" straight
+back before this function returns - well before "Suspend" is broadcast and
+before the next suspend can possibly happen. That's a same-call-stack
+round-trip, not a save-now/restore-later spanning an actual sleep, so
+there's no crash-recovery bookkeeping needed the way the old override had.
 
-SCREENSAVER_OVERRIDE_ACTIVE_SETTING guards against overwriting the saved
-"previous value" a second time if suppressCoreScreensaver() were ever
-called twice without a restore in between, and also lets init() detect and
-clean up a leftover override from a session that crashed or was killed
-between onSuspend() and onResume() - without it, the user's built-in
-screensaver could otherwise stay stuck disabled.
+Guarded by Screensaver._readinginsights_patched so re-instantiating this
+plugin (book view + file manager both load it) only wraps setup() once.
+
+Only applies to plain suspend (event == nil): poweroff/reboot use their
+own separate sleep-screen resolution in core, which this plugin has never
+hooked into and still doesn't.
 ]]--
-local SCREENSAVER_OVERRIDE_ACTIVE_SETTING  = "readinginsights_screensaver_override_active"
-local SCREENSAVER_PREV_TYPE_SETTING        = "readinginsights_screensaver_prev_type"
-local SCREENSAVER_PREV_SHOW_MSG_SETTING    = "readinginsights_screensaver_prev_show_message"
+local function patchCoreScreensaver()
+    local Screensaver = require("ui/screensaver")
+    if Screensaver._readinginsights_patched then return end
+    Screensaver._readinginsights_patched = true
 
-local function suppressCoreScreensaver()
-    -- If our override is already flagged active, check whether the live
-    -- screensaver_type is still what we forced it to ("disable"). If the
-    -- user has since gone into KOReader's own Settings > Screen > Sleep
-    -- screen menu and changed it there, the live value will no longer be
-    -- "disable" even though our flag says "already applied". In that case
-    -- our previously saved "prev" snapshot is stale - it holds whatever
-    -- was set *before* the user's latest change, not the user's latest
-    -- change itself. Re-snapshot now so we don't clobber it later in
-    -- restoreCoreScreensaver().
-    if G_reader_settings:isTrue(SCREENSAVER_OVERRIDE_ACTIVE_SETTING) then
-        if G_reader_settings:readSetting("screensaver_type") == "disable" then
-            return -- already applied, and still ours - nothing to do
+    local orig_setup = Screensaver.setup
+    Screensaver.setup = function(self, event, event_message)
+        if event ~= nil then
+            return orig_setup(self, event, event_message)
         end
-        -- else: fall through and re-snapshot the user's new live value
-    end
-    G_reader_settings:saveSetting(SCREENSAVER_PREV_TYPE_SETTING, G_reader_settings:readSetting("screensaver_type"))
-    G_reader_settings:saveSetting(SCREENSAVER_PREV_SHOW_MSG_SETTING, G_reader_settings:isTrue("screensaver_show_message"))
-    G_reader_settings:makeTrue(SCREENSAVER_OVERRIDE_ACTIVE_SETTING)
-    G_reader_settings:saveSetting("screensaver_type", "disable")
-    G_reader_settings:makeFalse("screensaver_show_message")
-end
-
-local function restoreCoreScreensaver()
-    if not G_reader_settings:isTrue(SCREENSAVER_OVERRIDE_ACTIVE_SETTING) then return end
-    -- If the live screensaver_type is no longer "disable", the user must
-    -- have gone into KOReader's own Sleep screen menu and changed it
-    -- themselves while our override was active. That live value is what
-    -- the user actually wants now, so leave it untouched instead of
-    -- overwriting it with our (now stale) saved prev_type - just clear
-    -- our bookkeeping keys as if the override never happened.
-    if G_reader_settings:readSetting("screensaver_type") ~= "disable" then
-        G_reader_settings:delSetting(SCREENSAVER_PREV_TYPE_SETTING)
-        G_reader_settings:delSetting(SCREENSAVER_PREV_SHOW_MSG_SETTING)
-        G_reader_settings:makeFalse(SCREENSAVER_OVERRIDE_ACTIVE_SETTING)
-        return
-    end
-    G_reader_settings:saveSetting("screensaver_type", G_reader_settings:readSetting(SCREENSAVER_PREV_TYPE_SETTING))
-    G_reader_settings:delSetting(SCREENSAVER_PREV_TYPE_SETTING)
-    -- Only touch screensaver_show_message if we actually recorded an
-    -- original value for it. A leftover SCREENSAVER_OVERRIDE_ACTIVE_SETTING
-    -- from an older version of this plugin (from before this setting was
-    -- tracked) would otherwise have no recorded value here, and reading a
-    -- missing setting as "false" would incorrectly force the user's real
-    -- "Show message" preference off instead of leaving it alone.
-    if G_reader_settings:has(SCREENSAVER_PREV_SHOW_MSG_SETTING) then
-        if G_reader_settings:isTrue(SCREENSAVER_PREV_SHOW_MSG_SETTING) then
-            G_reader_settings:makeTrue("screensaver_show_message")
-        else
-            G_reader_settings:makeFalse("screensaver_show_message")
+        local real_type = G_reader_settings:readSetting("screensaver_type")
+        if real_type ~= SCREENSAVER_TYPE_VALUE then
+            return orig_setup(self, event, event_message)
         end
-        G_reader_settings:delSetting(SCREENSAVER_PREV_SHOW_MSG_SETTING)
+        G_reader_settings:saveSetting("screensaver_type", "disable")
+        local ok, err = pcall(orig_setup, self, event, event_message)
+        G_reader_settings:saveSetting("screensaver_type", real_type)
+        if not ok then
+            error(err)
+        end
     end
-    G_reader_settings:makeFalse(SCREENSAVER_OVERRIDE_ACTIVE_SETTING)
 end
 
 local function pluginDir()
@@ -258,47 +214,6 @@ local ReadingInsights = WidgetContainer:extend{
     is_doc_only = false,
 }
 
---[[
-KOReader's core Screensaver:show() (the thing that paints the default
-logo / cover / message screen) runs from Device:onPowerEvent(), which
-fires directly off the Power/Suspend input event - well *before* the
-"Suspend" event is ever broadcast to widgets/plugins. That means doing
-the override only in onSuspend() below is always one step too late: the
-core screensaver has already painted (and refreshed the e-ink panel)
-with whatever screensaver_type was set *before* the user even pressed
-the power button, and our own popup then replaces it a moment later -
-the double-flash the user sees.
-
-The fix is to keep G_reader_settings.screensaver_type synced to whether
-our popup *should* show *proactively*, at every point the answer could
-have changed (plugin init, opening/closing a book, changing the sleep-
-screen setting) - not reactively at suspend time. By the time an actual
-suspend happens, the value is already correct and Screensaver:show()
-either does nothing (screensaver_type == "disable") or runs the user's
-own untouched screensaver, with no extra repaint in either case.
-
-assume_no_document lets a caller override the "is a document open"
-check for a single call: onCloseDocument (see below) fires while
-self.ui.document is technically still non-nil, but we already know
-we're on our way back to the file manager.
-]]--
-function ReadingInsights:_syncCoreScreensaverOverride(assume_no_document)
-    local mode = readScreensaverMode()
-    local should_show
-    if mode == "always" then
-        should_show = true
-    elseif mode == "filemanager" then
-        should_show = assume_no_document or not self:_hasOpenDocument()
-    else -- "off"
-        should_show = false
-    end
-    if should_show then
-        suppressCoreScreensaver()
-    else
-        restoreCoreScreensaver()
-    end
-end
-
 function ReadingInsights:onDispatcherRegisterActions()
     Dispatcher:registerAction("reading_insights_popup", {
         category = "none",
@@ -326,18 +241,134 @@ function ReadingInsights:onDispatcherRegisterActions()
     })
 end
 
+--[[
+Add "Reading insights" as a genuine selectable entry directly inside
+KOReader's own Settings > Screen > Sleep screen > Wallpaper radio group
+(alongside "Document cover", "Random image", etc.), instead of only
+inside this plugin's own Tools menu.
+
+Core builds that submenu like this (readermenu.lua / filemanagermenu.lua):
+
+    if Device:supportsScreensaver() then
+        local screensaver_sub_item_table = dofile("frontend/ui/elements/screensaver_menu.lua")
+        ...
+        self.menu_items.screensaver = { ..., sub_item_table = screensaver_sub_item_table }
+    end
+
+Note it's dofile(), not require() - core deliberately re-executes that
+file fresh every time the menu is (re)built, rather than caching it as a
+module. That means we can't reach the finished menu_items.screensaver
+table reliably from our own addToMainMenu() (its presence there depends
+on load order between plugins, which isn't guaranteed - see this
+version's changelog/commit message for the concrete failure this used to
+hit). What we *can* do reliably is hook the dofile() call itself: wrap the
+global dofile so that, only for this one specific path, the table it
+returns gets our entry appended before core ever touches it. That
+guarantees our entry is baked into menu_items.screensaver.sub_item_table
+itself, however and whenever core assembles it - no dependence on plugin
+order at all.
+
+If a device build never calls dofile() on that path in the first place
+(Device:supportsScreensaver() returning false - a real, documented
+KOReader limitation on some devices/platforms, unrelated to this plugin -
+see e.g. koreader/koreader issues #13877, #14139, #2198), this patch
+simply never fires, same as core's own Sleep screen menu never appearing
+for that device either. The Tools > Reading insights > Settings > "Use as
+sleep screen" quick toggle remains available either way.
+]]--
+local function patchScreensaverMenuBuilder()
+    if _G._readinginsights_dofile_patched then return end
+    _G._readinginsights_dofile_patched = true
+
+    local orig_dofile = dofile
+    _G.dofile = function(path, ...)
+        local result = orig_dofile(path, ...)
+        if type(path) == "string" and path:match("ui/elements/screensaver_menu%.lua$")
+                and type(result) == "table" then
+            local our_entry = {
+                text = _("Reading insights"),
+                keep_menu_open = true,
+                radio = true,
+                checked_func = function()
+                    return G_reader_settings:readSetting("screensaver_type") == SCREENSAVER_TYPE_VALUE
+                end,
+                callback = function()
+                    G_reader_settings:saveSetting("screensaver_type", SCREENSAVER_TYPE_VALUE)
+                end,
+            }
+
+            --[[
+            core's screensaver_menu.lua returns a *top-level* table with just
+            two entries - "Wallpaper" and "Sleep screen message" - each with
+            its own sub_item_table. The actual radio group we want to join
+            ("Document cover", "Random image", "Leave screen as-is", etc.,
+            all built via that file's local genMenuItem() helper, which
+            always sets radio = true) lives *inside* the "Wallpaper" entry's
+            sub_item_table, not at this top level. Simply appending to
+            `result` (the old approach) therefore landed our entry as a
+            sibling of "Wallpaper" itself, one level too high.
+
+            So: walk `result`'s entries looking for the first one whose own
+            sub_item_table contains a contiguous run of radio = true items
+            (that's "Wallpaper"), then insert our entry right before that
+            run's separator-marked item (core flags the last radio item -
+            currently "Leave screen as-is" - with separator = true to draw
+            the divider before the non-radio settings below it). That keeps
+            "Reading insights" grouped with the other wallpaper choices and
+            the divider trailing after all of them, exactly where core's own
+            options live, without hard-coding index numbers or exact label
+            text that could change between KOReader versions.
+            ]]--
+            local inserted = false
+            for _, entry in ipairs(result) do
+                if type(entry) == "table" and type(entry.sub_item_table) == "table" then
+                    local items = entry.sub_item_table
+                    local insert_at = nil
+                    for i, item in ipairs(items) do
+                        if type(item) == "table" and item.radio then
+                            if item.separator then
+                                insert_at = i
+                                break
+                            end
+                        elseif insert_at == nil and i > 1 then
+                            -- Ran into the end of a radio block with no
+                            -- separator-flagged item (shouldn't normally
+                            -- happen, but just in case) - insert here.
+                            insert_at = i
+                            break
+                        end
+                    end
+                    if insert_at then
+                        table.insert(items, insert_at, our_entry)
+                        inserted = true
+                        break
+                    end
+                end
+            end
+
+            -- Fallback: if core ever restructures this menu so the Wallpaper
+            -- radio group can't be located this way, append at the top level
+            -- as before, so the option never disappears entirely - it'll
+            -- just be a sibling of "Wallpaper" again instead of inside it.
+            if not inserted then
+                table.insert(result, our_entry)
+            end
+        end
+        return result
+    end
+end
+
 function ReadingInsights:init()
-    -- Safety net: if a previous session crashed or was force-closed between
-    -- onSuspend() and onResume(), this restores the user's own
-    -- screensaver_type now rather than leaving it stuck on "disable". A
-    -- no-op the vast majority of the time, since the override is normally
-    -- only ever active for the few hundred ms between those two events.
-    restoreCoreScreensaver()
-    -- Then immediately (re)apply it if the current context calls for it -
-    -- e.g. starting up straight into the file manager with mode ==
-    -- "filemanager" or "always" should already have it suppressed before
-    -- the very first suspend, not just from the second one onwards.
-    self:_syncCoreScreensaverOverride()
+    -- Teach core's Screensaver module about the "readinginsights"
+    -- screensaver_type value (see patchCoreScreensaver() above). Safe to
+    -- call from both the Reader-view and File-manager instantiations of
+    -- this plugin - it's a no-op after the first call.
+    patchCoreScreensaver()
+
+    -- Bake our entry into core's own Sleep screen menu at the source (see
+    -- patchScreensaverMenuBuilder() above). Also safe to call from both
+    -- instantiations - no-op after the first call.
+    patchScreensaverMenuBuilder()
 
     self.ui.menu:registerToMainMenu(self)
     self:onDispatcherRegisterActions()
@@ -379,24 +410,23 @@ function ReadingInsights:_hasOpenDocument()
     return self.ui ~= nil and self.ui.document ~= nil
 end
 
+-- True when this suspend should show the Reading insights popup itself,
+-- i.e. screensaver_type is our value.
 function ReadingInsights:_screensaverShouldShow()
-    local mode = readScreensaverMode()
-    if mode == "off" then return false end
-    if mode == "always" then return true end
-    if mode == "filemanager" then return not self:_hasOpenDocument() end
-    return false
+    return G_reader_settings:readSetting("screensaver_type") == SCREENSAVER_TYPE_VALUE
 end
 
 --[[
 Sleep-screen integration.
 
-KOReader's own sleep-screen picker (Settings > Screen > Sleep screen) is a
-fixed list rebuilt from a core file every time it's opened, and its
-"reading progress" option is hardcoded to the built-in Statistics plugin -
-there's no supported way for a third-party plugin to add itself there.
-Instead, this hooks the same Suspend/Resume events every screensaver mode
-ultimately relies on, and shows the Reading insights popup on top,
-independently of whatever G_reader_settings.screensaver_type is set to.
+"Reading insights" is a genuine selectable entry in KOReader's own
+Settings > Screen > Sleep screen menu (see addToMainMenu() below), backed
+by patchCoreScreensaver() teaching core's Screensaver module to recognize
+it. Core's own Screensaver:show() (which runs off the raw Power/Suspend
+input event, before the "Suspend" event below is even broadcast) already
+resolved screensaver_type == "disable" for this case by the time we get
+here - see patchCoreScreensaver() - so it painted nothing, and this is
+free to show the actual popup without racing or flashing against it.
 
 The popup is created with readonly = true so a stray tap, swipe-down, or
 the wake key itself can't dismiss it early while the device is still
@@ -404,58 +434,30 @@ the wake key itself can't dismiss it early while the device is still
 ]]--
 function ReadingInsights:onSuspend()
     if not self:_screensaverShouldShow() then return end
-    -- Belt-and-braces: the override should already be active by now (it's
-    -- applied proactively - see _syncCoreScreensaverOverride() and its
-    -- call sites), since by the time the "Suspend" event reaches us here,
-    -- KOReader's own Screensaver:show() has *already run* off the raw
-    -- Power/Suspend input event. This call is a no-op in the normal case;
-    -- it only matters as a fallback if some context change was missed.
-    suppressCoreScreensaver()
-    -- With the override active (screensaver_type == "disable" and
-    -- screensaver_show_message == false), KOReader's own Screensaver:show()
-    -- returns immediately without painting anything, so by default this
-    -- shows right away rather than after an artificial delay. The old
-    -- 0.1s-delay behaviour is still available (Settings > "Sleep-screen
-    -- transition") for anyone who wants to wait a beat first.
-    local function showPopup()
-        if self._screensaver_widget then return end -- already showing
-        if Device:hasEinkScreen() then
-            Screen:clear()
-            Screen:refreshFull(0, 0, Screen:getWidth(), Screen:getHeight())
-        end
-        local label_mode = readScreensaverLabelMode()
-        local screensaver_label = (label_mode == "text") and _("sleeping…") or nil
-        local popup = Insights.Popup:new{
-            ui = self.ui,
-            readonly = true,
-            screensaver_label = screensaver_label,
-        }
-        local orig_on_close_widget = popup.onCloseWidget
-        popup.onCloseWidget = function(popup_self, ...)
-            if orig_on_close_widget then orig_on_close_widget(popup_self, ...) end
-            if self._screensaver_widget == popup_self then
-                self._screensaver_widget = nil
-            end
-        end
-        self._screensaver_widget = popup
-        UIManager:show(popup, "full")
+    if self._screensaver_widget then return end -- already showing
+    if Device:hasEinkScreen() then
+        Screen:clear()
+        Screen:refreshFull(0, 0, Screen:getWidth(), Screen:getHeight())
     end
-
-    if readScreensaverDelayMode() == "delay" then
-        UIManager:scheduleIn(0.1, showPopup)
-    else
-        showPopup()
+    local label_mode = readScreensaverLabelMode()
+    local screensaver_label = (label_mode == "text") and _("sleeping…") or nil
+    local popup = Insights.Popup:new{
+        ui = self.ui,
+        readonly = true,
+        screensaver_label = screensaver_label,
+    }
+    local orig_on_close_widget = popup.onCloseWidget
+    popup.onCloseWidget = function(popup_self, ...)
+        if orig_on_close_widget then orig_on_close_widget(popup_self, ...) end
+        if self._screensaver_widget == popup_self then
+            self._screensaver_widget = nil
+        end
     end
+    self._screensaver_widget = popup
+    UIManager:show(popup, "full")
 end
 
 function ReadingInsights:onResume()
-    -- Re-sync rather than unconditionally restoring: with mode == "always"
-    -- (or "filemanager" while still in the file manager), the override is
-    -- meant to stay active across suspend/resume cycles, not just the
-    -- first one - unconditionally restoring here would undo it right
-    -- after every wake-up, bringing back the flash on every suspend after
-    -- the first.
-    self:_syncCoreScreensaverOverride()
     if self._screensaver_widget then
         UIManager:close(self._screensaver_widget)
         self._screensaver_widget = nil
@@ -641,21 +643,6 @@ function ReadingInsights:_updateSubItems()
     }
 end
 
--- A document has just finished opening (Reader view): re-sync, since
--- _hasOpenDocument() now correctly reflects "book open" and may need to
--- restore the user's own screensaver (mode == "filemanager").
-function ReadingInsights:onReaderReady()
-    self:_syncCoreScreensaverOverride()
-end
-
--- A document is about to close, heading back to the file manager.
--- self.ui.document is still non-nil at this exact point (ReaderUI clears
--- it right after broadcasting this event), so _hasOpenDocument() can't be
--- trusted here - explicitly sync as if no document were open instead.
-function ReadingInsights:onCloseDocument()
-    self:_syncCoreScreensaverOverride(true)
-end
-
 function ReadingInsights:onShowReadingInsightsPopup()
     local popup = Insights.Popup:new{ ui = self.ui }
     UIManager:show(popup)
@@ -719,97 +706,39 @@ function ReadingInsights:addToMainMenu(menu_items)
 
     local settings_sub_item_table = {}
 
+    -- Whether/how it's used as a sleep screen is normally set directly in
+    -- KOReader's own Settings > Screen > Sleep screen menu (see the
+    -- menu_items.screensaver injection at the end of this function).
+    --
+    -- That injection depends on menu_items.screensaver already existing
+    -- (with a sub_item_table) by the time this addToMainMenu() runs, which
+    -- isn't a guaranteed, documented part of KOReader's plugin API - just
+    -- an observed implementation detail. If it ever doesn't hold (older/
+    -- newer core versions, a different frontend, plugin load order, an
+    -- interaction with another sleep-screen plugin, etc.) the injection
+    -- silently does nothing, and without a fallback here there would be no
+    -- way at all to turn this on. So the same control is duplicated here,
+    -- inside our own Settings submenu, guaranteed to always work
+    -- regardless of what core's menu looks like.
+    --[[
     table.insert(settings_sub_item_table, {
-        text_func = function()
-            local mode = readScreensaverMode()
-            local mode_label = (mode == "always" and _("File manager + book"))
-                or (mode == "filemanager" and _("File manager only"))
-                or _("Off")
-            return _("Use as sleep screen") .. ": " .. mode_label
-        end,
+        text = _("Use as sleep screen"),
         keep_menu_open = true,
-        sub_item_table = {
-            {
-                text = _("Off"),
-                keep_menu_open = true,
-                radio = true,
-                checked_func = function() return readScreensaverMode() == "off" end,
-                callback = function()
-                    saveScreensaverMode("off")
-                    self:_syncCoreScreensaverOverride()
-                end,
-            },
-            {
-                text = _("Only when locking from the file manager"),
-                keep_menu_open = true,
-                radio = true,
-                checked_func = function() return readScreensaverMode() == "filemanager" end,
-                callback = function()
-                    saveScreensaverMode("filemanager")
-                    self:_syncCoreScreensaverOverride()
-                end,
-            },
-            {
-                text = _("File manager and book view"),
-                keep_menu_open = true,
-                radio = true,
-                checked_func = function() return readScreensaverMode() == "always" end,
-                callback = function()
-                    saveScreensaverMode("always")
-                    self:_syncCoreScreensaverOverride()
-                end,
-            },
-            {
-                text_func = function()
-                    return _("Transition") .. ": " ..
-                        ((readScreensaverDelayMode() == "delay") and _("Slight delay") or _("Instant"))
-                end,
-                keep_menu_open = true,
-                sub_item_table = {
-                    {
-                        text = _("Instant"),
-                        keep_menu_open = true,
-                        radio = true,
-                        checked_func = function() return readScreensaverDelayMode() == "none" end,
-                        callback = function() saveScreensaverDelayMode("none") end,
-                    },
-                    {
-                        text = _("Slight delay (0.1s)"),
-                        keep_menu_open = true,
-                        radio = true,
-                        checked_func = function() return readScreensaverDelayMode() == "delay" end,
-                        callback = function() saveScreensaverDelayMode("delay") end,
-                    },
-                },
-            },
-            {
-                text_func = function()
-                    local label_mode = readScreensaverLabelMode()
-                    return _("Indicator") .. ": " ..
-                        ((label_mode == "text") and _("\"(sleeping…)\" after the title") or _("None"))
-                end,
-                keep_menu_open = true,
-                separator = true,
-                sub_item_table = {
-                    {
-                        text = _("None"),
-                        keep_menu_open = true,
-                        radio = true,
-                        checked_func = function() return readScreensaverLabelMode() == "none" end,
-                        callback = function() saveScreensaverLabelMode("none") end,
-                    },
-                    {
-                        text = _("\"(sleeping…)\" after the title"),
-                        keep_menu_open = true,
-                        radio = true,
-                        checked_func = function() return readScreensaverLabelMode() == "text" end,
-                        callback = function() saveScreensaverLabelMode("text") end,
-                    },
-                },
-            },
-        },
-        separator = true,
+        checked_func = function()
+            return G_reader_settings:readSetting("screensaver_type") == SCREENSAVER_TYPE_VALUE
+        end,
+        callback = function()
+            if G_reader_settings:readSetting("screensaver_type") == SCREENSAVER_TYPE_VALUE then
+                G_reader_settings:saveSetting("screensaver_type", "disable")
+            else
+                G_reader_settings:saveSetting("screensaver_type", SCREENSAVER_TYPE_VALUE)
+            end
+        end,
     })
+    ]]--
+
+    -- Sleep-screen indicator now lives at the top of Advanced settings
+    -- instead of here - see advanced_settings_sub_item_table below.
 
     table.insert(settings_sub_item_table, {
         text = _("Full-screen refresh on open/close"),
@@ -880,6 +809,33 @@ function ReadingInsights:addToMainMenu(menu_items)
     -- separator is placed above this entry itself (set on the preceding
     -- "Fonts" entry) to set it apart from the rest of the Settings menu.
     local advanced_settings_sub_item_table = {}
+
+    -- Moved here (to the very top) from the Settings submenu, keeping its
+    -- separator so it still visually stands apart from the entries below.
+    table.insert(advanced_settings_sub_item_table, {
+        text_func = function()
+            local label_mode = readScreensaverLabelMode()
+            return _("Sleep-screen indicator") .. ": " ..
+                ((label_mode == "text") and _("\"(sleeping…)\" after the title") or _("None"))
+        end,
+        keep_menu_open = true,
+        sub_item_table = {
+            {
+                text = _("None"),
+                keep_menu_open = true,
+                radio = true,
+                checked_func = function() return readScreensaverLabelMode() == "none" end,
+                callback = function() saveScreensaverLabelMode("none") end,
+            },
+            {
+                text = _("\"(sleeping…)\" after the title"),
+                keep_menu_open = true,
+                radio = true,
+                checked_func = function() return readScreensaverLabelMode() == "text" end,
+                callback = function() saveScreensaverLabelMode("text") end,
+            },
+        },
+    })
 
     table.insert(advanced_settings_sub_item_table, {
         text = _("Bar chart height"),
@@ -1058,7 +1014,7 @@ function ReadingInsights:addToMainMenu(menu_items)
             local mode = (mode_key == "pages" and _("Pages"))
                 or (mode_key == "time" and _("Time"))
                 or _("Percent")
-            return _("Calendar cell content") .. ": " .. mode
+            return _("Book calendar cell content") .. ": " .. mode
         end,
         keep_menu_open = true,
         sub_item_table = {
@@ -1117,6 +1073,19 @@ function ReadingInsights:addToMainMenu(menu_items)
         sorting_hint = "tools",
         sub_item_table = sub_item_table,
     }
+
+    --[[
+    No standalone top-level "Reading insights sleep screen" entry anymore -
+    the "Reading insights" choice already lives inside KOReader's own
+    Settings > Screen > Sleep screen > Wallpaper radio group (alongside
+    "Document cover", "Random image", etc.), baked in by
+    patchScreensaverMenuBuilder() above. Having a second, separate entry
+    right next to the Sleep screen submenu just duplicated that same
+    screensaver_type toggle in a confusing spot, so it's been removed -
+    the Wallpaper-submenu entry is now the only place to pick it from
+    (besides the Tools > Reading insights > Settings > "Use as sleep
+    screen" quick toggle below, which stays).
+    ]]--
 end
 
 return ReadingInsights

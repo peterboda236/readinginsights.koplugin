@@ -86,9 +86,10 @@ local function saveChapterBarHeightSetting(value)
 end
 
 -- Book-calendar cell content setting (Settings ▸ Advanced settings ▸
--- "Calendar cell content" / "Naptár cella tartalma"). Controls what the
--- small text line under each day number in the per-book reading calendar
--- shows - see buildBookCalendarCellText below for the exact formatting:
+-- "Book calendar cell content" / "Könyv naptár cella tartalma"). Controls
+-- what the small text line under each day number in the per-book reading
+-- calendar shows - see buildBookCalendarCellText below for the exact
+-- formatting:
 --   "percent" (default) - cumulative progress, e.g. "+13%"
 --   "pages"             - that day's own page count, e.g. "+101o"
 --   "time"              - that day's own time spent, honoring KOReader's
@@ -1224,8 +1225,8 @@ local function pageAbbrev(count)
 end
 
 -- Small text line shown under the day number in the per-book calendar
--- (see buildBookCalendarGrid below). Honors the "Calendar cell content"
--- setting (readCalendarCellModeSetting):
+-- (see buildBookCalendarGrid below). Honors the "Book calendar cell
+-- content" setting (readCalendarCellModeSetting):
 --   "percent" (default) - cumulative "+13%" progress through the whole book
 --   "pages"             - that day's own page count, e.g. "+101o"
 --   "time"              - that day's own time spent, e.g. "+0:23" or
