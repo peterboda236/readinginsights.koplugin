@@ -200,6 +200,12 @@ local StatsPopup = loadModule("stats_view.lua", L10N, Colors, Fonts)
 -- releases of this plugin straight from GitHub. See updater.lua.
 local Updater = loadModule("updater.lua", L10N)
 
+-- About dialog (About menu entry, right after Updates): a small popup
+-- with the plugin title, installed version (via Updater, above), a short
+-- description, and the GitHub repository URL. Uses its own hard-coded
+-- fonts, not the (user-customisable) Fonts module. See about.lua.
+local About = loadModule("about.lua", L10N, Updater)
+
 --[[
 Plugin wiring.
 
@@ -1066,6 +1072,17 @@ function ReadingInsights:addToMainMenu(menu_items)
     table.insert(sub_item_table, {
         text                = _("Updates"),
         sub_item_table_func = function() return self:_updateSubItems() end,
+        separator           = true,
+    })
+
+    -- About: plugin title, installed version, short description, and the
+    -- GitHub repository URL. See about.lua.
+    table.insert(sub_item_table, {
+        text = _("About"),
+        keep_menu_open = true,
+        callback = function()
+            About.show()
+        end,
     })
 
     menu_items.reading_insights_popup = {
