@@ -811,3 +811,12 @@ msgstr "days"
 
 msgid "No reading on this day."
 msgstr "No reading on this day."
+
+msgid "About"
+msgstr "About"
+
+msgid "Reading insight"
+msgstr "Reading insight"
+
+msgid "A full-screen overlay with a comprehensive overview of your reading history, powered by KOReader's statistics database."
+msgstr "A full-screen overlay with a comprehensive overview of your reading history, powered by KOReader's statistics database."

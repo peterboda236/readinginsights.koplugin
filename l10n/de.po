@@ -811,3 +811,12 @@ msgstr "Tage"
 
 msgid "No reading on this day."
 msgstr "An diesem Tag wurde nicht gelesen."
+
+msgid "About"
+msgstr "Über"
+
+msgid "Reading insight"
+msgstr "Leseeinblick"
+
+msgid "A full-screen overlay with a comprehensive overview of your reading history, powered by KOReader's statistics database."
+msgstr "Eine Vollbild-Übersicht über deinen gesamten Lesefortschritt, basierend auf der Statistikdatenbank von KOReader."

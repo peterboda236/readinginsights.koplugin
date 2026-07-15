@@ -826,3 +826,12 @@ msgstr "nap"
 
 msgid "No reading on this day."
 msgstr "Ezen a napon nem volt olvasás."
+
+msgid "About"
+msgstr "Névjegy"
+
+msgid "Reading insight"
+msgstr "Olvasási áttekintés"
+
+msgid "A full-screen overlay with a comprehensive overview of your reading history, powered by KOReader's statistics database."
+msgstr "Egy teljes képernyős áttekintés az olvasási előzményeidről, a KOReader statisztikai adatbázisára építve."
