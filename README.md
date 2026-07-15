@@ -61,7 +61,9 @@ A per-book overlay showing detailed progress and pace for the book you're curren
 - **Progress** — pages/percentage read in the current book, plus pages remaining
 - **Pace** — your average reading speed for this book (pages/hour or minutes/page)
 - **Estimated finish** — projected time or date to finish, based on recent pace
-- **Session stats** — time spent reading this book today and across recent sessions
+- **Session stats** — time spent reading this book today and your average
+  per day; tap this row to switch to today's page count and average pages
+  per day instead — tap again to switch back
 - **This chapter / Next chapter** — estimated reading time left in the
   current chapter and reading time for the next one; tap either value to
   switch to pages left in this chapter / next chapter's page count instead
@@ -85,7 +87,8 @@ A per-book overlay showing detailed progress and pace for the book you're curren
 
 **Controls:** tap to toggle between percentage/page view, tap the "This
 chapter"/"Next chapter" row to toggle between reading time and pages left,
-tap the "Pace" title to open the reading calendar, long-press to
+tap the "read today" / "avg time/day" row to toggle between time and page
+counts, tap the "Pace" title to open the reading calendar, long-press to
 force-reload data.
 
 **Caching:** shares the same stale-while-revalidate approach as Reading insights — instant open with cached data, refreshed in the background.
@@ -206,6 +209,10 @@ Once installed, future updates can be installed in-app — see
 
 - `main.lua` — plugin entry point: loads the shared translation module and
   both views, registers the three dispatcher actions, builds the Tools menu.
+- `_meta.lua` — plugin identity for KOReader's plugin manager: name,
+  description, and the version string the updater bumps on install.
+- `about.lua` — the "About" dialog (Tools > Reading insights > About):
+  title, installed version, description, and repo link.
 - `l10n.lua` — shared translation lookup (`l10n/<lang>.po`) and locale-aware
   number formatting, used by both views.
 - `colors.lua` — shared chart/text color settings (the "Colors" submenu)
@@ -221,6 +228,7 @@ Once installed, future updates can be installed in-app — see
 - `stats_view.lua` — the compact "Reading statistics: overview" popup.
 - `updater.lua` — the in-app updater (the "Updates" submenu): checks
   GitHub for new releases/branches and installs them on the device.
+- `l10n/` — one `.po` file per language (`en.po`, `hu.po`, `de.po`), see
 
 ## Translations
 
@@ -236,4 +244,8 @@ msgstr "Aktuális sorozat"
 To add another language, drop a new `l10n/<lang>.po` file next to the
 existing ones — no code changes needed.
 
-Based on: https://github.com/quanganhdo/koreader-user-patches
+
+## Acknowledgements
+- The statistics based on [(https://github.com/quanganhdo/koreader-user-patches)](https://github.com/quanganhdo/koreader-user-patches).
+- Colorwheel comes from [(https://github.com/Euphoriyy/KOReader.patches#-colorwheelwidgetlua)](https://github.com/Euphoriyy/KOReader.patches#-colorwheelwidgetlua).
+- In-plugin updater adapted from [(https://github.com/AndyHazz/bookshelf.koplugin)](https://github.com/AndyHazz/bookshelf.koplugin).

@@ -997,18 +997,42 @@ local function buildSections(stats, fonts, layout, popup)
     local book_pages_read = valueLine(stats.book_pages_read, "")
     local book_col1       = valueLine(stats.book_time_spent_hhmm, _("read so far"))
     local book_col2       = valueLine(stats.book_time_left_hhmm, _("reading time left"))
-    local avg_day_data    = stats.avg_time_per_day_hhmm or { value = "—:—", unit = "" }
-    local pace_col2       = valueLine(avg_day_data, _("avg time/day"))
+    -- "read today" / "avg time/day" can show either time (default) or page
+    -- counts - toggled by tapping the pace row (see ReadingStatsPopup:onTapClose).
+    -- popup._pace_view_mode is nil/"time" by default; "pages" once toggled.
+    local pace_view_mode = (popup and popup._pace_view_mode) or "time"
     local today_time_data_hhmm = popup and popup.today_all_books
         and stats.today_time_all_hhmm
         or  stats.today_time_hhmm
+    local today_pages_data = popup and popup.today_all_books
+        and stats.today_pages_all
+        or  stats.today_pages
 
     local zero_hhmm = { value = "00:00", unit = "" }
     local function nonEmpty(td)
         if not td or td.value == "" then return zero_hhmm end
         return td
     end
-    local days_col2 = valueLine(nonEmpty(today_time_data_hhmm), _("read today"))
+    local function nonEmptyPagesToday(pd)
+        local count = 0
+        if pd and pd.value ~= "" then
+            count = tonumber(pd.value) or 1
+        end
+        local value = (pd and pd.value ~= "") and pd.value or formatCount(0)
+        return { value = value, unit = "" }, N_("page read today", "pages read today", count)
+    end
+
+    local days_col2, pace_col2
+    if pace_view_mode == "pages" then
+        local today_pages_val, today_pages_label = nonEmptyPagesToday(today_pages_data)
+        local avg_pages_data = stats.avg_pages_per_day or { value = "—", unit = "" }
+        days_col2 = valueLine(today_pages_val, today_pages_label)
+        pace_col2 = valueLine(avg_pages_data, _("avg pages/day"))
+    else
+        local avg_day_data = stats.avg_time_per_day_hhmm or { value = "—:—", unit = "" }
+        days_col2 = valueLine(nonEmpty(today_time_data_hhmm), _("read today"))
+        pace_col2 = valueLine(avg_day_data, _("avg time/day"))
+    end
 
     local chapter_headers_content = buildChapterHeaders(fonts.section, layout, stats.has_next_chapter)
     local chapter_values_content  = buildTwoColRow(chapter_val1, chapter_val2, layout, not stats.has_next_chapter)
@@ -1025,7 +1049,11 @@ local function buildSections(stats, fonts, layout, popup)
     local book_progress_row = buildTwoColRow(book_progress, book_pages_read, layout)
     local book_progress_tap = book_progress_row
     local book_row          = buildTwoColRow(book_col1, book_col2, layout)
-    local pace_row = buildTwoColRow(days_col2, pace_col2, layout)
+    local pace_row_content = buildTwoColRow(days_col2, pace_col2, layout)
+    local pace_row = tappableWrap(pace_row_content, pace_row_content:getSize().w)
+    if popup then
+        popup._pace_row = pace_row
+    end
 
     local sections = VerticalGroup:new{
         align = "left",
@@ -1842,6 +1870,7 @@ local ReadingStatsPopup = InputContainer:extend{
     today_all_books    = false,
     _has_book_id       = false,
     _chapter_view_mode = "time",
+    _pace_view_mode    = "time",
 }
 
 function ReadingStatsPopup:init()
@@ -2055,7 +2084,7 @@ function ReadingStatsPopup:gatherStats()
         stats.book_id = plugin.id_curr_book
         local total_time = 0
         if plugin.getPageTimeTotalStats then
-            local read_pages, time_val = plugin:getPageTimeTotalStats(plugin.id_curr_book)
+            local _, time_val = plugin:getPageTimeTotalStats(plugin.id_curr_book)
             total_time = tonumber(time_val) or 0
         end
         if total_time and total_time > 0 then
@@ -2079,6 +2108,17 @@ function ReadingStatsPopup:gatherStats()
             if total_time and total_time > 0 then
                 local avg_secs = total_time / total_days
                 stats.avg_time_per_day_hhmm = formatTimeHHMM(avg_secs)
+            end
+            -- current_page_count is the live reading position (set above,
+            -- from getBookProgressCounts) - a reliable proxy for "pages
+            -- read so far", unlike statistics plugin's own page counter
+            -- which can be 0/stale depending on how the book was opened.
+            if current_page_count and current_page_count > 0 then
+                local avg_pages = current_page_count / total_days
+                stats.avg_pages_per_day = {
+                    value = formatNumber(avg_pages, avg_pages >= 10 and 0 or 1),
+                    unit  = "",
+                }
             end
             stats.days_reading = humanizeDayCount(total_days, "reading")
 
@@ -2266,6 +2306,12 @@ function ReadingStatsPopup:onTapClose(arg, ges_ev)
 
         if hitTest(self._pace_header, x, y) and self._stats and self._stats.book_id then
             self:openBookCalendar()
+            return true
+        end
+
+        if hitTest(self._pace_row, x, y) then
+            self._pace_view_mode = (self._pace_view_mode == "pages") and "time" or "pages"
+            self:_rebuildUI()
             return true
         end
 

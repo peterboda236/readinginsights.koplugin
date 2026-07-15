@@ -267,6 +267,15 @@ msgstr "összes olvasási idő"
 msgid "avg time/day"
 msgstr "átlag idő/nap"
 
+msgid "avg pages/day"
+msgstr "átlag oldal/nap"
+
+msgid "page read today"
+msgstr "oldal olvasva ma"
+
+msgid "pages read today"
+msgstr "oldal olvasva ma"
+
 msgid "book read in this streak"
 msgstr "könyvet olvasva ez alatt"
 

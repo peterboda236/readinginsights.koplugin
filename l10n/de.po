@@ -258,6 +258,15 @@ msgstr "Gesamte Lesezeit"
 msgid "avg time/day"
 msgstr "Ø Zeit/Tag"
 
+msgid "avg pages/day"
+msgstr "Ø Seiten/Tag"
+
+msgid "page read today"
+msgstr "heute gelesene Seite"
+
+msgid "pages read today"
+msgstr "heute gelesene Seiten"
+
 msgid "book read in this streak"
 msgstr "Buch in dieser Serie gelesen"
 
