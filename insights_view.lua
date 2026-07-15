@@ -3405,7 +3405,7 @@ local function buildHeatmapBoxContent(popup_self, periods_back)
         matchOwnWidth(calendar_widget),
         VerticalSpan:new{ height = 2 * Size.padding.large },
         sectionSeparator(),
-        VerticalSpan:new{ height = 2 * Size.padding.large },
+        VerticalSpan:new{ width = Size.padding.large * 2 },
         sectionTitle(_("Time of day heatmap")),
         VerticalSpan:new{ height = Size.padding.large + Size.padding.default },
         matchOwnWidth(day_part_widget),
