@@ -258,6 +258,15 @@ msgstr "total reading time"
 msgid "avg time/day"
 msgstr "avg time/day"
 
+msgid "avg pages/day"
+msgstr "avg pages/day"
+
+msgid "page read today"
+msgstr "page read today"
+
+msgid "pages read today"
+msgstr "pages read today"
+
 msgid "book read in this streak"
 msgstr "book read in this streak"
 
