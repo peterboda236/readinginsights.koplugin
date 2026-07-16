@@ -53,14 +53,15 @@ Available everywhere (book view and file manager).
 
 ### 🏆 Records
 
-<img width="384" height="512" alt="FileManager_2026-07-16_141155" src="https://github.com/user-attachments/assets/44ec102b-af47-4d91-9f00-ede85325a311" />
+<img width="384" height="512" alt="FileManager_2026-07-16_143759" src="https://github.com/user-attachments/assets/f3fcec2d-d387-4976-aff9-cc3121b30118" />
+
 
 A compact, floating card showing your personal reading records and
 milestone progress — built on the same statistics database as the other
 two popups.
 
 **Highlights:**
-- **Longest session** — longest single-day reading session, with the date
+- **Most reading time in a day** — most readin time on a single calendar day, with the date
 - **Most pages in a day** — most pages read on a single calendar day, with the date
 - **Best daily streak** — longest run of consecutive reading days, with the start–end dates
 - **Fastest book finished** — fewest calendar days from first to last page of a book, with the title
