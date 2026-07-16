@@ -830,8 +830,8 @@ msgstr "Reading insight"
 msgid "A full-screen overlay with a comprehensive overview of your reading history, powered by KOReader's statistics database."
 msgstr "A full-screen overlay with a comprehensive overview of your reading history, powered by KOReader's statistics database."
 
-msgid "Longest session"
-msgstr "Longest session"
+msgid "Most reading time in a day"
+msgstr "Most reading time in a day"
 
 msgid "Most pages in a day"
 msgstr "Most pages in a day"
