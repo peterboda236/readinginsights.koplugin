@@ -83,6 +83,7 @@ local L10N, Colors, Fonts = ...
 local _ = L10N._
 local N_ = L10N.N_
 local formatCount = L10N.formatCount
+local getLangBase = L10N.getLangBase
 
 -- ---------------------------------------------------------------------------
 -- Milestone ladder (total reading hours)
@@ -211,16 +212,18 @@ end
 -- ---------------------------------------------------------------------------
 -- Date helpers
 -- ---------------------------------------------------------------------------
-local MONTH_KEYS = { "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" }
-
+-- Format a YYYY-MM-DD string for display (EN: DD/MM/YYYY, HU: YYYY.MM.DD.)
+-- Same convention as insights_view.lua's formatDateForDisplay, so records,
+-- insights and stats popups all show dates the same way.
 local function formatDate(date_str)
     if not date_str then return "" end
     local y, m, d = date_str:match("^(%d+)-(%d+)-(%d+)$")
     if not y then return date_str end
-    local mi = tonumber(m) or 1
-    local month_name = _(MONTH_KEYS[mi] or "Jan")
-    return month_name .. " " .. tonumber(d) .. "."
+    if getLangBase() == "hu" then
+        return string.format("%s.%s.%s.", y, m, d)
+    else
+        return string.format("%s/%s/%s", d, m, y)
+    end
 end
 
 local function dateDiffDays(a, b)
