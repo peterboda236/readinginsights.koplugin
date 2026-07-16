@@ -64,7 +64,6 @@ two popups.
 - **Most reading time in a day** — most readin time on a single calendar day, with the date
 - **Most pages in a day** — most pages read on a single calendar day, with the date
 - **Best daily streak** — longest run of consecutive reading days, with the start–end dates
-- **Fastest book finished** — fewest calendar days from first to last page of a book, with the title
 - **Last milestone** — highest total-hours milestone already passed, with the date it was reached
 - **Next milestone** — next total-hours milestone ahead, with hours left to reach it
 
