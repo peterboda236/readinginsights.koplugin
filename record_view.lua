@@ -6,7 +6,6 @@ Shows personal reading records and milestone progress:
                                  day, across all books
   - Most pages in a day      most pages read on a single calendar day
   - Best daily streak        longest run of consecutive reading days
-  - Fastest book finished    fewest calendar days from first to last page
   - Last milestone           highest total-hours milestone already passed
   - Next milestone           next total-hours milestone ahead
 
@@ -31,7 +30,7 @@ insights_view.lua and stats_view.lua.
 
 Cache behaviour
 ---------------
-On first open (or after a reset) the six queries run in full and the
+On first open (or after a reset) the five queries run in full and the
 results are written to a small Lua-table file next to statistics.sqlite3:
   readinginsights_records_cache.lua
 
@@ -97,7 +96,6 @@ local ICONS = {
     session = "\xEF\x80\x97", -- U+F017 fa-clock
     pages   = "\xEF\x80\xAD", -- U+F02D fa-book
     streak  = "\xEF\x81\xAD", -- U+F06D fa-fire
-    fastest = "\xEF\x83\xA7", -- U+F0E7 fa-bolt
     last_ms = "\xEF\x82\x91", -- U+F091 fa-trophy
     next_ms = "\xEF\x84\x9D", -- U+F11D fa-flag-o
 }
@@ -144,7 +142,6 @@ end
 --   longest      { duration_sec, date }  -- most reading time in a day (all books)
 --   best_day     { pages, date }
 --   streak       { days, start_date, end_date }
---   fastest      { title, days, date, duration_sec }
 --   total_secs   (integer)
 --   last_ms_date (string|nil)
 
@@ -188,19 +185,6 @@ local function saveCache(c)
         else        f:write("  streak_start = false,\n") end
         if se then f:write(string.format("  streak_end   = %q,\n", se))
         else        f:write("  streak_end   = false,\n") end
-        -- fastest
-        local ft = c.fastest.title
-        if ft then f:write(string.format("  fastest_title = %q,\n", ft))
-        else        f:write("  fastest_title = false,\n") end
-        local fd = c.fastest.days
-        if fd then f:write(string.format("  fastest_days  = %d,\n", fd))
-        else        f:write("  fastest_days  = false,\n") end
-        local fdate = c.fastest.date
-        if fdate then f:write(string.format("  fastest_date  = %q,\n", fdate))
-        else          f:write("  fastest_date  = false,\n") end
-        local fdur = c.fastest.duration_sec
-        if fdur then f:write(string.format("  fastest_dur   = %d,\n", fdur))
-        else          f:write("  fastest_dur   = false,\n") end
         -- milestone date
         local lmd = c.last_ms_date
         if lmd then f:write(string.format("  last_ms_date = %q,\n", lmd))
@@ -219,10 +203,6 @@ local function cacheToData(c)
         streak   = { days = c.streak_days or 0,
                      start_date = c.streak_start or nil,
                      end_date   = c.streak_end   or nil },
-        fastest  = { title = c.fastest_title or nil,
-                     days  = c.fastest_days  or nil,
-                     date  = c.fastest_date  or nil,
-                     duration_sec = c.fastest_dur or nil },
         total_secs  = c.total_secs or 0,
         last_ms_date = c.last_ms_date or nil,
     }
@@ -319,32 +299,6 @@ local function fullQueryBestStreak(conn)
         end
     end
     return { days = best_len, start_date = best_start, end_date = best_end }
-end
-
-local function fullQueryFastestBook(conn)
-    local result = { title = nil, days = nil, date = nil, duration_sec = nil }
-    withStatement(conn, [[
-        SELECT b.title,
-               julianday(date(MAX(ps.start_time), 'unixepoch', 'localtime')) -
-               julianday(date(MIN(ps.start_time), 'unixepoch', 'localtime')) + 1 AS days_span,
-               date(MAX(ps.start_time), 'unixepoch', 'localtime') AS finish_date,
-               SUM(ps.duration) AS total_dur
-        FROM page_stat ps
-        JOIN book b ON ps.id_book = b.id
-        WHERE b.pages > 0
-        GROUP BY ps.id_book
-        HAVING MAX(ps.page) >= b.pages
-        ORDER BY days_span ASC, total_dur ASC
-        LIMIT 1
-    ]], function(stmt)
-        for row in stmt:rows() do
-            result.title        = row[1]
-            result.days         = math.floor(tonumber(row[2]) or 1)
-            result.date         = row[3]
-            result.duration_sec = tonumber(row[4]) or 0
-        end
-    end)
-    return result
 end
 
 local function fullQueryTotalSecs(conn)
@@ -474,13 +428,6 @@ local function incrExtraSecs(conn, hw_time)
     return extra
 end
 
--- Fastest book: re-run the full query (it's a JOIN with an ORDER BY that
--- can't be cheaply incremented), but only when new rows exist — which is
--- already the condition for calling this path.
-local function incrFastestBook(conn)
-    return fullQueryFastestBook(conn)
-end
-
 -- ---------------------------------------------------------------------------
 -- Milestone helpers
 -- ---------------------------------------------------------------------------
@@ -504,7 +451,6 @@ local function loadData()
         longest      = { duration_sec = 0, date = nil },
         best_day     = { pages = 0, date = nil },
         streak       = { days = 0, start_date = nil, end_date = nil },
-        fastest      = { title = nil, days = nil, date = nil, duration_sec = nil },
         total_secs   = 0,
         last_ms_date = nil,
     }, function(conn)
@@ -520,7 +466,6 @@ local function loadData()
             local longest   = fullQueryMostReadingTimeDay(conn)
             local best_day  = fullQueryMostPagesDay(conn)
             local streak    = fullQueryBestStreak(conn)
-            local fastest   = fullQueryFastestBook(conn)
             local tot_secs  = fullQueryTotalSecs(conn)
             local tot_hours = math.floor(tot_secs / 3600)
             local last_ms   = getMilestones(tot_hours)
@@ -532,7 +477,6 @@ local function loadData()
                 longest      = longest,
                 best_day     = best_day,
                 streak       = streak,
-                fastest      = fastest,
                 total_secs   = tot_secs,
                 last_ms_date = lmd,
             }
@@ -541,7 +485,6 @@ local function loadData()
                 longest      = longest,
                 best_day     = best_day,
                 streak       = streak,
-                fastest      = fastest,
                 total_secs   = tot_secs,
                 last_ms_date = lmd,
             }
@@ -587,7 +530,6 @@ local function loadData()
 
         d.longest  = incrMostReadingTimeDay(conn, hw, d.longest)
         d.best_day = incrMostPagesDay(conn, hw, d.best_day)
-        d.fastest  = incrFastestBook(conn)
 
         local extra_secs = incrExtraSecs(conn, hw)
         d.total_secs = (d.total_secs or 0) + extra_secs
@@ -630,7 +572,6 @@ local function loadData()
             longest      = d.longest,
             best_day     = d.best_day,
             streak       = d.streak,
-            fastest      = d.fastest,
             total_secs   = d.total_secs,
             last_ms_date = d.last_ms_date,
         }
@@ -652,9 +593,14 @@ local function getCachedFonts()
     }
 end
 
-local function buildRecordRow(fonts, icon_glyph, label_text, value_text, sub_text, width)
-    local pad = Size.padding.large
-    local gap = Size.padding.small
+-- Builds one row using pre-measured, fixed column widths (see measureColumns
+-- below) so that the icon / label / value columns line up like a table
+-- across all rows, and the label column can never grow into the value
+-- column - the widest label and the widest value each get their own fixed
+-- width, with a dedicated gap between them.
+local function buildRecordRow(fonts, icon_glyph, label_text, value_text, sub_text, cols)
+    local pad = cols.pad
+    local gap = cols.gap
 
     local value_w = TextWidget:new{
         text    = value_text,
@@ -686,24 +632,23 @@ local function buildRecordRow(fonts, icon_glyph, label_text, value_text, sub_tex
         fgcolor = Colors.label(),
     }
     local icon_size = icon_w:getSize()
-    local icon_gap  = icon_size.w
-
-    local left_avail = width - 2 * pad - right_size.w - gap
-    local label_max  = math.max(left_avail - icon_size.w - icon_gap, 10)
 
     local left_col = TextBoxWidget:new{
         text      = label_text,
         face      = fonts.label,
         fgcolor   = Colors.label(),
-        width     = label_max,
+        width     = cols.label_w,
         alignment = "left",
     }
     local row_h = math.max(icon_size.h, left_col:getSize().h, right_size.h) + ROW_PADDING * 2
 
     local left_group = HorizontalGroup:new{
         align = "center",
-        icon_w,
-        HorizontalSpan:new{ width = icon_gap },
+        LeftContainer:new{
+            dimen = Geom:new{ w = cols.icon_w, h = icon_size.h },
+            icon_w,
+        },
+        HorizontalSpan:new{ width = cols.icon_gap },
         left_col,
     }
 
@@ -717,12 +662,12 @@ local function buildRecordRow(fonts, icon_glyph, label_text, value_text, sub_tex
         HorizontalGroup:new{
             align = "center",
             LeftContainer:new{
-                dimen = Geom:new{ w = left_avail, h = row_h - ROW_PADDING * 2 },
+                dimen = Geom:new{ w = cols.icon_w + cols.icon_gap + cols.label_w, h = row_h - ROW_PADDING * 2 },
                 left_group,
             },
             HorizontalSpan:new{ width = gap },
             RightContainer:new{
-                dimen = Geom:new{ w = right_size.w, h = row_h - ROW_PADDING * 2 },
+                dimen = Geom:new{ w = cols.right_w, h = row_h - ROW_PADDING * 2 },
                 right_col,
             },
         },
@@ -733,6 +678,41 @@ local function buildSeparator(width)
     return LineWidget:new{
         dimen      = Geom:new{ w = width, h = Size.line.thin },
         background = Colors.separator(),
+    }
+end
+
+-- Measures the icon / label / value(+sub) column widths needed across ALL
+-- rows (i.e. the widest icon, the widest label, the widest value/sub-value),
+-- so every row can be laid out on the same table-like grid: the label
+-- column is exactly as wide as the longest label - never more, never less -
+-- and the value column is exactly as wide as the longest value, with a
+-- fixed gap in between.
+local function measureColumns(fonts, row_defs)
+    local icon_w, label_w, right_w = 0, 0, 0
+    for _, def in ipairs(row_defs) do
+        local iw = TextWidget:new{ text = def.icon, face = fonts.label }
+        icon_w = math.max(icon_w, iw:getSize().w)
+        iw:free()
+
+        local lw = TextWidget:new{ text = def.label, face = fonts.label }
+        label_w = math.max(label_w, lw:getSize().w)
+        lw:free()
+
+        local vw = TextWidget:new{ text = def.value, face = fonts.value }
+        right_w = math.max(right_w, vw:getSize().w)
+        vw:free()
+
+        if def.sub and def.sub ~= "" then
+            local sw = TextWidget:new{ text = def.sub, face = fonts.small }
+            right_w = math.max(right_w, sw:getSize().w)
+            sw:free()
+        end
+    end
+    return {
+        icon_w   = icon_w,
+        icon_gap = icon_w, -- space after the icon, same convention as before
+        label_w  = label_w,
+        right_w  = right_w,
     }
 end
 
@@ -773,13 +753,14 @@ function RecordsPopup:_buildUI()
     local last_ms_date     = d.last_ms_date
 
     local outer_padding = Size.padding.large
-    local card_w    = math.min(math.floor(screen_w * 0.92), Screen:scaleBySize(560))
-    local content_w = card_w - 2 * outer_padding
+    local max_w = math.floor(screen_w * 0.92)
+    local min_w = math.min(Screen:scaleBySize(280), max_w)
 
-    local rows = VerticalGroup:new{ align = "left" }
-    local function addRow(icon, label, value, sub)
-        table.insert(rows, buildRecordRow(fonts, icon, label, value, sub, content_w))
-        table.insert(rows, buildSeparator(content_w))
+    -- Collect row data first (without building widgets yet) so we can
+    -- measure how wide the content actually needs to be.
+    local row_defs = {}
+    local function defRow(icon, label, value, sub)
+        table.insert(row_defs, { icon = icon, label = label, value = value, sub = sub })
     end
 
     -- 1. Most reading time in a day
@@ -787,7 +768,7 @@ function RecordsPopup:_buildUI()
         and L10N.formatDuration(d.longest.duration_sec, true)
         or  "\xE2\x80\x93"
     local sess_sub = d.longest.date and formatDate(d.longest.date) or ""
-    addRow(ICONS.session, _("Most reading time in a day"), sess_val, sess_sub)
+    defRow(ICONS.session, _("Most reading time in a day"), sess_val, sess_sub)
 
     -- 2. Most pages in a day
     local pages_val = "\xE2\x80\x93"
@@ -795,7 +776,7 @@ function RecordsPopup:_buildUI()
         pages_val = formatCount(d.best_day.pages) .. " " .. N_("page", "pages", d.best_day.pages)
     end
     local pages_sub = d.best_day.date and formatDate(d.best_day.date) or ""
-    addRow(ICONS.pages, _("Most pages in a day"), pages_val, pages_sub)
+    defRow(ICONS.pages, _("Most pages in a day"), pages_val, pages_sub)
 
     -- 3. Best daily streak
     local streak_val = "\xE2\x80\x93"
@@ -806,54 +787,70 @@ function RecordsPopup:_buildUI()
     if d.streak.start_date and d.streak.end_date then
         streak_sub = formatDate(d.streak.start_date) .. " \xE2\x80\x93 " .. formatDate(d.streak.end_date)
     end
-    addRow(ICONS.streak, _("Best daily streak"), streak_val, streak_sub)
+    defRow(ICONS.streak, _("Best daily streak"), streak_val, streak_sub)
 
-    -- 4. Fastest book finished
-    local fast_val = "\xE2\x80\x93"
-    local fast_sub = ""
-    if d.fastest.title and d.fastest.days then
-        if d.fastest.days <= 1 and (d.fastest.duration_sec or 0) > 0 then
-            -- Finished within a single calendar day: showing "1 day" would
-            -- hide how fast it actually was, so show the reading time instead.
-            fast_val = L10N.formatDuration(d.fastest.duration_sec, true)
-        else
-            fast_val = formatCount(d.fastest.days) .. " " .. N_("day", "days", d.fastest.days)
-        end
-        local short_title = d.fastest.title
-        if #short_title > 30 then
-            short_title = short_title:sub(1, 28) .. "\xE2\x80\xA6"
-        end
-        fast_sub = short_title
-    end
-    addRow(ICONS.fastest, _("Fastest book finished"), fast_val, fast_sub)
-
-    -- 5. Last milestone
+    -- 4. Last milestone
     local last_val = last_ms
         and (formatCount(last_ms) .. " " .. N_("hour", "hours", last_ms))
         or  "\xE2\x80\x93"
     local last_sub = last_ms_date and formatDate(last_ms_date) or ""
-    addRow(ICONS.last_ms, _("Last milestone"), last_val, last_sub)
+    defRow(ICONS.last_ms, _("Last milestone"), last_val, last_sub)
 
-    -- 6. Next milestone
+    -- 5. Next milestone
     if next_ms then
         local hours_left = next_ms - tot_hours
         local next_sub = ""
         if hours_left > 0 then
             next_sub = string.format(N_("%d hour left", "%d hours left", hours_left), hours_left)
         end
-        addRow(ICONS.next_ms, _("Next milestone"),
+        defRow(ICONS.next_ms, _("Next milestone"),
             formatCount(next_ms) .. " " .. N_("hour", "hours", next_ms),
             next_sub)
     else
-        addRow(ICONS.next_ms, _("Next milestone"), "\xE2\x80\x93", "")
+        defRow(ICONS.next_ms, _("Next milestone"), "\xE2\x80\x93", "")
     end
-    table.remove(rows) -- remove trailing separator
 
+    -- Measure fixed table columns (icon / label / value) across all rows,
+    -- then size the card to fit the widest combination (title, or icon +
+    -- label column + gap + value column), clamped between a sane minimum
+    -- and 92% of the screen width.
     local title_w = TextWidget:new{
         text    = _("Records"),
         face    = fonts.value,
         fgcolor = Colors.value(),
     }
+    local pad  = Size.padding.large
+    local gap  = Size.padding.large
+    local cols = measureColumns(fonts, row_defs)
+    local row_content_w = 2 * pad + cols.icon_w + cols.icon_gap + cols.label_w + gap + cols.right_w
+
+    local needed_w  = math.max(title_w:getSize().w + 2 * outer_padding, row_content_w + 2 * outer_padding)
+    local card_w    = math.max(min_w, math.min(max_w, needed_w))
+    local content_w = card_w - 2 * outer_padding
+
+    -- Fit the columns into content_w: if the card got clamped narrower than
+    -- the natural row width, shrink (and let wrap) the label column only -
+    -- the value column keeps its full width so numbers never truncate. If
+    -- there's slack instead (e.g. the title is the widest thing), grow the
+    -- gap rather than the label, so the label stays snug against its icon.
+    local avail_for_label = content_w - 2 * pad - cols.icon_w - cols.icon_gap - gap - cols.right_w
+    if avail_for_label < cols.label_w then
+        cols.label_w = math.max(avail_for_label, Screen:scaleBySize(10))
+    else
+        gap = gap + (avail_for_label - cols.label_w)
+    end
+    cols.pad = pad
+    cols.gap = gap
+
+    local rows = VerticalGroup:new{ align = "left" }
+    local function addRow(icon, label, value, sub)
+        table.insert(rows, buildRecordRow(fonts, icon, label, value, sub, cols))
+        table.insert(rows, buildSeparator(content_w))
+    end
+    for _, def in ipairs(row_defs) do
+        addRow(def.icon, def.label, def.value, def.sub)
+    end
+    table.remove(rows) -- remove trailing separator
 
     -- Title and divider use the same horizontal inset as the row content
     -- (rows have padding_left/right = Size.padding.large on their own
