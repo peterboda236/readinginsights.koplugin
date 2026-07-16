@@ -829,3 +829,39 @@ msgstr "Reading insight"
 
 msgid "A full-screen overlay with a comprehensive overview of your reading history, powered by KOReader's statistics database."
 msgstr "A full-screen overlay with a comprehensive overview of your reading history, powered by KOReader's statistics database."
+
+msgid "Longest session"
+msgstr "Longest session"
+
+msgid "Most pages in a day"
+msgstr "Most pages in a day"
+
+msgid "Best daily streak"
+msgstr "Best daily streak"
+
+msgid "Fastest book finished"
+msgstr "Fastest book finished"
+
+msgid "Last milestone"
+msgstr "Last milestone"
+
+msgid "Next milestone"
+msgstr "Next milestone"
+
+msgid "Records"
+msgstr "Records"
+
+msgid "%d hour left"
+msgstr "%d hour left"
+
+msgid "%d hours left"
+msgstr "%d hours left"
+
+msgid "Reading insights: records"
+msgstr "Reading insights: records"
+
+msgid "Show Records"
+msgstr "Show Records"
+
+msgid "Sub-values (date / book title)"
+msgstr "Sub-values (date / book title)"
