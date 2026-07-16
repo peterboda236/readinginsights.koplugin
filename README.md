@@ -12,7 +12,7 @@ More screenshots
 
 
 
-This plugin bundles two reading-stats popups, powered by KOReader's
+This plugin bundles three reading-stats popups, powered by KOReader's
 statistics database.
 
 ### Reading insights (full-screen history)
@@ -50,6 +50,38 @@ A full-screen scrollable overlay with a comprehensive overview of your reading h
 **Caching:** uses a stale-while-revalidate strategy — the popup opens instantly with cached data while fresh values load in the background. The last known values are also mirrored to disk, so this still holds true for the very first popup open after a KOReader restart — no blocking "Loading data..." wait.
 
 Available everywhere (book view and file manager).
+
+### 🏆 Records
+
+<img width="384" height="512" alt="FileManager_2026-07-16_141155" src="https://github.com/user-attachments/assets/44ec102b-af47-4d91-9f00-ede85325a311" />
+
+A compact, floating card showing your personal reading records and
+milestone progress — built on the same statistics database as the other
+two popups.
+
+**Highlights:**
+- **Longest session** — longest single-day reading session, with the date
+- **Most pages in a day** — most pages read on a single calendar day, with the date
+- **Best daily streak** — longest run of consecutive reading days, with the start–end dates
+- **Fastest book finished** — fewest calendar days from first to last page of a book, with the title
+- **Last milestone** — highest total-hours milestone already passed, with the date it was reached
+- **Next milestone** — next total-hours milestone ahead, with hours left to reach it
+
+Milestone ladder (total reading hours): 1 → 5 → 10 → 25 → 50 → 100 → 250 →
+500 → 1000 → 2500 → 5000 → 10000.
+
+**Controls:** shown as a floating, bordered card centered on screen (not a
+full-screen overlay); tap anywhere / swipe / press any key to close.
+
+**Caching:** on first open the six queries run in full and the results are
+written to a small cache file next to `statistics.sqlite3`. On later opens,
+if nothing changed the cache is used as-is; if only new rows were added,
+lightweight incremental queries update just what's needed; if the database
+looks different in a way that can't be reconciled (e.g. after a sync or
+manual delete), it falls back to a full recompute.
+
+Available everywhere (book view and file manager), since none of this data
+is tied to a specific open book.
 
 ### 📖 Book progress stats
 
@@ -153,13 +185,14 @@ Once installed, future updates can be installed in-app — see
 ## Where it shows up
 
 - **Menu:** *Tools → Reading insights* — a submenu with "Show Reading
-  insights", "Show Book progress" and "Show Book progress calendar" (both
-  book view only), and, below a separator, a **Settings** submenu and an
-  **Updates** submenu (see [Updates](#updates) above).
+  insights", "Show Records", "Show Book progress" and "Show Book progress
+  calendar" (the latter two book view only), and, below a separator, a
+  **Settings** submenu and an **Updates** submenu (see
+  [Updates](#updates) above).
   - **Settings** holds:
     - **Full-screen refresh on open/close** — toggle
     - **Colors** — pick your own hex color for every bar/line/label the
-      two popups draw (active/inactive bars, the 8-week trend line,
+      three popups draw (active/inactive bars, the 8-week trend line,
       section/column separator lines, the label/value/section/
       chart-label text colors, and the 5 year-heatmap shades - defaulting
       to 0/25/50/75/100% black); each one can be reset back to its
@@ -169,12 +202,14 @@ Once installed, future updates can be installed in-app — see
       slider) that opens pre-set to the color's current value and shows a
       live preview + hex readout while you drag.
     - **Fonts** — pick your own font (name + size) for every text role in
-      both popups, grouped under **Reading insights** (section headers,
-      values, labels, chart/axis labels) and **Book progress** (section
-      headers, values, labels, chapter-bar arrows); choose from a
-      pick-from-list menu of every font file KOReader/you have installed,
-      or type a custom font name/alias manually; each role can be reset
-      to its bundled default individually or all at once.
+      all three popups, grouped under **Reading insights** (section
+      headers, values, labels, chart/axis labels), **Records** (row
+      values, row labels, sub-values — the date/book title under a value)
+      and **Book progress** (section headers, values, labels,
+      chapter-bar arrows); choose from a pick-from-list menu of every
+      font file KOReader/you have installed, or type a custom font
+      name/alias manually; each role can be reset to its bundled default
+      individually or all at once.
     - **Advanced settings** holds:
       - **Sleep-screen indicator** — None (default) or "(sleeping…)" after
         the title, appended while the popup is shown as the sleep screen
@@ -195,10 +230,13 @@ Once installed, future updates can be installed in-app — see
       - **Book calendar cell content** — Percent (default), Pages, or
         Time; controls what the per-book reading calendar's day cells show
         (see [Reading calendar](#-book-progress-stats) above)
-- **Gestures/shortcuts:** all three actions below are registered with
+- **Gestures/shortcuts:** all four actions below are registered with
   `Dispatcher`, so they can be assigned under *Settings → Taps and
   gestures*:
   - `reading_insights_popup` — available everywhere (general action).
+  - `reading_records_popup` — available everywhere (general action), same
+    as the insights popup, since none of the Records data is tied to a
+    specific open book.
   - `reading_stats_popup` — book view only (reader action), matching the
     popup's requirement that a document be open.
   - `reading_calendar_popup` — book view only (reader action); opens the
@@ -208,7 +246,8 @@ Once installed, future updates can be installed in-app — see
 ## File layout
 
 - `main.lua` — plugin entry point: loads the shared translation module and
-  both views, registers the three dispatcher actions, builds the Tools menu.
+  all three views, registers the four dispatcher actions, builds the Tools
+  menu.
 - `_meta.lua` — plugin identity for KOReader's plugin manager: name,
   description, and the version string the updater bumps on install.
 - `about.lua` — the "About" dialog (Tools > Reading insights > About):
@@ -216,15 +255,17 @@ Once installed, future updates can be installed in-app — see
 - `l10n.lua` — shared translation lookup (`l10n/<lang>.po`) and locale-aware
   number formatting, used by both views.
 - `colors.lua` — shared chart/text color settings (the "Colors" submenu)
-  used by both views, so there's a single place to configure every
+  used by all three views, so there's a single place to configure every
   color.
 - `colorwheelwidget.lua` — the touch color wheel dialog (hue/saturation
   wheel + brightness slider + live hex preview) used by the "Pick with
   color wheel" option in the Colors submenu.
-- `fonts.lua` — shared font settings (the "Fonts" submenu) used by both
-  views, so there's a single place to configure every text role's font
-  name and size.
+- `fonts.lua` — shared font settings (the "Fonts" submenu) used by all
+  three views, so there's a single place to configure every text role's
+  font name and size.
 - `insights_view.lua` — the full-screen "Reading insights" popup.
+- `record_view.lua` — the floating "Records" popup (personal reading
+  records and milestone progress).
 - `stats_view.lua` — the compact "Reading statistics: overview" popup.
 - `updater.lua` — the in-app updater (the "Updates" submenu): checks
   GitHub for new releases/branches and installs them on the device.
@@ -232,9 +273,9 @@ Once installed, future updates can be installed in-app — see
 
 ## Translations
 
-`l10n/en.po` and `l10n/hu.po` hold the UI strings for both popups (month
-names, "Total read", streak labels, chapter/pace labels, etc.) as plain
-`msgid`/`msgstr` pairs, e.g.:
+`l10n/en.po` and `l10n/hu.po` hold the UI strings for all three popups
+(month names, "Total read", streak labels, records labels, chapter/pace
+labels, etc.) as plain `msgid`/`msgstr` pairs, e.g.:
 
 ```
 msgid "Current streak"
