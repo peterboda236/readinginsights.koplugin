@@ -829,3 +829,39 @@ msgstr "Leseeinblick"
 
 msgid "A full-screen overlay with a comprehensive overview of your reading history, powered by KOReader's statistics database."
 msgstr "Eine Vollbild-Übersicht über deinen gesamten Lesefortschritt, basierend auf der Statistikdatenbank von KOReader."
+
+msgid "Most reading time in a day"
+msgstr "Meiste Lesezeit an einem Tag"
+
+msgid "Most pages in a day"
+msgstr "Meiste Seiten an einem Tag"
+
+msgid "Best daily streak"
+msgstr "Beste Tagesserie"
+
+msgid "Fastest book finished"
+msgstr "Schnellst gelesenes Buch"
+
+msgid "Last milestone"
+msgstr "Letzter Meilenstein"
+
+msgid "Next milestone"
+msgstr "Nächster Meilenstein"
+
+msgid "Records"
+msgstr "Rekorde"
+
+msgid "%d hour left"
+msgstr "noch %d Stunde"
+
+msgid "%d hours left"
+msgstr "noch %d Stunden"
+
+msgid "Reading insights: records"
+msgstr "Leseeinblick: Rekorde"
+
+msgid "Show Records"
+msgstr "Rekorde anzeigen"
+
+msgid "Sub-values (date / book title)"
+msgstr "Unterwerte (Datum / Buchtitel)"

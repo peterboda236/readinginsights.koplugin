@@ -196,6 +196,11 @@ local Fonts = loadModule("fonts.lua", L10N)
 local Insights = loadModule("insights_view.lua", L10N, Colors, Fonts)
 local StatsPopup = loadModule("stats_view.lua", L10N, Colors, Fonts)
 
+-- Personal reading records / milestone popup (general - works in both
+-- Reader view and File manager, same as Insights, since none of its data
+-- is tied to a specific open book). See record_view.lua.
+local Records = loadModule("record_view.lua", L10N, Colors, Fonts)
+
 -- In-app updater (Updates menu): lets the user check for and install new
 -- releases of this plugin straight from GitHub. See updater.lua.
 local Updater = loadModule("updater.lua", L10N)
@@ -244,6 +249,16 @@ function ReadingInsights:onDispatcherRegisterActions()
         event    = "ShowBookCalendarPopup",
         title    = _("Reading insights: current book calendar"),
         reader   = true,
+    })
+    -- general = true (not reader): records are personal, all-time data
+    -- not tied to any open book, so this action (and therefore any
+    -- gesture/shortcut assigned to it) is available in both Reader view
+    -- and the File manager, same as reading_insights_popup above.
+    Dispatcher:registerAction("reading_records_popup", {
+        category = "none",
+        event    = "ShowReadingRecordsPopup",
+        title    = _("Reading insights: records"),
+        general  = true,
     })
 end
 
@@ -655,6 +670,15 @@ function ReadingInsights:onShowReadingInsightsPopup()
     return true
 end
 
+-- General, like onShowReadingInsightsPopup above: works in both Reader
+-- view and the File manager, since none of the Records data is tied to a
+-- specific open book.
+function ReadingInsights:onShowReadingRecordsPopup()
+    local popup = Records.Popup:new{ ui = self.ui }
+    UIManager:show(popup)
+    return true
+end
+
 function ReadingInsights:onShowReadingStatsPopup()
     -- Book-view only: silently ignore if there's no document open (e.g. if
     -- somehow triggered from the file manager).
@@ -684,6 +708,13 @@ function ReadingInsights:addToMainMenu(menu_items)
             keep_menu_open = false,
             callback = function()
                 self:onShowReadingInsightsPopup()
+            end,
+        },
+        {
+            text = _("Show Records"),
+            keep_menu_open = false,
+            callback = function()
+                self:onShowReadingRecordsPopup()
             end,
         },
     }

@@ -844,3 +844,39 @@ msgstr "Olvasási áttekintés"
 
 msgid "A full-screen overlay with a comprehensive overview of your reading history, powered by KOReader's statistics database."
 msgstr "Egy teljes képernyős áttekintés az olvasási előzményeidről, a KOReader statisztikai adatbázisára építve."
+
+msgid "Most reading time in a day"
+msgstr "Legtöbb napi olvasási idő"
+
+msgid "Most pages in a day"
+msgstr "Legtöbb oldal egy nap alatt"
+
+msgid "Best daily streak"
+msgstr "Leghosszabb napi sorozat"
+
+msgid "Fastest book finished"
+msgstr "Leggyorsabban kiolvasott könyv"
+
+msgid "Last milestone"
+msgstr "Utolsó mérföldkő"
+
+msgid "Next milestone"
+msgstr "Következő mérföldkő"
+
+msgid "Records"
+msgstr "Rekordok"
+
+msgid "%d hour left"
+msgstr "%d óra van hátra"
+
+msgid "%d hours left"
+msgstr "%d óra van hátra"
+
+msgid "Reading insights: records"
+msgstr "Olvasási áttekintés: rekordok"
+
+msgid "Show Records"
+msgstr "Rekordok megjelenítése"
+
+msgid "Sub-values (date / book title)"
+msgstr "Alértékek (dátum / könyvcím)"
