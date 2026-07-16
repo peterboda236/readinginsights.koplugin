@@ -2,7 +2,8 @@
 Records popup (record_view.lua)
 
 Shows personal reading records and milestone progress:
-  - Longest session          longest single-day reading session
+  - Most reading time in a day  most total reading time on a single calendar
+                                 day, across all books
   - Most pages in a day      most pages read on a single calendar day
   - Best daily streak        longest run of consecutive reading days
   - Fastest book finished    fewest calendar days from first to last page
@@ -140,10 +141,10 @@ end
 -- Cache table fields:
 --   hw_max_time  (integer) highest start_time seen when cache was written
 --   hw_row_count (integer) total page_stat row count when cache was written
---   longest      { duration_sec, date }
+--   longest      { duration_sec, date }  -- most reading time in a day (all books)
 --   best_day     { pages, date }
 --   streak       { days, start_date, end_date }
---   fastest      { title, days, date }
+--   fastest      { title, days, date, duration_sec }
 --   total_secs   (integer)
 --   last_ms_date (string|nil)
 
@@ -169,7 +170,7 @@ local function saveCache(c)
         f:write(string.format("  hw_max_time  = %d,\n",  c.hw_max_time  or 0))
         f:write(string.format("  hw_row_count = %d,\n",  c.hw_row_count or 0))
         f:write(string.format("  total_secs   = %d,\n",  c.total_secs   or 0))
-        -- longest session
+        -- most reading time in a day
         f:write(string.format("  longest_sec  = %d,\n",  c.longest.duration_sec or 0))
         local ld = c.longest.date
         if ld then f:write(string.format("  longest_date = %q,\n",  ld))
@@ -197,6 +198,9 @@ local function saveCache(c)
         local fdate = c.fastest.date
         if fdate then f:write(string.format("  fastest_date  = %q,\n", fdate))
         else          f:write("  fastest_date  = false,\n") end
+        local fdur = c.fastest.duration_sec
+        if fdur then f:write(string.format("  fastest_dur   = %d,\n", fdur))
+        else          f:write("  fastest_dur   = false,\n") end
         -- milestone date
         local lmd = c.last_ms_date
         if lmd then f:write(string.format("  last_ms_date = %q,\n", lmd))
@@ -217,7 +221,8 @@ local function cacheToData(c)
                      end_date   = c.streak_end   or nil },
         fastest  = { title = c.fastest_title or nil,
                      days  = c.fastest_days  or nil,
-                     date  = c.fastest_date  or nil },
+                     date  = c.fastest_date  or nil,
+                     duration_sec = c.fastest_dur or nil },
         total_secs  = c.total_secs or 0,
         last_ms_date = c.last_ms_date or nil,
     }
@@ -249,13 +254,13 @@ end
 -- ---------------------------------------------------------------------------
 -- Full queries (run when cache is absent or invalid)
 -- ---------------------------------------------------------------------------
-local function fullQueryLongestSession(conn)
+local function fullQueryMostReadingTimeDay(conn)
     local result = { duration_sec = 0, date = nil }
     withStatement(conn, [[
         SELECT date(start_time, 'unixepoch', 'localtime') AS day,
                SUM(duration) AS day_dur
         FROM page_stat
-        GROUP BY id_book, day
+        GROUP BY day
         ORDER BY day_dur DESC
         LIMIT 1
     ]], function(stmt)
@@ -317,24 +322,26 @@ local function fullQueryBestStreak(conn)
 end
 
 local function fullQueryFastestBook(conn)
-    local result = { title = nil, days = nil, date = nil }
+    local result = { title = nil, days = nil, date = nil, duration_sec = nil }
     withStatement(conn, [[
         SELECT b.title,
                julianday(date(MAX(ps.start_time), 'unixepoch', 'localtime')) -
                julianday(date(MIN(ps.start_time), 'unixepoch', 'localtime')) + 1 AS days_span,
-               date(MAX(ps.start_time), 'unixepoch', 'localtime') AS finish_date
+               date(MAX(ps.start_time), 'unixepoch', 'localtime') AS finish_date,
+               SUM(ps.duration) AS total_dur
         FROM page_stat ps
         JOIN book b ON ps.id_book = b.id
         WHERE b.pages > 0
         GROUP BY ps.id_book
         HAVING MAX(ps.page) >= b.pages
-        ORDER BY days_span ASC
+        ORDER BY days_span ASC, total_dur ASC
         LIMIT 1
     ]], function(stmt)
         for row in stmt:rows() do
-            result.title = row[1]
-            result.days  = math.floor(tonumber(row[2]) or 1)
-            result.date  = row[3]
+            result.title        = row[1]
+            result.days         = math.floor(tonumber(row[2]) or 1)
+            result.date         = row[3]
+            result.duration_sec = tonumber(row[4]) or 0
         end
     end)
     return result
@@ -390,35 +397,34 @@ end
 -- Incremental helpers (only touch rows newer than hw_max_time)
 -- ---------------------------------------------------------------------------
 
--- Returns updated longest session: checks whether any (book, day) pair in
--- new rows beats the cached champion.
-local function incrLongestSession(conn, hw_time, cached)
+-- Returns updated most-reading-time day: checks whether any calendar day
+-- touched by new rows (summed across all books) beats the cached champion.
+local function incrMostReadingTimeDay(conn, hw_time, cached)
     local result = { duration_sec = cached.duration_sec, date = cached.date }
-    -- For each book/day combo that has new rows, recompute that combo's total
-    -- (new rows alone can't give the full picture for a day already partially
-    -- in cache, so we re-aggregate the whole day for any day touched by new rows).
+    -- For each day that has new rows, recompute that day's total across all
+    -- books (new rows alone can't give the full picture for a day already
+    -- partially in cache, so we re-aggregate the whole day).
     local touched_days = {}
     withStatement(conn, string.format([[
-        SELECT DISTINCT id_book, date(start_time, 'unixepoch', 'localtime') AS day
+        SELECT DISTINCT date(start_time, 'unixepoch', 'localtime') AS day
         FROM page_stat
         WHERE start_time > %d
     ]], hw_time), function(stmt)
         for row in stmt:rows() do
-            table.insert(touched_days, { book = row[1], day = row[2] })
+            table.insert(touched_days, row[1])
         end
     end)
-    for _, td in ipairs(touched_days) do
+    for _, day in ipairs(touched_days) do
         withStatement(conn, string.format([[
             SELECT SUM(duration)
             FROM page_stat
-            WHERE id_book = %d
-              AND date(start_time, 'unixepoch', 'localtime') = %q
-        ]], tonumber(td.book), td.day), function(stmt)
+            WHERE date(start_time, 'unixepoch', 'localtime') = %q
+        ]], day), function(stmt)
             for row in stmt:rows() do
                 local dur = tonumber(row[1]) or 0
                 if dur > result.duration_sec then
                     result.duration_sec = dur
-                    result.date         = td.day
+                    result.date         = day
                 end
             end
         end)
@@ -498,7 +504,7 @@ local function loadData()
         longest      = { duration_sec = 0, date = nil },
         best_day     = { pages = 0, date = nil },
         streak       = { days = 0, start_date = nil, end_date = nil },
-        fastest      = { title = nil, days = nil, date = nil },
+        fastest      = { title = nil, days = nil, date = nil, duration_sec = nil },
         total_secs   = 0,
         last_ms_date = nil,
     }, function(conn)
@@ -511,7 +517,7 @@ local function loadData()
 
         -- Helper: run full queries, write cache, return data
         local function fullRecompute()
-            local longest   = fullQueryLongestSession(conn)
+            local longest   = fullQueryMostReadingTimeDay(conn)
             local best_day  = fullQueryMostPagesDay(conn)
             local streak    = fullQueryBestStreak(conn)
             local fastest   = fullQueryFastestBook(conn)
@@ -579,7 +585,7 @@ local function loadData()
         local d = cacheToData(cache)
         local hw = cache.hw_max_time or 0
 
-        d.longest  = incrLongestSession(conn, hw, d.longest)
+        d.longest  = incrMostReadingTimeDay(conn, hw, d.longest)
         d.best_day = incrMostPagesDay(conn, hw, d.best_day)
         d.fastest  = incrFastestBook(conn)
 
@@ -776,12 +782,12 @@ function RecordsPopup:_buildUI()
         table.insert(rows, buildSeparator(content_w))
     end
 
-    -- 1. Longest session
+    -- 1. Most reading time in a day
     local sess_val = (d.longest.duration_sec or 0) > 0
         and L10N.formatDuration(d.longest.duration_sec, true)
         or  "\xE2\x80\x93"
     local sess_sub = d.longest.date and formatDate(d.longest.date) or ""
-    addRow(ICONS.session, _("Longest session"), sess_val, sess_sub)
+    addRow(ICONS.session, _("Most reading time in a day"), sess_val, sess_sub)
 
     -- 2. Most pages in a day
     local pages_val = "\xE2\x80\x93"
@@ -806,7 +812,13 @@ function RecordsPopup:_buildUI()
     local fast_val = "\xE2\x80\x93"
     local fast_sub = ""
     if d.fastest.title and d.fastest.days then
-        fast_val = formatCount(d.fastest.days) .. " " .. N_("day", "days", d.fastest.days)
+        if d.fastest.days <= 1 and (d.fastest.duration_sec or 0) > 0 then
+            -- Finished within a single calendar day: showing "1 day" would
+            -- hide how fast it actually was, so show the reading time instead.
+            fast_val = L10N.formatDuration(d.fastest.duration_sec, true)
+        else
+            fast_val = formatCount(d.fastest.days) .. " " .. N_("day", "days", d.fastest.days)
+        end
         local short_title = d.fastest.title
         if #short_title > 30 then
             short_title = short_title:sub(1, 28) .. "\xE2\x80\xA6"
