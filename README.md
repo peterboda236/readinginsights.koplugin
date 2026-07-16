@@ -53,7 +53,7 @@ Available everywhere (book view and file manager).
 
 ### 🏆 Records
 
-<img width="384" height="512" alt="FileManager_2026-07-16_143759" src="https://github.com/user-attachments/assets/f3fcec2d-d387-4976-aff9-cc3121b30118" />
+<img width="384" height="512" alt="FileManager_2026-07-16_151137" src="https://github.com/user-attachments/assets/203b2f12-8219-43d8-ba30-ad10bc2d1053" />
 
 
 A compact, floating card showing your personal reading records and
