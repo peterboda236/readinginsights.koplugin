@@ -290,3 +290,10 @@ existing ones — no code changes needed.
 - The statistics based on [(https://github.com/quanganhdo/koreader-user-patches)](https://github.com/quanganhdo/koreader-user-patches).
 - Colorwheel comes from [(https://github.com/Euphoriyy/KOReader.patches#-colorwheelwidgetlua)](https://github.com/Euphoriyy/KOReader.patches#-colorwheelwidgetlua).
 - In-plugin updater adapted from [(https://github.com/AndyHazz/bookshelf.koplugin)](https://github.com/AndyHazz/bookshelf.koplugin).
+
+## License
+
+AGPL-3.0 -- see [LICENSE](LICENSE)
+
+## Support
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/peterboda236)

@@ -848,7 +848,10 @@ function RecordsPopup:_buildUI()
     local rows = VerticalGroup:new{ align = "left" }
     local function addRow(icon, label, value, sub)
         table.insert(rows, buildRecordRow(fonts, icon, label, value, sub, cols))
-        table.insert(rows, buildSeparator(content_w))
+        table.insert(rows, HorizontalGroup:new{
+            HorizontalSpan:new{ width = pad },
+            buildSeparator(content_w - 2 * pad),
+        })
     end
     for _, def in ipairs(row_defs) do
         addRow(def.icon, def.label, def.value, def.sub)
