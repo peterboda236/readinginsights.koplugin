@@ -282,7 +282,7 @@ readinginsights.koplugin/
 │   │                           (formerly stats_view.lua)
 │   ├── book_calendar_view.lua  per-book reading calendar (month grid), split
 │   │                           out of the old stats_view.lua
-│   ├── record_view.lua         "Records" popup (personal records / milestones)
+│   ├── records_view.lua        "Records" popup (personal records / milestones)
 │   └── about.lua               "About" dialog (title, version, repo link)
 └── widgets/             reusable UI widgets
     └── colorwheelwidget.lua  touch color wheel (hue/saturation + brightness +

@@ -212,7 +212,7 @@ local StatsPopup = loadModule("views/book_stats_view.lua", Locale, Colors, Fonts
 -- Personal reading records / milestone popup (general - works in both
 -- Reader view and File manager, same as Insights, since none of its data
 -- is tied to a specific open book). See record_view.lua.
-local Records = loadModule("views/record_view.lua", Locale, Colors, Fonts, StatsDb, PopupUtil)
+local Records = loadModule("views/records_view.lua", Locale, Colors, Fonts, StatsDb, PopupUtil)
 
 -- In-app updater (Updates menu): lets the user check for and install new
 -- releases of this plugin straight from GitHub. See updater.lua.

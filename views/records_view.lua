@@ -1,5 +1,5 @@
 --[[
-Records popup (record_view.lua)
+Records popup (records_view.lua)
 
 Shows personal reading records and milestone progress:
   - Most reading time in a day  most total reading time on a single calendar
