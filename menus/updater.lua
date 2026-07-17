@@ -537,4 +537,61 @@ function Updater.installLatestStable(on_success)
     end)
 end
 
+-- One-time migration cleanup.
+--
+-- Earlier releases shipped every module as a flat file in the plugin root
+-- (colors.lua, stats_view.lua, l10n.lua, ...) plus an l10n/ translation
+-- folder. The current layout moved those into lib/ views/ menus/ widgets/
+-- and renamed l10n/ -> locale/. Because the in-app updater unpacks a new
+-- release ON TOP of the existing install and never wipes the directory
+-- first (see unpackStripRoot / Updater.install above), those now-unused old
+-- files would otherwise linger forever as harmless-but-messy orphans.
+--
+-- This removes exactly the known legacy paths, and only if they exist. It is
+-- deliberately narrow (a fixed allow-list, never a recursive purge), fully
+-- pcall-guarded, and idempotent, so it can never delete anything the current
+-- layout uses and can never abort startup or an update if a remove fails.
+-- Uses only stock lfs / os.remove, so it behaves the same on stable and
+-- nightly KOReader. Called once per session from main.lua's init().
+function Updater.cleanupLegacyFiles()
+    return pcall(function()
+        local DataStorage = require("datastorage")
+        local lfs = require("libs/libkoreader-lfs")
+        local root = DataStorage:getDataDir() .. "/plugins/" .. PLUGIN_ID .. "/"
+
+        -- Old flat module files that now live in lib/ views/ menus/ widgets/.
+        -- main.lua, _meta.lua, pluginutil.lua, README.md and LICENSE are
+        -- intentionally NOT listed: the current release keeps them at the
+        -- root (they were overwritten in place by the update).
+        local legacy_files = {
+            "about.lua", "colors.lua", "colorwheelwidget.lua", "fonts.lua",
+            "insights_view.lua", "l10n.lua", "record_view.lua",
+            "stats_view.lua", "updater.lua",
+        }
+        for _, name in ipairs(legacy_files) do
+            local path = root .. name
+            if lfs.attributes(path, "mode") == "file" then
+                pcall(os.remove, path)
+            end
+        end
+
+        -- Old translation folder (renamed to locale/). Remove only the .po
+        -- files this plugin ever shipped there, then rmdir - which succeeds
+        -- only if nothing else remains, so any file the user may have added
+        -- is left untouched and the folder simply stays. Only ever touches
+        -- the literal "l10n" folder; the current release reads "locale/".
+        local old_locale = root .. "l10n"
+        if lfs.attributes(old_locale, "mode") == "directory" then
+            local legacy_po = { "en.po", "hu.po", "de.po" }
+            for _, name in ipairs(legacy_po) do
+                local path = old_locale .. "/" .. name
+                if lfs.attributes(path, "mode") == "file" then
+                    pcall(os.remove, path)
+                end
+            end
+            pcall(lfs.rmdir, old_locale)  -- no-op unless the folder is now empty
+        end
+    end)
+end
+
 return Updater
