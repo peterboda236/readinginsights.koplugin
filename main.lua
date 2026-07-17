@@ -393,6 +393,19 @@ local function patchScreensaverMenuBuilder()
 end
 
 function ReadingInsights:init()
+    -- One-time migration: remove the flat-layout files (colors.lua,
+    -- stats_view.lua, l10n/, ...) left behind on disk when an in-app update
+    -- unpacked this folder-structured release on top of an older flat one -
+    -- see Updater.cleanupLegacyFiles(). Guarded so it runs at most once per
+    -- KOReader session even though this plugin instantiates twice (Reader
+    -- view + File manager); the guard resets on restart, so a transient
+    -- failure is retried next launch. Fully pcall-guarded inside, so it can
+    -- never block the plugin from loading.
+    if not _G._readinginsights_legacy_cleaned then
+        _G._readinginsights_legacy_cleaned = true
+        Updater.cleanupLegacyFiles()
+    end
+
     -- Teach core's Screensaver module about the "readinginsights"
     -- screensaver_type value (see patchCoreScreensaver() above). Safe to
     -- call from both the Reader-view and File-manager instantiations of
