@@ -335,6 +335,13 @@ end
 -- number (mirrored from the black finish flag on the right) so start and
 -- finish day both get an on-calendar marker without colliding if they
 -- ever land on the same day.
+--
+-- Finished-day checkmark: any day whose cumulative_ratios entry is ≥0.99
+-- (i.e. the last page reached that day already covers ≥99% of the book)
+-- gets a small ✓ in the exact same spot the black finish_day flag would
+-- otherwise take (right of the day number). When both would apply to the
+-- same cell, the checkmark wins and the finish_day flag is suppressed for
+-- that cell - see is_book_finished_day below.
 local function buildBookCalendarGrid(daily_map, year, month, day_font, small_font, content_width, total_pages, cumulative_ratios, finish_day, start_day)
     local week_start_wd = Settings.weekStartWday() -- 0=Sun, 1=Mon
     local gap    = Screen:scaleBySize(2)
@@ -419,6 +426,20 @@ local function buildBookCalendarGrid(daily_map, year, month, day_font, small_fon
                     bar_row = VerticalSpan:new{ height = bar_h }
                 end
 
+                -- The book counts as *finished as of this day* when the
+                -- last page reached that day already covers ≥99% of the
+                -- book (reuses "ratio" above, just against a threshold
+                -- instead of for bar width). Marked with a checkmark in
+                -- the cell's literal top-right corner - a different spot
+                -- than the finish_day black-flag glyph below (which sits
+                -- just right of the day number, not the corner), so the
+                -- two can never visually collide. They also shouldn't
+                -- ever both apply to the same day in practice: finish_day
+                -- is only ever a *projected* date drawn while the book is
+                -- still unfinished, whereas the checkmark is driven purely
+                -- by *actual* recorded progress.
+                local is_book_finished_day = (ratio ~= nil and ratio >= 0.99)
+
                 local cell_inner = VerticalGroup:new{
                     align = "center",
                     day_num_w,
@@ -433,7 +454,7 @@ local function buildBookCalendarGrid(daily_map, year, month, day_font, small_fon
                         dimen = Geom:new{ w = cell_w, h = cell_h }, cell_inner,
                     },
                 }
-                if is_finish_day then
+                if is_finish_day and not is_book_finished_day then
                     -- Flag glyph placed immediately to the right of the
                     -- centered day number. The day number is centered in
                     -- cell_w, so its left edge sits at (cell_w - num_w) / 2
@@ -441,6 +462,15 @@ local function buildBookCalendarGrid(daily_map, year, month, day_font, small_fon
                     -- the flag that far right plus a small gap, then overlay
                     -- it at the top of the cell (same vertical start as
                     -- cell_inner inside the CenterContainer).
+                    --
+                    -- Suppressed whenever is_book_finished_day is also true
+                    -- for this cell - see that block below, which takes
+                    -- this exact same spot instead. In practice the two
+                    -- shouldn't ever both apply to the same day (finish_day
+                    -- is only ever a *projected* date shown while the book
+                    -- is still unfinished, the checkmark only from *actual*
+                    -- recorded progress), but actual data wins if they ever
+                    -- do coincide.
                     local flag_pad = Screen:scaleBySize(2)
                     local flag_glyph = TextWidget:new{
                         text = "\xe2\x9a\x91", -- ⚑ BLACK FLAG
@@ -494,6 +524,29 @@ local function buildBookCalendarGrid(daily_map, year, month, day_font, small_fon
                         VerticalGroup:new{
                             VerticalSpan:new{ height = flag_y },
                             flag_glyph,
+                        },
+                    })
+                end
+                if is_book_finished_day then
+                    -- Same spot the black finish flag would otherwise take
+                    -- (right of the centered day number) - see is_finish_day
+                    -- above, which is suppressed for this cell when this
+                    -- branch fires.
+                    local check_pad = Screen:scaleBySize(2)
+                    local check_glyph = TextWidget:new{
+                        text = "\xe2\x9c\x93", -- ✓ CHECK MARK
+                        face = small_font,
+                        fgcolor = Colors.value(),
+                    }
+                    local check_size  = check_glyph:getSize()
+                    local day_num_size = day_num_w:getSize()
+                    local check_x = math.floor(cell_w / 2) + math.floor(day_num_size.w / 2) + check_pad
+                    local check_y = Screen:scaleBySize(3)
+                    table.insert(cell_content, HorizontalGroup:new{
+                        HorizontalSpan:new{ width = check_x },
+                        VerticalGroup:new{
+                            VerticalSpan:new{ height = check_y },
+                            check_glyph,
                         },
                     })
                 end
