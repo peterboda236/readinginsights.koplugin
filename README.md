@@ -263,15 +263,19 @@ readinginsights.koplugin/
 │                        anchor; replaces the old per-file pluginDir copies)
 ├── locale/              one .po file per language (en.po, hu.po, de.po)
 ├── lib/                 shared, UI-less infrastructure
+│   ├── bookprogress.lua per-book reading-position helpers (progress percent /
+│   │                    pages left / page counts)
+│   ├── colors.lua       chart/text color settings (the "Colors" submenu)
+│   ├── fonts.lua        font settings (the "Fonts" submenu)
 │   ├── locale.lua       translation lookup (locale/<lang>.po) + locale-aware
 │   │                    number formatting
+│   ├── popuputil.lua    shared "any tap/swipe/key dismisses" popup handlers
 │   ├── settings.lua     nil-guarded G_reader_settings wrappers + the shared
 │   │                    week-start-day setting
 │   ├── statsdb.lua      access to KOReader's statistics.sqlite3 (one db path
 │   │                    + PRAGMAs; open / withDb / withStatement)
-│   ├── bookprogress.lua per-book reading-position helpers (progress percent /
-│   │                    pages left / page counts)
-│   └── popuputil.lua    shared "any tap/swipe/key dismisses" popup handlers
+│   └── updater.lua      in-app updater (the "Updates" submenu): checks GitHub
+│                        for new releases/branches and installs them
 ├── views/               the user-facing popups
 │   ├── insights_view.lua       full-screen "Reading insights" popup
 │   ├── book_stats_view.lua     compact "current book progress" overlay
@@ -280,11 +284,6 @@ readinginsights.koplugin/
 │   │                           out of the old stats_view.lua
 │   ├── record_view.lua         "Records" popup (personal records / milestones)
 │   └── about.lua               "About" dialog (title, version, repo link)
-├── menus/               Tools-menu configuration submodules
-│   ├── colors.lua       chart/text color settings (the "Colors" submenu)
-│   ├── fonts.lua        font settings (the "Fonts" submenu)
-│   └── updater.lua      in-app updater (the "Updates" submenu): checks GitHub
-│                        for new releases/branches and installs them
 └── widgets/             reusable UI widgets
     └── colorwheelwidget.lua  touch color wheel (hue/saturation + brightness +
                               live hex preview) used by the Colors submenu

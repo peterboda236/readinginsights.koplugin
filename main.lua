@@ -189,12 +189,12 @@ local _ = Locale._
 
 -- Shared chart/text color settings (Colors menu), used by both views so
 -- there's a single, unified place to configure them. See colors.lua.
-local Colors = loadModule("menus/colors.lua", Locale, PluginUtil, Settings)
+local Colors = loadModule("lib/colors.lua", Locale, PluginUtil, Settings)
 
 -- Shared popup font settings (Fonts menu), same idea as Colors above but
 -- for the section/value/label/small text roles in both popups. See
 -- fonts.lua.
-local Fonts = loadModule("menus/fonts.lua", Locale, PluginUtil, Settings)
+local Fonts = loadModule("lib/fonts.lua", Locale, PluginUtil, Settings)
 
 local Insights = loadModule("views/insights_view.lua", Locale, Colors, Fonts, Settings, StatsDb, PopupUtil)
 
@@ -216,7 +216,7 @@ local Records = loadModule("views/record_view.lua", Locale, Colors, Fonts, Stats
 
 -- In-app updater (Updates menu): lets the user check for and install new
 -- releases of this plugin straight from GitHub. See updater.lua.
-local Updater = loadModule("menus/updater.lua", Locale)
+local Updater = loadModule("lib/updater.lua", Locale)
 
 -- About dialog (About menu entry, right after Updates): a small popup
 -- with the plugin title, installed version (via Updater, above), a short

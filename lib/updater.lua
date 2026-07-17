@@ -541,7 +541,7 @@ end
 --
 -- Earlier releases shipped every module as a flat file in the plugin root
 -- (colors.lua, stats_view.lua, l10n.lua, ...) plus an l10n/ translation
--- folder. The current layout moved those into lib/ views/ menus/ widgets/
+-- folder. The current layout moved those into lib/ views/ widgets/
 -- and renamed l10n/ -> locale/. Because the in-app updater unpacks a new
 -- release ON TOP of the existing install and never wipes the directory
 -- first (see unpackStripRoot / Updater.install above), those now-unused old
@@ -559,7 +559,7 @@ function Updater.cleanupLegacyFiles()
         local lfs = require("libs/libkoreader-lfs")
         local root = DataStorage:getDataDir() .. "/plugins/" .. PLUGIN_ID .. "/"
 
-        -- Old flat module files that now live in lib/ views/ menus/ widgets/.
+        -- Old flat module files that now live in lib/ views/ widgets/.
         -- main.lua, _meta.lua, pluginutil.lua, README.md and LICENSE are
         -- intentionally NOT listed: the current release keeps them at the
         -- root (they were overwritten in place by the update).
