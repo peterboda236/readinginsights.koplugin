@@ -1,18 +1,20 @@
 --[[
-Reading Stats Popup (view module)
+Book Stats Popup (view module) - formerly stats_view.lua.
 Based on: https://github.com/quanganhdo/koreader-user-patches/blob/main/2-reading-stats-popup.lua
 
 Compact overlay displayed while reading that shows live statistics for the
 current book, queried from KOReader's statistics plugin and SQLite database.
-This is the plugin's second view; see main.lua for how it is wired up
-(Tools menu entry, gesture/dispatcher action, and the book-view-only
-restriction) and insights_view.lua for the other view (full-screen reading
-history popup).
+This is the plugin's "current book progress" view; see main.lua for how it
+is wired up (Tools menu entry, gesture/dispatcher action, and the book-view-
+only restriction) and insights_view.lua for the all-time reading-history
+view. The per-book reading calendar that used to live here now has its own
+file, book_calendar_view.lua; this popup opens it (tap the "Pace" title) via
+the injected BookCalendar module.
 
-Loaded by main.lua via loadfile(...)( L10N ) -- L10N is the shared
-translation/number-formatting module (l10n.lua), passed in as the sole
-chunk argument, so both views translate from the same l10n/<lang>.po files
-instead of each keeping a separate hard-coded translation table.
+Loaded by main.lua via loadfile(...)(Locale, Colors, Fonts, Settings, StatsDb,
+BookProgress, BookCalendar) - the shared modules for translations/number
+formatting (locale.lua), colors, fonts, G_reader_settings access, the
+statistics DB, per-book reading position, and the calendar view.
 
 Sections shown:
   - This chapter / Next chapter   estimated time left and time to read next
@@ -22,6 +24,7 @@ Sections shown:
   - This book                     progress percentage, pages read, time spent, time left
   - Chapter bar                   visual bar chart of all chapters (tappable, swipeable)
   - Pace                          today's reading time and pages-per-minute rate
+                                   (tap the title to open the reading calendar)
 
 Controls:
   - Tap anywhere              dismiss
@@ -31,7 +34,6 @@ Controls:
 
 local Blitbuffer = require("ffi/blitbuffer")
 local CenterContainer = require("ui/widget/container/centercontainer")
-local DataStorage = require("datastorage")
 local Device = require("device")
 local FrameContainer = require("ui/widget/container/framecontainer")
 local Geom = require("ui/geometry")
@@ -41,9 +43,7 @@ local HorizontalSpan = require("ui/widget/horizontalspan")
 local InputContainer = require("ui/widget/container/inputcontainer")
 local LeftContainer = require("ui/widget/container/leftcontainer")
 local LineWidget = require("ui/widget/linewidget")
-local Math = require("optmath")
 local OverlapGroup = require("ui/widget/overlapgroup")
-local SQ3 = require("lua-ljsqlite3/init")
 local Size = require("ui/size")
 local TextBoxWidget = require("ui/widget/textboxwidget")
 local TextWidget = require("ui/widget/textwidget")
@@ -56,12 +56,12 @@ local Screen = Device.screen
 -- Shared translations/number-formatting, and shared chart/text color
 -- settings, both passed in as this chunk's arguments by main.lua (see the
 -- header comment above).
-local L10N, Colors, Fonts = ...
-local _            = L10N._
-local N_           = L10N.N_
-local getLangBase  = L10N.getLangBase
-local formatNumber = L10N.formatNumber
-local formatCount  = L10N.formatCount
+local Locale, Colors, Fonts, Settings, StatsDb, BookProgress, BookCalendar = ...
+local _            = Locale._
+local N_           = Locale.N_
+local getLangBase  = Locale.getLangBase
+local formatNumber = Locale.formatNumber
+local formatCount  = Locale.formatCount
 
 -- Chapter-bar height setting (Settings ▸ "Oszlopdiagram magassága" /
 -- "Bar chart height" ▸ "Book progress: Fejezetek"). Same "points" value
@@ -84,35 +84,6 @@ local function saveChapterBarHeightSetting(value)
         G_reader_settings:saveSetting(SETTINGS_KEY_CHAPTER_BAR_HEIGHT, value)
     end
 end
-
--- Book-calendar cell content setting (Settings ▸ Advanced settings ▸
--- "Book calendar cell content" / "Könyv naptár cella tartalma"). Controls
--- what the small text line under each day number in the per-book reading
--- calendar shows - see buildBookCalendarCellText below for the exact
--- formatting:
---   "percent" (default) - cumulative progress, e.g. "+13%"
---   "pages"             - that day's own page count, e.g. "+101o"
---   "time"              - that day's own time spent, honoring KOReader's
---                          global "Duration format" setting
-local SETTINGS_KEY_CALENDAR_CELL_MODE = "reading_insights_calendar_cell_mode"
-local DEFAULT_CALENDAR_CELL_MODE      = "percent"
-
-local function readCalendarCellModeSetting()
-    if G_reader_settings and G_reader_settings.readSetting then
-        local v = G_reader_settings:readSetting(SETTINGS_KEY_CALENDAR_CELL_MODE)
-        if v == nil then return DEFAULT_CALENDAR_CELL_MODE end
-        return v
-    end
-    return DEFAULT_CALENDAR_CELL_MODE
-end
-
-local function saveCalendarCellModeSetting(mode)
-    if G_reader_settings and G_reader_settings.saveSetting then
-        G_reader_settings:saveSetting(SETTINGS_KEY_CALENDAR_CELL_MODE, mode)
-    end
-end
-
-local stats_db_path = DataStorage:getSettingsDir() .. "/statistics.sqlite3"
 
 local function emptyValue()
     return { value = "", unit = "" }
@@ -140,38 +111,6 @@ local WEEKDAY_NAMES = {
 local WEEKDAY_NAMES_HU_LC = {
     "vasárnap", "hétfő", "kedd", "szerda", "csütörtök", "péntek", "szombat",
 }
-
--- Short weekday/month labels for the per-book reading calendar (see
--- BookCalendarPopup below). "Sun".."Sat" and "Jan".."Dec" are already
--- translated in l10n/<lang>.po (reused from elsewhere in the plugin), so
--- no new translation strings are needed for these.
-local WEEKDAY_SHORT = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" }
-
--- Full month names for the per-book reading calendar's header (see
--- BookCalendarPopup below). These are translated via l10n/<lang>.po like
--- everything else - note the trailing space on "May " below, which mirrors
--- the .po files and disambiguates the month name from the modal verb "May".
-local MONTH_FULL = {
-    "January", "February", "March", "April", "May ", "June",
-    "July", "August", "September", "October", "November", "December",
-}
-local MONTH_FULL_HU_LC = {
-    "január", "február", "március", "április", "május", "június",
-    "július", "augusztus", "szeptember", "október", "november", "december",
-}
-
--- Same settings key insights_view.lua's heatmap grid uses for its own
--- week-start-day setting, so both calendars in the plugin agree on
--- Monday- vs Sunday-first weeks without needing a second setting.
-local SETTINGS_KEY_WEEK_START = "reading_insights_heatmap_week_start"
-
-local function bookCalendarWeekStartWday()
-    local start = "monday"
-    if G_reader_settings and G_reader_settings.readSetting then
-        start = G_reader_settings:readSetting(SETTINGS_KEY_WEEK_START) or "monday"
-    end
-    return start == "sunday" and 0 or 1 -- 0=Sun, 1=Mon (matches os.date("*t").wday - 1)
-end
 
 local function formatEventDateTime(timestamp)
     if not timestamp then return "" end
@@ -217,17 +156,17 @@ end
 
 -- Format seconds as a clock-style duration honouring KOReader's global
 -- "duration_format" setting (classic "1:30", modern "1h30'", ...) - see
--- L10N.formatDuration() in l10n.lua for details.
+-- Locale.formatDuration() in locale.lua for details.
 -- Returns { value = "<formatted>", unit = "" } so it fits the buildValueLine API.
 -- When the "24h+ as days" setting is on and the duration crosses a day,
--- L10N.formatDurationParts() splits the trailing "day"/"nap" word into
+-- Locale.formatDurationParts() splits the trailing "day"/"nap" word into
 -- `unit`, so buildValueLine renders it in the plain label style instead of
 -- bolding it along with the number.
 local function formatTimeHHMM(seconds)
     if not seconds or seconds ~= seconds then
         return emptyValue()
     end
-    return L10N.formatDurationParts(seconds, true)
+    return Locale.formatDurationParts(seconds, true)
 end
 
 local function dayCountLabel(kind, unit, count)
@@ -261,7 +200,7 @@ end
 local function getBookAndTodayStats(book_id)
     if not book_id then return nil, nil, nil, nil, nil, nil, nil end
 
-    local conn = SQ3.open(stats_db_path)
+    local conn = StatsDb.open()
     if not conn then return nil, nil, nil, nil, nil, nil, nil end
 
     local days_sql = string.format([[
@@ -322,123 +261,6 @@ local function getBookAndTodayStats(book_id)
 
     conn:close()
     return total_days, today_pages, today_time, today_pages_all, today_time_all, days_since_start, started_timestamp
-end
-
--- Per-day reading data for one book, for one calendar month (year/month
--- as numbers, e.g. 2026, 7). Returns:
---   daily_map    { [day_of_month] = { pages = N, duration = seconds } }
---   max_duration the largest single day's duration in the month (for
---                scaling the heatmap cell colors - 0 if no reading at all)
--- "pages" is the count of distinct pages of *this* book turned that day
--- (same definition as the "This book" / "Pace" sections above), so it
--- matches what the rest of the popup already calls a book's page count.
-local function getBookDailyStatsForMonth(book_id, year, month)
-    local daily_map = {}
-    if not book_id then return daily_map, 0 end
-
-    local conn = SQ3.open(stats_db_path)
-    if not conn then return daily_map, 0 end
-
-    local year_month = string.format("%04d-%02d", year, month)
-    local sql = string.format([[
-        SELECT day, count(*), sum(duration)
-        FROM (
-            SELECT strftime('%%d', start_time, 'unixepoch', 'localtime') AS day,
-                   page,
-                   sum(duration) AS duration
-            FROM   page_stat
-            WHERE  id_book = %d
-            AND    strftime('%%Y-%%m', start_time, 'unixepoch', 'localtime') = '%s'
-            GROUP  BY day, page
-        )
-        GROUP BY day
-        ORDER BY day;
-    ]], book_id, year_month)
-
-    local max_duration = 0
-    local ok, stmt = pcall(function() return conn:prepare(sql) end)
-    if ok and stmt then
-        for row in stmt:rows() do
-            local day      = tonumber(row[1])
-            local pages    = tonumber(row[2]) or 0
-            local duration = tonumber(row[3]) or 0
-            if day then
-                daily_map[day] = { pages = pages, duration = duration }
-                if duration > max_duration then max_duration = duration end
-            end
-        end
-        stmt:close()
-    end
-
-    conn:close()
-    return daily_map, max_duration
-end
-
--- Year/month of this book's most recent page_stat entry - used so the
--- reading calendar (see BookCalendarPopup) opens on the month the person
--- actually last read in, instead of always today's month. Falls back to
--- nil, nil (caller uses today) if the book has no recorded reading yet.
-local function getBookLastReadYearMonth(book_id)
-    if not book_id then return nil, nil end
-    local conn = SQ3.open(stats_db_path)
-    if not conn then return nil, nil end
-
-    local sql = string.format([[
-        SELECT strftime('%%Y', start_time, 'unixepoch', 'localtime'),
-               strftime('%%m', start_time, 'unixepoch', 'localtime')
-        FROM   page_stat
-        WHERE  id_book = %d
-        ORDER  BY start_time DESC
-        LIMIT  1
-    ]], book_id)
-    local y, m = conn:rowexec(sql)
-    conn:close()
-    if not y or not m then return nil, nil end
-    return tonumber(y), tonumber(m)
-end
-
--- This book's very first page_stat start_time (i.e. when reading it was
--- started), or nil if there's no reading data yet. Lightweight counterpart
--- to the started_timestamp computed inside getBookAndTodayStats above -
--- used by openBookCalendarForUI, which opens the calendar directly without
--- going through the full "This book" stats gathering first.
-local function getBookStartedTimestamp(book_id)
-    if not book_id then return nil end
-    local conn = SQ3.open(stats_db_path)
-    if not conn then return nil end
-
-    local sql = string.format([[
-        SELECT start_time
-        FROM   page_stat
-        WHERE  id_book = %d
-        ORDER  BY start_time ASC
-        LIMIT  1
-    ]], book_id)
-    local started_timestamp = conn:rowexec(sql)
-    conn:close()
-    return started_timestamp and tonumber(started_timestamp) or nil
-end
-
--- Whether this book has any page_stat entry in the given year/month - used
--- to stop the reading calendar from paging back into months with nothing
--- to show (see BookCalendarPopup:_goToMonth and the header's left arrow).
-local function bookCalendarMonthHasData(book_id, year, month)
-    if not book_id then return false end
-    local conn = SQ3.open(stats_db_path)
-    if not conn then return false end
-
-    local year_month = string.format("%04d-%02d", year, month)
-    local sql = string.format([[
-        SELECT EXISTS(
-            SELECT 1 FROM page_stat
-            WHERE  id_book = %d
-            AND    strftime('%%Y-%%m', start_time, 'unixepoch', 'localtime') = '%s'
-            LIMIT  1
-        );
-    ]], book_id, year_month)
-    local exists = conn:rowexec(sql)
-    conn:close()
-    return tonumber(exists) == 1
 end
 
 -- TOC cache: single entry keyed by book_id, validated against total page count.
@@ -587,58 +409,6 @@ local function getChapterPagesLeft(ui, pageno)
         pages_left = ui.document:getTotalPagesLeft(pageno)
     end
     return pages_left
-end
-
-local function getBookProgressData(ui)
-    if not ui or not ui.document then return end
-    local current_page = ui:getCurrentPage()
-    local total_pages  = ui.document:getPageCount()
-    if not current_page or not total_pages or total_pages == 0 then return end
-
-    local pagemap = ui.pagemap and ui.pagemap:wantsPageLabels()
-    local current_page_idx
-    local total_pages_idx
-    if pagemap then
-        local _, page_idx, pages_idx = ui.pagemap:getCurrentPageLabel()
-        current_page_idx = page_idx
-        total_pages_idx  = pages_idx
-    elseif ui.document:hasHiddenFlows() then
-        local flow = ui.document:getPageFlow(current_page)
-        current_page = ui.document:getPageNumberInFlow(current_page)
-        total_pages  = ui.document:getTotalPagesInFlow(flow)
-    end
-
-    return {
-        current_page     = current_page,
-        total_pages      = total_pages,
-        current_page_idx = current_page_idx,
-        total_pages_idx  = total_pages_idx,
-        pagemap          = pagemap,
-    }
-end
-
-local function getBookPagesLeft(ui)
-    local progress = getBookProgressData(ui)
-    if not progress then return end
-    return progress.total_pages - progress.current_page
-end
-
-local function getBookProgressPercent(ui)
-    local progress = getBookProgressData(ui)
-    if not progress then return end
-    if progress.pagemap and progress.current_page_idx and progress.total_pages_idx and progress.total_pages_idx > 0 then
-        return Math.round(100 * progress.current_page_idx / progress.total_pages_idx)
-    end
-    return Math.round(100 * progress.current_page / progress.total_pages)
-end
-
-local function getBookProgressCounts(ui)
-    local progress = getBookProgressData(ui)
-    if not progress then return end
-    if progress.pagemap and progress.current_page_idx and progress.total_pages_idx and progress.total_pages_idx > 0 then
-        return progress.current_page_idx, progress.total_pages_idx
-    end
-    return progress.current_page, progress.total_pages
 end
 
 -- Font faces for this popup's three text roles, sourced from the shared
@@ -1192,671 +962,6 @@ local function hitTestPadded(widget, x, y, pad)
     return x >= d.x - pad and x <= d.x + d.w + pad and y >= d.y - pad and y <= d.y + d.h + pad
 end
 
--- ---------------------------------------------------------------------
--- Reading calendar (per book): tap the "Pace" section title to
--- open a month grid, colored like a heatmap by how long *this* book was
--- read each day; tap a day to see its exact pages/time/percent. Distinct
--- from insights_view.lua's CalendarView integration (openCalendarForMonth
--- there opens KOReader's own, all-books Statistics calendar) - this one
--- is scoped to a single book and built locally, since the stock
--- CalendarView widget has no per-book filter.
--- ---------------------------------------------------------------------
-
--- ---------------------------------------------------------------------
-
--- "How far into the book had I gotten, as of the last page I reached on
--- this day" ratio (0..1) - the page from that day's chronologically LAST
--- page_stat entry (i.e. wherever reading actually stopped that day),
--- divided by total_pages. Deliberately NOT the day's highest page
--- reached: some books have an explanatory note/glossary at the very end
--- that readers jump to mid-chapter and then jump back from, which would
--- otherwise make MAX(page) spike to ~100% on a day where the actual
--- reading position was still early in the book. It's also NOT a
--- running/ratchet carried over from other days or earlier months: an
--- earlier attempt at this used a monotonic "highest page ever reached"
--- that never decreased, which meant any day (or whole later month) after
--- the book's highest-ever point stayed pinned there regardless of where
--- that day's reading actually left off (e.g. rereading an earlier
--- chapter, or continuing a book that was skimmed to the end once
--- before) - not what the bar is meant to show.
--- Only returns an entry for days that actually have reading recorded
--- (days with nothing read are left blank).
-local function getBookCumulativeProgressForMonth(book_id, year, month, total_pages)
-    local ratios = {}
-    if not book_id or not total_pages or total_pages <= 0 then return ratios end
-
-    local conn = SQ3.open(stats_db_path)
-    if not conn then return ratios end
-
-    local year_month = string.format("%04d-%02d", year, month)
-
-    -- Ordered by start_time ASC so that, as we walk the rows in the loop
-    -- below, each day's entry in day_last_page keeps getting overwritten
-    -- by later and later entries - the value left after the loop is each
-    -- day's chronologically last page, with no separate MAX/window-
-    -- function query needed.
-    local day_rows_sql = string.format([[
-        SELECT strftime('%%d', start_time, 'unixepoch', 'localtime') AS day, page
-        FROM   page_stat
-        WHERE  id_book = %d
-        AND    strftime('%%Y-%%m', start_time, 'unixepoch', 'localtime') = '%s'
-        ORDER  BY start_time ASC
-    ]], book_id, year_month)
-
-    local day_last_page = {}
-    local ok, stmt = pcall(function() return conn:prepare(day_rows_sql) end)
-    if ok and stmt then
-        for row in stmt:rows() do
-            local day  = tonumber(row[1])
-            local page = tonumber(row[2])
-            if day and page then day_last_page[day] = page end
-        end
-        stmt:close()
-    end
-    conn:close()
-
-    for day, page in pairs(day_last_page) do
-        local ratio = page / total_pages
-        if ratio > 1 then ratio = 1 end
-        if ratio < 0 then ratio = 0 end
-        ratios[day] = ratio
-    end
-
-    return ratios
-end
-
--- First letter of the already-translated "page(s)" word, used as a
--- compact unit abbreviation in the calendar cell (see
--- buildBookCalendarCellText below) - stays in the user's language for free
--- since it rides on the existing N_("page","pages",...) translation
--- rather than a separate hardcoded letter.
-local function pageAbbrev(count)
-    return N_("page", "pages", count):sub(1, 1)
-end
-
--- Small text line shown under the day number in the per-book calendar
--- (see buildBookCalendarGrid below). Honors the "Book calendar cell
--- content" setting (readCalendarCellModeSetting):
---   "percent" (default) - cumulative "+13%" progress through the whole book
---   "pages"             - that day's own page count, e.g. "+101o"
---   "time"              - that day's own time spent, e.g. "+0:23" or
---                          "+23m", whichever clock style KOReader's global
---                          "Duration format" setting (Settings ▸ Time and
---                          date) is set to - see formatTimeHHMM above.
--- Returns "" for days with no reading, in any mode.
-local function buildBookCalendarCellText(entry, total_pages)
-    if not entry or not entry.pages or entry.pages <= 0 then return "" end
-
-    local mode = readCalendarCellModeSetting()
-
-    if mode == "pages" then
-        return "+" .. formatCount(entry.pages) .. pageAbbrev(entry.pages)
-    end
-
-    if mode == "time" then
-        local time_td = formatTimeHHMM(entry.duration or 0)
-        local unit = time_td.unit ~= "" and (" " .. time_td.unit) or ""
-        return time_td.value .. unit
-    end
-
-    if not total_pages or total_pages <= 0 then return "" end
-    local pct = Math.round(100 * entry.pages / total_pages)
-    return "+" .. formatCount(pct) .. "%"
-end
-
--- Builds the weekday header row + week rows of day cells for one month.
--- Returns the combined widget and a list of { frame = <tappable widget>,
--- day = N, data = daily_map[N] or nil } used by BookCalendarPopup:onTap
--- to hit-test which day (if any) was tapped.
---
--- Each day cell is white (so the day number/percent text is always
--- readable, regardless of how much was read), with a thin progress bar
--- along the bottom showing cumulative_ratios[day] - how far into the
--- book that day's reading got, out of the whole book.
---
--- Today's cell gets its day number rendered in bold (Fonts.getBoldFace)
--- plus a black border, so "where am I now" is unambiguous at a glance.
---
--- finish_day (optional): day-of-month of this book's estimated finish
--- date, IF it falls within the month currently being rendered (callers
--- pre-filter this - see BookCalendarPopup:_rebuild). That cell gets a
--- small flag glyph in its top-right corner (the day number itself is
--- untouched and stays in its normal spot) so the projected finish day
--- stands out on the calendar itself, not just in the "Expected finish"
--- tap popup.
---
--- start_day (optional): day-of-month this book's reading was actually
--- started, IF it falls within the month currently being rendered (same
--- pre-filtering as finish_day - see BookCalendarPopup:_rebuild). That cell
--- gets a matching white/hollow flag glyph, placed to the left of the day
--- number (mirrored from the black finish flag on the right) so start and
--- finish day both get an on-calendar marker without colliding if they
--- ever land on the same day.
-local function buildBookCalendarGrid(daily_map, year, month, day_font, small_font, content_width, total_pages, cumulative_ratios, finish_day, start_day)
-    local week_start_wd = bookCalendarWeekStartWday() -- 0=Sun, 1=Mon
-    local gap    = Screen:scaleBySize(2)
-    local cols   = 7
-    local cell_w = math.floor((content_width - (cols - 1) * gap) / cols)
-    local cell_h = math.floor(cell_w * 1.15) -- room for day number + percent line + bottom progress bar
-
-    local bar_h   = Screen:scaleBySize(4)
-    local bar_pad = Screen:scaleBySize(3)
-    local bar_w   = cell_w - 2 * bar_pad
-    local cell_radius = Screen:scaleBySize(6)
-    local day_font_bold = Fonts.getBoldFace("stats_label")
-
-    local grid = VerticalGroup:new{ align = "center" }
-    local day_cells = {}
-
-    -- Weekday header row.
-    local header_row = HorizontalGroup:new{}
-    for i = 0, 6 do
-        local wd = ((week_start_wd + i) % 7) + 1 -- 1=Sun..7=Sat
-        local label_w = TextWidget:new{ text = _(WEEKDAY_SHORT[wd]), face = small_font, fgcolor = Colors.label() }
-        table.insert(header_row, CenterContainer:new{
-            dimen = Geom:new{ w = cell_w, h = label_w:getSize().h }, label_w,
-        })
-        if i < 6 then table.insert(header_row, HorizontalSpan:new{ width = gap }) end
-    end
-    table.insert(grid, header_row)
-    table.insert(grid, VerticalSpan:new{ height = gap * 2 })
-
-    local first_ts = os.time{ year = year, month = month, day = 1, hour = 12 }
-    local first_wd = tonumber(os.date("%w", first_ts)) -- 0=Sun..6=Sat
-    local lead_blanks = (first_wd - week_start_wd + 7) % 7
-    local days_in_month = tonumber(os.date("%d", os.time{ year = year, month = month + 1, day = 0, hour = 12 }))
-
-    local today_str = os.date("%Y-%m-%d")
-
-    local day = 1 - lead_blanks
-    while day <= days_in_month do
-        local row = HorizontalGroup:new{}
-        for col = 1, 7 do
-            local cell_day = day + col - 1
-            if cell_day < 1 or cell_day > days_in_month then
-                table.insert(row, LineWidget:new{
-                    dimen = Geom:new{ w = cell_w, h = cell_h }, background = Blitbuffer.COLOR_WHITE,
-                })
-            else
-                local entry     = daily_map[cell_day]
-                local day_str   = string.format("%04d-%02d-%02d", year, month, cell_day)
-                local is_today  = (day_str == today_str)
-                local is_finish_day = (finish_day ~= nil and cell_day == finish_day)
-                local is_start_day  = (start_day  ~= nil and cell_day == start_day)
-
-                local day_num_w = TextWidget:new{
-                    text = tostring(cell_day),
-                    face = is_today and day_font_bold or day_font,
-                    fgcolor = Colors.value(),
-                }
-                local pct_text = buildBookCalendarCellText(entry, total_pages)
-                -- Always include the percent line (even blank) so the day
-                -- number sits at the same vertical spot in every cell,
-                -- whether or not that day has a "+%" underneath it.
-                local pct_w = TextWidget:new{ text = pct_text, face = small_font, fgcolor = Colors.value() }
-
-                -- Bottom progress bar: how far into the book this day's
-                -- reading got (cumulative), out of the whole book. Days
-                -- with no reading recorded (ratio is nil - see
-                -- getBookCumulativeProgressForMonth, which only fills in
-                -- days that actually have data) get a blank spacer of the
-                -- same height instead of a bar, so no bar of any color
-                -- shows under days with nothing read.
-                local ratio = cumulative_ratios and cumulative_ratios[cell_day]
-                local bar_row
-                if ratio and ratio > 0 then
-                    local fill_w  = math.max(1, math.floor(bar_w * ratio))
-                    local empty_w = bar_w - fill_w
-                    bar_row = HorizontalGroup:new{
-                        Colors.newBar(fill_w, bar_h, Colors.activeBar()),
-                        empty_w > 0 and Colors.newBar(empty_w, bar_h, Colors.inactiveBar())
-                            or HorizontalSpan:new{ width = 0 },
-                    }
-                else
-                    bar_row = VerticalSpan:new{ height = bar_h }
-                end
-
-                local cell_inner = VerticalGroup:new{
-                    align = "center",
-                    day_num_w,
-                    pct_w,
-                    VerticalSpan:new{ height = bar_pad },
-                    bar_row,
-                }
-                local cell_content = OverlapGroup:new{
-                    dimen = Geom:new{ w = cell_w, h = cell_h },
-                    Colors.newBar(cell_w, cell_h, Blitbuffer.COLOR_WHITE),
-                    CenterContainer:new{
-                        dimen = Geom:new{ w = cell_w, h = cell_h }, cell_inner,
-                    },
-                }
-                if is_finish_day then
-                    -- Flag glyph placed immediately to the right of the
-                    -- centered day number. The day number is centered in
-                    -- cell_w, so its left edge sits at (cell_w - num_w) / 2
-                    -- and its right edge at (cell_w + num_w) / 2. We push
-                    -- the flag that far right plus a small gap, then overlay
-                    -- it at the top of the cell (same vertical start as
-                    -- cell_inner inside the CenterContainer).
-                    local flag_pad = Screen:scaleBySize(2)
-                    local flag_glyph = TextWidget:new{
-                        text = "\xe2\x9a\x91", -- ⚑ BLACK FLAG
-                        face = small_font,
-                        fgcolor = Colors.value(),
-                    }
-                    local flag_size   = flag_glyph:getSize()
-                    local day_num_size = day_num_w:getSize()
-                    -- x offset from cell left edge to the flag's left edge:
-                    -- center of cell  +  half the day-number width  +  gap
-                    local flag_x = math.floor(cell_w / 2) + math.floor(day_num_size.w / 2) + flag_pad
-                    -- y offset: align flag top with the top of cell_inner
-                    -- inside the CenterContainer. cell_inner top =
-                    -- (cell_h - cell_inner_h) / 2; we just want it near the
-                    -- top of the number so use a small fixed top margin.
-                    local flag_y = Screen:scaleBySize(3)
-                    table.insert(cell_content, HorizontalGroup:new{
-                        HorizontalSpan:new{ width = flag_x },
-                        VerticalGroup:new{
-                            VerticalSpan:new{ height = flag_y },
-                            flag_glyph,
-                        },
-                    })
-                end
-                if is_start_day then
-                    -- Mirror image of the black finish flag above, placed
-                    -- immediately to the LEFT of the centered day number
-                    -- instead of to the right, using the same gap/top
-                    -- offset so the two line up visually if a book ever
-                    -- has both markers in view at once (they can't collide
-                    -- since one is pinned right of the number and the
-                    -- other left of it, even on the same day).
-                    local flag_pad = Screen:scaleBySize(2)
-                    local flag_glyph = TextWidget:new{
-                        text = "\xe2\x9a\x90", -- ⚐ WHITE FLAG
-                        face = small_font,
-                        fgcolor = Colors.value(),
-                    }
-                    local flag_size    = flag_glyph:getSize()
-                    local day_num_size = day_num_w:getSize()
-                    -- x offset from cell left edge to the flag's RIGHT edge:
-                    -- center of cell  -  half the day-number width  -  gap.
-                    -- We then subtract the flag's own width to get its left
-                    -- edge, so it sits flush against that point growing
-                    -- further left, mirroring the right-side flag's layout.
-                    local flag_right_x = math.floor(cell_w / 2) - math.floor(day_num_size.w / 2) - flag_pad
-                    local flag_x = flag_right_x - flag_size.w
-                    local flag_y = Screen:scaleBySize(3)
-                    table.insert(cell_content, HorizontalGroup:new{
-                        HorizontalSpan:new{ width = flag_x },
-                        VerticalGroup:new{
-                            VerticalSpan:new{ height = flag_y },
-                            flag_glyph,
-                        },
-                    })
-                end
-                local border = is_today and Size.line.medium or Size.line.thin
-                local frame = FrameContainer:new{
-                    background = nil,
-                    bordersize = border,
-                    color      = is_today and Blitbuffer.COLOR_BLACK or Colors.separator(),
-                    radius     = cell_radius,
-                    padding    = 0,
-                    margin     = 0,
-                    width      = cell_w,
-                    height     = cell_h,
-                    cell_content,
-                }
-                table.insert(day_cells, { frame = frame, day = cell_day, data = entry })
-                table.insert(row, frame)
-            end
-            if col < 7 then table.insert(row, HorizontalSpan:new{ width = gap }) end
-        end
-        table.insert(grid, row)
-        table.insert(grid, VerticalSpan:new{ height = gap })
-        day = day + 7
-    end
-
-    return grid, day_cells
-end
-
--- Month header with ‹ / › navigation arrows, styled like KOReader's own
--- Statistics CalendarView header (and matching this plugin's own
--- buildYearHeader in insights_view.lua). Returns the header widget plus
--- the tappable arrow frames (nil when hidden), so BookCalendarPopup:onTap
--- can hit-test them the same way it hit-tests day cells.
-local function buildBookCalendarHeader(title_str, content_width, section_font, prev_available, next_available)
-    local arrow_pad = Size.padding.default
-
-    -- Both arrows always occupy the same fixed-width slot, whether or not
-    -- they're actually visible. Without this, a hidden arrow used to
-    -- collapse to zero width, which (a) threw the title off-center
-    -- whenever only one side had an arrow, since the two slots then had
-    -- different widths, and (b) made the whole header jump sideways while
-    -- paging, whenever an arrow appeared or disappeared (e.g. hitting the
-    -- earliest/latest available month).
-    local left_glyph_w  = TextWidget:new{ text = "\xe2\x80\xb9", face = section_font }:getSize().w
-    local right_glyph_w = TextWidget:new{ text = "\xe2\x80\xba", face = section_font }:getSize().w
-    local slot_w = math.max(left_glyph_w, right_glyph_w) + 2 * arrow_pad
-
-    local function makeArrow(glyph, visible)
-        if not visible then
-            return HorizontalSpan:new{ width = slot_w }, nil
-        end
-        local tw = TextWidget:new{ text = glyph, face = section_font, fgcolor = Colors.section() }
-        local extra = slot_w - 2 * arrow_pad - tw:getSize().w
-        local frame = FrameContainer:new{
-            background     = nil,
-            bordersize     = 0,
-            padding_top    = 0,
-            padding_bottom = 0,
-            padding_left   = arrow_pad + math.floor(extra / 2),
-            padding_right  = arrow_pad + math.ceil(extra / 2),
-            margin         = 0,
-            tw,
-        }
-        return frame, frame
-    end
-
-    local left_widget,  left_frame  = makeArrow("\xe2\x80\xb9", prev_available)
-    local right_widget, right_frame = makeArrow("\xe2\x80\xba", next_available)
-
-    local title_w = TextWidget:new{ text = title_str, face = section_font, fgcolor = Colors.section() }
-
-    local remaining = content_width - left_widget:getSize().w - right_widget:getSize().w - title_w:getSize().w
-    if remaining < 0 then remaining = 0 end
-    local side_l = math.floor(remaining / 2)
-    local side_r = remaining - side_l
-
-    local header_row = HorizontalGroup:new{
-        align = "center",
-        left_widget,
-        HorizontalSpan:new{ width = side_l },
-        title_w,
-        HorizontalSpan:new{ width = side_r },
-        right_widget,
-    }
-
-    return header_row, left_frame, right_frame, left_widget:getSize().w, right_widget:getSize().w, header_row:getSize().h
-end
-
--- True if year/month (y1, m1) is chronologically after (y2, m2).
-local function monthIsAfter(y1, m1, y2, m2)
-    return (y1 > y2) or (y1 == y2 and m1 > m2)
-end
-
-local BookCalendarPopup = InputContainer:extend{
-    modal     = true,
-    ui        = nil,
-    book_id   = nil,
-    total_pages = nil,
-    year      = nil,
-    month     = nil,
-    -- Estimated finish timestamp for this book (stats.finish_timestamp -
-    -- see the pace calculation above), or nil if there isn't enough data
-    -- yet. When set, forward navigation is allowed up to (and the finish
-    -- day is marked within) that month - see _rebuild/_goToMonth below.
-    finish_timestamp = nil,
-    -- Timestamp of this book's very first recorded reading (stats.started_timestamp
-    -- / getBookStartedTimestamp above), or nil if there's no reading data
-    -- yet. When set and it falls in the month being rendered, that day
-    -- gets marked with a white flag - see start_day/_rebuild below.
-    started_timestamp = nil,
-}
-
-function BookCalendarPopup:init()
-    local screen_w = Screen:getWidth()
-    local screen_h = Screen:getHeight()
-    self.dimen = Geom:new{ x = 0, y = 0, w = screen_w, h = screen_h }
-
-    if Device:isTouchDevice() then
-        self.ges_events.Tap   = { GestureRange:new{ ges = "tap",   range = self.dimen } }
-        self.ges_events.Swipe = { GestureRange:new{ ges = "swipe", range = self.dimen } }
-    end
-    if Device:hasKeys() then
-        self.key_events.AnyKeyPressed = { { Device.input.group.Any } }
-    end
-
-    self:_rebuild()
-end
-
-function BookCalendarPopup:_rebuild()
-    local day_font   = Fonts.getFace("stats_label")
-    local small_font = Fonts.getFace("insights_small")
-
-    local box_width     = math.floor(Screen:getWidth() * 0.94)
-    local inner_padding = Size.padding.large
-    local content_width = box_width - 2 * inner_padding
-
-    local is_hu = (getLangBase() == "hu")
-    local title_str = is_hu
-        and string.format("%04d. %s", self.year, MONTH_FULL_HU_LC[self.month])
-        or  (_(MONTH_FULL[self.month]) .. " " .. tostring(self.year))
-
-    -- Next month is hidden once we're on the current calendar month - UNLESS
-    -- this book has an estimated finish date in a later month, in which case
-    -- paging is allowed up to that month, so the projected finish day (see
-    -- finish_day below) is actually reachable. Same bound _goToMonth
-    -- enforces for swipe/key navigation.
-    local now = os.date("*t")
-    local max_year, max_month = now.year, now.month
-    local finish_year, finish_month, finish_day_of_month
-    if self.finish_timestamp then
-        local ft = os.date("*t", self.finish_timestamp)
-        finish_year, finish_month, finish_day_of_month = ft.year, ft.month, ft.day
-        if monthIsAfter(finish_year, finish_month, max_year, max_month) then
-            max_year, max_month = finish_year, finish_month
-        end
-    end
-    local next_available = monthIsAfter(max_year, max_month, self.year, self.month)
-
-    -- Only pass finish_day through when the finish date actually falls in
-    -- the month currently being rendered.
-    local finish_day = (finish_year == self.year and finish_month == self.month)
-        and finish_day_of_month or nil
-
-    -- Same filtering for the started date's day-of-month - only passed
-    -- through to the grid when it falls in the month currently rendered.
-    local start_year, start_month, start_day_of_month
-    if self.started_timestamp then
-        local st = os.date("*t", self.started_timestamp)
-        start_year, start_month, start_day_of_month = st.year, st.month, st.day
-    end
-    local start_day = (start_year == self.year and start_month == self.month)
-        and start_day_of_month or nil
-
-    -- Previous month is hidden if this book has no reading recorded there
-    -- (same bound _goToMonth enforces for swipe/key navigation), so the
-    -- calendar can't be paged back into empty months.
-    local prev_month, prev_year = self.month - 1, self.year
-    if prev_month < 1 then prev_month = 12; prev_year = prev_year - 1 end
-    local prev_available = bookCalendarMonthHasData(self.book_id, prev_year, prev_month)
-
-    local title_row, left_arrow_frame, right_arrow_frame, left_w, right_w, header_h = buildBookCalendarHeader(
-        title_str, content_width, Fonts.getFace("stats_section"), prev_available, next_available)
-
-    local daily_map = getBookDailyStatsForMonth(self.book_id, self.year, self.month)
-    local cumulative_ratios = getBookCumulativeProgressForMonth(
-        self.book_id, self.year, self.month, self.total_pages)
-    local grid, day_cells = buildBookCalendarGrid(
-        daily_map, self.year, self.month, day_font, small_font, content_width, self.total_pages, cumulative_ratios,
-        finish_day, start_day)
-    self._day_cells = day_cells
-
-    local content = VerticalGroup:new{
-        align = "center",
-        title_row,
-        VerticalSpan:new{ height = Size.padding.large },
-        grid,
-    }
-
-    self.box_content = FrameContainer:new{
-        background     = Blitbuffer.COLOR_WHITE,
-        bordersize     = Size.border.window,
-        radius         = Size.radius.window,
-        padding_top    = inner_padding,
-        padding_bottom = inner_padding,
-        padding_left   = inner_padding,
-        padding_right  = inner_padding,
-        content,
-    }
-
-    self[1] = CenterContainer:new{
-        dimen = self.dimen,
-        self.box_content,
-    }
-
-    -- Absolute tap zones for the ‹ / › arrows, computed from geometry
-    -- rather than from left_arrow_frame.dimen/right_arrow_frame.dimen (see
-    -- comment above this function for why the latter can be stale/unset
-    -- when this popup is opened from inside the stats popup instead of
-    -- directly from the menu/gesture).
-    local box_rect = self:_centeredRect(self.box_content)
-    local border_w = Size.border.window
-    local header_x = box_rect.x + border_w + inner_padding
-    local header_y = box_rect.y + border_w + inner_padding
-    local tap_pad  = Screen:scaleBySize(14)
-
-    self._nav_zones = {}
-    if left_arrow_frame then
-        table.insert(self._nav_zones, {
-            dimen = Geom:new{
-                x = header_x - tap_pad,
-                y = header_y - tap_pad,
-                w = left_w + 2 * tap_pad,
-                h = header_h + 2 * tap_pad,
-            },
-            delta = -1,
-        })
-    end
-    if right_arrow_frame then
-        table.insert(self._nav_zones, {
-            dimen = Geom:new{
-                x = header_x + content_width - right_w - tap_pad,
-                y = header_y - tap_pad,
-                w = right_w + 2 * tap_pad,
-                h = header_h + 2 * tap_pad,
-            },
-            delta = 1,
-        })
-    end
-end
-
-function BookCalendarPopup:_centeredRect(widget)
-    local size = widget:getSize()
-    local w, h = size.w, size.h
-    local x = self.dimen.x + math.floor((self.dimen.w - w) / 2)
-    local y = self.dimen.y + math.floor((self.dimen.h - h) / 2)
-    return Geom:new{ x = x, y = y, w = w, h = h }
-end
-
-function BookCalendarPopup:onShow()
-    UIManager:setDirty(self, function()
-        return "ui", self:_centeredRect(self.box_content)
-    end)
-    return true
-end
-
-function BookCalendarPopup:onCloseWidget()
-    UIManager:setDirty(nil, function()
-        return "ui", self:_centeredRect(self.box_content)
-    end)
-end
-
-function BookCalendarPopup:_showDayDetail(day, data)
-    local t = os.time{ year = self.year, month = self.month, day = day, hour = 12 }
-    local is_hu = (getLangBase() == "hu")
-    local date_str = is_hu and os.date("%Y.%m.%d.", t) or os.date("%d/%m/%Y", t)
-
-    if not data or (not data.pages or data.pages == 0) then
-        UIManager:show(InfoMessage:new{ text = date_str .. "\n" .. _("No reading on this day.") })
-        return
-    end
-
-    local pages_line = "+" .. formatCount(data.pages) .. " " .. N_("page", "pages", data.pages)
-    local time_td     = formatTimeHHMM(data.duration)
-    local time_line   = time_td.value .. (time_td.unit ~= "" and (" " .. time_td.unit) or "")
-    local percent_line = ""
-    if self.total_pages and self.total_pages > 0 then
-        local percent = Math.round(100 * data.pages / self.total_pages)
-        percent_line = "+" .. formatCount(percent) .. "%"
-    end
-
-    UIManager:show(InfoMessage:new{
-        text = date_str .. "\n" .. pages_line .. " · " .. percent_line .. " · " .. time_line,
-    })
-end
-
-function BookCalendarPopup:_goToMonth(delta)
-    local m = self.month + delta
-    local y = self.year
-    while m < 1 do m = m + 12; y = y - 1 end
-    while m > 12 do m = m - 12; y = y + 1 end
-    -- Don't navigate past the current calendar month - unless this book's
-    -- estimated finish date falls in a later month, matching the arrow
-    -- availability computed in _rebuild.
-    local now = os.date("*t")
-    local max_year, max_month = now.year, now.month
-    if self.finish_timestamp then
-        local ft = os.date("*t", self.finish_timestamp)
-        if monthIsAfter(ft.year, ft.month, max_year, max_month) then
-            max_year, max_month = ft.year, ft.month
-        end
-    end
-    if monthIsAfter(y, m, max_year, max_month) then return true end
-    -- Don't navigate back into a month with no reading recorded for this book.
-    if delta < 0 and not bookCalendarMonthHasData(self.book_id, y, m) then return true end
-
-    local old_rect = self:_centeredRect(self.box_content)
-    self.year, self.month = y, m
-    self:_rebuild()
-    local new_rect = self:_centeredRect(self.box_content)
-
-    local x1 = math.min(old_rect.x, new_rect.x)
-    local y1 = math.min(old_rect.y, new_rect.y)
-    local x2 = math.max(old_rect.x + old_rect.w, new_rect.x + new_rect.w)
-    local y2 = math.max(old_rect.y + old_rect.h, new_rect.y + new_rect.h)
-    UIManager:setDirty("all", function()
-        return "ui", Geom:new{ x = x1, y = y1, w = x2 - x1, h = y2 - y1 }
-    end)
-    return true
-end
-
-function BookCalendarPopup:onTap(arg, ges_ev)
-    if ges_ev then
-        local x, y = ges_ev.pos.x, ges_ev.pos.y
-        for _, zone in ipairs(self._nav_zones or {}) do
-            if zone.dimen and x >= zone.dimen.x and x <= zone.dimen.x + zone.dimen.w
-               and y >= zone.dimen.y and y <= zone.dimen.y + zone.dimen.h then
-                return self:_goToMonth(zone.delta)
-            end
-        end
-        for _, cell in ipairs(self._day_cells or {}) do
-            if hitTest(cell.frame, x, y) then
-                self:_showDayDetail(cell.day, cell.data)
-                return true
-            end
-        end
-    end
-    UIManager:close(self)
-    return true
-end
-
-function BookCalendarPopup:onSwipe(arg, ges_ev)
-    if not ges_ev then UIManager:close(self) return true end
-    local dir = ges_ev.direction
-    if dir == "west" or dir == "left"  then return self:_goToMonth(1)  end
-    if dir == "east" or dir == "right" then return self:_goToMonth(-1) end
-    UIManager:close(self)
-    return true
-end
-
-function BookCalendarPopup:onAnyKeyPressed(_, key)
-    if key and key:match({ { "RPgFwd",  "LPgFwd",  "Right" } }) then return self:_goToMonth(1)  end
-    if key and key:match({ { "RPgBack", "LPgBack", "Left"  } }) then return self:_goToMonth(-1) end
-    UIManager:close(self)
-    return true
-end
-
 -- Dispatcher action registration for this view lives in main.lua (alongside
 -- the "reading_insights_popup" action), so both gesture-assignable actions
 -- are declared in one place.
@@ -1986,11 +1091,11 @@ function ReadingStatsPopup:gatherStats()
     local pageno = footer and footer.pageno or 1
     local pages  = footer and footer.pages  or 1
 
-    local progress_percent = getBookProgressPercent(ui)
+    local progress_percent = BookProgress.percent(ui)
     if progress_percent then
         stats.book_progress = { value = formatCount(progress_percent) .. "%", unit = "" }
     end
-    local current_page_count, total_page_count = getBookProgressCounts(ui)
+    local current_page_count, total_page_count = BookProgress.counts(ui)
     if current_page_count and total_page_count and total_page_count > 0 then
         stats.book_pages_read = {
             value = formatFraction(current_page_count, total_page_count),
@@ -2051,7 +1156,7 @@ function ReadingStatsPopup:gatherStats()
     end
 
     if has_stats and doc then
-        pages_left = getBookPagesLeft(ui)
+        pages_left = BookProgress.pagesLeft(ui)
         if pages_left and pages_left > 0 then
             local bl_secs = (pages_left + 1) * avg_time
             stats.book_time_left_hhmm = formatTimeHHMM(bl_secs)
@@ -2110,7 +1215,7 @@ function ReadingStatsPopup:gatherStats()
                 stats.avg_time_per_day_hhmm = formatTimeHHMM(avg_secs)
             end
             -- current_page_count is the live reading position (set above,
-            -- from getBookProgressCounts) - a reliable proxy for "pages
+            -- from BookProgress.counts) - a reliable proxy for "pages
             -- read so far", unlike statistics plugin's own page counter
             -- which can be 0/stale depending on how the book was opened.
             if current_page_count and current_page_count > 0 then
@@ -2192,46 +1297,14 @@ end
 -- have already checked a document is open, but this also silently no-ops
 -- if there's no book_id (e.g. statistics plugin not tracking this book) or
 -- no page-count data yet, same as the tap-through path would.
-function ReadingStatsPopup.openBookCalendarForUI(ui)
-    if not ui then return end
-    local stats_plugin = ui.statistics
-    local book_id = stats_plugin and stats_plugin.id_curr_book
-    if not book_id then
-        UIManager:show(InfoMessage:new{ text = _("No reading data for this book yet.") })
-        return
-    end
-
-    local _current_page_count, total_page_count = getBookProgressCounts(ui)
-    if not total_page_count or total_page_count <= 0 then
-        UIManager:show(InfoMessage:new{ text = _("No reading data for this book yet.") })
-        return
-    end
-
-    local open_year, open_month = getBookLastReadYearMonth(book_id)
-    if not open_year or not open_month then
-        local now = os.date("*t")
-        open_year, open_month = now.year, now.month
-    end
-
-    local started_timestamp = getBookStartedTimestamp(book_id)
-
-    UIManager:show(BookCalendarPopup:new{
-        ui                = ui,
-        book_id           = book_id,
-        total_pages       = total_page_count,
-        year              = open_year,
-        month             = open_month,
-        started_timestamp = started_timestamp,
-    })
-end
-
--- Opens the per-book reading calendar (see BookCalendarPopup above) on the
--- month of this book's most recent recorded reading (falls back to
--- today's month if the book has no reading yet). Closes this popup first
--- (KOReader only shows one modal popup cleanly at a time), then reopens
--- it once the calendar is dismissed - same close/reopen pattern as
--- insights_view.lua's openCalendarForMonth, so the person lands back on
--- "This book" instead of the reader screen.
+-- Opens the per-book reading calendar (now in book_calendar_view.lua, via
+-- BookCalendar.show) on the month of this book's most recent recorded
+-- reading (falls back to today's month if the book has no reading yet).
+-- Closes this popup first (KOReader only shows one modal popup cleanly at a
+-- time), then reopens it once the calendar is dismissed (the on_close
+-- callback) - same close/reopen pattern as insights_view.lua's
+-- openCalendarForMonth, so the person lands back on "This book" instead of
+-- the reader screen.
 function ReadingStatsPopup:openBookCalendar()
     local saved_ui                 = self.ui
     local saved_today_all_books    = self.today_all_books
@@ -2241,15 +1314,9 @@ function ReadingStatsPopup:openBookCalendar()
     local saved_finish_timestamp   = self._stats and self._stats.finish_timestamp
     local saved_started_timestamp  = self._stats and self._stats.started_timestamp
 
-    local open_year, open_month = getBookLastReadYearMonth(saved_book_id)
-    if not open_year or not open_month then
-        local now = os.date("*t")
-        open_year, open_month = now.year, now.month
-    end
-
     UIManager:close(self)
 
-    -- Wait one frame so the popup is fully closed before opening the calendar.
+    -- Wait one frame so this popup is fully closed before opening the calendar.
     UIManager:scheduleIn(0, function()
         local function reopen_popup()
             UIManager:show(ReadingStatsPopup:new{
@@ -2266,23 +1333,17 @@ function ReadingStatsPopup:openBookCalendar()
             UIManager:scheduleIn(0, reopen_popup)
         end
 
-        local popup = BookCalendarPopup:new{
+        -- The per-book calendar now lives in book_calendar_view.lua; hand it
+        -- the data we already gathered plus an on_close that reopens us, so
+        -- the person lands back on "This book" instead of the reader screen.
+        BookCalendar.show{
             ui                = saved_ui,
             book_id           = saved_book_id,
             total_pages       = saved_total_pages,
-            year              = open_year,
-            month             = open_month,
             finish_timestamp  = saved_finish_timestamp,
             started_timestamp = saved_started_timestamp,
+            on_close          = reopen_once,
         }
-        -- onCloseWidget fires on all dismiss paths (tap, swipe-close, key);
-        -- the flag above prevents double-open.
-        local orig_onCloseWidget = popup.onCloseWidget
-        popup.onCloseWidget = function(self_popup, ...)
-            if orig_onCloseWidget then orig_onCloseWidget(self_popup, ...) end
-            reopen_once()
-        end
-        UIManager:show(popup)
     end)
 end
 
@@ -2361,11 +1422,5 @@ end
 ReadingStatsPopup.readChapterBarHeightSetting = readChapterBarHeightSetting
 ReadingStatsPopup.saveChapterBarHeightSetting = saveChapterBarHeightSetting
 ReadingStatsPopup.DEFAULT_CHAPTER_BAR_HEIGHT  = DEFAULT_CHAPTER_BAR_HEIGHT
-
--- Same idea for the book-calendar cell content setting ("percent" vs
--- "pages_minutes" - see readCalendarCellModeSetting above), reached from
--- main.lua's Advanced settings submenu.
-ReadingStatsPopup.readCalendarCellModeSetting = readCalendarCellModeSetting
-ReadingStatsPopup.saveCalendarCellModeSetting = saveCalendarCellModeSetting
 
 return ReadingStatsPopup

@@ -3,12 +3,12 @@ Reading Insights Popup (view module)
 
 Full-screen scrollable popup showing reading history from statistics.sqlite3.
 This is one of the plugin's two views; see main.lua for how it is wired up
-(Tools menu entry, gesture/dispatcher action) and stats_view.lua for the
+(Tools menu entry, gesture/dispatcher action) and book_stats_view.lua for the
 other view (live per-book reading stats overlay).
 
-Loaded by main.lua via loadfile(...)( L10N ) -- L10N is the shared
-translation/number-formatting module (l10n.lua), passed in as the sole
-chunk argument so this file has no top-level `require("l10n")` path
+Loaded by main.lua via loadfile(...)( Locale ) -- Locale is the shared
+translation/number-formatting module (locale.lua), passed in as the sole
+chunk argument so this file has no top-level `require("locale")` path
 issues regardless of how KOReader resolves plugin-relative requires.
 
 Sections:
@@ -92,7 +92,6 @@ local LineWidget = require("ui/widget/linewidget")
 local logger = require("logger")
 local OverlapGroup = require("ui/widget/overlapgroup")
 local Size = require("ui/size")
-local SQ3 = require("lua-ljsqlite3/init")
 local TextBoxWidget = require("ui/widget/textboxwidget")
 local TextWidget = require("ui/widget/textwidget")
 local TitleBar = require("ui/widget/titlebar")
@@ -107,7 +106,7 @@ local T = require("ffi/util").template
 -- Shared translations/number-formatting, and shared chart/text color
 -- settings, both loaded once by main.lua and passed in as this chunk's
 -- arguments (see main.lua's loadModule() call for this file).
-local L10N, Colors, Fonts = ...
+local Locale, Colors, Fonts, Settings, StatsDb, PopupUtil = ...
 
 -- true: cache DB results (streaks/year_range per day, last-week per minute, yearly/monthly per day).
 -- false: always query DB fresh on open.
@@ -123,18 +122,11 @@ local SETTINGS_KEY_8W_ASCENDING   = "reading_insights_8week_ascending"
 -- Generic boolean-setting reader/writer; replaces the previous 4 near-identical
 -- read/save*Setting functions that only differed by key and default.
 local function readBoolSetting(key, default)
-    if G_reader_settings and G_reader_settings.readSetting then
-        local v = G_reader_settings:readSetting(key)
-        if v == nil then return default end
-        return v == true
-    end
-    return default
+    return Settings.readBool(key, default)
 end
 
 local function saveBoolSetting(key, value)
-    if G_reader_settings and G_reader_settings.saveSetting then
-        G_reader_settings:saveSetting(key, value)
-    end
+    Settings.save(key, value)
 end
 
 local function readFullRefreshSetting()
@@ -165,18 +157,11 @@ local DEFAULT_WEEKLY_BAR_HEIGHT  = 44
 local DEFAULT_MONTHLY_BAR_HEIGHT = 44
 
 local function readNumSetting(key, default)
-    if G_reader_settings and G_reader_settings.readSetting then
-        local v = G_reader_settings:readSetting(key)
-        if v == nil then return default end
-        return v
-    end
-    return default
+    return Settings.readNum(key, default)
 end
 
 local function saveNumSetting(key, value)
-    if G_reader_settings and G_reader_settings.saveSetting then
-        G_reader_settings:saveSetting(key, value)
-    end
+    Settings.save(key, value)
 end
 
 local function readWeeklyBarHeightSetting()
@@ -224,45 +209,35 @@ local DEFAULT_HEATMAP_HOUR_FORMAT      = "24"
 local VALID_HEATMAP_HOUR_FORMAT        = { ["24"] = true, ["12"] = true }
 
 local function readHeatmapHourFormatSetting()
-    local v = G_reader_settings and G_reader_settings.readSetting
-        and G_reader_settings:readSetting(SETTINGS_KEY_HEATMAP_HOUR_FORMAT)
+    local v = Settings.read(SETTINGS_KEY_HEATMAP_HOUR_FORMAT, nil)
     if not VALID_HEATMAP_HOUR_FORMAT[v] then return DEFAULT_HEATMAP_HOUR_FORMAT end
     return v
 end
 
 local function saveHeatmapHourFormatSetting(value)
-    if G_reader_settings and G_reader_settings.saveSetting then
-        G_reader_settings:saveSetting(SETTINGS_KEY_HEATMAP_HOUR_FORMAT, value)
-    end
+    Settings.save(SETTINGS_KEY_HEATMAP_HOUR_FORMAT, value)
 end
 
 -- Week start day for both reading heatmaps (Settings ▸ Advanced settings ▸
--- "Week start day" - Monday or Sunday). Controls which day each grid's
--- row 1 represents; read by buildRangeHeatmapGrid (calendar heatmap) and
--- buildDayPartHeatmapWidget (time-of-day heatmap) every time either grid
--- is built, so a change takes effect the next time the popup (re)opens.
-local SETTINGS_KEY_WEEK_START = "reading_insights_heatmap_week_start"
-local DEFAULT_WEEK_START      = "monday"
-local VALID_WEEK_START        = { monday = true, sunday = true }
-
+-- "Week start day" - Monday or Sunday). This is the same global setting the
+-- per-book reading calendar keys off, so it now lives in the shared
+-- Settings module (see settings.lua); these thin wrappers keep the existing
+-- local + exported names working. Read by buildRangeHeatmapGrid (calendar
+-- heatmap) and buildDayPartHeatmapWidget (time-of-day heatmap) every time
+-- either grid is built, so a change takes effect on the next (re)open.
 local function readWeekStartSetting()
-    local v = G_reader_settings and G_reader_settings.readSetting
-        and G_reader_settings:readSetting(SETTINGS_KEY_WEEK_START)
-    if not VALID_WEEK_START[v] then return DEFAULT_WEEK_START end
-    return v
+    return Settings.readWeekStart()
 end
 
 local function saveWeekStartSetting(value)
-    if G_reader_settings and G_reader_settings.saveSetting then
-        G_reader_settings:saveSetting(SETTINGS_KEY_WEEK_START, value)
-    end
+    Settings.saveWeekStart(value)
 end
 
 -- 0 = Sunday, 1 = Monday (os.date("%w") convention) for the currently
 -- configured week start day - the shared building block both heatmap
 -- grids use to lay their rows/columns out.
 local function weekStartWday()
-    return readWeekStartSetting() == "sunday" and 0 or 1
+    return Settings.weekStartWday()
 end
 
 local _cache = {
@@ -545,15 +520,15 @@ local function flushStatsToDB(ui)
     return stats_plugin
 end
 
--- Localisation and number formatting now live in the shared l10n.lua module
--- (required by main.lua and handed to this view as `L10N`), so both this
--- popup and the reading-stats popup translate from the same l10n/<lang>.po
+-- Localisation and number formatting now live in the shared locale.lua module
+-- (required by main.lua and handed to this view as `Locale`), so both this
+-- popup and the reading-stats popup translate from the same locale/<lang>.po
 -- files instead of each keeping its own copy.
-local _            = L10N._
-local N_           = L10N.N_
-local getLangBase  = L10N.getLangBase
-local formatNumber = L10N.formatNumber
-local formatCount  = L10N.formatCount
+local _            = Locale._
+local N_           = Locale.N_
+local getLangBase  = Locale.getLangBase
+local formatNumber = Locale.formatNumber
+local formatCount  = Locale.formatCount
 
 -- Format a YYYY-MM-DD string for display (EN: DD/MM/YYYY, HU: YYYY.MM.DD.)
 -- no_trailing_dot: HU only - omit the final dot (used for the first date in a range)
@@ -643,7 +618,6 @@ local function bestKnownFullResult(session_cache, key, stale_table, stale_prefix
     return findStaleByPrefix(stale_table, stale_prefix)
 end
 
-local db_path = DataStorage:getSettingsDir() .. "/statistics.sqlite3"
 local ReadingInsightsPopup
 
 local INSIGHTS_MODE_KEY = "reading_insights_popup_mode"
@@ -686,63 +660,32 @@ local function normalizeWeeklyChartMode(mode)
 end
 
 local function readWeeklyChartMode()
-    if G_reader_settings and G_reader_settings.readSetting then
-        return normalizeWeeklyChartMode(G_reader_settings:readSetting(SETTINGS_KEY_WEEKLY_CHART_MODE, WEEKLY_CHART_MODE_TIME))
-    end
-    return WEEKLY_CHART_MODE_TIME
+    return normalizeWeeklyChartMode(Settings.read(SETTINGS_KEY_WEEKLY_CHART_MODE, WEEKLY_CHART_MODE_TIME))
 end
 
 local function saveWeeklyChartMode(mode)
-    if G_reader_settings and G_reader_settings.saveSetting then
-        G_reader_settings:saveSetting(SETTINGS_KEY_WEEKLY_CHART_MODE, mode)
-    end
+    Settings.save(SETTINGS_KEY_WEEKLY_CHART_MODE, mode)
 end
 
 local function readInsightsMode()
-    if G_reader_settings and G_reader_settings.readSetting then
-        return normalizeInsightsMode(G_reader_settings:readSetting(INSIGHTS_MODE_KEY, INSIGHTS_MODE_HOURS))
-    end
-    return INSIGHTS_MODE_HOURS
+    return normalizeInsightsMode(Settings.read(INSIGHTS_MODE_KEY, INSIGHTS_MODE_HOURS))
 end
 
 local function saveInsightsMode(mode)
-    if G_reader_settings and G_reader_settings.saveSetting then
-        G_reader_settings:saveSetting(INSIGHTS_MODE_KEY, mode)
-    end
+    Settings.save(INSIGHTS_MODE_KEY, mode)
 end
 
+-- Statistics-DB access now goes through the shared StatsDb module (same db
+-- path, PRAGMAs, open/close and error handling as before). Kept under the
+-- original local names so the many call sites below are unchanged.
 local function withStatsDb(fallback, fn)
-    local lfs = require("libs/libkoreader-lfs")
-    if lfs.attributes(db_path, "mode") ~= "file" then
-        return fallback
-    end
-
-    local conn = SQ3.open(db_path)
-    if not conn then return fallback end
-
-    pcall(function()
-        conn:exec("PRAGMA journal_mode=WAL; PRAGMA cache_size=2000; PRAGMA temp_store=MEMORY;")
-    end)
-
-    local ok, result = pcall(fn, conn)
-    conn:close()
-    if ok then
-        return result
-    end
-    return fallback
+    return StatsDb.withDb(fallback, fn)
 end
 
 -- Open a persistent DB connection for batch use; caller must call conn:close().
 -- Returns nil if the DB file does not exist or cannot be opened.
 local function openStatsDb()
-    local lfs = require("libs/libkoreader-lfs")
-    if lfs.attributes(db_path, "mode") ~= "file" then return nil end
-    local conn = SQ3.open(db_path)
-    if not conn then return nil end
-    pcall(function()
-        conn:exec("PRAGMA journal_mode=WAL; PRAGMA cache_size=2000; PRAGMA temp_store=MEMORY;")
-    end)
-    return conn
+    return StatsDb.open()
 end
 
 -- Like withStatsDb but reuses an already-open connection (conn must be non-nil).
@@ -764,13 +707,7 @@ local function withDb(shared_conn, fallback, fn)
 end
 
 local function withStatement(conn, sql, fn)
-    local stmt = conn:prepare(sql)
-    if not stmt then return end
-    local ok, result = pcall(fn, stmt)
-    stmt:close()
-    if ok then
-        return result
-    end
+    return StatsDb.withStatement(conn, sql, fn)
 end
 
 local function computeStreaks(entries_desc, is_consecutive, is_current_start)
@@ -876,9 +813,9 @@ local Math = require("optmath")
 
 -- Format seconds as a clock-style duration for book list display, honouring
 -- KOReader's global "duration_format" setting (classic "1:30:10", modern
--- "1h30'10\"", ...) - see L10N.formatDuration() in l10n.lua for details.
+-- "1h30'10\"", ...) - see Locale.formatDuration() in locale.lua for details.
 local function formatHHMMSS(seconds)
-    return L10N.formatDuration(seconds, false)
+    return Locale.formatDuration(seconds, false)
 end
 
 -- Splits a formatted duration into a bold "value" and a plain "unit" for
@@ -886,12 +823,12 @@ end
 -- plain description, e.g. "7.3" + "days reading time"). Normally the
 -- number is just the clock string and unit is exactly `base_label`
 -- unchanged. But when "Show long durations (24h+) as days" is on and the
--- duration crosses a day, L10N.formatDurationParts() returns a trailing
+-- duration crosses a day, Locale.formatDurationParts() returns a trailing
 -- "day"/"nap" word that must NOT be bold - so it's merged into the plain
 -- `unit` ahead of the row's usual label instead of staying glued to the
 -- bold number.
 local function splitDurationValueUnit(seconds, base_label)
-    local parts = L10N.formatDurationParts(seconds, true)
+    local parts = Locale.formatDurationParts(seconds, true)
     local unit = base_label or ""
     if parts.unit ~= "" then
         unit = (unit ~= "" and (parts.unit .. " " .. unit)) or parts.unit
@@ -1289,7 +1226,7 @@ local function buildMonthlyChart(popup_self, monthly_data, layout, fonts)
             local bar_label_str
             if popup_self.mode == INSIGHTS_MODE_HOURS then
                 local mo_secs = tonumber(m.seconds) or math.floor((tonumber(m.hours) or 0) * 3600 + 0.5)
-                bar_label_str = L10N.formatDuration(mo_secs, true)
+                bar_label_str = Locale.formatDuration(mo_secs, true)
             else
                 bar_label_str = formatNumber(value)
             end            local value_label   = TextWidget:new{ text = bar_label_str, face = font_small, fgcolor = Colors.small() }
@@ -1426,7 +1363,7 @@ local function formatWeekValue(metric, week_entry)
     if metric == "time_total" or metric == "time_avg" then
         local secs = week_entry.seconds or 0
         if metric == "time_avg" then secs = secs / 7 end
-        return L10N.formatDuration(secs, true), secs
+        return Locale.formatDuration(secs, true), secs
     else
         local pages = week_entry.pages or 0
         if metric == "pages_avg" then
@@ -1456,10 +1393,10 @@ local function totalForMetric(metric, weeks)
         total_pages = total_pages + (w.pages or 0)
     end
     if metric == "time_total" then
-        return L10N.formatDuration(total_secs, true)
+        return Locale.formatDuration(total_secs, true)
     elseif metric == "time_avg" then
         local avg_secs = total_secs / (7 * #weeks)
-        return L10N.formatDuration(avg_secs, true)
+        return Locale.formatDuration(avg_secs, true)
     elseif metric == "pages_total" then
         return formatCount(total_pages)
     else -- pages_avg
@@ -1610,22 +1547,9 @@ function WeeklyTrendPopup:init()
     }
 end
 
-function WeeklyTrendPopup:onShow()
-    UIManager:setDirty(self, function()
-        return "ui", self.box_content.dimen
-    end)
-    return true
-end
-
-function WeeklyTrendPopup:onCloseWidget()
-    UIManager:setDirty(nil, function()
-        return "ui", self.box_content.dimen
-    end)
-end
-
-function WeeklyTrendPopup:onTap()           UIManager:close(self) return true end
-function WeeklyTrendPopup:onSwipe()         UIManager:close(self) return true end
-function WeeklyTrendPopup:onAnyKeyPressed() UIManager:close(self) return true end
+-- Any tap / swipe / key dismisses; onShow/onCloseWidget mark the popup box
+-- region dirty. All five come from the shared helper (see popuputil.lua).
+PopupUtil.makeDismissable(WeeklyTrendPopup, function(self) return self.box_content.dimen end)
 
 -- ---------------------------------------------------------------------
 -- Reading heatmap (GitHub-style contribution grid)
@@ -2224,7 +2148,7 @@ local function buildWeeklyChart(popup_self, daily_data, layout, fonts, mode)
             val_str = string.format(_("%d p"), pages)
         else
             local secs = tonumber(d.seconds) or 0
-            val_str = L10N.formatDuration(secs, true)
+            val_str = Locale.formatDuration(secs, true)
         end
         local value_label   = TextWidget:new{ text = val_str, face = font_small, fgcolor = Colors.small() }
         local centered_label = CenterContainer:new{
@@ -3258,7 +3182,7 @@ end
 -- swipe navigation.
 -- Section header for the calendar heatmap grid, with optional ‹ / ›
 -- paging arrows at the left/right edges when there's an older/newer
--- half-year to page to - same layout/style as stats_view.lua's own
+-- half-year to page to - same layout/style as book_stats_view.lua's own
 -- buildBookCalendarHeader (BookCalendarPopup's month header), so the
 -- paging controls look consistent across both popups. Both arrow slots
 -- are always reserved at their full width, whether or not that arrow is
@@ -3470,7 +3394,7 @@ function HeatmapPopup:_rebuild()
     -- Absolute tap zones for the calendar heatmap's ‹ / › paging arrows,
     -- computed from geometry (box position + inner padding) rather than
     -- from left_frame/right_frame.dimen - same reasoning as
-    -- BookCalendarPopup's own _nav_zones in stats_view.lua: a
+    -- BookCalendarPopup's own _nav_zones in book_calendar_view.lua: a
     -- FrameContainer without an explicit width/height only gets .dimen
     -- populated once it's actually painted, so relying on it here could
     -- crash if the user pages again before the first paint tick.

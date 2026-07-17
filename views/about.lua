@@ -10,10 +10,10 @@ A small, tap-anywhere-to-close box centered on screen with:
     matches the rest of the plugin's visual language
   - the installed version, read from _meta.lua via updater.lua so it never
     goes stale when a new release is installed
-  - a short description of the plugin, translated (see l10n/*.po)
+  - a short description of the plugin, translated (see locale/*.po)
   - the GitHub repository URL, bold and centered
 
-Loaded by main.lua via loadfile(...)( L10N, Updater ), following the same
+Loaded by main.lua via loadfile(...)( Locale, Updater ), following the same
 "small standalone module" pattern as colors.lua/fonts.lua.
 
 Fonts: deliberately hard-coded here (NotoSans-Bold.ttf @ 26 for the title,
@@ -46,8 +46,10 @@ local UIManager       = require("ui/uimanager")
 local VerticalGroup   = require("ui/widget/verticalgroup")
 local VerticalSpan    = require("ui/widget/verticalspan")
 
-local L10N, Updater = ...
-local _ = L10N._
+-- Locale (translations) and Updater (installed-version lookup) plus the
+-- shared dismissable-popup helper, all passed in by main.lua.
+local Locale, Updater, PopupUtil = ...
+local _ = Locale._
 
 local GITHUB_URL = "https://github.com/peterboda236/readinginsights.koplugin"
 
@@ -91,22 +93,10 @@ function AboutPopup:init()
     }
 end
 
-function AboutPopup:onShow()
-    UIManager:setDirty(self, function()
-        return "ui", self.box_content.dimen
-    end)
-    return true
-end
-
-function AboutPopup:onCloseWidget()
-    UIManager:setDirty(nil, function()
-        return "ui", self.box_content.dimen
-    end)
-end
-
-function AboutPopup:onTap()           UIManager:close(self) return true end
-function AboutPopup:onSwipe()         UIManager:close(self) return true end
-function AboutPopup:onAnyKeyPressed() UIManager:close(self) return true end
+-- Any tap / swipe / key dismisses; onShow/onCloseWidget mark the About box
+-- region dirty. All five handlers come from the shared helper (see
+-- popuputil.lua) since they were byte-for-byte identical across popups.
+PopupUtil.makeDismissable(AboutPopup, function(self) return self.box_content.dimen end)
 
 local M = {}
 

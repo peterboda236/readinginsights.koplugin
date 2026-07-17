@@ -2,7 +2,7 @@
 Reading Insights - shared localisation & number formatting.
 
 Loaded once by main.lua and handed to both views (insights_view.lua and
-stats_view.lua), so translation strings live in one place: l10n/<lang>.po.
+book_stats_view.lua), so translation strings live in one place: locale/<lang>.po.
 
 Why not KOReader's own gettext .po loader?
 Because these plugin translations need to work as plain "msgid"/"msgstr"
@@ -24,13 +24,9 @@ Exposes:
 
 local gettext = require("gettext")
 
-local function pluginDir()
-    local src = debug.getinfo(1, "S").source
-    local dir = src:match("^@(.*/)")
-    return dir or "./"
-end
-
-local PLUGIN_DIR = pluginDir()
+-- Shared plugin loader/dir helper, passed in by main.lua (see pluginutil.lua).
+local PluginUtil = ...
+local PLUGIN_DIR = PluginUtil.dir
 
 local function unescapePO(s)
     return (s:gsub("\\n", "\n"):gsub('\\"', '"'):gsub("\\\\", "\\"))
@@ -57,33 +53,33 @@ local function loadPOFile(path)
     return map
 end
 
-local _l10n_cache = {}
-local function getL10NMap()
+local _locale_cache = {}
+local function getLocaleMap()
     local lang = "en"
     if G_reader_settings and G_reader_settings.readSetting then
         lang = G_reader_settings:readSetting("language") or "en"
     end
     local lang_base = lang:match("^([a-z]+)") or lang
-    if _l10n_cache[lang_base] ~= nil then
-        return _l10n_cache[lang_base]
+    if _locale_cache[lang_base] ~= nil then
+        return _locale_cache[lang_base]
     end
-    local map = loadPOFile(PLUGIN_DIR .. "l10n/" .. lang_base .. ".po")
-    _l10n_cache[lang_base] = map
+    local map = loadPOFile(PLUGIN_DIR .. "locale/" .. lang_base .. ".po")
+    _locale_cache[lang_base] = map
     return map
 end
 
-local function l10nLookup(msg)
-    local map = getL10NMap()
+local function localeLookup(msg)
+    local map = getLocaleMap()
     return map[msg]
 end
 
 local function _(msg)
-    return l10nLookup(msg) or gettext(msg)
+    return localeLookup(msg) or gettext(msg)
 end
 
 local function N_(singular, plural, n)
-    local singular_override = l10nLookup(singular)
-    local plural_override = l10nLookup(plural)
+    local singular_override = localeLookup(singular)
+    local plural_override = localeLookup(plural)
     if singular_override or plural_override then
         if n == 1 then
             return singular_override or plural_override

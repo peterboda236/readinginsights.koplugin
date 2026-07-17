@@ -1,5 +1,5 @@
 --[[
-Records popup (record_view.lua)
+Records popup (records_view.lua)
 
 Shows personal reading records and milestone progress:
   - Most reading time in a day  most total reading time on a single calendar
@@ -25,8 +25,8 @@ WeeklyTrendPopup: an invisible full-screen tap-anywhere-to-close layer
 hosts a content-sized FrameContainer card in the middle.
 
 All user-facing strings are plain English source text, translated via the
-shared L10N module (see l10n.lua + l10n/<lang>.po) - same pattern as
-insights_view.lua and stats_view.lua.
+shared Locale module (see locale.lua + locale/<lang>.po) - same pattern as
+insights_view.lua and book_stats_view.lua.
 
 Cache behaviour
 ---------------
@@ -69,7 +69,6 @@ local LeftContainer   = require("ui/widget/container/leftcontainer")
 local LineWidget      = require("ui/widget/linewidget")
 local RightContainer  = require("ui/widget/container/rightcontainer")
 local Size            = require("ui/size")
-local SQ3             = require("lua-ljsqlite3/init")
 local TextBoxWidget   = require("ui/widget/textboxwidget")
 local TextWidget      = require("ui/widget/textwidget")
 local UIManager       = require("ui/uimanager")
@@ -77,13 +76,15 @@ local VerticalGroup   = require("ui/widget/verticalgroup")
 local VerticalSpan    = require("ui/widget/verticalspan")
 local Screen          = Device.screen
 
--- Injected by main.lua (same pattern as insights_view.lua / stats_view.lua)
-local L10N, Colors, Fonts = ...
+-- Injected by main.lua (same pattern as insights_view.lua /
+-- book_stats_view.lua), plus the shared statistics-DB accessor (StatsDb)
+-- and dismissable-popup helper (PopupUtil).
+local Locale, Colors, Fonts, StatsDb, PopupUtil = ...
 
-local _ = L10N._
-local N_ = L10N.N_
-local formatCount = L10N.formatCount
-local getLangBase = L10N.getLangBase
+local _ = Locale._
+local N_ = Locale.N_
+local formatCount = Locale.formatCount
+local getLangBase = Locale.getLangBase
 
 -- ---------------------------------------------------------------------------
 -- Milestone ladder (total reading hours)
@@ -104,34 +105,20 @@ local ICONS = {
 -- ---------------------------------------------------------------------------
 -- DB helpers
 -- ---------------------------------------------------------------------------
-local function dbPath()
-    return DataStorage:getSettingsDir() .. "/statistics.sqlite3"
-end
-
+-- The records cache lives next to the statistics DB, in the settings dir.
 local function cachePath()
     return DataStorage:getSettingsDir() .. "/readinginsights_records_cache.lua"
 end
 
+-- Statistics-DB access now goes through the shared StatsDb module (same db
+-- path, PRAGMAs, open/close and error handling as before). Kept under the
+-- original local names so the many call sites below are unchanged.
 local function withStatsDb(fallback, fn)
-    local lfs = require("libs/libkoreader-lfs")
-    local path = dbPath()
-    if lfs.attributes(path, "mode") ~= "file" then return fallback end
-    local conn = SQ3.open(path)
-    if not conn then return fallback end
-    pcall(function()
-        conn:exec("PRAGMA journal_mode=WAL; PRAGMA cache_size=2000; PRAGMA temp_store=MEMORY;")
-    end)
-    local ok, result = pcall(fn, conn)
-    conn:close()
-    if ok then return result end
-    return fallback
+    return StatsDb.withDb(fallback, fn)
 end
 
 local function withStatement(conn, sql, fn)
-    local stmt = conn:prepare(sql)
-    if not stmt then return end
-    pcall(fn, stmt)
-    stmt:close()
+    return StatsDb.withStatement(conn, sql, fn)
 end
 
 -- ---------------------------------------------------------------------------
@@ -768,7 +755,7 @@ function RecordsPopup:_buildUI()
 
     -- 1. Most reading time in a day
     local sess_val = (d.longest.duration_sec or 0) > 0
-        and L10N.formatDuration(d.longest.duration_sec, true)
+        and Locale.formatDuration(d.longest.duration_sec, true)
         or  "\xE2\x80\x93"
     local sess_sub = d.longest.date and formatDate(d.longest.date) or ""
     defRow(ICONS.session, _("Most reading time in a day"), sess_val, sess_sub)
@@ -900,21 +887,9 @@ function RecordsPopup:_buildUI()
     self._box_dimen = box.dimen
 end
 
-function RecordsPopup:onShow()
-    UIManager:setDirty(self, function()
-        return "ui", self._box_dimen
-    end)
-    return true
-end
-
-function RecordsPopup:onCloseWidget()
-    UIManager:setDirty(nil, function()
-        return "ui", self._box_dimen
-    end)
-end
-
-function RecordsPopup:onTap()           UIManager:close(self) return true end
-function RecordsPopup:onSwipe()         UIManager:close(self) return true end
-function RecordsPopup:onAnyKeyPressed() UIManager:close(self) return true end
+-- Any tap / swipe / key dismisses; onShow/onCloseWidget mark the records
+-- box region (self._box_dimen, set in the build above) dirty. All five come
+-- from the shared helper (see popuputil.lua).
+PopupUtil.makeDismissable(RecordsPopup, function(self) return self._box_dimen end)
 
 return { Popup = RecordsPopup }
