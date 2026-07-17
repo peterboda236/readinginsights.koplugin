@@ -1,15 +1,16 @@
-### 📊 Reading insights
+### 📊 Reading insights plugin
 
-<img width="384" height="512" alt="FileManager_2026-06-30_074746" src="https://github.com/user-attachments/assets/cf248698-75d0-4948-8d9c-70ea5c69fd5e" />
-
+<img width="255" height="340" alt="FileManager_2026-07-17_152310" src="https://github.com/user-attachments/assets/54116e81-b1aa-41ef-be93-ecab2604f7c8" />
+<img width="255" height="340" alt="FileManager_2026-07-17_152344" src="https://github.com/user-attachments/assets/4a3d2fb9-cc51-4342-a952-36f23bb1925c" />
+<img width="255" height="340" alt="Reader_Az Elso Torveny vilaga 1  - Hidegen talalva - Abercrombie, Joe #p(878) epub_p1117_2026-07-06_084654" src="https://github.com/user-attachments/assets/555ab8c6-d9ce-4ebc-a6ac-cfdf097ec51d" />
+<br/><br/>
+<img width="255" height="340" alt="Reader_Eddie Flynn 3  - Esku alatt - Cavanagh, Steve #p(421) epub_p696_2026-07-17_152405" src="https://github.com/user-attachments/assets/371b3119-119a-4ccb-9660-a63879996c48" />
+<img width="255" height="340" alt="FileManager_2026-07-17_152315" src="https://github.com/user-attachments/assets/ea6711c7-7c18-4bb5-a15c-871cc0b74888" />
+<img width="255" height="340" alt="FileManager_2026-07-17_152332" src="https://github.com/user-attachments/assets/21b311a8-bb10-4ffe-b7f0-3e91b19bb281" />
 
 More screenshots
 
-<img width="96" height="128" alt="reading-insights-v2-0-0-new-book-progress-popup-colors-v0-zoh19sw42rbh1" src="https://github.com/user-attachments/assets/52f851b7-8955-4739-b3a7-96ff8c2cbfe6" /><img width="96" height="128" alt="FileManager_2026-06-30_074746" src="https://github.com/user-attachments/assets/cf248698-75d0-4948-8d9c-70ea5c69fd5e" /><img width="96" height="128" alt="FileManager_2026-07-02_083320" src="https://github.com/user-attachments/assets/8193ba8b-7f7e-4b35-9efb-81d0d4a1df8e" /><img width="96" height="128" alt="FileManager_2026-07-02_083306" src="https://github.com/user-attachments/assets/3026267b-d29d-4487-99a5-6efdcc4baa37" />
-
-<img width="96" height="128" alt="FileManager_2026-07-02_083257" src="https://github.com/user-attachments/assets/8a5857fb-f313-4d04-ab26-f604bdee7e52" /><img width="96" height="128" alt="FileManager_2026-07-10_103932" src="https://github.com/user-attachments/assets/ee35d8c8-7160-4e57-998a-2d4e3a26fa70" /><img width="96" height="128" alt="Reader_Eddie Flynn 3  - Esku alatt - Cavanagh, Steve #p(421) epub_p333_2026-07-12_121742" src="https://github.com/user-attachments/assets/91661f4b-82bc-4f39-baea-fcbdb3edbad1" />
-
-
+<img width="192" height="256" alt="reading-insights-v2-0-0-new-book-progress-popup-colors-v0-zoh19sw42rbh1" src="https://github.com/user-attachments/assets/52f851b7-8955-4739-b3a7-96ff8c2cbfe6" /><img width="192" height="256" alt="FileManager_2026-07-02_083306" src="https://github.com/user-attachments/assets/3026267b-d29d-4487-99a5-6efdcc4baa37" /><img width="192" height="256" alt="FileManager_2026-07-02_083320" src="https://github.com/user-attachments/assets/8193ba8b-7f7e-4b35-9efb-81d0d4a1df8e" />
 
 
 This plugin bundles three reading-stats popups, powered by KOReader's
@@ -53,9 +54,6 @@ Available everywhere (book view and file manager).
 
 ### 🏆 Records
 
-<img width="384" height="512" alt="FileManager_2026-07-16_151137" src="https://github.com/user-attachments/assets/203b2f12-8219-43d8-ba30-ad10bc2d1053" />
-
-
 A compact, floating card showing your personal reading records and
 milestone progress — built on the same statistics database as the other
 two popups.
@@ -85,8 +83,6 @@ is tied to a specific open book.
 
 ### 📖 Book progress stats
 
-<img width="384" height="512" alt="Reader_Az Elso Torveny vilaga 1  - Hidegen talalva - Abercrombie, Joe #p(878) epub_p1117_2026-07-06_084654" src="https://github.com/user-attachments/assets/555ab8c6-d9ce-4ebc-a6ac-cfdf097ec51d" />
-
 A per-book overlay showing detailed progress and pace for the book you're currently reading, built on top of the same statistics database as Reading insights.
 
 **Highlights:**
@@ -101,13 +97,24 @@ A per-book overlay showing detailed progress and pace for the book you're curren
   switch to pages left in this chapter / next chapter's page count instead
   — tap again to switch back
 - **Chapter breakdown** — progress and time spent per chapter (if chapter metadata is available)
-- **Reading calendar** — tap the "Pace" section title (or use the "Show Book
-  progress calendar" menu entry/gesture — see [Where it shows
+
+**Controls:** tap to toggle between percentage/page view, tap the "This
+chapter"/"Next chapter" row to toggle between reading time and pages left,
+tap the "read today" / "avg time/day" row to toggle between time and page
+counts, tap the "Pace" title to open the reading calendar, long-press to
+force-reload data.
+
+**Caching:** shares the same stale-while-revalidate approach as Reading insights — instant open with cached data, refreshed in the background.
+
+### 🗓️ Book progress calendar
+
+Tap the "Pace" section title on the Book progress popup or use the "Show Book
+  progress calendar menu entry/gesture — see [Where it shows
   up](#where-it-shows-up) below) to open a month grid for this book,
   colored like a heatmap and showing a bottom progress bar per day (days
-  with no reading are left blank — no bar at all); tap a day to see its
-  exact pages/time/percent, swipe or use the arrows to page between
-  months. What the small text under each day number shows is configurable
+  with no reading are left blank — no bar at all); also shows the starting date, 
+  the stimated finish day and if the book is finished also showd on the calendar.
+  What the small text under each day number shows is configurable
   (*Settings → Advanced settings → Book calendar cell content*):
   - **Percent** (default) — cumulative progress through the whole book as
     of that day, e.g. "+13%"
@@ -117,13 +124,9 @@ A per-book overlay showing detailed progress and pace for the book you're curren
     KOReader's global *Duration format* setting (classic "0:23", modern
     "23'", or letters "23m")
 
-**Controls:** tap to toggle between percentage/page view, tap the "This
-chapter"/"Next chapter" row to toggle between reading time and pages left,
-tap the "read today" / "avg time/day" row to toggle between time and page
-counts, tap the "Pace" title to open the reading calendar, long-press to
-force-reload data.
-
-**Caching:** shares the same stale-while-revalidate approach as Reading insights — instant open with cached data, refreshed in the background.
+**Controls:** Tap a day to see its
+  exact pages/time/percent, swipe or use the arrows to page between
+  months.   
 
 ## 😴 Sleep screen
 
