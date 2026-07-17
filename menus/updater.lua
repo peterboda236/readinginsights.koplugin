@@ -8,8 +8,8 @@ for and install new releases of this plugin directly from GitHub, without
 having to plug the device into a computer. Also supports pulling a specific
 development branch's tip, for testing pre-release builds.
 
-Loaded by main.lua via loadfile(...)( L10N ) and handed straight in, so
-`local L10N = ...` at the top is all this module needs.
+Loaded by main.lua via loadfile(...)( Locale ) and handed straight in, so
+`local Locale = ...` at the top is all this module needs.
 
 Exposes:
   getInstalledVersion()               reads version from this plugin's
@@ -34,8 +34,8 @@ local Device      = require("device")
 local InfoMessage = require("ui/widget/infomessage")
 local UIManager   = require("ui/uimanager")
 
-local L10N = ...
-local _ = L10N._
+local Locale = ...
+local _ = Locale._
 
 local GITHUB_REPO = "peterboda236/readinginsights.koplugin"
 local PLUGIN_ID    = "readinginsights.koplugin"

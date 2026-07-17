@@ -9,7 +9,7 @@ This plugin adds two views, each implemented in its own file:
     everywhere (book view and file manager), via the Tools menu and via a
     general gesture/dispatcher action.
 
-  stats_view.lua
+  book_stats_view.lua
     "Reading statistics: overview" - compact live overlay for the book
     currently open (chapter/book time left, progress, pace). Book-view only:
     it needs an open document, so it's only offered in the Tools menu while
@@ -17,13 +17,13 @@ This plugin adds two views, each implemented in its own file:
     under Reader gestures (not File manager gestures).
 
 This file itself only does the wiring: it loads the shared translation
-module (l10n.lua) and both view modules, registers the two dispatcher
+module (locale.lua) and both view modules, registers the two dispatcher
 actions (for gesture/shortcut assignment), builds the Tools menu entries,
 and forwards the two "show popup" events to the right view.
 
 Both view files are loaded with loadfile()(...) rather than require(...)
 so they don't depend on this plugin's directory being on package.path -
-they get the shared L10N module passed straight in as their chunk argument.
+they get the shared Locale module passed straight in as their chunk argument.
 ]]--
 
 local Dispatcher = require("dispatcher")
@@ -31,6 +31,28 @@ local UIManager = require("ui/uimanager")
 local WidgetContainer = require("ui/widget/container/widgetcontainer")
 local Device = require("device")
 local Screen = Device.screen
+
+-- Shared plugin bootstrap. A tiny inline loadfile is only needed to reach
+-- pluginutil.lua; every other plugin file (including the view modules loaded
+-- much further down) goes through PluginUtil.load. The small dependency-free
+-- shared modules are loaded here so even this file's own setting helpers can
+-- use them. See pluginutil.lua, settings.lua, statsdb.lua, popuputil.lua and
+-- bookprogress.lua.
+local PluginUtil
+do
+    local src = debug.getinfo(1, "S").source
+    local dir = src:match("^@(.*/)") or "./"
+    local chunk, err = loadfile(dir .. "pluginutil.lua")
+    if not chunk then
+        error(("Reading Insights: failed to load pluginutil.lua: %s"):format(tostring(err)))
+    end
+    PluginUtil = chunk()
+end
+local loadModule = PluginUtil.load
+local Settings     = loadModule("lib/settings.lua")
+local StatsDb      = loadModule("lib/statsdb.lua")
+local PopupUtil    = loadModule("lib/popuputil.lua")
+local BookProgress = loadModule("lib/bookprogress.lua")
 
 --[[
 Sleep-screen integration.
@@ -52,11 +74,11 @@ local SCREENSAVER_TYPE_VALUE = "readinginsights"
 local SCREENSAVER_LABEL_SETTING = "readinginsights_screensaver_label_mode"
 
 local function readScreensaverLabelMode()
-    return G_reader_settings:readSetting(SCREENSAVER_LABEL_SETTING) or "none"
+    return Settings.read(SCREENSAVER_LABEL_SETTING, "none")
 end
 
 local function saveScreensaverLabelMode(mode)
-    G_reader_settings:saveSetting(SCREENSAVER_LABEL_SETTING, mode)
+    Settings.save(SCREENSAVER_LABEL_SETTING, mode)
 end
 
 --[[
@@ -75,30 +97,30 @@ local LAST_INSTALL_SOURCE_SETTING = "readinginsights_last_install_source"
 local CHECK_UPDATES_SETTING       = "readinginsights_check_updates"
 
 local function readDevBranch()
-    return G_reader_settings:readSetting(DEV_BRANCH_SETTING) or ""
+    return Settings.read(DEV_BRANCH_SETTING, "")
 end
 
 local function saveDevBranch(branch)
-    G_reader_settings:saveSetting(DEV_BRANCH_SETTING, branch)
+    Settings.save(DEV_BRANCH_SETTING, branch)
 end
 
 local function readLastInstallSource()
-    return G_reader_settings:readSetting(LAST_INSTALL_SOURCE_SETTING) or "release"
+    return Settings.read(LAST_INSTALL_SOURCE_SETTING, "release")
 end
 
 local function saveLastInstallSource(source)
-    G_reader_settings:saveSetting(LAST_INSTALL_SOURCE_SETTING, source)
+    Settings.save(LAST_INSTALL_SOURCE_SETTING, source)
 end
 
 local function readCheckUpdates()
-    return G_reader_settings:isTrue(CHECK_UPDATES_SETTING)
+    return Settings.isTrue(CHECK_UPDATES_SETTING)
 end
 
 local function saveCheckUpdates(value)
     if value then
-        G_reader_settings:makeTrue(CHECK_UPDATES_SETTING)
+        Settings.makeTrue(CHECK_UPDATES_SETTING)
     else
-        G_reader_settings:makeFalse(CHECK_UPDATES_SETTING)
+        Settings.makeFalse(CHECK_UPDATES_SETTING)
     end
 end
 
@@ -162,54 +184,45 @@ local function patchCoreScreensaver()
     end
 end
 
-local function pluginDir()
-    local src = debug.getinfo(1, "S").source
-    local dir = src:match("^@(.*/)")
-    return dir or "./"
-end
-
-local PLUGIN_DIR = pluginDir()
-
--- Loads <name> from this plugin's directory and calls the resulting chunk
--- with `...` as its arguments (e.g. the shared L10N module).
-local function loadModule(name, ...)
-    local path = PLUGIN_DIR .. name
-    local chunk, err = loadfile(path)
-    if not chunk then
-        error(("Reading Insights: failed to load %s: %s"):format(name, tostring(err)))
-    end
-    return chunk(...)
-end
-
-local L10N = loadModule("l10n.lua")
-local _ = L10N._
+local Locale = loadModule("lib/locale.lua", PluginUtil)
+local _ = Locale._
 
 -- Shared chart/text color settings (Colors menu), used by both views so
 -- there's a single, unified place to configure them. See colors.lua.
-local Colors = loadModule("colors.lua", L10N)
+local Colors = loadModule("menus/colors.lua", Locale, PluginUtil, Settings)
 
 -- Shared popup font settings (Fonts menu), same idea as Colors above but
 -- for the section/value/label/small text roles in both popups. See
 -- fonts.lua.
-local Fonts = loadModule("fonts.lua", L10N)
+local Fonts = loadModule("menus/fonts.lua", Locale, PluginUtil, Settings)
 
-local Insights = loadModule("insights_view.lua", L10N, Colors, Fonts)
-local StatsPopup = loadModule("stats_view.lua", L10N, Colors, Fonts)
+local Insights = loadModule("views/insights_view.lua", Locale, Colors, Fonts, Settings, StatsDb, PopupUtil)
+
+-- Per-book reading calendar (its own file now). Loaded before the book-stats
+-- overlay so that overlay can hand tapping the "Pace" title straight to it.
+-- Also reached directly from the "current book calendar" gesture and exposes
+-- the calendar-cell-content setting used in Advanced settings below. See
+-- book_calendar_view.lua.
+local BookCalendar = loadModule("views/book_calendar_view.lua", Locale, Colors, Fonts, Settings, StatsDb, BookProgress)
+
+-- Compact live "current book progress" overlay (book view only). See
+-- book_stats_view.lua (formerly stats_view.lua).
+local StatsPopup = loadModule("views/book_stats_view.lua", Locale, Colors, Fonts, Settings, StatsDb, BookProgress, BookCalendar)
 
 -- Personal reading records / milestone popup (general - works in both
 -- Reader view and File manager, same as Insights, since none of its data
 -- is tied to a specific open book). See record_view.lua.
-local Records = loadModule("record_view.lua", L10N, Colors, Fonts)
+local Records = loadModule("views/record_view.lua", Locale, Colors, Fonts, StatsDb, PopupUtil)
 
 -- In-app updater (Updates menu): lets the user check for and install new
 -- releases of this plugin straight from GitHub. See updater.lua.
-local Updater = loadModule("updater.lua", L10N)
+local Updater = loadModule("menus/updater.lua", Locale)
 
 -- About dialog (About menu entry, right after Updates): a small popup
 -- with the plugin title, installed version (via Updater, above), a short
 -- description, and the GitHub repository URL. Uses its own hard-coded
 -- fonts, not the (user-customisable) Fonts module. See about.lua.
-local About = loadModule("about.lua", L10N, Updater)
+local About = loadModule("views/about.lua", Locale, Updater, PopupUtil)
 
 --[[
 Plugin wiring.
@@ -241,7 +254,7 @@ function ReadingInsights:onDispatcherRegisterActions()
         reader   = true,
     })
     -- reader = true: opens the per-book reading calendar directly (see
-    -- StatsPopup.openBookCalendarForUI in stats_view.lua), skipping the
+    -- BookCalendar.show in book_calendar_view.lua), skipping the
     -- "This book" popup - lets a gesture/shortcut jump straight to the
     -- calendar instead of needing to tap through the progress row first.
     Dispatcher:registerAction("reading_calendar_popup", {
@@ -693,7 +706,7 @@ end
 -- book" first.
 function ReadingInsights:onShowBookCalendarPopup()
     if not self:_hasOpenDocument() then return true end
-    StatsPopup.openBookCalendarForUI(self.ui)
+    BookCalendar.show{ ui = self.ui }
     return true
 end
 
@@ -1034,9 +1047,9 @@ function ReadingInsights:addToMainMenu(menu_items)
     table.insert(advanced_settings_sub_item_table, {
         text         = _("Show long durations (24h+) as days"),
         keep_menu_open = true,
-        checked_func = function() return L10N.readDurationDaysSetting() end,
+        checked_func = function() return Locale.readDurationDaysSetting() end,
         callback     = function()
-            L10N.saveDurationDaysSetting(not L10N.readDurationDaysSetting())
+            Locale.saveDurationDaysSetting(not Locale.readDurationDaysSetting())
         end,
     })
 
@@ -1044,10 +1057,10 @@ function ReadingInsights:addToMainMenu(menu_items)
     -- "+13%" progress through the whole book (default), that day's own
     -- page count ("+101o"), or that day's own time spent (honoring
     -- KOReader's global "Duration format" setting) - see
-    -- StatsPopup.readCalendarCellModeSetting in stats_view.lua.
+    -- BookCalendar.readCalendarCellModeSetting in book_calendar_view.lua.
     table.insert(advanced_settings_sub_item_table, {
         text_func = function()
-            local mode_key = StatsPopup.readCalendarCellModeSetting()
+            local mode_key = BookCalendar.readCalendarCellModeSetting()
             local mode = (mode_key == "pages" and _("Pages"))
                 or (mode_key == "time" and _("Time"))
                 or _("Percent")
@@ -1060,27 +1073,27 @@ function ReadingInsights:addToMainMenu(menu_items)
                 keep_menu_open = true,
                 radio = true,
                 checked_func = function()
-                    return StatsPopup.readCalendarCellModeSetting() == "percent"
+                    return BookCalendar.readCalendarCellModeSetting() == "percent"
                 end,
-                callback = function() StatsPopup.saveCalendarCellModeSetting("percent") end,
+                callback = function() BookCalendar.saveCalendarCellModeSetting("percent") end,
             },
             {
                 text = _("Pages"),
                 keep_menu_open = true,
                 radio = true,
                 checked_func = function()
-                    return StatsPopup.readCalendarCellModeSetting() == "pages"
+                    return BookCalendar.readCalendarCellModeSetting() == "pages"
                 end,
-                callback = function() StatsPopup.saveCalendarCellModeSetting("pages") end,
+                callback = function() BookCalendar.saveCalendarCellModeSetting("pages") end,
             },
             {
                 text = _("Time"),
                 keep_menu_open = true,
                 radio = true,
                 checked_func = function()
-                    return StatsPopup.readCalendarCellModeSetting() == "time"
+                    return BookCalendar.readCalendarCellModeSetting() == "time"
                 end,
-                callback = function() StatsPopup.saveCalendarCellModeSetting("time") end,
+                callback = function() BookCalendar.saveCalendarCellModeSetting("time") end,
             },
         },
     })

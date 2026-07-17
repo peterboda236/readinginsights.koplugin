@@ -245,35 +245,54 @@ Once installed, future updates can be installed in-app — see
 
 ## File layout
 
-- `main.lua` — plugin entry point: loads the shared translation module and
-  all three views, registers the four dispatcher actions, builds the Tools
-  menu.
-- `_meta.lua` — plugin identity for KOReader's plugin manager: name,
-  description, and the version string the updater bumps on install.
-- `about.lua` — the "About" dialog (Tools > Reading insights > About):
-  title, installed version, description, and repo link.
-- `l10n.lua` — shared translation lookup (`l10n/<lang>.po`) and locale-aware
-  number formatting, used by both views.
-- `colors.lua` — shared chart/text color settings (the "Colors" submenu)
-  used by all three views, so there's a single place to configure every
-  color.
-- `colorwheelwidget.lua` — the touch color wheel dialog (hue/saturation
-  wheel + brightness slider + live hex preview) used by the "Pick with
-  color wheel" option in the Colors submenu.
-- `fonts.lua` — shared font settings (the "Fonts" submenu) used by all
-  three views, so there's a single place to configure every text role's
-  font name and size.
-- `insights_view.lua` — the full-screen "Reading insights" popup.
-- `record_view.lua` — the floating "Records" popup (personal reading
-  records and milestone progress).
-- `stats_view.lua` — the compact "Reading statistics: overview" popup.
-- `updater.lua` — the in-app updater (the "Updates" submenu): checks
-  GitHub for new releases/branches and installs them on the device.
-- `l10n/` — one `.po` file per language (`en.po`, `hu.po`, `de.po`), see
+Files load each other by explicit path from the plugin directory (not via
+`require`), so the modules are grouped into folders. `_meta.lua`, `main.lua`
+and `pluginutil.lua` must stay at the plugin root (KOReader loads the first
+two by name; `pluginutil.lua` is the bootstrap that resolves the plugin
+directory every other path is built from). The `locale/` translation folder
+also stays at the root, since `lib/locale.lua` reads `locale/<lang>.po` from
+there.
+
+```
+readinginsights.koplugin/
+├── _meta.lua            plugin identity (name, description, version)
+├── main.lua             entry point: bootstraps the shared modules, loads
+│                        the views, registers dispatcher actions, builds the
+│                        Tools menu
+├── pluginutil.lua       shared plugin-dir + module loader (the bootstrap
+│                        anchor; replaces the old per-file pluginDir copies)
+├── locale/              one .po file per language (en.po, hu.po, de.po)
+├── lib/                 shared, UI-less infrastructure
+│   ├── locale.lua       translation lookup (locale/<lang>.po) + locale-aware
+│   │                    number formatting
+│   ├── settings.lua     nil-guarded G_reader_settings wrappers + the shared
+│   │                    week-start-day setting
+│   ├── statsdb.lua      access to KOReader's statistics.sqlite3 (one db path
+│   │                    + PRAGMAs; open / withDb / withStatement)
+│   ├── bookprogress.lua per-book reading-position helpers (progress percent /
+│   │                    pages left / page counts)
+│   └── popuputil.lua    shared "any tap/swipe/key dismisses" popup handlers
+├── views/               the user-facing popups
+│   ├── insights_view.lua       full-screen "Reading insights" popup
+│   ├── book_stats_view.lua     compact "current book progress" overlay
+│   │                           (formerly stats_view.lua)
+│   ├── book_calendar_view.lua  per-book reading calendar (month grid), split
+│   │                           out of the old stats_view.lua
+│   ├── record_view.lua         "Records" popup (personal records / milestones)
+│   └── about.lua               "About" dialog (title, version, repo link)
+├── menus/               Tools-menu configuration submodules
+│   ├── colors.lua       chart/text color settings (the "Colors" submenu)
+│   ├── fonts.lua        font settings (the "Fonts" submenu)
+│   └── updater.lua      in-app updater (the "Updates" submenu): checks GitHub
+│                        for new releases/branches and installs them
+└── widgets/             reusable UI widgets
+    └── colorwheelwidget.lua  touch color wheel (hue/saturation + brightness +
+                              live hex preview) used by the Colors submenu
+```
 
 ## Translations
 
-`l10n/en.po` and `l10n/hu.po` hold the UI strings for all three popups
+`locale/en.po` and `locale/hu.po` hold the UI strings for all three popups
 (month names, "Total read", streak labels, records labels, chapter/pace
 labels, etc.) as plain `msgid`/`msgstr` pairs, e.g.:
 
@@ -282,7 +301,7 @@ msgid "Current streak"
 msgstr "Aktuális sorozat"
 ```
 
-To add another language, drop a new `l10n/<lang>.po` file next to the
+To add another language, drop a new `locale/<lang>.po` file next to the
 existing ones — no code changes needed.
 
 

@@ -2,7 +2,7 @@
 Reading Insights - shared chart/text color settings.
 
 Centralises the color choices used by both views (insights_view.lua and
-stats_view.lua), so there is exactly one "Colors" menu and one set of
+book_stats_view.lua), so there is exactly one "Colors" menu and one set of
 settings driving every chart/diagram and label in the plugin:
 
   active_bar    "current" bar/point in a chart (today's bar, the current
@@ -25,9 +25,9 @@ format KOReader itself accepts (see Blitbuffer.colorFromString), so any
 hex code the user can look up (a website color picker, another app, ...)
 works here too.
 
-Loaded by main.lua via loadfile(...)( L10N ) and handed straight to both
-view modules as their second chunk argument (alongside L10N), so
-`local L10N, Colors = ...` at the top of each view is all they need.
+Loaded by main.lua via loadfile(...)( Locale ) and handed straight to both
+view modules as their second chunk argument (alongside Locale), so
+`local Locale, Colors = ...` at the top of each view is all they need.
 
 Exposes:
   getColor(key)         Blitbuffer color object, ready to use as
@@ -52,28 +52,14 @@ local LineWidget  = require("ui/widget/linewidget")
 local UIManager    = require("ui/uimanager")
 local Widget      = require("ui/widget/widget")
 
-local L10N = ...
-local _ = L10N._
+-- Shared modules passed in by main.lua: Locale (translations), PluginUtil
+-- (plugin dir + loader) and Settings (G_reader_settings wrappers).
+local Locale, PluginUtil, Settings = ...
+local _ = Locale._
 
 -- Load ColorWheelWidget from this plugin's own directory (not on
--- package.path, so require() won't find it) - same loadfile() pattern
--- main.lua uses for its own module files.
-local function pluginDir()
-    local src = debug.getinfo(1, "S").source
-    local dir = src:match("^@(.*/)")
-    return dir or "./"
-end
-
-local function loadLocal(name)
-    local path = pluginDir() .. name
-    local chunk, err = loadfile(path)
-    if not chunk then
-        error(("Reading Insights: failed to load %s: %s"):format(name, tostring(err)))
-    end
-    return chunk()
-end
-
-local ColorWheelWidget = loadLocal("colorwheelwidget.lua")
+-- package.path, so require() won't find it) - via the shared loader.
+local ColorWheelWidget = PluginUtil.load("widgets/colorwheelwidget.lua")
 
 -- ---------------------------------------------------------------------
 -- Custom hex colors need bb:paintRectRGB32, not bb:paintRect.
@@ -224,17 +210,13 @@ local function hexToHsv(hex)
 end
 
 local function readHex(key)
-    if G_reader_settings and G_reader_settings.readSetting then
-        local n = normalizeHex(G_reader_settings:readSetting(SETTINGS_PREFIX .. key))
-        if n then return n end
-    end
+    local n = normalizeHex(Settings.read(SETTINGS_PREFIX .. key, nil))
+    if n then return n end
     return DEFAULTS[key]
 end
 
 local function saveHex(key, hex)
-    if G_reader_settings and G_reader_settings.saveSetting then
-        G_reader_settings:saveSetting(SETTINGS_PREFIX .. key, hex)
-    end
+    Settings.save(SETTINGS_PREFIX .. key, hex)
 end
 
 -- Small cache of built Blitbuffer color objects: getColor() is called a
