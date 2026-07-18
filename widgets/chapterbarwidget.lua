@@ -202,10 +202,10 @@ function M.build(chapter_info, full_width, padding_h, offset_override, on_prev, 
     -- around the two arrows stays visually symmetric.
     local remainder_left  = math.floor(remainder / 2)
     local remainder_right = remainder - remainder_left
-    
+
     local left_arrow_widget  = makeArrowSpan("\xe2\x80\xb9", left_arrow_color)
     local right_arrow_widget = makeArrowSpan("\xe2\x80\xba", right_arrow_color)
-    
+
     local flat_row = HorizontalGroup:new{ align = "center" }
     table.insert(flat_row, HorizontalSpan:new{ width = padding_h + remainder_left })
     table.insert(flat_row, left_arrow_widget)

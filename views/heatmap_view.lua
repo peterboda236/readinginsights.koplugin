@@ -27,6 +27,13 @@ here entirely.
                                 which days a period covers, and how far back
                                 paging can go
   M.Popup:new{ ... }      the full-screen version
+Shading, for both grids: each cell is compared against the busiest single
+day (or hour) in the period shown, and takes one of five levels -
+Colors.heatmap0() for no reading at all, then heatmap25/50/75/100() for
+0-25%, 25-50%, 50-75% and 75-100% of that peak. In the calendar grid each
+column is one week, starting on the configured week start day, and the row
+above it labels the column each month starts in, the way GitHub's own
+contribution graph does.
 ]]--
 
 local Blitbuffer = require("ffi/blitbuffer")

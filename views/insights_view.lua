@@ -148,57 +148,8 @@ local Locale, Colors, Fonts, StatsDb, PopupUtil, VS, Cache, UI, Trend, Heatmap, 
     deps.Locale, deps.Colors, deps.Fonts, deps.StatsDb, deps.PopupUtil,
     deps.VS, deps.Cache, deps.UI, deps.Trend, deps.Heatmap, deps.BookList
 
-
 -- true: today's bar in the weekly chart is black. false: all bars gray.
 local WEEKLY_CHART_HIGHLIGHT_TODAY = true
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 -- Value-based (not reference-based) equality for the small stat tables
 -- returned by the getters below. Needed because a per-minute cache refresh
@@ -282,18 +233,7 @@ local function buildMonthlyArray(year, entry_fn)
     return months
 end
 
-
-
 local ReadingInsightsPopup
-
-
-
-
-
-
-
-
-
 
 local function computeStreaks(entries_desc, is_consecutive, is_current_start)
     if #entries_desc == 0 then
@@ -818,58 +758,9 @@ local function buildMonthlyChart(popup_self, monthly_data, layout, fonts)
     return chart
 end
 
--- ============================================================
--- 8-week reading trend popup (tap a Last-week cell to open it)
--- ============================================================
-
-
-
-
-
-
-
-
-
-
 -- Any tap / swipe / key dismisses; onShow/onCloseWidget mark the popup box
 -- region dirty. All five come from the shared helper (see popuputil.lua).
 PopupUtil.makeDismissable(Trend.Popup, function(self) return self.box_content.dimen end)
-
--- ---------------------------------------------------------------------
--- Reading heatmap (GitHub-style contribution grid)
---
--- Tapping the "Total read" header (see buildInsightsSections) opens a
--- full-screen popup showing the most recent period of reading activity
--- (3, 4 or 6 months - see VS.readHeatmapMonthsSetting, Settings ▸ Advanced
--- settings ▸ "Reading heatmap range") as a grid of small squares, one
--- per day, shaded by how much was read that day relative to the busiest
--- single day in the period shown:
---   0%   (no reading)            -> Colors.heatmap0()
---   >0-25% of the peak day       -> Colors.heatmap25()
---   25-50%                       -> Colors.heatmap50()
---   50-75%                       -> Colors.heatmap75()
---   75-100%                      -> Colors.heatmap100()
--- Each column is one week (starting on the configured week start day -
--- see VS.weekStartWday); the row above the grid labels the column each
--- month starts in, exactly like GitHub's own graph.
--- The popup itself (Heatmap.Popup, further below) is paginated in
--- steps of that same period length, swipe left/right, as far back as
--- there's reading data - see Heatmap.getHeatmapPeriodRange / Heatmap.heatmapMaxPeriodsBack.
--- ---------------------------------------------------------------------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 -- Weekly bar chart: 7 bars, index 1 = today (leftmost), index 7 = 6 days ago.
 -- Labels: "Today", "Yesterday", then weekday abbreviations.
@@ -942,7 +833,7 @@ local function buildWeeklyChart(popup_self, daily_data, layout, fonts, mode)
             dimen = Geom:new{ w = bar_width, h = total_bar_height },
             bar_column,
         }
-        
+
         if i == 1 then
             local tappable_bar = InputContainer:new{
                 dimen = Geom:new{ x = 0, y = 0, w = bar_width, h = total_bar_height },
@@ -1535,7 +1426,6 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
     return sections
 end
 
-
 local ReadingInsightsPopup = InputContainer:extend{
     modal         = true,
     ui            = nil,
@@ -2043,9 +1933,6 @@ function ReadingInsightsPopup:getWeekdayHourReadingData(start_t, end_t, shared_c
         return data
     end)
 end
-
-
-
 
 -- Opens the "Reading heatmap" popup - tap the "Total read" header (see
 -- buildInsightsSections) to open it, starting on the most recent
@@ -2725,14 +2612,9 @@ function ReadingInsightsPopup:showWeeklyTrendPopup(metric)
     UIManager:show(Trend.Popup:new{ box_content = box })
 end
 
-
-
-
 function ReadingInsightsPopup:getBooksForMonth(year_month)
     return BookList.getBooksForPeriod("%Y-%m", year_month)
 end
-
-
 
 function ReadingInsightsPopup:showBooksForMonth(year_month, month_label_full)
     local books = self:getBooksForMonth(year_month)
@@ -3032,7 +2914,6 @@ function ReadingInsightsPopup:showFinishedBooksForYear(year)
         T(_("No books finished in %1"), tostring(year)),
         T(N_("%1 - book finished %2", "%1 - books finished %2", #books), tostring(year), formatCount(#books)) .. " (" .. formatHHMMSS(total_secs) .. ")")
 end
-
 
 function ReadingInsightsPopup:showFinishedBooksChecklist(year)
     UIManager:show(BookList.Checklist:new{
@@ -3501,7 +3382,7 @@ function ReadingInsightsPopup:onHold(arg, ges_ev)
         end)
         return true
     end
-    
+
     if self._current_month_bar_widget then
         local d = self._current_month_bar_widget.dimen
         if d and pos.x >= d.x and pos.x <= d.x + d.w
@@ -3699,7 +3580,6 @@ function ReadingInsightsPopup:onCloseWidget()
         UIManager:setDirty(nil, "ui")
     end
 end
-
 
 -- The book-list popups replace this popup and reopen it when they close, so
 -- they need the class and a few of the helpers defined above. Registering
