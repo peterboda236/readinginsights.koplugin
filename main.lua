@@ -719,7 +719,21 @@ end
 -- book" first.
 function ReadingInsights:onShowBookCalendarPopup()
     if not self:_hasOpenDocument() then return true end
-    BookCalendar.show{ ui = self.ui }
+    -- Reuse the same stats-gathering logic as the "This book" popup
+    -- (book_stats_view.lua's ReadingStatsPopup:gatherStats) so that
+    -- finish_timestamp/started_timestamp get computed here too. Without
+    -- this, the calendar opened straight from the menu never learns the
+    -- book's estimated finish date, so the forward (›) paging arrow never
+    -- appears even when the tap-through path (via "This book") would show
+    -- it. gatherStats only reads self.ui, so a plain table works fine.
+    local stats = StatsPopup.gatherStats{ ui = self.ui }
+    BookCalendar.show{
+        ui                = self.ui,
+        book_id           = stats.book_id,
+        total_pages       = stats.total_pages_for_calendar,
+        finish_timestamp  = stats.finish_timestamp,
+        started_timestamp = stats.started_timestamp,
+    }
     return true
 end
 
