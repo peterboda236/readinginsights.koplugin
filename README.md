@@ -23,7 +23,10 @@ A full-screen scrollable overlay with a comprehensive overview of your reading h
 **Highlights:**
 - **Today** — reading time and pages read so far today
 - **Last week** — 7-day average time and pages per day; tap either value to open its own 8-week trend popup (time trend or pages trend)
-- **Streaks** — current and best daily & weekly reading streaks
+- **Streaks** — current and best daily & weekly reading streaks; tap any of
+  the four to open a popup summarising that streak: its name and date range
+  on one line, then reading time and pages side by side (total, and average
+  per day), with the number of books read during it below
 - **Yearly view** — hours or days read + pages, navigable by year
 - **Monthly chart** — bar chart of reading activity per month (tappable to see books)
 - **All-time totals** — cumulative hours and pages across all years; tap
@@ -40,8 +43,9 @@ A full-screen scrollable overlay with a comprehensive overview of your reading h
   Dec/Jan boundary)
 - **Reading goal** — this year's finished-book count next to a target you
   set for that year, shown as two side-by-side cells, each with a large
-  number followed by its label (e.g. "12" "books finished" next to "10"
-  "books goal" — singular "1 book goal" when the target is set to 1);
+  number followed by its label, each reading as one phrase (e.g. "12"
+  "books finished" next to "30" "books to read" — singular "1 book to read"
+  when the target is set to 1);
   swipes left/right on the popup (see **Controls** below) move the goal
   section to that year too, same as the rest of the popup
   - **Tap** the left cell (the finished-book count) to see the list of
@@ -85,7 +89,7 @@ milestone progress — built on the same statistics database as the other
 two popups.
 
 **Highlights:**
-- **Most reading time in a day** — most readin time on a single calendar day, with the date
+- **Most reading time in a day** — most reading time on a single calendar day, with the date
 - **Most pages in a day** — most pages read on a single calendar day, with the date
 - **Best daily streak** — longest run of consecutive reading days, with the start–end dates
 - **Last milestone** — highest total-hours milestone already passed, with the date it was reached
@@ -252,7 +256,7 @@ Once installed, future updates can be installed in-app — see
       - **Sleep-screen indicator** — None (default) or "(sleeping…)" after
         the title, appended while the popup is shown as the sleep screen
         (see [Sleep screen](#-sleep-screen) above)
-      - **Bar chart height** — **Automatic (fit screen)** (on by default)
+      - **Bar chart height** — **Automatic (Reading insights)** (on by default)
         sizes the two Reading insights charts while the popup is built so
         the page ends up one screen tall, using whatever vertical space the
         other sections leave over and never spilling into a scroll bar.
@@ -417,9 +421,10 @@ The other splits are about duplication and cohesion rather than that limit:
 
 ## Translations
 
-`locale/en.po` and `locale/hu.po` hold the UI strings for all three popups
-(month names, "Total read", streak labels, records labels, chapter/pace
-labels, etc.) as plain `msgid`/`msgstr` pairs, e.g.:
+`locale/en.po`, `locale/hu.po` and `locale/de.po` hold the UI strings for
+every popup (month names, "Total read", streak labels, records labels,
+chapter/pace labels, menu entries, etc.) as plain `msgid`/`msgstr` pairs,
+e.g.:
 
 ```
 msgid "Current streak"
@@ -427,7 +432,10 @@ msgstr "Aktuális sorozat"
 ```
 
 To add another language, drop a new `locale/<lang>.po` file next to the
-existing ones — no code changes needed.
+existing ones — no code changes needed. Every string the code passes to
+`_()` or `N_()` should have an entry in each file; a missing one falls back
+to the English original, so a gap shows up as a stray English label rather
+than as an error.
 
 
 ## Acknowledgements

@@ -276,8 +276,6 @@ msgstr "Durchschnittlich gelesene Seiten pro Tag der letzten 8 Wochen"
 msgid "No reading data in the last 8 weeks"
 msgstr "Keine Lesedaten in den letzten 8 Wochen"
 
-msgid "total reading time"
-msgstr "Gesamte Lesezeit"
 
 msgid "avg time/day"
 msgstr "Ø Zeit/Tag"
@@ -890,11 +888,7 @@ msgstr "Rekorde anzeigen"
 msgid "Sub-values (date / book title)"
 msgstr "Unterwerte (Datum / Buchtitel)"
 
-msgid "Automatic (fit screen)"
-msgstr "Automatisch (an Bildschirm anpassen)"
 
-msgid "Sizes the Reading insights bar charts so the page fills the screen exactly, without a scroll bar."
-msgstr "Passt die Balkendiagramme der Lesestatistik so an, dass die Seite den Bildschirm genau ausfüllt – ohne Bildlaufleiste."
 
 msgid "Reading goal section"
 msgstr "Bereich „Leseziel“"
@@ -910,3 +904,22 @@ msgstr "Bücher als Ziel"
 
 msgid "* = changed by you"
 msgstr "* = von dir geändert"
+
+msgid "Automatic"
+msgstr "Automatisch"
+
+msgid "Sizes the Reading insights bar charts so the page fits the screen without a scroll bar."
+msgstr "Passt die Balkendiagramme der Lesestatistik so an, dass die Seite ohne Bildlaufleiste auf den Bildschirm passt."
+
+msgid "Bar chart height"
+msgstr "Balkendiagrammhöhe"
+
+msgid "Last week"
+msgstr "Letzte Woche"
+
+msgid "Months"
+msgstr "Monate"
+
+msgid "Total read"
+msgstr "Insgesamt gelesen"
+

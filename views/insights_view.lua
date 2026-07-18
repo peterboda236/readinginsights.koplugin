@@ -96,11 +96,13 @@ Caching:
   full re-scan of that year when it doesn't add up.
 
 Bar chart heights:
-  By default both bar charts size themselves at build time so the page ends
-  up exactly one screen tall (no scroll bar); _buildUI measures a build and
-  recomputes the heights from the leftover pixels. Settings > Advanced
-  settings > "Bar chart height" > "Automatic (fit screen)" turns this off
-  and restores the two fixed, user-set values.
+  By default both bar charts size themselves at build time so the page fits
+  one screen (no scroll bar); _buildUI measures a build and recomputes the
+  height from the leftover pixels. Both charts always get the same height -
+  it is one value, not two - and a point is taken off the fitted result so
+  the page keeps a little headroom instead of ending on the screen edge. Settings > Advanced
+  settings > "Bar chart height" > "Automatic (Reading insights)" turns this
+  off and restores the two fixed, user-set values.
 ]]--
 
 local Blitbuffer = require("ffi/blitbuffer")
@@ -994,19 +996,32 @@ end
 
 -- Total reading seconds and distinct book count for a "YYYY-MM-DD" date range (inclusive).
 local function getStreakPeriodStats(start_date, end_date)
-    local stats = { duration = 0, books = 0 }
+    local stats = { duration = 0, pages = 0, books = 0 }
     if not start_date or not end_date then return stats end
     return StatsDb.withDb(stats, function(conn)
+        -- Pages are counted the same way as everywhere else in this plugin
+        -- (see the last-week query): the inner GROUP BY collapses a book's
+        -- page to one row per day, so re-reading the same page later that
+        -- day doesn't count twice, and the outer COUNT(*) then counts those
+        -- rows. Summing the pre-summed durations gives the same total the
+        -- flat SUM(duration) did before.
         local sql = string.format([[
-            SELECT COALESCE(SUM(duration), 0) AS total_duration,
-                   COUNT(DISTINCT id_book) AS book_count
-            FROM page_stat
-            WHERE date(start_time, 'unixepoch', 'localtime') BETWEEN '%s' AND '%s'
+            SELECT COALESCE(SUM(sum_dur), 0) AS total_duration,
+                   COUNT(*)                  AS total_pages,
+                   COUNT(DISTINCT id_book)   AS book_count
+            FROM (
+                SELECT id_book,
+                       SUM(duration) AS sum_dur
+                FROM page_stat
+                WHERE date(start_time, 'unixepoch', 'localtime') BETWEEN '%s' AND '%s'
+                GROUP BY id_book, page, date(start_time, 'unixepoch', 'localtime')
+            )
         ]], start_date, end_date)
         StatsDb.withStatement(conn, sql, function(stmt)
             for row in stmt:rows() do
                 stats.duration = tonumber(row[1]) or 0
-                stats.books    = tonumber(row[2]) or 0
+                stats.pages    = tonumber(row[2]) or 0
+                stats.books    = tonumber(row[3]) or 0
             end
         end)
         return stats
@@ -1059,24 +1074,38 @@ local function showStreakDatePopup(dates, is_weekly, is_current)
     local num_days = daysBetweenInclusive(range_start, range_end)
     local avg_seconds = num_days > 0 and (period.duration / num_days) or 0
 
-    local total_time_val, total_time_unit = splitDurationValueUnit(period.duration, _("total reading time"))
-    local avg_time_val, avg_time_unit = splitDurationValueUnit(avg_seconds, _("avg time/day"))
+    -- Two columns, time on the left and pages on the right, mirroring how
+    -- the insights page itself pairs those two numbers. The book count sits
+    -- on its own below, since it has no counterpart.
+    local total_time_val, total_time_unit = splitDurationValueUnit(period.duration, _("reading time"))
+    local avg_time_val,   avg_time_unit   = splitDurationValueUnit(avg_seconds, _("avg time/day"))
+
+    local total_pages     = period.pages or 0
+    local total_pages_val = formatCount(total_pages)
+    -- Same label the last-week section uses for its page total, so the two
+    -- read the same way and share one translation.
+    local total_pages_unit = N_("page read", "pages read", total_pages)
+
+    local avg_pages = num_days > 0 and (total_pages / num_days) or 0
+    local avg_pages_rounded
+    if avg_pages >= 10 then
+        avg_pages_rounded = math.floor(avg_pages + 0.5)
+    else
+        avg_pages_rounded = math.floor(avg_pages * 10 + 0.5) / 10
+    end
+    local avg_pages_val  = formatNumber(avg_pages_rounded,
+        avg_pages_rounded ~= math.floor(avg_pages_rounded) and 1 or 0)
+    local avg_pages_unit = _("avg pages/day")
 
     local book_count = period.books
-    local book_label
-    if is_current then
-        book_label = N_("book read in this streak",
-                         "books read in this streak", book_count)
-    else
-        book_label = N_("book read in this streak",
-                         "books read in this streak", book_count)
-    end
+    local book_label = N_("book read in this streak", "books read in this streak", book_count)
 
     local fonts = getCachedFonts()
     local inner_padding = Size.padding.large
     local max_width = math.floor(Screen:getWidth() * 0.9) - 2 * inner_padding
 
-    -- Build the title/date text widgets first so we can measure their natural width.
+    -- Heading: the streak name in the section face (bold), the date range
+    -- beside it in the plain label face.
     local title_w
     if is_current ~= nil then
         local label = is_current and _("Current streak") or _("Best streak")
@@ -1084,57 +1113,57 @@ local function showStreakDatePopup(dates, is_weekly, is_current)
     end
     local date_w = TextWidget:new{ text = start_str .. " – " .. end_str, face = fonts.label, fgcolor = Colors.label() }
 
-    -- Measure each value/label row at its own natural (unwrapped) width.
+    -- Measure every cell at its natural (unwrapped) width, then give both
+    -- columns the widest of them, so the two line up and the box hugs its
+    -- content instead of being a fixed fraction of the screen.
     local function naturalRowWidth(value, unit)
         local value_w = TextWidget:new{ text = value, face = fonts.value }:getSize().w
         local label_w = TextWidget:new{ text = unit,  face = fonts.label }:getSize().w
         return value_w + Size.padding.large + label_w
     end
 
-    local row_width = math.max(
+    local col_width = math.max(
         naturalRowWidth(total_time_val, total_time_unit),
+        naturalRowWidth(total_pages_val, total_pages_unit),
         naturalRowWidth(avg_time_val, avg_time_unit),
-        naturalRowWidth(tostring(book_count), book_label)
+        naturalRowWidth(avg_pages_val, avg_pages_unit),
+        naturalRowWidth(tostring(book_count), book_label),
+        date_w:getSize().w,
+        title_w and title_w:getSize().w or 0
     )
 
-    -- The box hugs whichever element is widest (title / date / value rows),
-    -- capped so it never overflows the screen. No more fixed 86%-wide box.
-    local content_width = row_width
-    if title_w then content_width = math.max(content_width, title_w:getSize().w) end
-    content_width = math.max(content_width, date_w:getSize().w)
-    content_width = math.min(content_width, max_width)
-    row_width = math.min(row_width, content_width)
+    local column_gap = Size.padding.large
+    local layout = UI.buildLayout(math.min(2 * col_width + 2 * column_gap + Size.line.medium,
+                                           max_width), 0, column_gap)
+    col_width = layout.col_width
+    local content_width = layout.content_width
 
     local content = VerticalGroup:new{ align = "left" }
 
+    -- Heading row: no column separator, so the name and the date read as
+    -- one line rather than as two cells.
     if title_w then
-        table.insert(content, CenterContainer:new{
-            dimen = Geom:new{ w = content_width, h = title_w:getSize().h }, title_w,
-        })
-        table.insert(content, VerticalSpan:new{ height = Size.padding.default })
+        table.insert(content, UI.buildTwoColRow(title_w, date_w, layout, true))
+    else
+        table.insert(content, UI.fixedCol(date_w, content_width))
     end
-
-    table.insert(content, CenterContainer:new{
-        dimen = Geom:new{ w = content_width, h = date_w:getSize().h }, date_w,
-    })
     table.insert(content, VerticalSpan:new{ height = Size.padding.default })
     table.insert(content, Colors.newBar(content_width, Size.line.thin, Colors.separator()))
     table.insert(content, VerticalSpan:new{ height = Size.padding.large })
 
-    local value_lines = VerticalGroup:new{ align = "left" }
-    table.insert(value_lines, buildValueLine(fonts.value, fonts.label, row_width,
-        total_time_val, total_time_unit))
-    table.insert(value_lines, VerticalSpan:new{ height = Size.padding.default })
-    table.insert(value_lines, buildValueLine(fonts.value, fonts.label, row_width,
-        avg_time_val, avg_time_unit))
-    table.insert(value_lines, VerticalSpan:new{ height = Size.padding.default })
-    table.insert(value_lines, buildValueLine(fonts.value, fonts.label, row_width,
-        tostring(book_count), book_label))
-
-    table.insert(content, CenterContainer:new{
-        dimen = Geom:new{ w = content_width, h = value_lines:getSize().h },
-        value_lines,
-    })
+    table.insert(content, UI.buildTwoColRow(
+        buildValueLine(fonts.value, fonts.label, col_width, total_time_val,  total_time_unit),
+        buildValueLine(fonts.value, fonts.label, col_width, total_pages_val, total_pages_unit),
+        layout))
+    table.insert(content, VerticalSpan:new{ height = Size.padding.default })
+    table.insert(content, UI.buildTwoColRow(
+        buildValueLine(fonts.value, fonts.label, col_width, avg_time_val,  avg_time_unit),
+        buildValueLine(fonts.value, fonts.label, col_width, avg_pages_val, avg_pages_unit),
+        layout))
+    table.insert(content, VerticalSpan:new{ height = Size.padding.default })
+    table.insert(content, UI.fixedCol(
+        buildValueLine(fonts.value, fonts.label, content_width, tostring(book_count), book_label),
+        content_width))
 
     local box = FrameContainer:new{
         background     = Blitbuffer.COLOR_WHITE,

@@ -119,7 +119,7 @@ end
 -- it later.
 M.Opt = {
     -- Bar-chart height mode (Settings > Advanced settings > "Bar chart
-    -- height" > "Automatic (fit screen)").
+    -- height" > "Automatic (Reading insights)").
     --
     -- true (default): the weekly and monthly bar heights are not taken from
     -- the two settings above at all - they are computed while the popup is

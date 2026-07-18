@@ -130,6 +130,14 @@ function M.build(self, deps)
     -- so they grey out while the automatic height mode is on (their stored
     -- value isn't used then, and is left untouched so switching back to
     -- manual brings it back).
+    -- Draws a divider under an entry. A one-line wrapper rather than an
+    -- eighth positional argument to buildBarHeightMenuEntry, whose parameter
+    -- list is already long enough to be easy to miscount.
+    local function withSeparator(entry)
+        entry.separator = true
+        return entry
+    end
+
     local function buildBarHeightMenuEntry(text, read_fn, save_fn, default_value, value_min, value_max, enabled_func)
         return {
             text_func = function()
@@ -216,23 +224,30 @@ function M.build(self, deps)
         text = _("Bar chart height"),
         keep_menu_open = true,
         sub_item_table = {
-            -- On by default: the two Reading insights charts below size
-            -- themselves so the whole page fits the screen, which is both
-            -- the best use of the space and the only way to be sure the
-            -- scroll bar never shows up. Switching it off restores the two
-            -- fixed values, which is why they stay here (greyed out while
-            -- automatic is on, so it's obvious they're not in effect
-            -- rather than simply being ignored).
+            -- Grouping: the automatic toggle and the two Reading insights
+            -- entries it governs belong together, with the divider below
+            -- them - "Book progress: Chapters" is a different view's
+            -- setting and is always set by hand.
+            --
+            -- Automatic is on by default: the two charts size themselves so
+            -- the whole page fits the screen, which is both the best use of
+            -- the space and the only way to be sure the scroll bar never
+            -- shows up. Switching it off restores the two fixed values,
+            -- which is why they stay here (greyed out while automatic is
+            -- on, so it's obvious they're not in effect rather than simply
+            -- being ignored).
             {
-                text = _("Automatic (fit screen)"),
-                help_text = _("Sizes the Reading insights bar charts so the page fills the screen exactly, without a scroll bar."),
+                -- Composed from the same two strings the entries below use,
+                -- so the name of the view can't end up worded one way here
+                -- and another way two rows down.
+                text = _("Automatic") .. " (" .. _("Reading insights") .. ")",
+                help_text = _("Sizes the Reading insights bar charts so the page fits the screen without a scroll bar."),
                 keep_menu_open = true,
                 checked_func = function() return deps.ViewSettings.Opt.readBarHeightAuto() end,
                 callback = function(touchmenu_instance)
                     deps.ViewSettings.Opt.saveBarHeightAuto(not deps.ViewSettings.Opt.readBarHeightAuto())
                     if touchmenu_instance then touchmenu_instance:updateItems() end
                 end,
-                separator = true,
             },
             buildBarHeightMenuEntry(
                 _("Reading insights") .. ": " .. _("Last week"),
@@ -242,14 +257,14 @@ function M.build(self, deps)
                 10, 200,
                 function() return not deps.ViewSettings.Opt.readBarHeightAuto() end
             ),
-            buildBarHeightMenuEntry(
+            withSeparator(buildBarHeightMenuEntry(
                 _("Reading insights") .. ": " .. _("Months"),
                 deps.ViewSettings.readMonthlyBarHeightSetting,
                 deps.ViewSettings.saveMonthlyBarHeightSetting,
                 deps.ViewSettings.DEFAULT_MONTHLY_BAR_HEIGHT,
                 10, 200,
                 function() return not deps.ViewSettings.Opt.readBarHeightAuto() end
-            ),
+            )),
             buildBarHeightMenuEntry(
                 _("Book progress") .. ": " .. _("Chapters"),
                 deps.ChapterBar.readHeightSetting,

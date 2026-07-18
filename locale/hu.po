@@ -285,8 +285,6 @@ msgstr "Elmúlt 8 hét átlagos napi oldalszáma"
 msgid "No reading data in the last 8 weeks"
 msgstr "Nincs olvasási adat az elmúlt 8 héten"
 
-msgid "total reading time"
-msgstr "összes olvasási idő"
 
 msgid "avg time/day"
 msgstr "átlag idő/nap"
@@ -905,11 +903,7 @@ msgstr "Rekordok megjelenítése"
 msgid "Sub-values (date / book title)"
 msgstr "Alértékek (dátum / könyvcím)"
 
-msgid "Automatic (fit screen)"
-msgstr "Automatikus (képernyőhöz igazítva)"
 
-msgid "Sizes the Reading insights bar charts so the page fills the screen exactly, without a scroll bar."
-msgstr "Az Olvasási statisztika oszlopdiagramjait úgy méretezi, hogy az oldal pontosan kitöltse a képernyőt, görgetősáv nélkül."
 
 msgid "Reading goal section"
 msgstr "Olvasási cél szakasz"
@@ -925,3 +919,10 @@ msgstr "könyv a cél"
 
 msgid "* = changed by you"
 msgstr "* = általad módosítva"
+
+msgid "Automatic"
+msgstr "Automatikus"
+
+msgid "Sizes the Reading insights bar charts so the page fits the screen without a scroll bar."
+msgstr "Az Olvasási áttekintés oszlopdiagramjait úgy méretezi, hogy az oldal görgetősáv nélkül elférjen a képernyőn."
+

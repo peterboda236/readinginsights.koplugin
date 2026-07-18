@@ -276,8 +276,6 @@ msgstr "Average daily pages, last 8 weeks"
 msgid "No reading data in the last 8 weeks"
 msgstr "No reading data in the last 8 weeks"
 
-msgid "total reading time"
-msgstr "total reading time"
 
 msgid "avg time/day"
 msgstr "avg time/day"
@@ -890,11 +888,7 @@ msgstr "Show Records"
 msgid "Sub-values (date / book title)"
 msgstr "Sub-values (date / book title)"
 
-msgid "Automatic (fit screen)"
-msgstr "Automatic (fit screen)"
 
-msgid "Sizes the Reading insights bar charts so the page fills the screen exactly, without a scroll bar."
-msgstr "Sizes the Reading insights bar charts so the page fills the screen exactly, without a scroll bar."
 
 msgid "Reading goal section"
 msgstr "Reading goal section"
@@ -910,3 +904,22 @@ msgstr "books to read"
 
 msgid "* = changed by you"
 msgstr "* = changed by you"
+
+msgid "Automatic"
+msgstr "Automatic"
+
+msgid "Sizes the Reading insights bar charts so the page fits the screen without a scroll bar."
+msgstr "Sizes the Reading insights bar charts so the page fits the screen without a scroll bar."
+
+msgid "Bar chart height"
+msgstr "Bar chart height"
+
+msgid "Last week"
+msgstr "Last week"
+
+msgid "Months"
+msgstr "Months"
+
+msgid "Total read"
+msgstr "Total read"
+
