@@ -889,3 +889,24 @@ msgstr "Show Records"
 
 msgid "Sub-values (date / book title)"
 msgstr "Sub-values (date / book title)"
+
+msgid "Automatic (fit screen)"
+msgstr "Automatic (fit screen)"
+
+msgid "Sizes the Reading insights bar charts so the page fills the screen exactly, without a scroll bar."
+msgstr "Sizes the Reading insights bar charts so the page fills the screen exactly, without a scroll bar."
+
+msgid "Reading goal section"
+msgstr "Reading goal section"
+
+msgid "Shows the number of books finished this year next to your yearly goal. Long press the goal value to change it."
+msgstr "Shows the number of books finished this year next to your yearly goal. Long press the goal value to change it."
+
+msgid "book to read"
+msgstr "book to read"
+
+msgid "books to read"
+msgstr "books to read"
+
+msgid "* = changed by you"
+msgstr "* = changed by you"

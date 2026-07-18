@@ -17,7 +17,7 @@ Two ways in, both funnelled through M.show(opts) at the bottom:
     already-computed total_pages / finish / started timestamps plus an
     on_close callback so it can reopen itself afterwards).
 
-Loaded by main.lua via loadfile(...)(Locale, Colors, Fonts, Settings,
+Loaded by main.lua via loadfile(...)(Locale, Colors, Fonts, Prefs,
 StatsDb, BookProgress), the same shared modules the other views get.
 ]]--
 
@@ -42,7 +42,14 @@ local VerticalSpan    = require("ui/widget/verticalspan")
 local Screen          = Device.screen
 
 -- Shared modules, passed in by main.lua (see header).
-local Locale, Colors, Fonts, Settings, StatsDb, BookProgress = ...
+-- Shared modules, passed in as one named table by main.lua. Named rather
+-- than positional on purpose: the list had grown long enough that
+-- inserting one module in the middle would silently shift every module
+-- after it, and the resulting nil would only surface far from the cause.
+local deps = ...
+local Locale, Colors, Fonts, Prefs, StatsDb, BookProgress, UI =
+    deps.Locale, deps.Colors, deps.Fonts, deps.Prefs, deps.StatsDb,
+    deps.BookProgress, deps.UI
 local _            = Locale._
 local N_           = Locale.N_
 local getLangBase  = Locale.getLangBase
@@ -66,30 +73,6 @@ local MONTH_FULL_HU_LC = {
 }
 
 
--- { value = "", unit = "" } placeholder, matching the shape formatTimeHHMM
--- returns for real durations (kept tiny and local; book_stats_view.lua has
--- its own copy for its own value lines).
-local function emptyValue()
-    return { value = "", unit = "" }
-end
-
--- Seconds as a clock-style duration honouring KOReader's global duration
--- format (see Locale.formatDuration); returns { value, unit } so the cell/
--- day-detail text can render a split "day"/"nap" suffix in plain style.
-local function formatTimeHHMM(seconds)
-    if not seconds or seconds ~= seconds then
-        return emptyValue()
-    end
-    return Locale.formatDurationParts(seconds, true)
-end
-
--- Point-in-widget hit test (widget must have a resolved .dimen).
-local function hitTest(widget, x, y)
-    local d = widget and widget.dimen
-    if not d then return false end
-    return x >= d.x and x <= d.x + d.w and y >= d.y and y <= d.y + d.h
-end
-
 -- ---------------------------------------------------------------------
 -- Book-calendar cell content setting (Settings > Advanced settings >
 -- "Book calendar cell content"). Controls the small text line under each
@@ -105,13 +88,13 @@ local SETTINGS_KEY_CALENDAR_CELL_MODE = "reading_insights_calendar_cell_mode"
 local DEFAULT_CALENDAR_CELL_MODE      = "percent"
 
 local function readCalendarCellModeSetting()
-    local v = Settings.read(SETTINGS_KEY_CALENDAR_CELL_MODE, DEFAULT_CALENDAR_CELL_MODE)
+    local v = Prefs.read(SETTINGS_KEY_CALENDAR_CELL_MODE, DEFAULT_CALENDAR_CELL_MODE)
     if v == nil then return DEFAULT_CALENDAR_CELL_MODE end
     return v
 end
 
 local function saveCalendarCellModeSetting(mode)
-    Settings.save(SETTINGS_KEY_CALENDAR_CELL_MODE, mode)
+    Prefs.save(SETTINGS_KEY_CALENDAR_CELL_MODE, mode)
 end
 
 
@@ -284,8 +267,8 @@ end
 --   "pages"             - that day's own page count, e.g. "+101o"
 --   "time"              - that day's own time spent, e.g. "+0:23" or
 --                          "+23m", whichever clock style KOReader's global
---                          "Duration format" setting (Settings ▸ Time and
---                          date) is set to - see formatTimeHHMM above.
+--                          "Duration format" setting (Prefs ▸ Time and
+--                          date) is set to - see Locale.formatTimeHHMM above.
 -- Returns "" for days with no reading, in any mode.
 local function buildBookCalendarCellText(entry, total_pages)
     if not entry or not entry.pages or entry.pages <= 0 then return "" end
@@ -297,7 +280,7 @@ local function buildBookCalendarCellText(entry, total_pages)
     end
 
     if mode == "time" then
-        local time_td = formatTimeHHMM(entry.duration or 0)
+        local time_td = Locale.formatTimeHHMM(entry.duration or 0)
         local unit = time_td.unit ~= "" and (" " .. time_td.unit) or ""
         return time_td.value .. unit
     end
@@ -343,7 +326,7 @@ end
 -- same cell, the checkmark wins and the finish_day flag is suppressed for
 -- that cell - see is_book_finished_day below.
 local function buildBookCalendarGrid(daily_map, year, month, day_font, small_font, content_width, total_pages, cumulative_ratios, finish_day, start_day)
-    local week_start_wd = Settings.weekStartWday() -- 0=Sun, 1=Mon
+    local week_start_wd = Prefs.weekStartWday() -- 0=Sun, 1=Mon
     local gap    = Screen:scaleBySize(2)
     local cols   = 7
     local cell_w = math.floor((content_width - (cols - 1) * gap) / cols)
@@ -829,7 +812,7 @@ function BookCalendarPopup:_showDayDetail(day, data)
     end
 
     local pages_line = "+" .. formatCount(data.pages) .. " " .. N_("page", "pages", data.pages)
-    local time_td     = formatTimeHHMM(data.duration)
+    local time_td     = Locale.formatTimeHHMM(data.duration)
     local time_line   = time_td.value .. (time_td.unit ~= "" and (" " .. time_td.unit) or "")
     local percent_line = ""
     if self.total_pages and self.total_pages > 0 then
@@ -887,7 +870,7 @@ function BookCalendarPopup:onTap(arg, ges_ev)
             end
         end
         for _, cell in ipairs(self._day_cells or {}) do
-            if hitTest(cell.frame, x, y) then
+            if UI.hitTest(cell.frame, x, y) then
                 self:_showDayDetail(cell.day, cell.data)
                 return true
             end

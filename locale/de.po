@@ -889,3 +889,24 @@ msgstr "Rekorde anzeigen"
 
 msgid "Sub-values (date / book title)"
 msgstr "Unterwerte (Datum / Buchtitel)"
+
+msgid "Automatic (fit screen)"
+msgstr "Automatisch (an Bildschirm anpassen)"
+
+msgid "Sizes the Reading insights bar charts so the page fills the screen exactly, without a scroll bar."
+msgstr "Passt die Balkendiagramme der Lesestatistik so an, dass die Seite den Bildschirm genau ausfüllt – ohne Bildlaufleiste."
+
+msgid "Reading goal section"
+msgstr "Bereich „Leseziel“"
+
+msgid "Shows the number of books finished this year next to your yearly goal. Long press the goal value to change it."
+msgstr "Zeigt die Anzahl der in diesem Jahr beendeten Bücher neben dem Jahresziel. Langes Drücken auf den Zielwert ändert ihn."
+
+msgid "book to read"
+msgstr "Buch als Ziel"
+
+msgid "books to read"
+msgstr "Bücher als Ziel"
+
+msgid "* = changed by you"
+msgstr "* = von dir geändert"

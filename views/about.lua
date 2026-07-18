@@ -48,7 +48,13 @@ local VerticalSpan    = require("ui/widget/verticalspan")
 
 -- Locale (translations) and Updater (installed-version lookup) plus the
 -- shared dismissable-popup helper, all passed in by main.lua.
-local Locale, Updater, PopupUtil = ...
+-- Shared modules, passed in as one named table by main.lua. Named rather
+-- than positional on purpose: the list had grown long enough that
+-- inserting one module in the middle would silently shift every module
+-- after it, and the resulting nil would only surface far from the cause.
+local deps = ...
+local Locale, Updater, PopupUtil =
+    deps.Locale, deps.Updater, deps.PopupUtil
 local _ = Locale._
 
 local GITHUB_URL = "https://github.com/peterboda236/readinginsights.koplugin"

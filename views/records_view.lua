@@ -79,7 +79,13 @@ local Screen          = Device.screen
 -- Injected by main.lua (same pattern as insights_view.lua /
 -- book_stats_view.lua), plus the shared statistics-DB accessor (StatsDb)
 -- and dismissable-popup helper (PopupUtil).
-local Locale, Colors, Fonts, StatsDb, PopupUtil = ...
+-- Shared modules, passed in as one named table by main.lua. Named rather
+-- than positional on purpose: the list had grown long enough that
+-- inserting one module in the middle would silently shift every module
+-- after it, and the resulting nil would only surface far from the cause.
+local deps = ...
+local Locale, Colors, Fonts, StatsDb, PopupUtil =
+    deps.Locale, deps.Colors, deps.Fonts, deps.StatsDb, deps.PopupUtil
 
 local _ = Locale._
 local N_ = Locale.N_
@@ -108,17 +114,6 @@ local ICONS = {
 -- The records cache lives next to the statistics DB, in the settings dir.
 local function cachePath()
     return DataStorage:getSettingsDir() .. "/readinginsights_records_cache.lua"
-end
-
--- Statistics-DB access now goes through the shared StatsDb module (same db
--- path, PRAGMAs, open/close and error handling as before). Kept under the
--- original local names so the many call sites below are unchanged.
-local function withStatsDb(fallback, fn)
-    return StatsDb.withDb(fallback, fn)
-end
-
-local function withStatement(conn, sql, fn)
-    return StatsDb.withStatement(conn, sql, fn)
 end
 
 -- ---------------------------------------------------------------------------
@@ -226,7 +221,7 @@ end
 -- ---------------------------------------------------------------------------
 local function fullQueryMostReadingTimeDay(conn)
     local result = { duration_sec = 0, date = nil }
-    withStatement(conn, [[
+    StatsDb.withStatement(conn, [[
         SELECT date(start_time, 'unixepoch', 'localtime') AS day,
                SUM(duration) AS day_dur
         FROM page_stat
@@ -244,7 +239,7 @@ end
 
 local function fullQueryMostPagesDay(conn)
     local result = { pages = 0, date = nil }
-    withStatement(conn, [[
+    StatsDb.withStatement(conn, [[
         SELECT date(start_time, 'unixepoch', 'localtime') AS day,
                COUNT(DISTINCT id_book || '-' || page) AS page_count
         FROM page_stat
@@ -262,7 +257,7 @@ end
 
 local function fullQueryBestStreak(conn)
     local dates = {}
-    withStatement(conn, [[
+    StatsDb.withStatement(conn, [[
         SELECT DISTINCT date(start_time, 'unixepoch', 'localtime') AS d
         FROM page_stat ORDER BY d ASC
     ]], function(stmt)
@@ -293,7 +288,7 @@ end
 
 local function fullQueryTotalSecs(conn)
     local total = 0
-    withStatement(conn, "SELECT SUM(duration) FROM page_stat", function(stmt)
+    StatsDb.withStatement(conn, "SELECT SUM(duration) FROM page_stat", function(stmt)
         for row in stmt:rows() do total = tonumber(row[1]) or 0 end
     end)
     return total
@@ -303,7 +298,7 @@ local function fullQueryMilestoneDate(conn, threshold_hours)
     if not threshold_hours then return nil end
     local cumulative = 0
     local result = nil
-    withStatement(conn, [[
+    StatsDb.withStatement(conn, [[
         SELECT date(start_time, 'unixepoch', 'localtime') AS day,
                SUM(duration) AS day_dur
         FROM page_stat
@@ -328,7 +323,7 @@ end
 local function getDbFingerprint(conn)
     local max_time  = 0
     local row_count = 0
-    withStatement(conn, "SELECT MAX(start_time), COUNT(*) FROM page_stat", function(stmt)
+    StatsDb.withStatement(conn, "SELECT MAX(start_time), COUNT(*) FROM page_stat", function(stmt)
         for row in stmt:rows() do
             max_time  = tonumber(row[1]) or 0
             row_count = tonumber(row[2]) or 0
@@ -349,7 +344,7 @@ local function incrMostReadingTimeDay(conn, hw_time, cached)
     -- books (new rows alone can't give the full picture for a day already
     -- partially in cache, so we re-aggregate the whole day).
     local touched_days = {}
-    withStatement(conn, string.format([[
+    StatsDb.withStatement(conn, string.format([[
         SELECT DISTINCT date(start_time, 'unixepoch', 'localtime') AS day
         FROM page_stat
         WHERE start_time > %d
@@ -359,7 +354,7 @@ local function incrMostReadingTimeDay(conn, hw_time, cached)
         end
     end)
     for _, day in ipairs(touched_days) do
-        withStatement(conn, string.format([[
+        StatsDb.withStatement(conn, string.format([[
             SELECT SUM(duration)
             FROM page_stat
             WHERE date(start_time, 'unixepoch', 'localtime') = %q
@@ -380,7 +375,7 @@ end
 local function incrMostPagesDay(conn, hw_time, cached)
     local result = { pages = cached.pages, date = cached.date }
     local touched_days = {}
-    withStatement(conn, string.format([[
+    StatsDb.withStatement(conn, string.format([[
         SELECT DISTINCT date(start_time, 'unixepoch', 'localtime') AS day
         FROM page_stat
         WHERE start_time > %d
@@ -390,7 +385,7 @@ local function incrMostPagesDay(conn, hw_time, cached)
         end
     end)
     for _, day in ipairs(touched_days) do
-        withStatement(conn, string.format([[
+        StatsDb.withStatement(conn, string.format([[
             SELECT COUNT(DISTINCT id_book || '-' || page)
             FROM page_stat
             WHERE date(start_time, 'unixepoch', 'localtime') = %q
@@ -410,7 +405,7 @@ end
 -- Returns extra seconds accumulated in rows newer than hw_time.
 local function incrExtraSecs(conn, hw_time)
     local extra = 0
-    withStatement(conn, string.format(
+    StatsDb.withStatement(conn, string.format(
         "SELECT SUM(duration) FROM page_stat WHERE start_time > %d", hw_time
     ), function(stmt)
         for row in stmt:rows() do extra = tonumber(row[1]) or 0 end
@@ -437,7 +432,7 @@ end
 -- Main data loader with cache logic
 -- ---------------------------------------------------------------------------
 local function loadData()
-    return withStatsDb({
+    return StatsDb.withDb({
         longest      = { duration_sec = 0, date = nil },
         best_day     = { pages = 0, date = nil },
         streak       = { days = 0, start_date = nil, end_date = nil },
@@ -503,7 +498,7 @@ local function loadData()
         --    a sync that replaced rows with same or higher timestamps).
         if (cache.hw_max_time or 0) > 0 then
             local old_still_exists = false
-            withStatement(conn, string.format(
+            StatsDb.withStatement(conn, string.format(
                 "SELECT 1 FROM page_stat WHERE start_time = %d LIMIT 1",
                 cache.hw_max_time
             ), function(stmt)
@@ -535,7 +530,7 @@ local function loadData()
         -- Re-running only when new distinct dates appeared keeps it correct.
         local new_distinct_dates = false
         if cache.streak_end then
-            withStatement(conn, string.format([[
+            StatsDb.withStatement(conn, string.format([[
                 SELECT 1 FROM page_stat
                 WHERE start_time > %d
                   AND date(start_time, 'unixepoch', 'localtime') != %q

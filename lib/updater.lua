@@ -9,7 +9,13 @@ having to plug the device into a computer. Also supports pulling a specific
 development branch's tip, for testing pre-release builds.
 
 Loaded by main.lua via loadfile(...)( Locale ) and handed straight in, so
-`local Locale = ...` at the top is all this module needs.
+`-- Shared modules, passed in as one named table by main.lua. Named rather
+-- than positional on purpose: the list had grown long enough that
+-- inserting one module in the middle would silently shift every module
+-- after it, and the resulting nil would only surface far from the cause.
+local deps = ...
+local Locale =
+    deps.Locale` at the top is all this module needs.
 
 Exposes:
   getInstalledVersion()               reads version from this plugin's
@@ -34,7 +40,13 @@ local Device      = require("device")
 local InfoMessage = require("ui/widget/infomessage")
 local UIManager   = require("ui/uimanager")
 
-local Locale = ...
+-- Shared modules, passed in as one named table by main.lua. Named rather
+-- than positional on purpose: the list had grown long enough that
+-- inserting one module in the middle would silently shift every module
+-- after it, and the resulting nil would only surface far from the cause.
+local deps = ...
+local Locale =
+    deps.Locale
 local _ = Locale._
 
 local GITHUB_REPO = "peterboda236/readinginsights.koplugin"
@@ -542,7 +554,8 @@ end
 -- Earlier releases shipped every module as a flat file in the plugin root
 -- (colors.lua, stats_view.lua, l10n.lua, ...) plus an l10n/ translation
 -- folder. The current layout moved those into lib/ views/ widgets/
--- and renamed l10n/ -> locale/. Because the in-app updater unpacks a new
+-- and renamed l10n/ -> locale/. Later releases also renamed a few modules
+-- inside lib/ itself (settings.lua -> prefs.lua and friends). Because the in-app updater unpacks a new
 -- release ON TOP of the existing install and never wipes the directory
 -- first (see unpackStripRoot / Updater.install above), those now-unused old
 -- files would otherwise linger forever as harmless-but-messy orphans.
@@ -569,6 +582,34 @@ function Updater.cleanupLegacyFiles()
             "stats_view.lua", "updater.lua",
         }
         for _, name in ipairs(legacy_files) do
+            local path = root .. name
+            if lfs.attributes(path, "mode") == "file" then
+                pcall(os.remove, path)
+            end
+        end
+
+        -- Modules that were renamed *within* lib/. Same reasoning as above:
+        -- the updater unpacks over the existing install, so the file under
+        -- the old name is never overwritten and would sit there forever,
+        -- being loaded by nothing.
+        --
+        -- Every entry here must be a path the current release does NOT
+        -- ship - check before adding one, because this list is removed
+        -- unconditionally:
+        --   lib/settings.lua          -> lib/prefs.lua (renamed so it isn't
+        --                                confused with lib/insights_settings)
+        --   lib/insightssettings.lua  -> lib/insights_settings.lua
+        --   lib/insightscache.lua     -> lib/insights_cache.lua
+        -- The last two never appeared in a tagged release, only in test
+        -- builds handed out between them, so most installs won't have them;
+        -- listing them costs one stat() each and saves anyone who ran one
+        -- of those builds from keeping a dead copy.
+        local renamed_files = {
+            "lib/settings.lua",
+            "lib/insightssettings.lua",
+            "lib/insightscache.lua",
+        }
+        for _, name in ipairs(renamed_files) do
             local path = root .. name
             if lfs.attributes(path, "mode") == "file" then
                 pcall(os.remove, path)

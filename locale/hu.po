@@ -904,3 +904,24 @@ msgstr "Rekordok megjelenítése"
 
 msgid "Sub-values (date / book title)"
 msgstr "Alértékek (dátum / könyvcím)"
+
+msgid "Automatic (fit screen)"
+msgstr "Automatikus (képernyőhöz igazítva)"
+
+msgid "Sizes the Reading insights bar charts so the page fills the screen exactly, without a scroll bar."
+msgstr "Az Olvasási statisztika oszlopdiagramjait úgy méretezi, hogy az oldal pontosan kitöltse a képernyőt, görgetősáv nélkül."
+
+msgid "Reading goal section"
+msgstr "Olvasási cél szakasz"
+
+msgid "Shows the number of books finished this year next to your yearly goal. Long press the goal value to change it."
+msgstr "Az idén befejezett könyvek számát mutatja az éves cél mellett. A cél értékét hosszan nyomva módosíthatod."
+
+msgid "book to read"
+msgstr "könyv a cél"
+
+msgid "books to read"
+msgstr "könyv a cél"
+
+msgid "* = changed by you"
+msgstr "* = általad módosítva"

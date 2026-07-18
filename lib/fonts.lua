@@ -69,8 +69,14 @@ local SpinWidget  = require("ui/widget/spinwidget")
 local UIManager   = require("ui/uimanager")
 
 -- Shared modules passed in by main.lua: Locale (translations), PluginUtil
--- (plugin dir + loader) and Settings (G_reader_settings wrappers).
-local Locale, PluginUtil, Settings = ...
+-- (plugin dir + loader) and Prefs (G_reader_settings wrappers).
+-- Shared modules, passed in as one named table by main.lua. Named rather
+-- than positional on purpose: the list had grown long enough that
+-- inserting one module in the middle would silently shift every module
+-- after it, and the resulting nil would only surface far from the cause.
+local deps = ...
+local Locale, PluginUtil, Prefs =
+    deps.Locale, deps.PluginUtil, deps.Prefs
 local _ = Locale._
 
 -- Order (and grouping) the "Fonts" menu is built in.
@@ -113,11 +119,11 @@ local SETTINGS_SIZE_PREFIX = "reading_insights_font_size_"
 local MIN_SIZE, MAX_SIZE = 8, 60
 
 local function readSetting(key)
-    return Settings.read(key, nil)
+    return Prefs.read(key, nil)
 end
 
 local function saveSetting(key, value)
-    Settings.save(key, value)
+    Prefs.save(key, value)
 end
 
 local function normalizeName(name)

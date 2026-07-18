@@ -21,7 +21,11 @@ Sections:
                   year like the sections above (tap the count to see the
                   finished books; long press the count to manually correct
                   which books count as finished; long press the goal value
-                  to change it)
+                  to change it). Can be switched off entirely in Settings
+                  > Advanced settings > "Reading goal section"; a book is
+                  counted for the year of its *last* reading entry, so one
+                  read across New Year counts once, in the year it was
+                  finished.
   - Total read    all-time totals (tap header to open the reading heatmap)
 
 Gestures:
@@ -67,7 +71,7 @@ Caching:
   (a cheap "today" slice is merged fresh on every call into a once-per-day
   cached "up to yesterday" base, so totals stay live without re-scanning
   full history each open). Year range cached per day. Monthly book counts
-  cached under "books:<year>:<date>" keys, mirrored to _stale_monthly.
+  cached under "books:<year>:<date>" keys, mirrored to Cache._stale_monthly.
   Stale-while-revalidate: the popup opens immediately with cached data
   while fresh values load in the background.
 
@@ -81,6 +85,22 @@ Caching:
   CalendarView: when closed, the popup reopens with the same year, mode,
   and cached data — no extra DB queries needed on return. If CalendarView
   is not available the long press is silently ignored.
+
+  Reading goal: cached per minute per year like the rest, but on top of
+  that its underlying "which books are finished" list is persisted per year
+  and only ever updated incrementally (books with activity newer than that
+  year's watermark are re-judged, everything else is left alone), so a
+  cache miss costs a small scan instead of a full history rescan. A row
+  count stored next to the watermark detects a statistics.sqlite3 that was
+  restored, merged, or had rows deleted behind our back, and forces one
+  full re-scan of that year when it doesn't add up.
+
+Bar chart heights:
+  By default both bar charts size themselves at build time so the page ends
+  up exactly one screen tall (no scroll bar); _buildUI measures a build and
+  recomputes the heights from the leftover pixels. Settings > Advanced
+  settings > "Bar chart height" > "Automatic (fit screen)" turns this off
+  and restores the two fixed, user-set values.
 ]]--
 
 local Blitbuffer = require("ffi/blitbuffer")
@@ -112,481 +132,71 @@ local WidgetContainer = require("ui/widget/container/widgetcontainer")
 local Screen = Device.screen
 local T = require("ffi/util").template
 
--- Shared translations/number-formatting, and shared chart/text color
--- settings, both loaded once by main.lua and passed in as this chunk's
--- arguments (see main.lua's loadModule() call for this file).
-local Locale, Colors, Fonts, Settings, StatsDb, PopupUtil = ...
+-- Shared translations/number-formatting, shared chart/text color settings,
+-- and this view's own settings module (VS - lib/insights_settings.lua, every
+-- user-settable option this popup reads or writes), all loaded once by
+-- main.lua and passed in as this chunk's arguments (see main.lua's
+-- loadModule() call for this file).
+-- Shared modules, passed in as one named table by main.lua. Named rather
+-- than positional on purpose: the list had grown long enough that
+-- inserting one module in the middle would silently shift every module
+-- after it, and the resulting nil would only surface far from the cause.
+local deps = ...
+local Locale, Colors, Fonts, StatsDb, PopupUtil, VS, Cache, UI, Trend, Heatmap, BookList =
+    deps.Locale, deps.Colors, deps.Fonts, deps.StatsDb, deps.PopupUtil,
+    deps.VS, deps.Cache, deps.UI, deps.Trend, deps.Heatmap, deps.BookList
 
--- true: cache DB results (streaks/year_range per day, last-week per minute, yearly/monthly per day).
--- false: always query DB fresh on open.
-local ENABLE_CACHE = true
 
 -- true: today's bar in the weekly chart is black. false: all bars gray.
 local WEEKLY_CHART_HIGHLIGHT_TODAY = true
 
--- Settings keys
-local SETTINGS_KEY_FULL_REFRESH   = "reading_insights_full_refresh_on_open_close"
-local SETTINGS_KEY_8W_ASCENDING   = "reading_insights_8week_ascending"
 
--- Generic boolean-setting reader/writer; replaces the previous 4 near-identical
--- read/save*Setting functions that only differed by key and default.
-local function readBoolSetting(key, default)
-    return Settings.readBool(key, default)
-end
 
-local function saveBoolSetting(key, value)
-    Settings.save(key, value)
-end
 
-local function readFullRefreshSetting()
-    return readBoolSetting(SETTINGS_KEY_FULL_REFRESH, false)
-end
 
-local function readAscendingSetting()
-    -- default: ascending (oldest on the left)
-    return readBoolSetting(SETTINGS_KEY_8W_ASCENDING, true)
-end
 
-local function saveFullRefreshSetting(value)
-    saveBoolSetting(SETTINGS_KEY_FULL_REFRESH, value)
-end
 
-local function saveAscendingSetting(value)
-    saveBoolSetting(SETTINGS_KEY_8W_ASCENDING, value)
-end
 
--- Bar-chart height settings (Settings ▸ "Oszlopdiagram magassága" / "Bar
--- chart height"). Values are the same "points" number previously hardcoded
--- into Screen:scaleBySize(...) at each chart's call site, so restoring the
--- default here reproduces the exact original look.
---
--- Renamed from reading_insights_weekly_bar_height /
--- reading_insights_monthly_bar_height (default 44) to the _v2 keys below
--- (default 30): a plain default-constant change only affects users who
--- never touched this setting - anyone who had already saved a value (even
--- one that happened to equal the old default) would keep it forever.
--- Reading from a brand-new, never-before-saved key means *everyone* -
--- including previous customizers - starts fresh from the new default after
--- upgrading. The old keys are simply left orphaned in the settings file.
-local SETTINGS_KEY_WEEKLY_BAR_HEIGHT  = "reading_insights_weekly_bar_height_v2"
-local SETTINGS_KEY_MONTHLY_BAR_HEIGHT = "reading_insights_monthly_bar_height_v2"
 
-local DEFAULT_WEEKLY_BAR_HEIGHT  = 30
-local DEFAULT_MONTHLY_BAR_HEIGHT = 30
 
-local function readNumSetting(key, default)
-    return Settings.readNum(key, default)
-end
 
-local function saveNumSetting(key, value)
-    Settings.save(key, value)
-end
 
-local function readWeeklyBarHeightSetting()
-    return readNumSetting(SETTINGS_KEY_WEEKLY_BAR_HEIGHT, DEFAULT_WEEKLY_BAR_HEIGHT)
-end
 
-local function saveWeeklyBarHeightSetting(value)
-    saveNumSetting(SETTINGS_KEY_WEEKLY_BAR_HEIGHT, value)
-end
 
-local function readMonthlyBarHeightSetting()
-    return readNumSetting(SETTINGS_KEY_MONTHLY_BAR_HEIGHT, DEFAULT_MONTHLY_BAR_HEIGHT)
-end
 
-local function saveMonthlyBarHeightSetting(value)
-    saveNumSetting(SETTINGS_KEY_MONTHLY_BAR_HEIGHT, value)
-end
 
--- Reading heatmap period length (Settings ▸ Advanced settings ▸ how many
--- months the heatmap grid shows at once - 3, 4 or 6). Read by
--- getHeatmapPeriodRange below every time a heatmap page is built, so a
--- change takes effect the next time the popup (re)opens/pages.
-local SETTINGS_KEY_HEATMAP_MONTHS = "reading_insights_heatmap_months_per_period"
-local DEFAULT_HEATMAP_MONTHS      = 6
-local VALID_HEATMAP_MONTHS        = { [3] = true, [4] = true, [6] = true }
 
-local function readHeatmapMonthsSetting()
-    local v = readNumSetting(SETTINGS_KEY_HEATMAP_MONTHS, DEFAULT_HEATMAP_MONTHS)
-    if not VALID_HEATMAP_MONTHS[v] then return DEFAULT_HEATMAP_MONTHS end
-    return v
-end
 
-local function saveHeatmapMonthsSetting(value)
-    saveNumSetting(SETTINGS_KEY_HEATMAP_MONTHS, value)
-end
 
--- Time-of-day heatmap hour format (Settings ▸ Advanced settings ▸ "Heatmap
--- hour format" - 24-hour or 12-hour AM/PM). Previously the hour header
--- always showed 24-hour labels ("00".."21"); this is now an explicit,
--- language-independent setting instead of silently following the
--- interface language. Read by buildDayPartHeatmapWidget every time the
--- time-of-day heatmap is built.
-local SETTINGS_KEY_HEATMAP_HOUR_FORMAT = "reading_insights_heatmap_hour_format"
-local DEFAULT_HEATMAP_HOUR_FORMAT      = "24"
-local VALID_HEATMAP_HOUR_FORMAT        = { ["24"] = true, ["12"] = true }
 
-local function readHeatmapHourFormatSetting()
-    local v = Settings.read(SETTINGS_KEY_HEATMAP_HOUR_FORMAT, nil)
-    if not VALID_HEATMAP_HOUR_FORMAT[v] then return DEFAULT_HEATMAP_HOUR_FORMAT end
-    return v
-end
 
-local function saveHeatmapHourFormatSetting(value)
-    Settings.save(SETTINGS_KEY_HEATMAP_HOUR_FORMAT, value)
-end
 
--- Per-year reading goal ("2026 reading goal" section, shown above "Total
--- read"). One integer target per calendar year, keyed by year so switching
--- years (swipe/arrow, same navigation as the rest of the popup) shows and
--- edits that year's own goal. Edited via long press on the goal value (see
--- ReadingInsightsPopup:onHold / editReadingGoal).
-local DEFAULT_READING_GOAL = 12
 
-local function readingGoalSettingsKey(year)
-    return "reading_insights_reading_goal_" .. tostring(year)
-end
 
-local function readReadingGoal(year)
-    return tonumber(Settings.read(readingGoalSettingsKey(year), DEFAULT_READING_GOAL)) or DEFAULT_READING_GOAL
-end
 
-local function saveReadingGoal(year, value)
-    Settings.save(readingGoalSettingsKey(year), value)
-end
 
--- Per-book, per-year manual overrides for the reading-goal section's
--- "finished" determination (see getFinishedBooksForYear's own query-based
--- definition above it). Set via a long press on the "N book(s) finished"
--- cell, which opens a checklist of every book with activity that year
--- (FinishedBooksChecklistPopup below) letting the user tick/untick each
--- one - e.g. to exclude a book the query counted as finished but the user
--- considers unfinished (a reread left partway through), or to include one
--- the query missed. Only entries that differ from the query's own verdict
--- are stored - overrides[id_book] == true means "count as finished even
--- though the query disagrees (or doesn't know about it)", == false means
--- "don't count as finished even though the query says so". A book with no
--- entry here just uses the query's verdict unchanged.
-local function finishedOverridesSettingsKey(year)
-    return "reading_insights_finished_overrides_" .. tostring(year)
-end
 
-local function readFinishedOverrides(year)
-    local raw = Settings.read(finishedOverridesSettingsKey(year), nil)
-    if type(raw) ~= "table" then return {} end
-    return raw
-end
 
-local function saveFinishedOverrides(year, overrides)
-    Settings.save(finishedOverridesSettingsKey(year), overrides)
-end
 
--- Week start day for both reading heatmaps (Settings ▸ Advanced settings ▸
--- "Week start day" - Monday or Sunday). This is the same global setting the
--- per-book reading calendar keys off, so it now lives in the shared
--- Settings module (see settings.lua); these thin wrappers keep the existing
--- local + exported names working. Read by buildRangeHeatmapGrid (calendar
--- heatmap) and buildDayPartHeatmapWidget (time-of-day heatmap) every time
--- either grid is built, so a change takes effect on the next (re)open.
-local function readWeekStartSetting()
-    return Settings.readWeekStart()
-end
 
-local function saveWeekStartSetting(value)
-    Settings.saveWeekStart(value)
-end
 
--- 0 = Sunday, 1 = Monday (os.date("%w") convention) for the currently
--- configured week start day - the shared building block both heatmap
--- grids use to lay their rows/columns out.
-local function weekStartWday()
-    return Settings.weekStartWday()
-end
 
-local _cache = {
-    streaks                = nil,
-    streaks_date           = nil,
-    streaks_date_minute    = nil,
-    streaks_today_confirmed = nil,
-    year_range      = nil,
-    year_range_date = nil,
-    all_time        = nil,
-    all_time_minute = nil,
-    last_week        = nil,
-    last_week_minute = nil,
-    last_week_daily        = nil,
-    last_week_daily_minute = nil,
-    last8weeks        = nil,
-    last8weeks_minute = nil,
-    daily_data        = nil,
-}
 
-local _yearly_cache  = {}
-local _monthly_cache = {}
--- Finished-book count for the reading-goal section, keyed per year like
--- _yearly_cache. Per-minute in-memory throttle only; the actual per-year
--- results this wraps are backed by the persisted, incrementally-updated
--- tables below (_goal_finished_books / _goal_scan_watermark), which is what
--- makes each cache-miss cheap instead of a full-table rescan.
-local _goal_cache       = {}
-local _stale_goal_cache = {}
 
--- Persisted "finished books" list for the reading-goal count (see
--- getFinishedBookCountForYear below): once a book is confirmed finished in
--- a given year, it stays on that year's list for good - a later refresh
--- never re-checks it, it only looks for books that have become newly
--- finished since the last scan for that year. This keeps the goal count
--- cheap to refresh (no full page_stat table rescan on every popup open),
--- and because both tables are mirrored to disk (see loadDiskCache/
--- saveDiskCache) the list survives a KOReader restart instead of starting
--- over from empty.
---   _goal_finished_books[year] = { [id_book] = last_time, ... }
---   _goal_scan_watermark[year] = start_time already scanned up to, for
---                                that year's list
-local _goal_finished_books   = {}
-local _goal_scan_watermark   = {}
 
--- "Up to yesterday" base aggregates (excludes today), kept separate from
--- _yearly_cache/_monthly_cache so they never collide with the stale-prefix
--- lookups those tables are searched with (e.g. "books:<year>:").
--- Recomputed once per day; today's slice is queried fresh and merged in on
--- every call, so totals stay live across repeated opens on the same day.
-local _yearly_base_cache  = {}
-local _monthly_base_cache = {}
-local _alltime_base_cache = nil
 
--- Stale cache: holds expired values for immediate display on the next open.
--- _stale_cache is read-only in init(); writes go to the primary cache tables.
-local _stale_cache   = {}
-local _stale_yearly  = {}
-local _stale_monthly = {}
 
-local function clearAllCache()
-    _cache.streaks                 = nil
-    _cache.streaks_date            = nil
-    _cache.streaks_date_minute     = nil
-    _cache.streaks_today_confirmed = nil
-    _cache.year_range      = nil
-    _cache.year_range_date = nil
-    _cache.all_time        = nil
-    _cache.all_time_minute = nil
-    _cache.last_week        = nil
-    _cache.last_week_minute = nil
-    _cache.last_week_daily        = nil
-    _cache.last_week_daily_minute = nil
-    _cache.last8weeks        = nil
-    _cache.last8weeks_minute = nil
-    _cache.daily_data        = nil
-    _yearly_cache          = {}
-    _monthly_cache         = {}
-    _yearly_base_cache     = {}
-    _monthly_base_cache    = {}
-    _alltime_base_cache    = nil
-    _goal_cache            = {}
-    -- Force a full re-scan of the finished-books lists on manual reload,
-    -- rather than only looking for activity since the last watermark.
-    _goal_finished_books   = {}
-    _goal_scan_watermark   = {}
-    -- Stale cache is wiped on force-reload so stale data is not shown after a manual refresh.
-    _stale_cache           = {}
-    _stale_yearly          = {}
-    _stale_monthly         = {}
-    _stale_goal_cache      = {}
-end
 
--- Disk-persisted cache -------------------------------------------------
---
--- Everything above (_cache, _stale_cache, _yearly_cache, ...) lives only in
--- memory, so it is empty right after a KOReader restart (this module is
--- freshly loaded). Without a disk copy, the very first popup open after a
--- restart has nothing to show and falls back to a blocking "Loading data..."
--- placeholder until _loadAndRebuild() finishes querying the DB.
---
--- To avoid that, the stale-cache tables (the same ones used for
--- stale-while-revalidate display) are mirrored to a small Lua settings file
--- on disk: loaded once into memory when this module loads (i.e. on plugin
--- start/KOReader start), and saved every time _loadAndRebuild() finishes
--- refreshing the popup's data. This way the popup can always open instantly
--- with the last known numbers, then refresh in the background and redraw -
--- restart or not.
---
--- The "up to yesterday" base aggregates (_alltime_base_cache,
--- _yearly_base_cache, _monthly_base_cache) are mirrored to disk as well, for
--- a different reason: they aren't needed for instant display (the stale
--- cache above already covers that), but without a disk copy each of them is
--- nil right after a restart, so the first getAllTimeStats() /
--- getYearlyStats() / getMonthlyReading*() call of the day has to rescan the
--- entire page_stat history from scratch (expensive, and it makes the
--- on-screen total visibly jump once that rescan finishes and replaces the
--- stale placeholder). Restoring them from disk means a restart only has to
--- redo the cheap today-only query, same as any other same-day cache hit.
--- Each entry already carries its own `date` field (see makeCachedBase()), so
--- a stale (yesterday-or-older) entry loaded from disk is simply ignored by
--- getCachedBase() and recomputed once, exactly as if it had never been
--- persisted.
-local LuaSettings = require("luasettings")
-local DISK_CACHE_PATH = DataStorage:getSettingsDir() .. "/reading_insights_cache.lua"
 
-local function loadDiskCache()
-    local ok, settings = pcall(function() return LuaSettings:open(DISK_CACHE_PATH) end)
-    if not ok or not settings then return end
 
-    local stale_cache   = settings:readSetting("stale_cache")
-    local stale_yearly  = settings:readSetting("stale_yearly")
-    local stale_monthly = settings:readSetting("stale_monthly")
-    local alltime_base  = settings:readSetting("alltime_base")
-    local yearly_base   = settings:readSetting("yearly_base")
-    local monthly_base  = settings:readSetting("monthly_base")
-    local goal_finished_books = settings:readSetting("goal_finished_books")
-    local goal_scan_watermark = settings:readSetting("goal_scan_watermark")
 
-    if type(stale_cache) == "table" then
-        for k, v in pairs(stale_cache) do _stale_cache[k] = v end
-    end
-    if type(stale_yearly) == "table" then
-        for k, v in pairs(stale_yearly) do _stale_yearly[k] = v end
-    end
-    if type(stale_monthly) == "table" then
-        for k, v in pairs(stale_monthly) do _stale_monthly[k] = v end
-    end
-    -- alltime_base is the single un-keyed base-cache entry itself (a
-    -- { date, data } table, or nil); the other two are keyed tables of such
-    -- entries, so they're merged key by key like the stale caches above.
-    if type(alltime_base) == "table" then
-        _alltime_base_cache = alltime_base
-    end
-    -- getYearlyStats()/getMonthlyBookCounts() unconditionally index
-    -- base.book_ids / base.current_month_book_ids without a nil check,
-    -- since a freshly-queried base always has them. A disk-loaded entry is
-    -- defensively backfilled with an empty table here (instead of trusting
-    -- the file to always contain them) so a cache file written by an older
-    -- plugin version, or edited/truncated by hand, can't crash those
-    -- lookups - worst case it just treats every book as "new" for one
-    -- lookup, same as an empty history would.
-    if type(yearly_base) == "table" then
-        for k, v in pairs(yearly_base) do
-            if type(v) == "table" and type(v.data) == "table" and v.data.book_ids == nil then
-                v.data.book_ids = {}
-            end
-            _yearly_base_cache[k] = v
-        end
-    end
-    if type(monthly_base) == "table" then
-        for k, v in pairs(monthly_base) do
-            if type(v) == "table" and type(v.data) == "table" and v.data.current_month_book_ids == nil then
-                v.data.current_month_book_ids = {}
-            end
-            _monthly_base_cache[k] = v
-        end
-    end
-    if type(goal_finished_books) == "table" then
-        for k, v in pairs(goal_finished_books) do _goal_finished_books[k] = v end
-    end
-    if type(goal_scan_watermark) == "table" then
-        for k, v in pairs(goal_scan_watermark) do _goal_scan_watermark[k] = v end
-    end
-end
 
--- Best-effort save; any failure (full disk, odd permissions, ...) is
--- silently ignored so it can never break the popup itself.
---
--- LuaSettings only serializes its whole in-memory table once, on flush().
--- That means a single bad value anywhere in that table can make the *whole*
--- flush() fail (and flush() is wrapped in pcall below, so that failure is
--- silent) - which would drop even the already-reliable stale_cache /
--- _stale_yearly / _stale_monthly placeholders that the "no Loading data...
--- after restart" behavior depends on, just because one of the newer,
--- lower-priority base-cache entries turned out to be unexpectedly shaped or
--- oversized.
---
--- To make sure the essential placeholders can never be taken down by a
--- problem in the base caches, they're saved and flushed to disk in their
--- own pass first; the base caches (a pure performance optimization, see the
--- big comment above loadDiskCache()) are only added and flushed afterwards,
--- as a second, independent pass on the same file.
-local function saveDiskCache()
-    local ok, settings = pcall(function() return LuaSettings:open(DISK_CACHE_PATH) end)
-    if not ok or not settings then return end
 
-    settings:saveSetting("stale_cache", _stale_cache)
-    settings:saveSetting("stale_yearly", _stale_yearly)
-    settings:saveSetting("stale_monthly", _stale_monthly)
-    local stale_flush_ok, stale_flush_err = pcall(function() settings:flush() end)
-    if not stale_flush_ok then
-        logger.warn("ReadingInsights: failed to flush stale-cache placeholders: " .. tostring(stale_flush_err))
-        return -- don't even attempt the base caches against a settings object that just failed to flush
-    end
 
-    settings:saveSetting("alltime_base", _alltime_base_cache)
-    settings:saveSetting("yearly_base", _yearly_base_cache)
-    settings:saveSetting("monthly_base", _monthly_base_cache)
-    settings:saveSetting("goal_finished_books", _goal_finished_books)
-    settings:saveSetting("goal_scan_watermark", _goal_scan_watermark)
-    local base_flush_ok, base_flush_err = pcall(function() settings:flush() end)
-    if not base_flush_ok then
-        logger.warn("ReadingInsights: failed to flush base caches: " .. tostring(base_flush_err))
-    end
-end
 
--- Seed the in-memory stale caches from disk immediately, so even the very
--- first ReadingInsightsPopup:init() after a KOReader restart already has
--- last-known data available via the existing stale-cache fallback below.
-loadDiskCache()
 
-local function todayDateStr()
-    return os.date("%Y-%m-%d")
-end
 
-local function currentMinute()
-    return math.floor(os.time() / 60)
-end
 
--- Per-minute cache read: returns the cached value for `key` if caching is
--- on and it was last refreshed during the current minute, else nil.
--- `minute_key` is the sibling field/key holding the minute stamp (e.g.
--- "all_time_minute", or key .. ":minute" for the dynamically-keyed caches).
-local function getMinuteCache(cache_table, key, minute_key, minute)
-    if ENABLE_CACHE and cache_table[key] ~= nil and cache_table[minute_key] == minute then
-        return cache_table[key]
-    end
-    return nil
-end
-
--- Per-minute cache write: stores value + minute stamp, and mirrors it into
--- stale_table (read on the next popup open for instant stale-while-revalidate
--- display). No-op when caching is disabled.
-local function setMinuteCache(cache_table, stale_table, key, minute_key, minute, value)
-    if ENABLE_CACHE then
-        cache_table[key]   = value
-        cache_table[minute_key] = minute
-        stale_table[key]   = value
-    end
-end
-
--- "Up to yesterday" base-aggregate read: returns the cached data only if it
--- was computed today, else nil (meaning: recompute). For per-key caches
--- (yearly/monthly) pass base_key; for the single un-keyed all-time cache
--- pass base_key = nil and the cache variable's current value as cache_entry.
-local function getCachedBase(cache_table, base_key, today)
-    if not ENABLE_CACHE then return nil end
-    local entry
-    if base_key then
-        entry = cache_table[base_key]
-    else
-        entry = cache_table
-    end
-    if entry and entry.date == today then
-        return entry.data
-    end
-    return nil
-end
-
--- Builds the { date, data } shape stored by the base caches above; caller
--- assigns the result to cache_table[base_key] (or to the all-time base-cache
--- variable directly, since it isn't keyed).
-local function makeCachedBase(today, data)
-    return { date = today, data = data }
-end
 
 -- Value-based (not reference-based) equality for the small stat tables
 -- returned by the getters below. Needed because a per-minute cache refresh
@@ -670,146 +280,18 @@ local function buildMonthlyArray(year, entry_fn)
     return months
 end
 
--- Scans a stale-cache table for the entry whose key starts with `prefix`
--- and has the most recent date suffix. Used as a fallback when no
--- fresh/minute-cached value is available yet (e.g. right after a restart,
--- mode switch, or year change).
---
--- Entries are never pruned from these tables (each calendar day adds a new
--- date-suffixed key rather than overwriting the previous one - see
--- setMinuteCache), so a given prefix (e.g. "2026:v3:") can match several
--- entries at once, one per day the plugin has ever run. pairs() iteration
--- order is undefined, so simply returning the first match found could just
--- as easily return yesterday's (or older) entry as today's, which is
--- exactly what caused the "yesterday's value flashes briefly after
--- restart" bug: the date suffix is an ISO "YYYY-MM-DD" string, so the
--- lexicographically greatest matching key is also the chronologically
--- most recent one - that's the one we want.
-local function findStaleByPrefix(stale_table, prefix)
-    if not ENABLE_CACHE then return nil end
-    local best_key, best_val
-    for k, v in pairs(stale_table) do
-        if k:sub(1, #prefix) == prefix then
-            if not best_key or k > best_key then
-                best_key, best_val = k, v
-            end
-        end
-    end
-    return best_val
-end
 
--- Used by every base/today merge function below (getYearlyStats,
--- getAllTimeStats, getMonthlyReading*, getMonthlyBookCounts) when their
--- "today" DB read fails - most often a transient statistics.sqlite3 lock
--- right after a KOReader restart, while KOReader's own built-in
--- statistics plugin is also touching the file. Without this, the caller's
--- own fallback merges `base` (which excludes today by definition) with an
--- all-zero "today" slice, silently dropping today's already-known
--- activity - and since that regressed result looks like legitimate fresh
--- data, it gets cached and displayed, causing the numbers on screen to
--- briefly drop before a later, successful read corrects them again.
--- Prefers this session's own cache (session_cache[key]) over the last
--- value persisted to disk (stale_table, matched by prefix - see
--- findStaleByPrefix), and returns nil only when there's genuinely nothing
--- better yet (e.g. the very first run, before anything has been cached).
-local function bestKnownFullResult(session_cache, key, stale_table, stale_prefix)
-    if session_cache and key and session_cache[key] then
-        return session_cache[key]
-    end
-    return findStaleByPrefix(stale_table, stale_prefix)
-end
 
 local ReadingInsightsPopup
 
-local INSIGHTS_MODE_KEY = "reading_insights_popup_mode"
-local INSIGHTS_MODE_DAYS = "days"
-local INSIGHTS_MODE_HOURS = "hours"
-local INSIGHTS_MODE_BOOKS = "books"
 
-local function normalizeInsightsMode(mode)
-    if mode == INSIGHTS_MODE_DAYS then
-        return INSIGHTS_MODE_DAYS
-    end
-    if mode == INSIGHTS_MODE_BOOKS then
-        return INSIGHTS_MODE_BOOKS
-    end
-    return INSIGHTS_MODE_HOURS
-end
 
--- Returns the _monthly_cache/_stale_monthly key prefix for a given insights
--- mode ("hours:" / "books:" / "days:"). Shared by init(), the mode-toggle
--- and year-navigation handlers, all of which need to guess the right
--- monthly cache key before the real data has loaded.
-local function monthKeyPrefixForMode(mode)
-    if mode == INSIGHTS_MODE_HOURS then return "hours:" end
-    if mode == INSIGHTS_MODE_BOOKS then return "books:" end
-    return "days:"
-end
 
--- "Last week" chart mode: tapping the "Last week" header toggles the daily
--- bar chart between reading time (HH:MM) and pages read per day. The choice
--- is persisted so the popup remembers it instead of always defaulting to time.
-local SETTINGS_KEY_WEEKLY_CHART_MODE = "reading_insights_weekly_chart_mode"
-local WEEKLY_CHART_MODE_TIME  = "time"
-local WEEKLY_CHART_MODE_PAGES = "pages"
 
-local function normalizeWeeklyChartMode(mode)
-    if mode == WEEKLY_CHART_MODE_PAGES then
-        return WEEKLY_CHART_MODE_PAGES
-    end
-    return WEEKLY_CHART_MODE_TIME
-end
 
-local function readWeeklyChartMode()
-    return normalizeWeeklyChartMode(Settings.read(SETTINGS_KEY_WEEKLY_CHART_MODE, WEEKLY_CHART_MODE_TIME))
-end
 
-local function saveWeeklyChartMode(mode)
-    Settings.save(SETTINGS_KEY_WEEKLY_CHART_MODE, mode)
-end
 
-local function readInsightsMode()
-    return normalizeInsightsMode(Settings.read(INSIGHTS_MODE_KEY, INSIGHTS_MODE_HOURS))
-end
 
-local function saveInsightsMode(mode)
-    Settings.save(INSIGHTS_MODE_KEY, mode)
-end
-
--- Statistics-DB access now goes through the shared StatsDb module (same db
--- path, PRAGMAs, open/close and error handling as before). Kept under the
--- original local names so the many call sites below are unchanged.
-local function withStatsDb(fallback, fn)
-    return StatsDb.withDb(fallback, fn)
-end
-
--- Open a persistent DB connection for batch use; caller must call conn:close().
--- Returns nil if the DB file does not exist or cannot be opened.
-local function openStatsDb()
-    return StatsDb.open()
-end
-
--- Like withStatsDb but reuses an already-open connection (conn must be non-nil).
--- Does NOT close the connection; the caller owns it.
-local function withConn(conn, fallback, fn)
-    if not conn then return fallback end
-    local ok, result = pcall(fn, conn)
-    if ok then return result end
-    return fallback
-end
-
--- Normalizes calling withConn (3 args) vs withStatsDb (2 args) behind one
--- signature, so callers don't have to branch on which one they picked.
-local function withDb(shared_conn, fallback, fn)
-    if shared_conn then
-        return withConn(shared_conn, fallback, fn)
-    end
-    return withStatsDb(fallback, fn)
-end
-
-local function withStatement(conn, sql, fn)
-    return StatsDb.withStatement(conn, sql, fn)
-end
 
 local function computeStreaks(entries_desc, is_consecutive, is_current_start)
     if #entries_desc == 0 then
@@ -952,20 +434,6 @@ local function buildSerifFonts()
     }
 end
 
-local function buildLayout(screen_w, padding_h, column_gap)
-    local separator_width = 2 * column_gap + Size.line.medium
-    local content_width = screen_w - 2 * padding_h
-    local col_width = math.floor((content_width - separator_width) / 2)
-    return {
-        full_width    = screen_w,
-        padding_h     = padding_h,
-        column_gap    = column_gap,
-        separator_width = separator_width,
-        content_width = content_width,
-        col_width     = col_width,
-    }
-end
-
 local _cached_layout = nil
 
 -- Deliberately NOT cached at this module level (unlike getCachedLayout()
@@ -981,41 +449,9 @@ end
 local function getCachedLayout()
     if not _cached_layout then
         local screen_w = Screen:getWidth()
-        _cached_layout = buildLayout(screen_w, Size.padding.large, Screen:scaleBySize(20))
+        _cached_layout = UI.buildLayout(screen_w, Size.padding.large, Screen:scaleBySize(20))
     end
     return _cached_layout
-end
-
-local function buildColumnSeparator(column_gap, height)
-    local v_padding = Size.padding.default
-    return HorizontalGroup:new{
-        HorizontalSpan:new{ width = column_gap },
-        VerticalGroup:new{
-            align = "center",
-            VerticalSpan:new{ height = v_padding },
-            Colors.newBar(Size.line.medium, height - 2 * v_padding, Colors.separator()),
-            VerticalSpan:new{ height = v_padding },
-        },
-        HorizontalSpan:new{ width = column_gap },
-    }
-end
-
-local function buildSectionHeader(font_section, text, width, left_padding)
-    left_padding = left_padding or Size.padding.large
-    local text_widget = TextWidget:new{ text = text, face = font_section, fgcolor = Colors.section() }
-    return FrameContainer:new{
-        background    = Blitbuffer.COLOR_WHITE,
-        bordersize    = 0,
-        padding_top   = Size.padding.small,
-        padding_bottom = Size.padding.small,
-        padding_left  = left_padding,
-        padding_right = 0,
-        LeftContainer:new{
-            dimen = Geom:new{ w = width - left_padding, h = text_widget:getSize().h },
-            text_widget,
-        },
-    }
-    
 end
 
 local function buildValueLine(font_value, font_label, col_width, value, unit)
@@ -1046,29 +482,6 @@ local function buildValueLine(font_value, font_label, col_width, value, unit)
     }
 end
 
-local function fixedCol(widget, width)
-    return LeftContainer:new{
-        dimen  = Geom:new{ w = width, h = widget:getSize().h },
-        widget,
-    }
-end
-
-local function padded(padding_h, widget)
-    return HorizontalGroup:new{
-        HorizontalSpan:new{ width = padding_h },
-        widget,
-    }
-end
-
-local function buildTwoColRow(left_widget, right_widget, layout)
-    return HorizontalGroup:new{
-        align = "center",
-        fixedCol(left_widget, layout.col_width),
-        buildColumnSeparator(layout.column_gap, left_widget:getSize().h),
-        fixedCol(right_widget, layout.col_width),
-    }
-end
-
 local function tappableCell(widget, col_width, callback)
     local cell = InputContainer:new{
         dimen = Geom:new{ x = 0, y = 0, w = col_width, h = widget:getSize().h },
@@ -1082,32 +495,6 @@ local function tappableCell(widget, col_width, callback)
         return true
     end
     return cell
-end
-
-local function addSectionWithRow(sections, header_widget, row, layout, opts)
-    local pad_row        = true
-    local add_divider    = true
-    local no_bottom_line = false
-    local no_top_line    = false
-    if opts then
-        if opts.pad_row        == false then pad_row        = false end
-        if opts.add_divider    == false then add_divider    = false end
-        if opts.no_bottom_line == true  then no_bottom_line = true  end
-        if opts.no_top_line    == true  then no_top_line    = true  end
-    end
-
-    table.insert(sections, header_widget)
-    table.insert(sections, VerticalSpan:new{ height = Size.padding.default })
-    if add_divider and not no_top_line then
-        table.insert(sections, padded(layout.padding_h,
-            Colors.newBar(layout.content_width, Size.line.thin, Colors.separator())))
-    end
-    table.insert(sections, pad_row and padded(layout.padding_h, row) or row)
-    table.insert(sections, VerticalSpan:new{ height = Size.padding.large })
-    if add_divider and not no_bottom_line then
-        table.insert(sections, padded(layout.padding_h,
-            Colors.newBar(layout.content_width, Size.line.thick, Colors.separator())))
-    end
 end
 
 local function buildYearHeader(font_section, layout, year_range, selected_year)
@@ -1228,10 +615,10 @@ end
 local function buildYearlyRow(popup_self, yearly_stats, fonts, layout)
     local left_value = ""
     local left_unit  = ""
-    if popup_self.mode == INSIGHTS_MODE_HOURS then
+    if popup_self.mode == VS.INSIGHTS_MODE_HOURS then
         local yr_secs = yearly_stats.duration or 0
         left_value, left_unit = splitDurationValueUnit(yr_secs, _("reading time"))
-    elseif popup_self.mode == INSIGHTS_MODE_BOOKS then
+    elseif popup_self.mode == VS.INSIGHTS_MODE_BOOKS then
         left_value = formatCount(yearly_stats.books_started)
         left_unit  = N_("book read", "books read", yearly_stats.books_started)
     else
@@ -1241,7 +628,7 @@ local function buildYearlyRow(popup_self, yearly_stats, fonts, layout)
     local left_line = buildValueLine(
         fonts.value, fonts.label, layout.col_width, left_value, left_unit)
     local right_value, right_unit
-    if popup_self.mode == INSIGHTS_MODE_DAYS then
+    if popup_self.mode == VS.INSIGHTS_MODE_DAYS then
         local selected_year = popup_self.selected_year or tonumber(os.date("%Y"))
         local current_year  = tonumber(os.date("%Y"))
         local days_in_year
@@ -1257,7 +644,7 @@ local function buildYearlyRow(popup_self, yearly_stats, fonts, layout)
             or 0
         right_value = pct .. "%"
         right_unit  = _("of days read")
-    elseif popup_self.mode == INSIGHTS_MODE_BOOKS then
+    elseif popup_self.mode == VS.INSIGHTS_MODE_BOOKS then
         local avg_days = yearly_stats.avg_days_per_book or 0
         right_value = formatCount(avg_days)
         right_unit  = N_("day/book avg", "days/book avg", avg_days)
@@ -1294,14 +681,14 @@ local function buildYearlyRow(popup_self, yearly_stats, fonts, layout)
         return true
     end
 
-    local yearly_row = buildTwoColRow(left_cell, right_cell, layout)
+    local yearly_row = UI.buildTwoColRow(left_cell, right_cell, layout)
 
     return VerticalGroup:new{
         align = "left",
         FrameContainer:new{
             bordersize = 0,
             padding    = 0,
-            padded(layout.padding_h, yearly_row),
+            UI.padded(layout.padding_h, yearly_row),
         },
     }
 end
@@ -1309,8 +696,8 @@ end
 local function buildMonthlyChart(popup_self, monthly_data, layout, fonts)
     if #monthly_data == 0 then return nil end
 
-    local value_key = (popup_self.mode == INSIGHTS_MODE_HOURS and "hours")
-        or (popup_self.mode == INSIGHTS_MODE_BOOKS and "book_count")
+    local value_key = (popup_self.mode == VS.INSIGHTS_MODE_HOURS and "hours")
+        or (popup_self.mode == VS.INSIGHTS_MODE_BOOKS and "book_count")
         or "days"
     local max_value = 1
     for _, m in ipairs(monthly_data) do
@@ -1319,7 +706,8 @@ local function buildMonthlyChart(popup_self, monthly_data, layout, fonts)
     end
 
     local chart_width  = layout.content_width
-    local bar_height   = tonumber(Screen:scaleBySize(readMonthlyBarHeightSetting()))
+    VS.Opt.built_monthly = true
+    local bar_height   = tonumber(Screen:scaleBySize(VS.Opt.monthlyBarHeight()))
     local bar_width    = math.floor(chart_width / 6) - tonumber(Screen:scaleBySize(8))
     local bar_gap      = math.floor((chart_width - bar_width * 6) / 5)
     local font_small   = fonts.small
@@ -1347,7 +735,7 @@ local function buildMonthlyChart(popup_self, monthly_data, layout, fonts)
             local bar_color  = is_current and Colors.activeBar() or Colors.inactiveBar()
 
             local bar_label_str
-            if popup_self.mode == INSIGHTS_MODE_HOURS then
+            if popup_self.mode == VS.INSIGHTS_MODE_HOURS then
                 local mo_secs = tonumber(m.seconds) or math.floor((tonumber(m.hours) or 0) * 3600 + 0.5)
                 bar_label_str = Locale.formatDuration(mo_secs, true)
             else
@@ -1432,254 +820,25 @@ end
 -- 8-week reading trend popup (tap a Last-week cell to open it)
 -- ============================================================
 
--- Minimal line-chart widget: draws straight segments between `points`
--- ({x, y} pixel pairs, relative to the widget's own top-left corner)
--- using only bb:paintRect, so it doesn't depend on any diagonal-line
--- drawing primitive that may or may not exist in a given KOReader build.
-local LineChartWidget = Widget:extend{
-    width      = nil,
-    height     = nil,
-    points     = nil,
-    line_color = nil,
-}
 
-function LineChartWidget:getSize()
-    return Geom:new{ w = self.width, h = self.height }
-end
 
-function LineChartWidget:paintTo(bb, x, y)
-    if not self.points or #self.points == 0 then return end
-    local color = self.line_color or Colors.trendLine()
-    -- See colors.lua's LineWidget patch: bb:paintRect only renders native
-    -- 8bit grayscale colors correctly; arbitrary hex colors need
-    -- bb:paintRectRGB32 or they silently misrender (usually as black).
-    local paint = Blitbuffer.isColor8(color) and bb.paintRect or bb.paintRectRGB32
 
-    if #self.points > 1 then
-        for i = 1, #self.points - 1 do
-            local p1, p2 = self.points[i], self.points[i + 1]
-            local dx, dy = p2.x - p1.x, p2.y - p1.y
-            local steps  = math.max(math.abs(dx), math.abs(dy), 1)
-            for s = 0, steps do
-                local t  = s / steps
-                local px = math.floor(p1.x + dx * t + 0.5)
-                local py = math.floor(p1.y + dy * t + 0.5)
-                paint(bb, x + px, y + py, 2, 2, color)
-            end
-        end
-    end
-end
 
--- Same rounding rule used for the "avg/day" pages cell in the main popup:
--- integer above 10, 1 decimal place below.
-local function roundAvgPages(value)
-    if value >= 10 then
-        return math.floor(value + 0.5)
-    else
-        return math.floor(value * 10 + 0.5) / 10
-    end
-end
 
--- Format a single week's bucket value for the given metric.
--- Returns (display_string, raw_numeric_value).
-local function formatWeekValue(metric, week_entry)
-    if metric == "time_total" or metric == "time_avg" then
-        local secs = week_entry.seconds or 0
-        if metric == "time_avg" then secs = secs / 7 end
-        return Locale.formatDuration(secs, true), secs
-    else
-        local pages = week_entry.pages or 0
-        if metric == "pages_avg" then
-            pages = roundAvgPages(pages / 7)
-            return formatNumber(pages, pages ~= math.floor(pages) and 1 or 0), pages
-        end
-        return formatCount(pages), pages
-    end
-end
 
-local TREND_TITLE_KEYS = {
-    time_total  = "Reading time over the last 8 weeks",
-    pages_total = "Pages read over the last 8 weeks",
-    time_avg    = "Average daily reading time, last 8 weeks",
-    pages_avg   = "Average daily pages, last 8 weeks",
-}
 
-local function trendTitle(metric)
-    local key = TREND_TITLE_KEYS[metric]
-    return key and _(key) or ""
-end
 
-local function totalForMetric(metric, weeks)
-    local total_secs, total_pages = 0, 0
-    for _, w in ipairs(weeks) do
-        total_secs  = total_secs  + (w.seconds or 0)
-        total_pages = total_pages + (w.pages or 0)
-    end
-    if metric == "time_total" then
-        return Locale.formatDuration(total_secs, true)
-    elseif metric == "time_avg" then
-        local avg_secs = total_secs / (7 * #weeks)
-        return Locale.formatDuration(avg_secs, true)
-    elseif metric == "pages_total" then
-        return formatCount(total_pages)
-    else -- pages_avg
-        local avg = roundAvgPages(total_pages / (7 * #weeks))
-        return formatNumber(avg, avg ~= math.floor(avg) and 1 or 0)
-    end
-end
-
--- Builds the chart: one dot per week, connected by straight segments,
--- with the per-week value printed above each dot and a baseline below.
--- "Máj 6" / "May 6" style label using the same month names as the monthly chart.
-local function formatShortDate(date_str)
-    local y, m, d = date_str:match("^(%d+)-(%d+)-(%d+)$")
-    if not y then return date_str end
-    local month_name = MONTH_NAMES_SHORT[tonumber(m)] or m
-    if getLangBase() == "hu" then
-        return month_name .. " " .. tostring(tonumber(d)) .. "."
-    else
-        return month_name .. " " .. tostring(tonumber(d))
-    end
-end
-
-local function buildLine8WeekChart(weeks, metric, chart_width, fonts)
-    if not weeks or #weeks == 0 then return nil end
-
-    local bar_height  = tonumber(Screen:scaleBySize(120))
-    local num_points  = #weeks
-    local col_width   = math.floor(chart_width / num_points)
-    local font_small  = fonts.small
-
-    local sample_label = TextWidget:new{ text = "0", face = font_small }
-    local label_height = sample_label:getSize().h
-    sample_label:free()
-
-    local values = {}
-    local max_value = 0
-    for i, w in ipairs(weeks) do
-        local _unused, raw = formatWeekValue(metric, w)
-        values[i] = raw
-        if raw > max_value then max_value = raw end
-    end
-    if max_value <= 0 then max_value = 1 end
-
-    local dot_size    = tonumber(Screen:scaleBySize(6))
-    local baseline_h  = Size.line.medium
-    local total_col_h = bar_height + label_height
-
-    -- Ascending = weeks[1] (oldest) leftmost; descending = weeks[num_points] (newest) leftmost.
-    local ascending = readAscendingSetting()
-
-    local bars_row = HorizontalGroup:new{ align = "bottom" }
-    local points   = {}
-
-    for col = 1, num_points do
-        local i = ascending and col or (num_points - col + 1)
-        local ratio = values[i] / max_value
-        local dot_y_from_bottom = math.floor(ratio * (bar_height - dot_size))
-        local val_str = formatWeekValue(metric, weeks[i])
-
-        local value_label    = TextWidget:new{ text = val_str, face = font_small, fgcolor = Colors.small() }
-        local centered_label = CenterContainer:new{
-            dimen = Geom:new{ w = col_width, h = label_height },
-            value_label,
-        }
-
-        local col_group = VerticalGroup:new{ align = "center" }
-        table.insert(col_group, centered_label)
-        local space_above = bar_height - dot_size - dot_y_from_bottom
-        if space_above > 0 then
-            table.insert(col_group, VerticalSpan:new{ height = space_above })
-        end
-        table.insert(col_group, CenterContainer:new{
-            dimen = Geom:new{ w = col_width, h = dot_size },
-            Colors.newBar(dot_size, dot_size, Colors.activeBar()),
-        })
-        if dot_y_from_bottom > 0 then
-            table.insert(col_group, VerticalSpan:new{ height = dot_y_from_bottom })
-        end
-        table.insert(col_group, Colors.newBar(col_width, baseline_h, Colors.inactiveBar()))
-
-        table.insert(bars_row, BottomContainer:new{
-            dimen = Geom:new{ w = col_width, h = total_col_h },
-            col_group,
-        })
-
-        points[col] = {
-            x = (col - 1) * col_width + math.floor(col_width / 2),
-            y = label_height + space_above + math.floor(dot_size / 2),
-        }
-    end
-
-    local line_widget = LineChartWidget:new{
-        width      = num_points * col_width,
-        height     = total_col_h,
-        points     = points,
-        line_color = Colors.trendLine(),
-    }
-
-    local chart_area = OverlapGroup:new{
-        dimen = Geom:new{ w = num_points * col_width, h = total_col_h },
-        bars_row,
-        line_widget,
-    }
-
-    -- Per-week start/end date, same font size as the value labels above the dots.
-    -- Order follows the same ascending/descending setting as the columns above.
-    local date_labels_row = HorizontalGroup:new{ align = "top" }
-    for col = 1, num_points do
-        local i = ascending and col or (num_points - col + 1)
-        local start_lbl = TextWidget:new{ text = formatShortDate(weeks[i].start_date), face = font_small, fgcolor = Colors.small() }
-        local col_dates  = CenterContainer:new{
-            dimen = Geom:new{ w = col_width, h = start_lbl:getSize().h },
-            start_lbl,
-        }
-        table.insert(date_labels_row, col_dates)
-    end
-
-    return VerticalGroup:new{
-        align = "center",
-        chart_area,
-        VerticalSpan:new{ height = Size.padding.small },
-        date_labels_row,
-    }
-end
-
--- Full-screen tap-anywhere-to-close popup that hosts the trend chart.
-local WeeklyTrendPopup = InputContainer:extend{
-    modal       = true,
-    box_content = nil,
-}
-
-function WeeklyTrendPopup:init()
-    local screen_w = Screen:getWidth()
-    local screen_h = Screen:getHeight()
-    self.dimen = Geom:new{ x = 0, y = 0, w = screen_w, h = screen_h }
-
-    if Device:isTouchDevice() then
-        self.ges_events.Tap   = { GestureRange:new{ ges = "tap",   range = self.dimen } }
-        self.ges_events.Swipe = { GestureRange:new{ ges = "swipe", range = self.dimen } }
-    end
-    if Device:hasKeys() then
-        self.key_events.AnyKeyPressed = { { Device.input.group.Any } }
-    end
-
-    self[1] = CenterContainer:new{
-        dimen = self.dimen,
-        self.box_content,
-    }
-end
 
 -- Any tap / swipe / key dismisses; onShow/onCloseWidget mark the popup box
 -- region dirty. All five come from the shared helper (see popuputil.lua).
-PopupUtil.makeDismissable(WeeklyTrendPopup, function(self) return self.box_content.dimen end)
+PopupUtil.makeDismissable(Trend.Popup, function(self) return self.box_content.dimen end)
 
 -- ---------------------------------------------------------------------
 -- Reading heatmap (GitHub-style contribution grid)
 --
 -- Tapping the "Total read" header (see buildInsightsSections) opens a
 -- full-screen popup showing the most recent period of reading activity
--- (3, 4 or 6 months - see readHeatmapMonthsSetting, Settings ▸ Advanced
+-- (3, 4 or 6 months - see VS.readHeatmapMonthsSetting, Settings ▸ Advanced
 -- settings ▸ "Reading heatmap range") as a grid of small squares, one
 -- per day, shaded by how much was read that day relative to the busiest
 -- single day in the period shown:
@@ -1689,543 +848,33 @@ PopupUtil.makeDismissable(WeeklyTrendPopup, function(self) return self.box_conte
 --   50-75%                       -> Colors.heatmap75()
 --   75-100%                      -> Colors.heatmap100()
 -- Each column is one week (starting on the configured week start day -
--- see weekStartWday); the row above the grid labels the column each
+-- see VS.weekStartWday); the row above the grid labels the column each
 -- month starts in, exactly like GitHub's own graph.
--- The popup itself (HeatmapPopup, further below) is paginated in
+-- The popup itself (Heatmap.Popup, further below) is paginated in
 -- steps of that same period length, swipe left/right, as far back as
--- there's reading data - see getHeatmapPeriodRange / heatmapMaxPeriodsBack.
+-- there's reading data - see Heatmap.getHeatmapPeriodRange / Heatmap.heatmapMaxPeriodsBack.
 -- ---------------------------------------------------------------------
 
--- Adds/subtracts whole calendar months from a Y/M/D triple (relying on
--- os.time's normalisation of out-of-range month values - e.g. month=13
--- rolls over into January of the next year - same trick used elsewhere
--- in this file for date maths). Returns the shifted year/month/day plus
--- the resulting timestamp (noon, to stay clear of DST edge cases).
-local function shiftMonths(year, month, day, delta)
-    local t = os.time({ year = year, month = month + delta, day = day, hour = 12 })
-    local dt = os.date("*t", t)
-    return dt.year, dt.month, dt.day, t
-end
 
--- Inclusive [start_t, end_t] timestamps (both at hour=12) for the
--- heatmap period `periods_back` periods before the current one, where a
--- period is readHeatmapMonthsSetting() months long (3, 4 or 6 - see
--- Settings ▸ Advanced settings ▸ "Reading heatmap range"): period 0 is
--- that many months ending today, period 1 the same span before that,
--- and so on.
-local function getHeatmapPeriodRange(periods_back)
-    local months_per_period = readHeatmapMonthsSetting()
-    local today = os.date("*t")
-    local _, _, _, end_t     = shiftMonths(today.year, today.month, today.day, -months_per_period * periods_back)
-    local sy, sm, sd         = shiftMonths(today.year, today.month, today.day, -months_per_period * (periods_back + 1))
-    local start_t            = os.time({ year = sy, month = sm, day = sd + 1, hour = 12 })
-    return start_t, end_t
-end
 
--- How many heatmap periods back from the current one (0) still reach
--- into a month with recorded reading data, given the DB's oldest
--- year/month (getYearRange().min_year / .min_month - the calendar month
--- of the very first reading record, not just its year, so swiping back
--- stops exactly at that month instead of running to Jan 1st of that
--- year). Small loop (a handful of iterations for any realistic reading
--- history) rather than closed-form month maths, to stay in lockstep
--- with getHeatmapPeriodRange's own definition of a period boundary.
-local function heatmapMaxPeriodsBack(min_year, min_month)
-    local min_period_start = os.time({ year = min_year, month = min_month, day = 1, hour = 12 })
-    local periods_back = 0
-    while periods_back < 200 do
-        local _, next_end = getHeatmapPeriodRange(periods_back + 1)
-        if next_end < min_period_start then break end
-        periods_back = periods_back + 1
-    end
-    return periods_back
-end
 
--- Lays [start_t, end_t] out into week columns starting on the configured
--- week start day (Settings ▸ Advanced settings ▸ "Week start day" - see
--- weekStartWday), padded at both ends so every column has a full 7 days
--- (leading/trailing days outside the period are kept but marked
--- in_range = false so they render as blank spacer cells rather than
--- colored squares).
-local function buildRangeHeatmapGrid(daily_map, start_t, end_t)
-    local week_start_wd = weekStartWday()          -- 0=Sun, 1=Mon
-    local week_end_wd   = (week_start_wd + 6) % 7  -- last weekday of a row
 
-    local start_wd    = tonumber(os.date("%w", start_t))  -- 0=Sun..6=Sat
-    local start_offset = (start_wd - week_start_wd + 7) % 7  -- days back to week start
-    local grid_start   = start_t - start_offset * 86400
 
-    local end_wd      = tonumber(os.date("%w", end_t))
-    local end_offset  = (week_end_wd - end_wd + 7) % 7  -- days forward to week end
-    local grid_end    = end_t + end_offset * 86400
 
-    local total_days = math.floor((grid_end - grid_start) / 86400) + 1
-    local num_cols   = math.ceil(total_days / 7)
 
-    local start_str = os.date("%Y-%m-%d", start_t)
-    local end_str   = os.date("%Y-%m-%d", end_t)
 
-    local cols = {}
-    local t = grid_start
-    for col = 1, num_cols do
-        local col_days = {}
-        for row = 1, 7 do
-            local dstr = os.date("%Y-%m-%d", t)
-            local d_year, d_month, d_day = parseDateYMD(dstr)
-            local in_range = (dstr >= start_str and dstr <= end_str)
-            col_days[row] = {
-                in_range        = in_range,
-                is_month_start  = (in_range and d_day == 1),
-                month           = d_month,
-                year            = d_year,
-                seconds         = daily_map[dstr] or 0,
-            }
-            t = t + 86400
-        end
-        cols[col] = col_days
-    end
-    return cols, num_cols
-end
 
--- Picks the shade for one day's seconds, relative to max_seconds (the
--- busiest single day anywhere in the period being shown).
-local function heatmapLevelColor(seconds, max_seconds)
-    if not seconds or seconds <= 0 or not max_seconds or max_seconds <= 0 then
-        return Colors.heatmap0()
-    end
-    local ratio = seconds / max_seconds
-    if ratio <= 0.25 then return Colors.heatmap25() end
-    if ratio <= 0.50 then return Colors.heatmap50() end
-    if ratio <= 0.75 then return Colors.heatmap75() end
-    return Colors.heatmap100()
-end
 
--- A single heatmap square: a thin separator-colored frame with the level
--- color filled inside, built from two overlapping ColorBars (same trick
--- as everywhere else in this file that needs a solid-color rectangle -
--- see Colors.newBar) rather than a bordered FrameContainer, so it keeps
--- working with the RGB32 custom-color patch documented in colors.lua.
-local function buildHeatmapCell(cell_size, border, fill_color)
-    local inner_size = cell_size - 2 * border
-    if inner_size < 1 then inner_size = cell_size end
-    return OverlapGroup:new{
-        dimen = Geom:new{ w = cell_size, h = cell_size },
-        Colors.newBar(cell_size, cell_size, Colors.separator()),
-        CenterContainer:new{
-            dimen = Geom:new{ w = cell_size, h = cell_size },
-            Colors.newBar(inner_size, inner_size, fill_color),
-        },
-    }
-end
 
--- Mon/Wed/Fri labels run down the left side of both heatmap grids, three
--- rows apart, same as GitHub's contribution graph (the in-between rows
--- get no label). Which row each label lands on depends on the configured
--- week start day (Settings ▸ Advanced settings ▸ "Week start day"): row 1
--- is Monday when weeks start on Monday (labels on rows 1/3/5), or Sunday
--- when weeks start on Sunday (labels shift down a row, to rows 2/4/6).
--- Shared by the calendar heatmap (buildRangeHeatmapWidget) and the
--- time-of-day heatmap (buildDayPartHeatmapWidget) below, so both grids
--- use identical labels/rows.
-local function getWeekdayRowLabels()
-    if readWeekStartSetting() == "sunday" then
-        return { [2] = _("Mon"), [4] = _("Wed"), [6] = _("Fri") }
-    end
-    return { [1] = _("Mon"), [3] = _("Wed"), [5] = _("Fri") }
-end
 
--- Width of the fixed-width weekday-label column - sized to the widest of
--- the three weekday-row-label strings in the given font - reserved
--- before sizing either grid, so the cells still fit within max_width.
-local function getWeekdayLabelWidth(fonts)
-    local wd_label_w = 0
-    for _, text in pairs(getWeekdayRowLabels()) do
-        local tw = TextWidget:new{ text = text, face = fonts.small }
-        wd_label_w = math.max(wd_label_w, tw:getSize().w)
-        tw:free()
-    end
-    return wd_label_w
-end
 
--- Builds the month-start label row + the 7-row/num_cols-column grid for
--- [start_t, end_t]. Returns the combined widget plus the cell_size
--- actually used (so the legend below can draw matching squares).
-local function buildRangeHeatmapWidget(daily_map, start_t, end_t, fonts, max_width)
-    local cols, num_cols = buildRangeHeatmapGrid(daily_map, start_t, end_t)
-
-    local gap     = Screen:scaleBySize(2)
-    -- Vertical gap between grid rows - clearly wider than the horizontal
-    -- gap between columns (gap) so the rows read as visually distinct
-    -- bands rather than a near-continuous block, matching how the column
-    -- gaps already separate the day squares side by side. A flat
-    -- scaleBySize value (not a multiple of the tiny 2px column gap) so
-    -- it stays clearly visible even on high-density screens.
-    local row_gap = Screen:scaleBySize(2)
-    local border  = Size.line.thin
-
-    local wd_label_w = getWeekdayLabelWidth(fonts)
-
-    local grid_width = max_width - wd_label_w - gap
-    local cell_size = math.floor((grid_width - (num_cols - 1) * gap) / num_cols)
-    local min_cell   = Screen:scaleBySize(8)
-    -- No upper cap: for shorter heatmap ranges (fewer columns - see
-    -- Settings ▸ Advanced settings ▸ "Reading heatmap range"), the cells
-    -- grow proportionally to use the full available width instead of
-    -- leaving empty space to the right of a small fixed-size grid.
-    if cell_size < min_cell then cell_size = min_cell end
-
-    local max_seconds = 0
-    for _, col_days in ipairs(cols) do
-        for _, d in ipairs(col_days) do
-            if d.in_range and d.seconds > max_seconds then max_seconds = d.seconds end
-        end
-    end
-
-    -- Month-start labels, one slot per column (same width/gap as the
-    -- grid below it so the label lines up with the column it belongs to).
-    -- Starts with a spacer matching the weekday label column + gap so it
-    -- lines up with the grid, which is shifted right by that same amount.
-    local sample_label = TextWidget:new{ text = "Xxx", face = fonts.small }
-    local label_h = sample_label:getSize().h
-    sample_label:free()
-
-    -- First pass: which column (if any) gets a month-start label, same
-    -- one-per-month logic as before, but split out from widget-building
-    -- so the second pass can also see Dec->Jan boundaries ahead of time.
-    local month_label_col = {}   -- col -> { month = n, year = n }
-    local last_month_labeled = nil
-    for col = 1, num_cols do
-        for _, d in ipairs(cols[col]) do
-            if d.is_month_start and d.month ~= last_month_labeled then
-                month_label_col[col] = { month = d.month, year = d.year }
-                last_month_labeled = d.month
-                break
-            end
-        end
-    end
-
-    -- Slot a "YYYY" year label into the gap between a December label
-    -- and the January label that follows it, so the year is visible
-    -- right where the row rolls over into a new one (e.g. "... Dec.
-    -- 2026 Jan. Febr. ..."). Spans and centers within *all* the free
-    -- columns between the two labels (not just one), since "Dec." and
-    -- "Jan." are each wider than a single column and would otherwise
-    -- get overlapped by a lopsided year label. If there's no free
-    -- column at all between them, the year is prefixed onto the
-    -- January label instead ("2026 Jan.") so it's never lost.
-    local year_label_span = nil   -- { start_col, end_col, text }
-    local prev_col, prev_month = nil, nil
-    for col = 1, num_cols do
-        local d = month_label_col[col]
-        if d then
-            if d.month == 1 and prev_month == 12 then
-                local free_cols = col - prev_col - 1
-                if free_cols >= 1 then
-                    year_label_span = { start_col = prev_col + 1, end_col = col - 1, text = tostring(d.year) }
-                else
-                    d.combined = tostring(d.year) .. " " .. MONTH_NAMES_SHORT[d.month]
-                end
-            end
-            prev_col, prev_month = col, d.month
-        end
-    end
-
-    local labels_row = HorizontalGroup:new{ align = "bottom" }
-    table.insert(labels_row, HorizontalSpan:new{ width = wd_label_w + gap })
-    local col = 1
-    while col <= num_cols do
-        if year_label_span and col == year_label_span.start_col then
-            local span_cols = year_label_span.end_col - year_label_span.start_col + 1
-            local span_w    = span_cols * cell_size + (span_cols - 1) * gap
-
-            -- Plain centering puts the label closer to "Dec." than to
-            -- "Jan.": "Dec." is drawn from its own column and overflows
-            -- rightward past that column's width, eating into the left
-            -- side of this gap, while "Jan." doesn't reach backward into
-            -- it at all. Nudge the centering right by that overflow so
-            -- the label reads as visually centered between the two.
-            local dec_label = TextWidget:new{ text = MONTH_NAMES_SHORT[12], face = fonts.small }
-            local dec_overflow = math.max(0, dec_label:getSize().w - cell_size)
-            dec_label:free()
-
-            local year_widget = TextWidget:new{ text = year_label_span.text, face = fonts.small, fgcolor = Colors.label() }
-            local text_w = year_widget:getSize().w
-            if dec_overflow > span_w - text_w then dec_overflow = math.max(0, span_w - text_w) end
-            local left_pad  = dec_overflow + math.floor((span_w - text_w - dec_overflow) / 2)
-            if left_pad < 0 then left_pad = 0 end
-            local right_pad = span_w - text_w - left_pad
-            if right_pad < 0 then right_pad = 0 end
-
-            table.insert(labels_row, HorizontalGroup:new{
-                HorizontalSpan:new{ width = left_pad },
-                year_widget,
-                HorizontalSpan:new{ width = right_pad },
-            })
-            col = year_label_span.end_col + 1
-        else
-            local widget = nil
-            local d = month_label_col[col]
-            if d then
-                widget = TextWidget:new{ text = d.combined or MONTH_NAMES_SHORT[d.month],
-                    face = fonts.small, fgcolor = Colors.small() }
-            end
-            if widget then
-                table.insert(labels_row, LeftContainer:new{
-                    dimen = Geom:new{ w = cell_size, h = label_h },
-                    widget,
-                })
-            else
-                table.insert(labels_row, HorizontalSpan:new{ width = cell_size })
-            end
-            col = col + 1
-        end
-        if col <= num_cols then
-            table.insert(labels_row, HorizontalSpan:new{ width = gap })
-        end
-    end
-
-    -- 7-row grid, week start day (row 1) at the top through the last day
-    -- of the week (row 7) - see weekStartWday/buildRangeHeatmapGrid - each
-    -- row prefixed with its weekday label slot (blank unless it's one of
-    -- the getWeekdayRowLabels rows).
-    --
-    -- Row widgets + row_gap spans are appended directly as top-level
-    -- children of `widget` below (not wrapped in their own nested
-    -- VerticalGroup) - on-device testing showed VerticalSpans nested
-    -- two VerticalGroups deep were rendering with zero height (rows
-    -- stacked flush with no visible gap) even though the exact same
-    -- VerticalSpan pattern between labels_row and the row widgets one
-    -- level up rendered correctly. Flattening avoids the nested case
-    -- entirely.
-    local row_labels = getWeekdayRowLabels()
-    local widget = VerticalGroup:new{
-        align = "left",
-        labels_row,
-        VerticalSpan:new{ height = Size.padding.small },
-    }
-    for row = 1, 7 do
-        local row_group = HorizontalGroup:new{ align = "center" }
-        local wd_text = row_labels[row]
-        if wd_text then
-            table.insert(row_group, LeftContainer:new{
-                dimen = Geom:new{ w = wd_label_w, h = cell_size },
-                TextWidget:new{ text = wd_text, face = fonts.small, fgcolor = Colors.small() },
-            })
-        else
-            table.insert(row_group, HorizontalSpan:new{ width = wd_label_w })
-        end
-        table.insert(row_group, HorizontalSpan:new{ width = gap })
-
-        for col = 1, num_cols do
-            local d = cols[col][row]
-            if d.in_range then
-                table.insert(row_group,
-                    buildHeatmapCell(cell_size, border, heatmapLevelColor(d.seconds, max_seconds)))
-            else
-                table.insert(row_group, HorizontalSpan:new{ width = cell_size })
-            end
-            if col < num_cols then
-                table.insert(row_group, HorizontalSpan:new{ width = gap })
-            end
-        end
-        table.insert(widget, row_group)
-        if row < 7 then
-            table.insert(widget, VerticalSpan:new{ width = row_gap })
-        end
-    end
-
-    -- cell_size and the wd_label_w + gap offset (where the first day
-    -- column starts) are both handed back so the legend built below can
-    -- match the grid exactly, however it's currently sized (see
-    -- buildHeatmapLegendWidget).
-    return widget, cell_size, wd_label_w + gap
-end
-
--- Formats hour `h` (0-23) as a column label, honouring Settings ▸ Advanced
--- settings ▸ "Heatmap hour format": "24" -> "00".."23", "12" -> "12a",
--- "3a", ..., "9p" (compact AM/PM, since these labels only get a single
--- cell-width slot every 3 columns). Independent of the interface language.
-local function formatHeatmapHourLabel(h)
-    if readHeatmapHourFormatSetting() == "12" then
-        local h12 = h % 12
-        if h12 == 0 then h12 = 12 end
-        local suffix = h < 12 and "AM" or "PM"
-        return tostring(h12) .. suffix
-    end
-    return string.format("%02d", h)
-end
-
--- Maps time-of-day-heatmap grid row (1-7) to the weekday index used by
--- weekday_hour_map (1 = Monday .. 7 = Sunday, see
--- ReadingInsightsPopup:getWeekdayHourReadingData), honouring the
--- configured week start day: Monday-first keeps rows 1-7 = Mon-Sun as-is;
--- Sunday-first shifts to rows 1-7 = Sun, Mon, ..., Sat.
-local function weekdayRowOrder()
-    if readWeekStartSetting() == "sunday" then
-        return { 7, 1, 2, 3, 4, 5, 6 }
-    end
-    return { 1, 2, 3, 4, 5, 6, 7 }
-end
-
--- Builds the hour-of-day label row + the 7-row/24-column "time of day"
--- grid: one column per hour (0-23), one row per weekday (order and start
--- day set by Settings ▸ Advanced settings ▸ "Week start day" - see
--- weekdayRowOrder/getWeekdayRowLabels; hour labels honour "Heatmap hour
--- format" - see formatHeatmapHourLabel), each cell shaded by total
--- reading time in that weekday+hour slot relative to the busiest slot
--- anywhere in the grid. weekday_hour_map is { [1..7] = { [0..23] =
--- seconds } }, 1 = Monday (see ReadingInsightsPopup:getWeekdayHourReadingData).
--- Returns the combined widget plus the wd_label_w + gap offset (where the
--- first hour column starts), same shape as buildRangeHeatmapWidget's own
--- return, so the legend below can be pinned to whichever of the two
--- grids it should align with.
-local function buildDayPartHeatmapWidget(weekday_hour_map, fonts, max_width)
-    local num_cols = 24
-    local gap      = Screen:scaleBySize(2)
-    -- Vertical gap between grid rows - same fixed, clearly-visible value
-    -- as buildRangeHeatmapWidget's own row_gap above, so the two
-    -- heatmaps look consistent.
-    local row_gap  = Screen:scaleBySize(2)
-    local border   = Size.line.thin
-
-    local wd_label_w = getWeekdayLabelWidth(fonts)
-
-    local grid_width = max_width - wd_label_w - gap
-    local cell_size   = math.floor((grid_width - (num_cols - 1) * gap) / num_cols)
-    local min_cell    = Screen:scaleBySize(8)
-    if cell_size < min_cell then cell_size = min_cell end
-
-    local max_seconds = 0
-    for wd = 1, 7 do
-        for h = 0, 23 do
-            local secs = weekday_hour_map[wd][h] or 0
-            if secs > max_seconds then max_seconds = secs end
-        end
-    end
-
-    -- Hour labels every 3 columns ("00", "03", ... "21" in 24-hour format,
-    -- or "12a", "3a", ... "9p" in 12-hour format - see
-    -- formatHeatmapHourLabel/Settings ▸ Advanced settings ▸ "Heatmap hour
-    -- format"), same slot width as the grid below so each label lines up
-    -- with its column, prefixed with a spacer matching the weekday-label
-    -- column + gap.
-    local sample_label = TextWidget:new{ text = "00", face = fonts.small }
-    local label_h = sample_label:getSize().h
-    sample_label:free()
-
-    local labels_row = HorizontalGroup:new{ align = "bottom" }
-    table.insert(labels_row, HorizontalSpan:new{ width = wd_label_w + gap })
-    for h = 0, num_cols - 1 do
-        if h % 3 == 0 then
-            table.insert(labels_row, LeftContainer:new{
-                dimen = Geom:new{ w = cell_size, h = label_h },
-                TextWidget:new{ text = formatHeatmapHourLabel(h), face = fonts.small, fgcolor = Colors.small() },
-            })
-        else
-            table.insert(labels_row, HorizontalSpan:new{ width = cell_size })
-        end
-        if h < num_cols - 1 then
-            table.insert(labels_row, HorizontalSpan:new{ width = gap })
-        end
-    end
-
-    local row_order = weekdayRowOrder()
-    local row_labels = getWeekdayRowLabels()
-
-    -- Row widgets + row_gap spans appended directly as top-level children
-    -- of this VerticalGroup (not a separately nested one) - see the long
-    -- comment in buildRangeHeatmapWidget above for why: VerticalSpans
-    -- nested two VerticalGroups deep rendered with zero height on-device.
-    local widget = VerticalGroup:new{
-        align = "left",
-        labels_row,
-        VerticalSpan:new{ height = Size.padding.small },
-    }
-    for row = 1, 7 do
-        local wd = row_order[row]
-        local row_group = HorizontalGroup:new{ align = "center" }
-        local wd_text = row_labels[row]
-        if wd_text then
-            table.insert(row_group, LeftContainer:new{
-                dimen = Geom:new{ w = wd_label_w, h = cell_size },
-                TextWidget:new{ text = wd_text, face = fonts.small, fgcolor = Colors.small() },
-            })
-        else
-            table.insert(row_group, HorizontalSpan:new{ width = wd_label_w })
-        end
-        table.insert(row_group, HorizontalSpan:new{ width = gap })
-
-        for h = 0, num_cols - 1 do
-            local secs = weekday_hour_map[wd][h] or 0
-            table.insert(row_group, buildHeatmapCell(cell_size, border, heatmapLevelColor(secs, max_seconds)))
-            if h < num_cols - 1 then
-                table.insert(row_group, HorizontalSpan:new{ width = gap })
-            end
-        end
-        table.insert(widget, row_group)
-        if row < 7 then
-            table.insert(widget, VerticalSpan:new{ width = row_gap })
-        end
-    end
-
-    return widget, wd_label_w + gap
-end
-
--- Color legend for the reading heatmap: a "Less" label, the same five
--- shades used by the grid squares above (see heatmapLevelColor /
--- Colors.heatmap0..100), and a "More" label - so it's clear at a glance
--- which end of the scale a given square's color falls on. The swatches
--- are sized as a fraction of the heatmap's own month/weekday label text
--- height (fonts.small - see the "Xxx" sample-label measurement in
--- buildRangeHeatmapWidget above, done the same way here) rather than a
--- fixed pixel value, so if the user changes that font's size in the
--- Fonts settings, the legend swatches scale along with it - but at
--- SWATCH_SIZE_RATIO of that height, so they stay visibly smaller than
--- the label text (and the grid's own cells) instead of matching it
--- 1-for-1. They're spaced apart from each other by Size.padding.small.
--- The whole row starts at left_offset, the same x position as the
--- grid's first day column, so it always lines up with the heatmap above
--- it regardless of how many months are currently shown.
-local SWATCH_SIZE_RATIO = 0.55
-
-local function buildHeatmapLegendWidget(fonts, left_offset)
-    local label_gap    = Screen:scaleBySize(2)
-    local swatch_gap    = Size.padding.small
-    local border        = Size.line.thin
-
-    local less_label = TextWidget:new{ text = _("Less"), face = fonts.small, fgcolor = Colors.small() }
-
-    local sample_label = TextWidget:new{ text = "Xxx", face = fonts.small }
-    local label_h = sample_label:getSize().h
-    sample_label:free()
-    local swatch_size = math.max(Screen:scaleBySize(6), math.floor(label_h * SWATCH_SIZE_RATIO))
-
-    local swatch_colors = {
-        Colors.heatmap0(), Colors.heatmap25(), Colors.heatmap50(),
-        Colors.heatmap75(), Colors.heatmap100(),
-    }
-
-    local row = HorizontalGroup:new{ align = "center" }
-    table.insert(row, HorizontalSpan:new{ width = left_offset })
-    table.insert(row, less_label)
-    table.insert(row, HorizontalSpan:new{ width = label_gap })
-    for i, color in ipairs(swatch_colors) do
-        table.insert(row, buildHeatmapCell(swatch_size, border, color))
-        if i < #swatch_colors then
-            table.insert(row, HorizontalSpan:new{ width = swatch_gap })
-        end
-    end
-    table.insert(row, HorizontalSpan:new{ width = label_gap })
-    table.insert(row, TextWidget:new{ text = _("More"), face = fonts.small, fgcolor = Colors.small() })
-    return row
-end
 
 -- Weekly bar chart: 7 bars, index 1 = today (leftmost), index 7 = 6 days ago.
 -- Labels: "Today", "Yesterday", then weekday abbreviations.
 local function buildWeeklyChart(popup_self, daily_data, layout, fonts, mode)
     if not daily_data or #daily_data == 0 then return nil end
-    mode = normalizeWeeklyChartMode(mode)
-    local show_pages = (mode == WEEKLY_CHART_MODE_PAGES)
+    mode = VS.normalizeWeeklyChartMode(mode)
+    local show_pages = (mode == VS.WEEKLY_CHART_MODE_PAGES)
 
     -- Pad to exactly 7 entries.
     while #daily_data < 7 do
@@ -2234,7 +883,8 @@ local function buildWeeklyChart(popup_self, daily_data, layout, fonts, mode)
 
     local chart_width  = layout.content_width
 
-    local bar_height   = tonumber(Screen:scaleBySize(readWeeklyBarHeightSetting()))
+    VS.Opt.built_weekly = true
+    local bar_height   = tonumber(Screen:scaleBySize(VS.Opt.weeklyBarHeight()))
     local num_bars     = 7
     local bar_width    = math.floor(chart_width / num_bars) - tonumber(Screen:scaleBySize(6))
     local bar_gap      = math.floor((chart_width - bar_width * num_bars) / (num_bars - 1))
@@ -2346,14 +996,14 @@ end
 local function getStreakPeriodStats(start_date, end_date)
     local stats = { duration = 0, books = 0 }
     if not start_date or not end_date then return stats end
-    return withStatsDb(stats, function(conn)
+    return StatsDb.withDb(stats, function(conn)
         local sql = string.format([[
             SELECT COALESCE(SUM(duration), 0) AS total_duration,
                    COUNT(DISTINCT id_book) AS book_count
             FROM page_stat
             WHERE date(start_time, 'unixepoch', 'localtime') BETWEEN '%s' AND '%s'
         ]], start_date, end_date)
-        withStatement(conn, sql, function(stmt)
+        StatsDb.withStatement(conn, sql, function(stmt)
             for row in stmt:rows() do
                 stats.duration = tonumber(row[1]) or 0
                 stats.books    = tonumber(row[2]) or 0
@@ -2497,7 +1147,7 @@ local function showStreakDatePopup(dates, is_weekly, is_current)
         content,
     }
 
-    UIManager:show(WeeklyTrendPopup:new{ box_content = box })
+    UIManager:show(Trend.Popup:new{ box_content = box })
 end
 
 local function buildInsightsSections(popup_self, streaks, yearly_stats, year_range, monthly_data, all_time_stats, last_week_stats, last_week_daily, fonts, layout, goal_finished_count)
@@ -2527,7 +1177,7 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
                 week_pages_unit = pages_unit_base .. " " .. avg_day_str
             end
 
-            local week_row = buildTwoColRow(
+            local week_row = UI.buildTwoColRow(
                 tappableCell(
                     buildValueLine(fonts.value, fonts.label, layout.col_width, week_time_val,   week_time_unit_full),
                     layout.col_width, function() popup_self:showWeeklyTrendPopup("time_avg") end),
@@ -2543,7 +1193,7 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
             local total_pages_val = formatCount(total_pages_raw)
             local total_pages_unit = N_("page read", "pages read", total_pages_raw)
 
-            local total_row = buildTwoColRow(
+            local total_row = UI.buildTwoColRow(
                 tappableCell(
                     buildValueLine(fonts.value, fonts.label, layout.col_width, total_time_val, total_time_unit),
                     layout.col_width, function() popup_self:showWeeklyTrendPopup("time_total") end),
@@ -2552,22 +1202,22 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
                     layout.col_width, function() popup_self:showWeeklyTrendPopup("pages_total") end),
                 layout)
 
-            local weekly_chart_mode = normalizeWeeklyChartMode(popup_self.weekly_chart_mode)
+            local weekly_chart_mode = VS.normalizeWeeklyChartMode(popup_self.weekly_chart_mode)
             local weekly_chart = buildWeeklyChart(popup_self, last_week_daily, layout, fonts, weekly_chart_mode)
             local last_week_content = VerticalGroup:new{
                 align = "left",
-                padded(layout.padding_h, total_row),
+                UI.padded(layout.padding_h, total_row),
                 VerticalSpan:new{ height = Size.padding.default },
-                padded(layout.padding_h, week_row),
+                UI.padded(layout.padding_h, week_row),
             }
             if weekly_chart then
                 table.insert(last_week_content, VerticalSpan:new{ height = Size.padding.default })
-                table.insert(last_week_content, padded(layout.padding_h, weekly_chart))
+                table.insert(last_week_content, UI.padded(layout.padding_h, weekly_chart))
             end
 
             -- Tapping the header toggles the chart above between reading
             -- time and pages read per day (see toggleWeeklyChartMode()).
-            local last_week_header = buildSectionHeader(fonts.section, _("Last week"), layout.full_width)
+            local last_week_header = UI.buildSectionHeader(fonts.section, _("Last week"), layout.full_width)
             local tappable_last_week_header = InputContainer:new{
                 dimen = Geom:new{ x = 0, y = 0, w = last_week_header:getSize().w, h = last_week_header:getSize().h },
                 last_week_header,
@@ -2580,7 +1230,7 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
                 return true
             end
 
-            addSectionWithRow(sections,
+            UI.addSectionWithRow(sections,
                 tappable_last_week_header,
                 last_week_content, layout, { pad_row = false })
         end
@@ -2603,8 +1253,8 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
         function(n) return N_("week", "weeks", n) end, _("No streak"))
 
     -- Two-column streak header (tappable: shows date range for that streak).
-    local streak_header_left  = buildSectionHeader(fonts.section, _("Current streak"), layout.col_width, 0)
-    local streak_header_right = buildSectionHeader(fonts.section, _("Best streak"),    layout.col_width, 0)
+    local streak_header_left  = UI.buildSectionHeader(fonts.section, _("Current streak"), layout.col_width, 0)
+    local streak_header_right = UI.buildSectionHeader(fonts.section, _("Best streak"),    layout.col_width, 0)
     local sep_h = streak_header_left:getSize().h
 
     local tap_current_header = InputContainer:new{
@@ -2634,9 +1284,9 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
         HorizontalGroup:new{
             align = "center",
             HorizontalSpan:new{ width = layout.padding_h },
-            fixedCol(tap_current_header, layout.col_width),
-            buildColumnSeparator(layout.column_gap, sep_h),
-            fixedCol(tap_best_header,    layout.col_width),
+            UI.fixedCol(tap_current_header, layout.col_width),
+            UI.buildColumnSeparator(layout.column_gap, sep_h),
+            UI.fixedCol(tap_best_header,    layout.col_width),
         },
     }
 
@@ -2677,29 +1327,29 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
 
     local current_cell = HorizontalGroup:new{
         align = "center",
-        fixedCol(tap_cd, half_col_width),
-        buildColumnSeparator(inner_gap, tap_cd:getSize().h),
-        fixedCol(tap_cw, half_col_width),
+        UI.fixedCol(tap_cd, half_col_width),
+        UI.buildColumnSeparator(inner_gap, tap_cd:getSize().h),
+        UI.fixedCol(tap_cw, half_col_width),
     }
     local best_cell = HorizontalGroup:new{
         align = "center",
-        fixedCol(tap_bd, half_col_width),
-        buildColumnSeparator(inner_gap, tap_bd:getSize().h),
-        fixedCol(tap_bw, half_col_width),
+        UI.fixedCol(tap_bd, half_col_width),
+        UI.buildColumnSeparator(inner_gap, tap_bd:getSize().h),
+        UI.fixedCol(tap_bw, half_col_width),
     }
 
-    local streak_data_row = buildTwoColRow(current_cell, best_cell, layout)
+    local streak_data_row = UI.buildTwoColRow(current_cell, best_cell, layout)
 
     local streak_rows = VerticalGroup:new{
         align = "left",
         FrameContainer:new{
             bordersize = 0,
             padding    = 0,
-            padded(layout.padding_h, streak_data_row),
+            UI.padded(layout.padding_h, streak_data_row),
         },
     }
 
-    addSectionWithRow(sections,
+    UI.addSectionWithRow(sections,
         streak_combined_header,
         streak_rows, layout, { pad_row = false })
 
@@ -2708,17 +1358,17 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
 
     local chart = buildMonthlyChart(popup_self, monthly_data, layout, fonts)
 
-    addSectionWithRow(sections, year_header, yearly_row, layout, { pad_row = false, no_bottom_line = not chart })
+    UI.addSectionWithRow(sections, year_header, yearly_row, layout, { pad_row = false, no_bottom_line = not chart })
 
     if chart then
-        local chart_header_text = (popup_self.mode == INSIGHTS_MODE_HOURS
+        local chart_header_text = (popup_self.mode == VS.INSIGHTS_MODE_HOURS
             and _("Time read per month"))
-            or (popup_self.mode == INSIGHTS_MODE_BOOKS
+            or (popup_self.mode == VS.INSIGHTS_MODE_BOOKS
             and _("Books read per month"))
             or _("Days read per month")
         chart_header_text = chart_header_text
         --.. " \xe2\x80\xba"
-        local chart_header = buildSectionHeader(fonts.section, chart_header_text, layout.full_width)
+        local chart_header = UI.buildSectionHeader(fonts.section, chart_header_text, layout.full_width)
         local tappable_chart_header = InputContainer:new{
             dimen = Geom:new{ x = 0, y = 0, w = chart_header:getSize().w, h = chart_header:getSize().h },
             chart_header,
@@ -2730,20 +1380,27 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
             popup_self:cycleInsightsMode()
             return true
         end
-        addSectionWithRow(sections, tappable_chart_header, chart, layout, { add_divider = true, no_bottom_line = false })
+        UI.addSectionWithRow(sections, tappable_chart_header, chart, layout, { add_divider = true, no_bottom_line = false })
     end
 
-    do
+    -- Stale widget references from a previous build must be dropped even
+    -- when the section is off, or onHold would still test taps against the
+    -- coordinates the goal cells occupied back when it was on.
+    popup_self._goal_cell_widget          = nil
+    popup_self._goal_finished_cell_widget = nil
+
+    if VS.Opt.readShowReadingGoal() then
         local goal_year      = popup_self.selected_year
         local finished_count = goal_finished_count or 0
-        local goal_value     = readReadingGoal(goal_year)
+        local goal_value     = VS.readReadingGoal(goal_year)
 
         local left_value = formatCount(finished_count)
         local left_unit  = N_("book finished", "books finished", finished_count)
         local left_line  = buildValueLine(fonts.value, fonts.label, layout.col_width, left_value, left_unit)
 
         local right_value = formatCount(goal_value)
-        local right_unit  = N_("book goal", "books goal", goal_value)
+        -- Reads as one sentence with the value above it: "30 books to read".
+        local right_unit  = N_("book to read", "books to read", goal_value)
         local right_line  = buildValueLine(fonts.value, fonts.label, layout.col_width, right_value, right_unit)
 
         local left_cell = InputContainer:new{
@@ -2770,20 +1427,20 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
         }
         popup_self._goal_cell_widget = right_cell
 
-        local goal_data_row = buildTwoColRow(left_cell, right_cell, layout)
+        local goal_data_row = UI.buildTwoColRow(left_cell, right_cell, layout)
         local goal_row = VerticalGroup:new{
             align = "left",
             FrameContainer:new{
                 bordersize = 0,
                 padding    = 0,
-                padded(layout.padding_h, goal_data_row),
+                UI.padded(layout.padding_h, goal_data_row),
             },
         }
 
-        local goal_header = buildSectionHeader(fonts.section, buildGoalYearLabel(goal_year), layout.full_width)
+        local goal_header = UI.buildSectionHeader(fonts.section, buildGoalYearLabel(goal_year), layout.full_width)
 
-        addSectionWithRow(sections, goal_header, goal_row, layout, { pad_row = false })
-    end
+        UI.addSectionWithRow(sections, goal_header, goal_row, layout, { pad_row = false })
+    end -- if VS.Opt.readShowReadingGoal()
 
     do
         local all_hours = all_time_stats and all_time_stats.hours or 0
@@ -2821,14 +1478,14 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
             return true
         end
 
-        local all_time_row = buildTwoColRow(left_cell, right_cell, layout)
+        local all_time_row = UI.buildTwoColRow(left_cell, right_cell, layout)
 
         local all_book_count = all_time_stats and all_time_stats.book_count or 0
         local header_text = _("Total read")
 
         -- Tapping the header opens the reading heatmap popup (moved here
         -- from tapping the year, see showReadingHeatmap / buildYearHeader).
-        local total_read_header = buildSectionHeader(fonts.section, header_text, layout.full_width)
+        local total_read_header = UI.buildSectionHeader(fonts.section, header_text, layout.full_width)
         local tappable_total_read_header = InputContainer:new{
             dimen = Geom:new{ x = 0, y = 0, w = total_read_header:getSize().w, h = total_read_header:getSize().h },
             total_read_header,
@@ -2841,7 +1498,7 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
             return true
         end
 
-        addSectionWithRow(sections,
+        UI.addSectionWithRow(sections,
             tappable_total_read_header,
             all_time_row, layout, { no_bottom_line = true })
     end
@@ -2869,20 +1526,20 @@ local ReadingInsightsPopup = InputContainer:extend{
 }
 
 function ReadingInsightsPopup:calculateStreaks(shared_conn)
-    local today  = todayDateStr()
-    local minute = currentMinute()
+    local today  = Cache.todayDateStr()
+    local minute = Cache.currentMinute()
 
     -- Daily lock: once we have confirmed today's reading and cached the result
     -- for today, skip the expensive full-table scan for the rest of the day.
     -- If today has no reading yet, fall back to per-minute checks so the streak
     -- updates as soon as the user starts reading.
-    -- Force-reload (clearAllCache) wipes streaks_date so this is always bypassed.
-    if ENABLE_CACHE and _cache.streaks then
-        if _cache.streaks_date == today then
-            return _cache.streaks
+    -- Force-reload (Cache.clearAllCache) wipes streaks_date so this is always bypassed.
+    if Cache.ENABLE_CACHE and Cache._cache.streaks then
+        if Cache._cache.streaks_date == today then
+            return Cache._cache.streaks
         end
-        if _cache.streaks_today_confirmed and _cache.streaks_date_minute == minute then
-            return _cache.streaks
+        if Cache._cache.streaks_today_confirmed and Cache._cache.streaks_date_minute == minute then
+            return Cache._cache.streaks
         end
     end
 
@@ -2893,10 +1550,10 @@ function ReadingInsightsPopup:calculateStreaks(shared_conn)
         best_weeks    = 0,
     }
 
-    local result = withDb(shared_conn, streaks, function(conn)
+    local result = StatsDb.withShared(shared_conn, streaks, function(conn)
         local dates = {}
         local sql = "SELECT DISTINCT date(start_time, 'unixepoch', 'localtime') as d FROM page_stat ORDER BY d DESC"
-        withStatement(conn, sql, function(stmt)
+        StatsDb.withStatement(conn, sql, function(stmt)
             for row in stmt:rows() do table.insert(dates, row[1]) end
         end)
 
@@ -2921,7 +1578,7 @@ function ReadingInsightsPopup:calculateStreaks(shared_conn)
 
         local weeks    = {}
         local sql_weeks = "SELECT DISTINCT strftime('%Y-%W', start_time, 'unixepoch', 'localtime') as w FROM page_stat ORDER BY w DESC"
-        withStatement(conn, sql_weeks, function(stmt_weeks)
+        StatsDb.withStatement(conn, sql_weeks, function(stmt_weeks)
             for row in stmt_weeks:rows() do table.insert(weeks, row[1]) end
         end)
 
@@ -2956,42 +1613,42 @@ function ReadingInsightsPopup:calculateStreaks(shared_conn)
         return streaks
     end)
 
-    if ENABLE_CACHE then
-        _cache.streaks      = result
-        _stale_cache.streaks = result
+    if Cache.ENABLE_CACHE then
+        Cache._cache.streaks      = result
+        Cache._stale_cache.streaks = result
         -- If today's reading is confirmed in the DB, lock to daily refresh.
         -- Otherwise keep the per-minute fallback so the first read of the day is picked up.
         local today_confirmed = result and result._today_confirmed
-        _cache.streaks_today_confirmed = today_confirmed
+        Cache._cache.streaks_today_confirmed = today_confirmed
         if today_confirmed then
-            _cache.streaks_date        = today
-            _cache.streaks_date_minute = nil
+            Cache._cache.streaks_date        = today
+            Cache._cache.streaks_date_minute = nil
         else
-            _cache.streaks_date        = nil
-            _cache.streaks_date_minute = minute
+            Cache._cache.streaks_date        = nil
+            Cache._cache.streaks_date_minute = minute
         end
     end
     return result
 end
 
 function ReadingInsightsPopup:getMonthlyReadingDays(year, shared_conn)
-    local today         = todayDateStr()
+    local today         = Cache.todayDateStr()
     local key           = "days:" .. year .. ":" .. today
     local base_key      = "days:" .. year
     local current_month = today:sub(1, 7)
-    local minute        = currentMinute()
+    local minute        = Cache.currentMinute()
 
     -- Fast path: already served this exact minute, skip the DB entirely.
-    local cached_val = getMinuteCache(_monthly_cache, key, key .. ":minute", minute)
+    local cached_val = Cache.getMinuteCache(Cache._monthly_cache, key, key .. ":minute", minute)
     if cached_val then
         return cached_val
     end
 
-    local cached_base = getCachedBase(_monthly_base_cache, base_key, today)
+    local cached_base = Cache.getCachedBase(Cache._monthly_base_cache, base_key, today)
 
     -- One connection covers both the (rare, once/day) base recompute and the
     -- (frequent) cheap today-only check.
-    local merged = withDb(shared_conn, nil, function(conn)
+    local merged = StatsDb.withShared(shared_conn, nil, function(conn)
         local base = cached_base
         if not base then
             local year_str = tostring(year)
@@ -3006,13 +1663,13 @@ function ReadingInsightsPopup:getMonthlyReadingDays(year, shared_conn)
             ]], year_str, today)
 
             base = {}
-            withStatement(conn, sql, function(stmt)
+            StatsDb.withStatement(conn, sql, function(stmt)
                 for row in stmt:rows() do base[row[1]] = tonumber(row[2]) or 0 end
             end)
         end
 
         local today_has_activity = false
-        withStatement(conn, string.format([[
+        StatsDb.withStatement(conn, string.format([[
             SELECT 1 FROM page_stat
             WHERE date(start_time, 'unixepoch', 'localtime') = '%s'
             LIMIT 1
@@ -3023,13 +1680,13 @@ function ReadingInsightsPopup:getMonthlyReadingDays(year, shared_conn)
         return { base = base, today_has_activity = today_has_activity }
     end)
     if not merged then
-        local known_good = bestKnownFullResult(_monthly_cache, key, _stale_monthly, base_key .. ":")
+        local known_good = Cache.bestKnownFullResult(Cache._monthly_cache, key, Cache._stale_monthly, base_key .. ":")
         if known_good then return known_good end
         merged = { base = cached_base or {}, today_has_activity = false }
     end
 
-    if ENABLE_CACHE and not cached_base then
-        _monthly_base_cache[base_key] = makeCachedBase(today, merged.base)
+    if Cache.ENABLE_CACHE and not cached_base then
+        Cache._monthly_base_cache[base_key] = Cache.makeCachedBase(today, merged.base)
     end
 
     local months = buildMonthlyArray(year, function(year_month)
@@ -3040,25 +1697,25 @@ function ReadingInsightsPopup:getMonthlyReadingDays(year, shared_conn)
         return { days = days }
     end)
 
-    setMinuteCache(_monthly_cache, _stale_monthly, key, key .. ":minute", minute, months)
+    Cache.setMinuteCache(Cache._monthly_cache, Cache._stale_monthly, key, key .. ":minute", minute, months)
     return months
 end
 
 function ReadingInsightsPopup:getMonthlyReadingHours(year, shared_conn)
-    local today         = todayDateStr()
+    local today         = Cache.todayDateStr()
     local key           = "hours:" .. year .. ":" .. today
     local base_key      = "hours:" .. year
     local current_month = today:sub(1, 7)
-    local minute        = currentMinute()
+    local minute        = Cache.currentMinute()
 
-    local cached_val = getMinuteCache(_monthly_cache, key, key .. ":minute", minute)
+    local cached_val = Cache.getMinuteCache(Cache._monthly_cache, key, key .. ":minute", minute)
     if cached_val then
         return cached_val
     end
 
-    local cached_base = getCachedBase(_monthly_base_cache, base_key, today)
+    local cached_base = Cache.getCachedBase(Cache._monthly_base_cache, base_key, today)
 
-    local merged = withDb(shared_conn, nil, function(conn)
+    local merged = StatsDb.withShared(shared_conn, nil, function(conn)
         local base = cached_base
         if not base then
             local year_str = tostring(year)
@@ -3078,13 +1735,13 @@ function ReadingInsightsPopup:getMonthlyReadingHours(year, shared_conn)
             ]], year_str, today)
 
             base = {}
-            withStatement(conn, sql, function(stmt)
+            StatsDb.withStatement(conn, sql, function(stmt)
                 for row in stmt:rows() do base[row[1]] = tonumber(row[2]) or 0 end
             end)
         end
 
         local today_seconds = 0
-        withStatement(conn, string.format([[
+        StatsDb.withStatement(conn, string.format([[
             SELECT id_book, page, SUM(duration) AS dur
             FROM page_stat
             WHERE date(start_time, 'unixepoch', 'localtime') = '%s'
@@ -3098,13 +1755,13 @@ function ReadingInsightsPopup:getMonthlyReadingHours(year, shared_conn)
         return { base = base, today_seconds = today_seconds }
     end)
     if not merged then
-        local known_good = bestKnownFullResult(_monthly_cache, key, _stale_monthly, base_key .. ":")
+        local known_good = Cache.bestKnownFullResult(Cache._monthly_cache, key, Cache._stale_monthly, base_key .. ":")
         if known_good then return known_good end
         merged = { base = cached_base or {}, today_seconds = 0 }
     end
 
-    if ENABLE_CACHE and not cached_base then
-        _monthly_base_cache[base_key] = makeCachedBase(today, merged.base)
+    if Cache.ENABLE_CACHE and not cached_base then
+        Cache._monthly_base_cache[base_key] = Cache.makeCachedBase(today, merged.base)
     end
 
     local months = buildMonthlyArray(year, function(year_month)
@@ -3121,26 +1778,26 @@ function ReadingInsightsPopup:getMonthlyReadingHours(year, shared_conn)
         return { hours = hours, seconds = math.floor(seconds_raw + 0.5) }
     end)
 
-    setMinuteCache(_monthly_cache, _stale_monthly, key, key .. ":minute", minute, months)
+    Cache.setMinuteCache(Cache._monthly_cache, Cache._stale_monthly, key, key .. ":minute", minute, months)
     return months
 end
 
 function ReadingInsightsPopup:getYearlyStats(year, shared_conn)
-    local today    = todayDateStr()
+    local today    = Cache.todayDateStr()
     local key      = year .. ":v3:" .. today
     local base_key = year .. ":v3"
-    local minute   = currentMinute()
+    local minute   = Cache.currentMinute()
 
-    local cached_val = getMinuteCache(_yearly_cache, key, key .. ":minute", minute)
+    local cached_val = Cache.getMinuteCache(Cache._yearly_cache, key, key .. ":minute", minute)
     if cached_val then
         return cached_val
     end
 
-    local cached_base = getCachedBase(_yearly_base_cache, base_key, today)
+    local cached_base = Cache.getCachedBase(Cache._yearly_base_cache, base_key, today)
 
     -- One connection covers both the (once/day) base recompute and the
     -- (frequent) cheap today-only slice.
-    local merged = withDb(shared_conn, nil, function(conn)
+    local merged = StatsDb.withShared(shared_conn, nil, function(conn)
         local base = cached_base
         if not base then
             local year_str = tostring(year)
@@ -3164,7 +1821,7 @@ function ReadingInsightsPopup:getYearlyStats(year, shared_conn)
             ]], year_str, today)
 
             base = { days = 0, pages = 0, duration = 0, books_started = 0, book_ids = {} }
-            withStatement(conn, sql, function(stmt)
+            StatsDb.withStatement(conn, sql, function(stmt)
                 for row in stmt:rows() do
                     base.days          = tonumber(row[1]) or 0
                     base.pages         = tonumber(row[2]) or 0
@@ -3179,7 +1836,7 @@ function ReadingInsightsPopup:getYearlyStats(year, shared_conn)
                 WHERE strftime('%%Y', start_time, 'unixepoch', 'localtime') = '%s'
                   AND date(start_time, 'unixepoch', 'localtime') < '%s'
             ]], year_str, today)
-            withStatement(conn, ids_sql, function(stmt)
+            StatsDb.withStatement(conn, ids_sql, function(stmt)
                 for row in stmt:rows() do base.book_ids[tostring(row[1])] = true end
             end)
         end
@@ -3190,7 +1847,7 @@ function ReadingInsightsPopup:getYearlyStats(year, shared_conn)
         -- added on top of a past, already-closed year's total.
         if year == tonumber(os.date("%Y")) then
             local seen = {}
-            withStatement(conn, string.format([[
+            StatsDb.withStatement(conn, string.format([[
                 SELECT id_book, page, SUM(duration) AS dur
                 FROM page_stat
                 WHERE date(start_time, 'unixepoch', 'localtime') = '%s'
@@ -3212,7 +1869,7 @@ function ReadingInsightsPopup:getYearlyStats(year, shared_conn)
         return { base = base, today_stats = t }
     end)
     if not merged then
-        local known_good = bestKnownFullResult(_yearly_cache, key, _stale_yearly, base_key .. ":")
+        local known_good = Cache.bestKnownFullResult(Cache._yearly_cache, key, Cache._stale_yearly, base_key .. ":")
         if known_good then return known_good end
         merged = {
             base        = cached_base or { days = 0, pages = 0, duration = 0, books_started = 0, book_ids = {} },
@@ -3220,8 +1877,8 @@ function ReadingInsightsPopup:getYearlyStats(year, shared_conn)
         }
     end
 
-    if ENABLE_CACHE and not cached_base then
-        _yearly_base_cache[base_key] = makeCachedBase(today, merged.base)
+    if Cache.ENABLE_CACHE and not cached_base then
+        Cache._yearly_base_cache[base_key] = Cache.makeCachedBase(today, merged.base)
     end
 
     local base, today_stats = merged.base, merged.today_stats
@@ -3236,7 +1893,7 @@ function ReadingInsightsPopup:getYearlyStats(year, shared_conn)
         result.avg_days_per_book = math.ceil(result.days / result.books_started)
     end
 
-    setMinuteCache(_yearly_cache, _stale_yearly, key, key .. ":minute", minute, result)
+    Cache.setMinuteCache(Cache._yearly_cache, Cache._stale_yearly, key, key .. ":minute", minute, result)
     return result
 end
 
@@ -3251,15 +1908,15 @@ end
 -- instead of one yearly sum. Cached per day (like getYearRange below)
 -- since the heatmap is only opened on demand, not on every popup rebuild.
 function ReadingInsightsPopup:getDailyReadingData(year, shared_conn)
-    local today = todayDateStr()
+    local today = Cache.todayDateStr()
     local cache_key = tostring(year)
 
-    if ENABLE_CACHE and _cache.daily_data and _cache.daily_data[cache_key]
-       and _cache.daily_data[cache_key].date == today then
-        return _cache.daily_data[cache_key].data
+    if Cache.ENABLE_CACHE and Cache._cache.daily_data and Cache._cache.daily_data[cache_key]
+       and Cache._cache.daily_data[cache_key].date == today then
+        return Cache._cache.daily_data[cache_key].data
     end
 
-    local data = withDb(shared_conn, {}, function(conn)
+    local data = StatsDb.withShared(shared_conn, {}, function(conn)
         local year_str = tostring(year)
         local sql = string.format([[
             SELECT day, SUM(dur) AS duration
@@ -3275,7 +1932,7 @@ function ReadingInsightsPopup:getDailyReadingData(year, shared_conn)
         ]], year_str)
 
         local result = {}
-        withStatement(conn, sql, function(stmt)
+        StatsDb.withStatement(conn, sql, function(stmt)
             for row in stmt:rows() do
                 result[row[1]] = tonumber(row[2]) or 0
             end
@@ -3284,9 +1941,9 @@ function ReadingInsightsPopup:getDailyReadingData(year, shared_conn)
     end)
     data = data or {}
 
-    if ENABLE_CACHE then
-        _cache.daily_data = _cache.daily_data or {}
-        _cache.daily_data[cache_key] = { date = today, data = data }
+    if Cache.ENABLE_CACHE then
+        Cache._cache.daily_data = Cache._cache.daily_data or {}
+        Cache._cache.daily_data[cache_key] = { date = today, data = data }
     end
     return data
 end
@@ -3317,7 +1974,7 @@ end
 -- Returns a { [1..7] = { [0..23] = seconds_read } } map (1 = Monday) for
 -- the inclusive [start_t, end_t] range - the same period the calendar
 -- heatmap above it covers - used to build the time-of-day heatmap (see
--- buildDayPartHeatmapWidget). Grouped by book/page/day/hour first, same
+-- Heatmap.buildDayPartHeatmapWidget). Grouped by book/page/day/hour first, same
 -- dedup approach as getDailyReadingData, so a page re-read across
 -- multiple sessions in the same hour isn't double counted.
 function ReadingInsightsPopup:getWeekdayHourReadingData(start_t, end_t, shared_conn)
@@ -3330,7 +1987,7 @@ function ReadingInsightsPopup:getWeekdayHourReadingData(start_t, end_t, shared_c
         for h = 0, 23 do data[wd][h] = 0 end
     end
 
-    return withDb(shared_conn, data, function(conn)
+    return StatsDb.withShared(shared_conn, data, function(conn)
         local sql = string.format([[
             SELECT dow, hour, SUM(dur) AS duration
             FROM (
@@ -3346,7 +2003,7 @@ function ReadingInsightsPopup:getWeekdayHourReadingData(start_t, end_t, shared_c
             GROUP BY dow, hour
         ]], start_str, end_str)
 
-        withStatement(conn, sql, function(stmt)
+        StatsDb.withStatement(conn, sql, function(stmt)
             for row in stmt:rows() do
                 local dow_sun0 = tonumber(row[1]) or 0  -- 0=Sun..6=Sat
                 local wd = ((dow_sun0 + 6) % 7) + 1     -- 1=Mon..7=Sun
@@ -3358,402 +2015,51 @@ function ReadingInsightsPopup:getWeekdayHourReadingData(start_t, end_t, shared_c
     end)
 end
 
--- Builds the box_content (title + grid + legend) for the
--- "Reading heatmap" popup showing the half-year period `periods_back`
--- half-years before the current one (0 = most recent, ending today - see
--- getHeatmapPeriodRange). The title shows just the year, or a "start–end"
--- year range if the period spans a Dec/Jan boundary. Also returns
--- whether an older/newer period exists, so HeatmapPopup can gate
--- swipe navigation.
--- Section header for the calendar heatmap grid, with optional ‹ / ›
--- paging arrows at the left/right edges when there's an older/newer
--- half-year to page to - same layout/style as book_stats_view.lua's own
--- buildBookCalendarHeader (BookCalendarPopup's month header), so the
--- paging controls look consistent across both popups. Both arrow slots
--- are always reserved at their full width, whether or not that arrow is
--- actually visible - see buildBookCalendarHeader's own comment: without
--- this, the title jumps sideways whenever an arrow appears/disappears
--- while paging (e.g. hitting the oldest available half-year).
-local function buildHeatmapSectionHeader(title_str, content_width, section_font, prev_available, next_available)
-    local arrow_pad = Size.padding.default
 
-    local left_glyph_w  = TextWidget:new{ text = "\xe2\x80\xb9", face = section_font }:getSize().w
-    local right_glyph_w = TextWidget:new{ text = "\xe2\x80\xba", face = section_font }:getSize().w
-    local slot_w = math.max(left_glyph_w, right_glyph_w) + 2 * arrow_pad
 
-    local function makeArrow(glyph, visible)
-        if not visible then
-            return HorizontalSpan:new{ width = slot_w }, nil
-        end
-        local tw = TextWidget:new{ text = glyph, face = section_font, fgcolor = Colors.section() }
-        local extra = slot_w - 2 * arrow_pad - tw:getSize().w
-        local frame = FrameContainer:new{
-            background     = nil,
-            bordersize     = 0,
-            padding_top    = 0,
-            padding_bottom = 0,
-            padding_left   = arrow_pad + math.floor(extra / 2),
-            padding_right  = arrow_pad + math.ceil(extra / 2),
-            margin         = 0,
-            tw,
-        }
-        return frame, frame
-    end
-
-    local left_widget,  left_frame  = makeArrow("\xe2\x80\xb9", prev_available)
-    local right_widget, right_frame = makeArrow("\xe2\x80\xba", next_available)
-
-    local title_w = TextWidget:new{ text = title_str, face = section_font, fgcolor = Colors.section() }
-
-    local remaining = content_width - left_widget:getSize().w - right_widget:getSize().w - title_w:getSize().w
-    if remaining < 0 then remaining = 0 end
-    local side_l = math.floor(remaining / 2)
-    local side_r = remaining - side_l
-
-    local header_row = HorizontalGroup:new{
-        align = "center",
-        left_widget,
-        HorizontalSpan:new{ width = side_l },
-        title_w,
-        HorizontalSpan:new{ width = side_r },
-        right_widget,
-    }
-
-    return header_row, left_frame, right_frame, left_widget:getSize().w, right_widget:getSize().w, header_row:getSize().h
-end
-
-local function buildHeatmapBoxContent(popup_self, periods_back)
-    local start_t, end_t = getHeatmapPeriodRange(periods_back)
-    local daily_map        = popup_self:getDailyReadingDataForRange(start_t, end_t)
-    local weekday_hour_map = popup_self:getWeekdayHourReadingData(start_t, end_t)
-
-    local fonts = getCachedFonts()
-    local inner_padding = Size.padding.large
-    local box_width      = math.floor(Screen:getWidth() * 0.94)
-    local content_width  = box_width - 2 * inner_padding
-
-    -- Older/newer availability, needed up front now (not just at the end)
-    -- since the calendar heatmap's own header needs it to decide whether
-    -- to show its ‹ / › paging arrows.
-    local year_range      = popup_self:getYearRange()
-    local older_available = periods_back < heatmapMaxPeriodsBack(year_range.min_year, year_range.min_month)
-    local newer_available = periods_back > 0
-
-    -- Small helper: a centered section header (same font/color as every
-    -- other section header in this file) above one of the two grids.
-    local function sectionTitle(text)
-        local w = TextWidget:new{ text = text, face = fonts.section, fgcolor = Colors.section() }
-        return CenterContainer:new{
-            dimen = Geom:new{ w = content_width, h = w:getSize().h }, w,
-        }
-    end
-
-    -- Blank row between the two grids, the height of a (blank) section
-    -- header - no visible line, just the same cushion of space that used
-    -- to sit around the separator line, so removing the line doesn't
-    -- also shrink the gap between the two heatmaps.
-    local function sectionSeparator()
-        local sample = TextWidget:new{ text = "", face = fonts.section }
-        local row_h = sample:getSize().h
-        sample:free()
-        return VerticalSpan:new{ height = row_h }
-    end
-
-    -- Each grid ends up centered (as a block) within content_width rather
-    -- than flush against the box's left edge. Wrapping it in a same-width
-    -- (the grid's own width) left-aligned box before handing it to the
-    -- outer, center-aligned VerticalGroup below keeps its internal
-    -- column/row labels lined up with themselves - it doesn't need to
-    -- match the *other* grid's width, since the two are visually
-    -- independent sections (the legend below is pinned to the
-    -- time-of-day grid specifically - see day_part_left_offset below).
-    local function matchOwnWidth(widget)
-        if not widget then return nil end
-        return LeftContainer:new{
-            dimen = Geom:new{ w = widget:getSize().w, h = widget:getSize().h },
-            widget,
-        }
-    end
-
-    -- Year is shown inline in the calendar grid's own label row (see
-    -- buildRangeHeatmapWidget) when the period crosses a Dec/Jan
-    -- boundary; no separate subtitle needed here, even for periods that
-    -- stay within one year.
-    local calendar_widget = buildRangeHeatmapWidget(daily_map, start_t, end_t, fonts, content_width)
-
-    local day_part_widget, day_part_left_offset =
-        buildDayPartHeatmapWidget(weekday_hour_map, fonts, content_width)
-
-    -- The shared legend/caption is pinned to the time-of-day grid
-    -- specifically (not centered on its own): wrapping it in a box the
-    -- same width as day_part_widget, with its own left_offset spacer
-    -- (weekday-label column + gap, same as buildDayPartHeatmapWidget's
-    -- own internal grid), means it gets centered as a block by the same
-    -- amount as that grid below - so the legend's first swatch starts
-    -- exactly under the grid's first hour column.
-    local legend_row = buildHeatmapLegendWidget(fonts, day_part_left_offset)
-    local legend_widget = LeftContainer:new{
-        dimen = Geom:new{ w = day_part_widget:getSize().w, h = legend_row:getSize().h },
-        legend_row,
-    }
-
-    -- Calendar heatmap header: same title as before, now with ‹ / ›
-    -- paging arrows at the edges (shown only when there's an older/newer
-    -- half-year to page to - see older_available/newer_available above),
-    -- styled like BookCalendarPopup's own month header (see
-    -- buildHeatmapSectionHeader). cal_left_frame/cal_right_frame are nil
-    -- when the corresponding arrow is hidden; HeatmapPopup uses their
-    -- presence (not .dimen) to decide whether to register a tap zone.
-    local calendar_header, cal_left_frame, cal_right_frame, cal_left_w, cal_right_w, cal_header_h =
-        buildHeatmapSectionHeader(_("Calendar heatmap"), content_width, fonts.section, older_available, newer_available)
-
-    local content = VerticalGroup:new{
-        align = "center",
-        calendar_header,
-        VerticalSpan:new{ height = Size.padding.large + Size.padding.default },
-        matchOwnWidth(calendar_widget),
-        VerticalSpan:new{ height = 2 * Size.padding.large },
-        sectionSeparator(),
-        VerticalSpan:new{ width = Size.padding.large * 2 },
-        sectionTitle(_("Time of day heatmap")),
-        VerticalSpan:new{ height = Size.padding.large + Size.padding.default },
-        matchOwnWidth(day_part_widget),
-        VerticalSpan:new{ height = 2 * Size.padding.large },
-        legend_widget,
-    }
-
-    local box = FrameContainer:new{
-        background     = Blitbuffer.COLOR_WHITE,
-        bordersize     = Size.border.window,
-        radius         = Size.radius.window,
-        padding_top    = inner_padding,
-        padding_bottom = inner_padding,
-        padding_left   = inner_padding,
-        padding_right  = inner_padding,
-        content,
-    }
-
-    return box, older_available, newer_available,
-        cal_left_frame, cal_right_frame, cal_left_w, cal_right_w, cal_header_h
-end
-
--- Full-screen "Reading heatmap" popup, paginated in half-year steps.
--- Unlike the other full-screen popups in this file (WeeklyTrendPopup),
--- a single tap does close it, but swipe left/right pages between
--- half-year periods instead of closing (mirrors the main popup's own
--- swipe-to-change-year convention - see ReadingInsightsPopup:onSwipe),
--- and swipe down / any other key closes.
-local HeatmapPopup = InputContainer:extend{
-    modal        = true,
-    popup_self   = nil,   -- the ReadingInsightsPopup, for data access
-    periods_back = 0,     -- 0 = most recent half-year, ending today
-}
-
-function HeatmapPopup:init()
-    local screen_w = Screen:getWidth()
-    local screen_h = Screen:getHeight()
-    self.dimen = Geom:new{ x = 0, y = 0, w = screen_w, h = screen_h }
-
-    if Device:isTouchDevice() then
-        self.ges_events.Tap   = { GestureRange:new{ ges = "tap",   range = self.dimen } }
-        self.ges_events.Swipe = { GestureRange:new{ ges = "swipe", range = self.dimen } }
-    end
-    if Device:hasKeys() then
-        self.key_events.AnyKeyPressed = { { Device.input.group.Any } }
-    end
-
-    self:_rebuild()
-end
-
-function HeatmapPopup:_rebuild()
-    local box, older_available, newer_available, left_frame, right_frame, left_w, right_w, header_h =
-        buildHeatmapBoxContent(self.popup_self, self.periods_back)
-    self.box_content      = box
-    self._older_available = older_available
-    self._newer_available = newer_available
-    self[1] = CenterContainer:new{
-        dimen = self.dimen,
-        self.box_content,
-    }
-
-    -- Absolute tap zones for the calendar heatmap's ‹ / › paging arrows,
-    -- computed from geometry (box position + inner padding) rather than
-    -- from left_frame/right_frame.dimen - same reasoning as
-    -- BookCalendarPopup's own _nav_zones in book_calendar_view.lua: a
-    -- FrameContainer without an explicit width/height only gets .dimen
-    -- populated once it's actually painted, so relying on it here could
-    -- crash if the user pages again before the first paint tick.
-    local inner_padding = Size.padding.large
-    local border_w      = Size.border.window
-    local box_rect       = self:_centeredRect(self.box_content)
-    local content_width  = box_rect.w - 2 * border_w - 2 * inner_padding
-    local header_x = box_rect.x + border_w + inner_padding
-    local header_y = box_rect.y + border_w + inner_padding
-    local tap_pad  = Screen:scaleBySize(14)
-
-    self._nav_zones = {}
-    if left_frame then
-        table.insert(self._nav_zones, {
-            dimen = Geom:new{
-                x = header_x - tap_pad,
-                y = header_y - tap_pad,
-                w = left_w + 2 * tap_pad,
-                h = header_h + 2 * tap_pad,
-            },
-            delta = 1, -- older
-        })
-    end
-    if right_frame then
-        table.insert(self._nav_zones, {
-            dimen = Geom:new{
-                x = header_x + content_width - right_w - tap_pad,
-                y = header_y - tap_pad,
-                w = right_w + 2 * tap_pad,
-                h = header_h + 2 * tap_pad,
-            },
-            delta = -1, -- newer
-        })
-    end
-end
-
--- Returns the screen rectangle a CenterContainer of size self.dimen
--- would actually paint the given child widget at - mirrors
--- CenterContainer's own centering math. Takes the widget itself (not
--- widget.dimen): a FrameContainer without an explicit width/height
--- (like box_content - see buildHeatmapBoxContent) only gets its .dimen
--- field populated as a side effect of actually being painted, so
--- relying on .dimen here crashes with a nil index if this runs before
--- the box has ever been drawn (e.g. the user swipes right after the
--- popup opens, before the first paint tick). getSize() computes the
--- size directly and safely, with no painting required.
-function HeatmapPopup:_centeredRect(widget)
-    local size = widget:getSize()
-    local w, h = size.w, size.h
-    local x = self.dimen.x + math.floor((self.dimen.w - w) / 2)
-    local y = self.dimen.y + math.floor((self.dimen.h - h) / 2)
-    return Geom:new{ x = x, y = y, w = w, h = h }
-end
-
-function HeatmapPopup:onShow()
-    UIManager:setDirty(self, function()
-        return "ui", self:_centeredRect(self.box_content)
-    end)
-    return true
-end
-
-function HeatmapPopup:onCloseWidget()
-    UIManager:setDirty(nil, function()
-        return "ui", self:_centeredRect(self.box_content)
-    end)
-end
-
--- delta: -1 = newer (toward today), +1 = older. No-op (but still
--- consumes the gesture) once there's nothing further in that direction.
-function HeatmapPopup:_goToPeriod(delta)
-    if delta < 0 and not self._newer_available then return true end
-    if delta > 0 and not self._older_available then return true end
-
-    -- Remember where the box we're about to replace was actually drawn,
-    -- so we can make sure that area gets a fresh repaint even if the
-    -- new box (a different half-year can have a different number of
-    -- calendar week-rows) ends up smaller and no longer covers it.
-    local old_rect = self:_centeredRect(self.box_content)
-
-    self.periods_back = self.periods_back + delta
-    self:_rebuild()
-
-    local new_rect = self:_centeredRect(self.box_content)
-    local x1 = math.min(old_rect.x, new_rect.x)
-    local y1 = math.min(old_rect.y, new_rect.y)
-    local x2 = math.max(old_rect.x + old_rect.w, new_rect.x + new_rect.w)
-    local y2 = math.max(old_rect.y + old_rect.h, new_rect.y + new_rect.h)
-    local refresh_region = Geom:new{ x = x1, y = y1, w = x2 - x1, h = y2 - y1 }
-
-    -- "all" (rather than self) tells UIManager to repaint the *whole*
-    -- window stack - including whatever sits behind this popup - for
-    -- that region, not just this widget. That's what actually erases
-    -- the old box's leftover edge where it stuck out past the new,
-    -- smaller one, restoring whatever should show through there
-    -- (instead of painting an opaque backdrop over the whole screen,
-    -- which would lose the floating-popup look).
-    UIManager:setDirty("all", function()
-        return "ui", refresh_region
-    end)
-    return true
-end
-
-function HeatmapPopup:onTap(arg, ges_ev)
-    if ges_ev then
-        local x, y = ges_ev.pos.x, ges_ev.pos.y
-        for _, zone in ipairs(self._nav_zones or {}) do
-            if zone.dimen and x >= zone.dimen.x and x <= zone.dimen.x + zone.dimen.w
-               and y >= zone.dimen.y and y <= zone.dimen.y + zone.dimen.h then
-                return self:_goToPeriod(zone.delta)
-            end
-        end
-    end
-    UIManager:close(self)
-    return true
-end
-
-function HeatmapPopup:onSwipe(arg, ges_ev)
-    if not ges_ev then UIManager:close(self) return true end
-    local dir = ges_ev.direction
-    if dir == "west" or dir == "left"  then return self:_goToPeriod(-1) end
-    if dir == "east" or dir == "right" then return self:_goToPeriod(1)  end
-    UIManager:close(self)
-    return true
-end
-
-function HeatmapPopup:onAnyKeyPressed(_, key)
-    if key and key:match({ { "RPgBack", "LPgBack", "Left"  } }) then return self:_goToPeriod(1)  end
-    if key and key:match({ { "RPgFwd",  "LPgFwd",  "Right" } }) then return self:_goToPeriod(-1) end
-    UIManager:close(self)
-    return true
-end
 
 -- Opens the "Reading heatmap" popup - tap the "Total read" header (see
 -- buildInsightsSections) to open it, starting on the most recent
 -- half-year; swipe left/right inside the popup to page through older/
 -- newer half-years as far back as there's data.
 function ReadingInsightsPopup:showReadingHeatmap()
-    UIManager:show(HeatmapPopup:new{ popup_self = self, periods_back = 0 })
+    UIManager:show(Heatmap.Popup:new{ popup_self = self, periods_back = 0 })
 end
 
 -- Returns { min_year, max_year, min_month } from the DB, cached per day.
 -- min_month is the calendar month (1-12) of the very first reading
 -- record within min_year - used by the reading heatmap to stop swiping
--- back exactly at the first month with data (see heatmapMaxPeriodsBack)
+-- back exactly at the first month with data (see Heatmap.heatmapMaxPeriodsBack)
 -- rather than just the first year.
 function ReadingInsightsPopup:getYearRange(shared_conn)
-    local today        = todayDateStr()
-    local range_cached = ENABLE_CACHE and _cache.year_range and _cache.year_range_date == today
+    local today        = Cache.todayDateStr()
+    local range_cached = Cache.ENABLE_CACHE and Cache._cache.year_range and Cache._cache.year_range_date == today
 
     if range_cached then
-        return _cache.year_range
+        return Cache._cache.year_range
     end
 
     local current_year = tonumber(os.date("%Y"))
     local range = { min_year = current_year, max_year = current_year, min_month = 1 }
 
-    withDb(shared_conn, nil, function(conn)
+    StatsDb.withShared(shared_conn, nil, function(conn)
         local sql_range = [[
             SELECT MIN(strftime('%Y', start_time, 'unixepoch', 'localtime')) AS min_year,
                    MAX(strftime('%Y', start_time, 'unixepoch', 'localtime')) AS max_year,
                    MIN(strftime('%Y-%m', start_time, 'unixepoch', 'localtime')) AS min_year_month
             FROM page_stat
         ]]
-        withStatement(conn, sql_range, function(stmt)
+        StatsDb.withStatement(conn, sql_range, function(stmt)
             for row in stmt:rows() do
                 if row[1] then range.min_year = tonumber(row[1]) or current_year end
                 if row[2] then range.max_year = tonumber(row[2]) or current_year end
                 if row[3] then range.min_month = tonumber(row[3]:sub(6, 7)) or 1 end
             end
         end)
-        if ENABLE_CACHE then
-            _cache.year_range      = range
-            _cache.year_range_date = today
-            _stale_cache.year_range = range
+        if Cache.ENABLE_CACHE then
+            Cache._cache.year_range      = range
+            Cache._cache.year_range_date = today
+            Cache._stale_cache.year_range = range
         end
     end)
 
@@ -3761,23 +2067,23 @@ function ReadingInsightsPopup:getYearRange(shared_conn)
 end
 
 function ReadingInsightsPopup:getAllTimeStats(shared_conn)
-    local today  = todayDateStr()
-    local minute = currentMinute()
+    local today  = Cache.todayDateStr()
+    local minute = Cache.currentMinute()
 
-    local cached_val = getMinuteCache(_cache, "all_time", "all_time_minute", minute)
+    local cached_val = Cache.getMinuteCache(Cache._cache, "all_time", "all_time_minute", minute)
     if cached_val then
         return cached_val
     end
 
-    local cached_base = getCachedBase(_alltime_base_cache, nil, today)
+    local cached_base = Cache.getCachedBase(Cache._alltime_base_cache, nil, today)
 
     -- One connection covers both the (once/day, whole-history) base
     -- recompute and today's cheap, narrowly-scoped queries.
-    local merged = withDb(shared_conn, nil, function(conn)
+    local merged = StatsDb.withShared(shared_conn, nil, function(conn)
         local base = cached_base
         if not base then
             base = { duration = 0, pages = 0, book_count = 0 }
-            withStatement(conn, string.format([[
+            StatsDb.withStatement(conn, string.format([[
                 SELECT SUM(sum_dur), COUNT(DISTINCT dedup_page)
                 FROM (
                     SELECT SUM(duration) AS sum_dur, id_book || '-' || page AS dedup_page
@@ -3791,7 +2097,7 @@ function ReadingInsightsPopup:getAllTimeStats(shared_conn)
                     base.pages    = tonumber(row[2]) or 0
                 end
             end)
-            withStatement(conn, string.format([[
+            StatsDb.withStatement(conn, string.format([[
                 SELECT COUNT(DISTINCT id_book) FROM page_stat
                 WHERE date(start_time, 'unixepoch', 'localtime') < '%s'
             ]], today), function(stmt)
@@ -3801,14 +2107,14 @@ function ReadingInsightsPopup:getAllTimeStats(shared_conn)
 
         local t = { duration = 0, new_pages = 0, new_books = 0 }
 
-        withStatement(conn, string.format([[
+        StatsDb.withStatement(conn, string.format([[
             SELECT SUM(duration) FROM page_stat
             WHERE date(start_time, 'unixepoch', 'localtime') = '%s'
         ]], today), function(stmt)
             for row in stmt:rows() do t.duration = tonumber(row[1]) or 0 end
         end)
 
-        withStatement(conn, string.format([[
+        StatsDb.withStatement(conn, string.format([[
             SELECT COUNT(*) FROM (
                 SELECT DISTINCT id_book, page FROM page_stat
                 WHERE date(start_time, 'unixepoch', 'localtime') = '%s'
@@ -3822,7 +2128,7 @@ function ReadingInsightsPopup:getAllTimeStats(shared_conn)
             for row in stmt:rows() do t.new_pages = tonumber(row[1]) or 0 end
         end)
 
-        withStatement(conn, string.format([[
+        StatsDb.withStatement(conn, string.format([[
             SELECT COUNT(DISTINCT id_book) FROM page_stat t
             WHERE date(start_time, 'unixepoch', 'localtime') = '%s'
               AND NOT EXISTS (
@@ -3839,17 +2145,17 @@ function ReadingInsightsPopup:getAllTimeStats(shared_conn)
     if not merged then
         -- Not prefix-keyed like the yearly/monthly caches (there's only
         -- ever one all-time total), so check the two single-value slots
-        -- directly instead of going through bestKnownFullResult.
-        if _cache.all_time then return _cache.all_time end
-        if _stale_cache.all_time then return _stale_cache.all_time end
+        -- directly instead of going through Cache.bestKnownFullResult.
+        if Cache._cache.all_time then return Cache._cache.all_time end
+        if Cache._stale_cache.all_time then return Cache._stale_cache.all_time end
         merged = {
             base        = cached_base or { duration = 0, pages = 0, book_count = 0 },
             today_stats = { duration = 0, new_pages = 0, new_books = 0 },
         }
     end
 
-    if ENABLE_CACHE and not cached_base then
-        _alltime_base_cache = makeCachedBase(today, merged.base)
+    if Cache.ENABLE_CACHE and not cached_base then
+        Cache._alltime_base_cache = Cache.makeCachedBase(today, merged.base)
     end
 
     local base, today_stats = merged.base, merged.today_stats
@@ -3862,7 +2168,7 @@ function ReadingInsightsPopup:getAllTimeStats(shared_conn)
         duration   = duration,
     }
 
-    setMinuteCache(_cache, _stale_cache, "all_time", "all_time_minute", minute, result)
+    Cache.setMinuteCache(Cache._cache, Cache._stale_cache, "all_time", "all_time_minute", minute, result)
     return result
 end
 
@@ -3871,30 +2177,38 @@ end
 -- across its whole history - not just this year) falls on/after 99% of the
 -- book's page count, and that last entry's date falls within `year`. This
 -- is deliberately narrower than the existing "finished" check used by
--- getBooksForPeriod (MAX(page) ever reached >= book.pages): a book that was
+-- BookList.getBooksForPeriod (MAX(page) ever reached >= book.pages): a book that was
 -- fully read but then reopened and left partway back through (e.g. a
 -- reread) should not keep counting as "finished" once its last activity no
 -- longer reflects a completed read.
 --
 -- Rather than re-running that check against the *entire* page_stat history
 -- on every call, the result is a persisted, incrementally-updated list
--- (_goal_finished_books[year], mirrored to disk - see loadDiskCache/
--- saveDiskCache): once a book lands on that list it stays there, and each
--- refresh only looks at books touched since _goal_scan_watermark[year] (the
--- start_time up to which this year's list is already known-accurate) to see
--- if any of them newly qualify. A manual "reload data" (long press on the
--- title bar) resets both tables so the next check is a full re-scan.
+-- (Cache._goal_finished_books[year], mirrored to disk - see Cache.loadDiskCache/
+-- Cache.saveDiskCache): each refresh only looks at books touched since
+-- Cache._goal_scan_watermark[year].time (the start_time up to which this year's
+-- list is already known-accurate), and re-judges each of those in both
+-- directions - a book that no longer qualifies is dropped from the list
+-- again. A manual "reload data" (long press on the title bar) resets both
+-- tables so the next check is a full re-scan.
+--
+-- Note the year a book counts for is the year of its *last* entry, so a
+-- book read across a year boundary counts once, in the year it was
+-- finished, not in both. Books with no known page count (book.pages = 0,
+-- which happens for some formats) can't be judged by a percentage at all
+-- and are simply never counted; the manual checklist (long press on the
+-- count) is the way to include one of those.
 -- Adjusts a query-based finished count by the user's manual overrides for
--- that year (see readFinishedOverrides above): +1 for each override=true
+-- that year (see VS.readFinishedOverrides above): +1 for each override=true
 -- book the query didn't already count, -1 for each override=false book the
 -- query did count. Applied on every return path of
 -- getFinishedBookCountForYear below, cached or freshly-scanned alike, so
 -- the "N book(s) finished" figure always matches what the checklist /
 -- showFinishedBooksForYear list actually shows.
 local function applyFinishedOverrides(year_key, count)
-    local overrides = readFinishedOverrides(year_key)
+    local overrides = VS.readFinishedOverrides(year_key)
     if not next(overrides) then return count end
-    local known_set = _goal_finished_books[year_key] or {}
+    local known_set = Cache._goal_finished_books[year_key] or {}
     local adjust = 0
     for id_str, val in pairs(overrides) do
         local in_base = known_set[id_str] ~= nil
@@ -3908,43 +2222,95 @@ local function applyFinishedOverrides(year_key, count)
 end
 
 function ReadingInsightsPopup:getFinishedBookCountForYear(year, shared_conn)
-    local minute = currentMinute()
-    local key = tostring(year) .. ":goal:v2"
+    local minute = Cache.currentMinute()
+    -- v3: the incremental scan below re-checks books it already counted
+    -- (v2 never did, see the "re-checking" note above), so a v2 list left
+    -- over from an older version - which may hold books this version would
+    -- no longer count - must not be reused as-is.
+    local key = tostring(year) .. ":goal:v3"
     local year_key = tostring(year)
 
-    local cached = getMinuteCache(_goal_cache, key, key .. ":minute", minute)
+    local cached = Cache.getMinuteCache(Cache._goal_cache, key, key .. ":minute", minute)
     if cached ~= nil then
         return applyFinishedOverrides(year_key, cached)
     end
 
-    local known = _goal_finished_books[year_key]
+    local known = Cache._goal_finished_books[year_key]
     if type(known) ~= "table" then
         known = {}
-        _goal_finished_books[year_key] = known
+        Cache._goal_finished_books[year_key] = known
     end
-    local watermark = tonumber(_goal_scan_watermark[year_key]) or 0
+    local state     = Cache._goal_scan_watermark[year_key]
+    local watermark, prev_rows
+    if type(state) == "table" then
+        watermark, prev_rows = tonumber(state.time) or 0, tonumber(state.rows)
+    else
+        -- Plain number: a watermark written by the previous version, which
+        -- didn't track the row count. Treated as "row count unknown", which
+        -- forces one full re-scan below and upgrades it to the new format.
+        watermark, prev_rows = tonumber(state) or 0, nil
+    end
 
-    local count = withDb(shared_conn, nil, function(conn)
-        -- Only books with *some* activity after the watermark can possibly
-        -- have changed status since the last check for this year; anything
-        -- else is either already on `known` or was already checked and
-        -- didn't qualify, and per the "fixed list" behaviour above isn't
-        -- re-checked again.
+    local count = StatsDb.withShared(shared_conn, nil, function(conn)
+        -- Watermark sanity check. The incremental scan below only looks at
+        -- rows *newer* than the last scan, which silently gives a wrong
+        -- answer if the table changed in any other way: rows deleted (a
+        -- book removed from the statistics DB), or older rows appearing out
+        -- of nowhere (statistics.sqlite3 restored from a backup, or merged
+        -- with another device's history - a normal thing for KOReader users
+        -- to do). Both are caught by comparing the total row count against
+        -- what it was at the end of the last scan: if the difference isn't
+        -- exactly the number of rows newer than the watermark, something
+        -- other than plain appending happened, and this year's list is
+        -- thrown away and rebuilt from scratch.
+        local total_rows, rows_after = 0, 0
+        StatsDb.withStatement(conn, string.format(
+            "SELECT COUNT(*), SUM(CASE WHEN start_time > %d THEN 1 ELSE 0 END) FROM page_stat",
+            math.floor(watermark)), function(stmt)
+            for row in stmt:rows() do
+                total_rows = tonumber(row[1]) or 0
+                rows_after = tonumber(row[2]) or 0
+            end
+        end)
+
+        if prev_rows == nil or (total_rows - prev_rows) ~= rows_after then
+            known     = {}
+            Cache._goal_finished_books[year_key] = known
+            watermark = 0
+            rows_after = total_rows
+        end
+
+        -- Read the new watermark *before* scanning, not after: a row
+        -- inserted while this function runs then still falls after the
+        -- recorded watermark and gets picked up by the next scan, instead
+        -- of being skipped forever because the watermark was moved past it
+        -- without it ever having been looked at.
+        local new_watermark = watermark
+        StatsDb.withStatement(conn, "SELECT MAX(start_time) FROM page_stat", function(stmt)
+            for row in stmt:rows() do
+                new_watermark = tonumber(row[1]) or new_watermark
+            end
+        end)
+
+        -- Every book touched since the last scan, *including* ones already
+        -- on this year's list. Re-checking those is what keeps the count
+        -- honest when a book stops qualifying: a book finished in December
+        -- and then reread into January now has its last entry in the new
+        -- year, so it must drop off the old year's list (otherwise it would
+        -- be counted in both years for good), and the same goes for a
+        -- finished book that was reopened and left partway through.
         local candidates = {}
-        local candidates_sql = string.format(
+        StatsDb.withStatement(conn, string.format(
             "SELECT DISTINCT id_book FROM page_stat WHERE start_time > %d",
-            math.floor(watermark))
-        withStatement(conn, candidates_sql, function(stmt)
+            math.floor(watermark)), function(stmt)
             for row in stmt:rows() do
                 local id_book = tonumber(row[1])
-                if id_book and known[tostring(id_book)] == nil then
-                    table.insert(candidates, id_book)
-                end
+                if id_book then table.insert(candidates, id_book) end
             end
         end)
 
         if #candidates > 0 then
-            local ids_sql = table.concat(candidates, ",")
+            local qualifies = {}
             local check_sql = string.format([[
                 WITH last_entry AS (
                     SELECT id_book, MAX(start_time) AS last_time
@@ -3965,25 +2331,22 @@ function ReadingInsightsPopup:getFinishedBookCountForYear(year, shared_conn)
                 WHERE b.pages > 0
                   AND CAST(lp.last_page AS REAL) / b.pages >= 0.99
                   AND strftime('%%Y', lp.last_time, 'unixepoch', 'localtime') = '%s'
-            ]], ids_sql, year_key)
-            withStatement(conn, check_sql, function(stmt)
+            ]], table.concat(candidates, ","), year_key)
+            StatsDb.withStatement(conn, check_sql, function(stmt)
                 for row in stmt:rows() do
                     local id_book   = tonumber(row[1])
                     local last_time = tonumber(row[2])
-                    if id_book then
-                        known[tostring(id_book)] = last_time or true
-                    end
+                    if id_book then qualifies[tostring(id_book)] = last_time or true end
                 end
             end)
+            -- Verdict applied in both directions, for every candidate.
+            for _, id_book in ipairs(candidates) do
+                local id_str = tostring(id_book)
+                known[id_str] = qualifies[id_str] -- nil removes it from the list
+            end
         end
 
-        local new_watermark = watermark
-        withStatement(conn, "SELECT MAX(start_time) FROM page_stat", function(stmt)
-            for row in stmt:rows() do
-                new_watermark = tonumber(row[1]) or new_watermark
-            end
-        end)
-        _goal_scan_watermark[year_key] = new_watermark
+        Cache._goal_scan_watermark[year_key] = { time = new_watermark, rows = total_rows }
 
         local c = 0
         for _ in pairs(known) do c = c + 1 end
@@ -3991,14 +2354,14 @@ function ReadingInsightsPopup:getFinishedBookCountForYear(year, shared_conn)
     end)
 
     if count == nil then
-        if _goal_cache[key] ~= nil then return applyFinishedOverrides(year_key, _goal_cache[key]) end
-        if _stale_goal_cache[key] ~= nil then return applyFinishedOverrides(year_key, _stale_goal_cache[key]) end
+        if Cache._goal_cache[key] ~= nil then return applyFinishedOverrides(year_key, Cache._goal_cache[key]) end
+        if Cache._stale_goal_cache[key] ~= nil then return applyFinishedOverrides(year_key, Cache._stale_goal_cache[key]) end
         local c = 0
         for _ in pairs(known) do c = c + 1 end
         count = c
     end
 
-    setMinuteCache(_goal_cache, _stale_goal_cache, key, key .. ":minute", minute, count)
+    Cache.setMinuteCache(Cache._goal_cache, Cache._stale_goal_cache, key, key .. ":minute", minute, count)
     return applyFinishedOverrides(year_key, count)
 end
 
@@ -4008,7 +2371,7 @@ end
 -- list is actually opened.
 local function getFinishedBooksForYear(year)
     local books = {}
-    return withStatsDb(books, function(conn)
+    return StatsDb.withDb(books, function(conn)
         local sql = string.format([[
             WITH last_entry AS (
                 SELECT id_book, MAX(start_time) AS last_time
@@ -4033,7 +2396,7 @@ local function getFinishedBooksForYear(year)
               AND strftime('%%Y', lp.last_time, 'unixepoch', 'localtime') = '%s'
             ORDER BY lp.last_time DESC
         ]], tostring(year), tostring(year))
-        withStatement(conn, sql, function(stmt)
+        StatsDb.withStatement(conn, sql, function(stmt)
             for row in stmt:rows() do
                 table.insert(books, {
                     title    = row[1] or _("Unknown"),
@@ -4048,7 +2411,7 @@ local function getFinishedBooksForYear(year)
 end
 
 -- Combines getFinishedBooksForYear's query-based list with the user's
--- manual overrides (see readFinishedOverrides above) for that year: drops
+-- manual overrides (see VS.readFinishedOverrides above) for that year: drops
 -- any book explicitly overridden to "not finished", and adds any book
 -- explicitly overridden to "finished" that the query didn't already
 -- include (looked up from popup_self:getBooksForYear, the same candidate
@@ -4058,7 +2421,7 @@ end
 -- checklist's own checkbox state are based on, so all three stay in sync.
 local function getFinishedBooksForYearCombined(popup_self, year)
     local base_books = getFinishedBooksForYear(year)
-    local overrides = readFinishedOverrides(year)
+    local overrides = VS.readFinishedOverrides(year)
     if not next(overrides) then
         return base_books
     end
@@ -4099,11 +2462,11 @@ end
 --   last_week:       { avg_seconds, avg_pages }
 --   last_week_daily: array[7] of { hours, seconds, pages, label, midnight_ts }, index 1 = today
 function ReadingInsightsPopup:getLastWeekAll(shared_conn)
-    local minute = currentMinute()
-    local lw_ok    = getMinuteCache(_cache, "last_week", "last_week_minute", minute) ~= nil
-    local daily_ok = getMinuteCache(_cache, "last_week_daily", "last_week_daily_minute", minute) ~= nil
+    local minute = Cache.currentMinute()
+    local lw_ok    = Cache.getMinuteCache(Cache._cache, "last_week", "last_week_minute", minute) ~= nil
+    local daily_ok = Cache.getMinuteCache(Cache._cache, "last_week_daily", "last_week_daily_minute", minute) ~= nil
     if lw_ok and daily_ok then
-        return _cache.last_week, _cache.last_week_daily
+        return Cache._cache.last_week, Cache._cache.last_week_daily
     end
 
     local now_ts  = os.time()
@@ -4128,10 +2491,10 @@ function ReadingInsightsPopup:getLastWeekAll(shared_conn)
         date_info[i + 1] = { date_str = date_str, label = label, midnight_ts = day_midnight }
     end
 
-    local lw_result    = lw_ok    and _cache.last_week       or { avg_seconds = 0, avg_pages = 0 }
-    local daily_result = daily_ok and _cache.last_week_daily or nil
+    local lw_result    = lw_ok    and Cache._cache.last_week       or { avg_seconds = 0, avg_pages = 0 }
+    local daily_result = daily_ok and Cache._cache.last_week_daily or nil
 
-    withDb(shared_conn, nil, function(conn)
+    StatsDb.withShared(shared_conn, nil, function(conn)
         -- Single query: per-day totals for the last 7 days.
         -- From this we derive both the 7-day averages and the per-day chart data.
         local sql = string.format([[
@@ -4151,7 +2514,7 @@ function ReadingInsightsPopup:getLastWeekAll(shared_conn)
         local seconds_by_date = {}
         local pages_by_date   = {}
         if not lw_ok or not daily_ok then
-            withStatement(conn, sql, function(stmt)
+            StatsDb.withStatement(conn, sql, function(stmt)
                 for row in stmt:rows() do
                     seconds_by_date[row[1]] = tonumber(row[2]) or 0
                     pages_by_date[row[1]]   = tonumber(row[3]) or 0
@@ -4200,8 +2563,8 @@ function ReadingInsightsPopup:getLastWeekAll(shared_conn)
         end
     end
 
-    setMinuteCache(_cache, _stale_cache, "last_week", "last_week_minute", minute, lw_result)
-    setMinuteCache(_cache, _stale_cache, "last_week_daily", "last_week_daily_minute", minute, daily_result)
+    Cache.setMinuteCache(Cache._cache, Cache._stale_cache, "last_week", "last_week_minute", minute, lw_result)
+    Cache.setMinuteCache(Cache._cache, Cache._stale_cache, "last_week_daily", "last_week_daily_minute", minute, daily_result)
     return lw_result, daily_result
 end
 
@@ -4210,8 +2573,8 @@ end
 -- Mirrors the de-duplication logic used by getLastWeekAll, just over a
 -- wider 56-day window split into 7-day chunks.
 function ReadingInsightsPopup:getLast8WeeksData()
-    local minute = currentMinute()
-    local cached_val = getMinuteCache(_cache, "last8weeks", "last8weeks_minute", minute)
+    local minute = Cache.currentMinute()
+    local cached_val = Cache.getMinuteCache(Cache._cache, "last8weeks", "last8weeks_minute", minute)
     if cached_val then
         return cached_val
     end
@@ -4233,7 +2596,7 @@ function ReadingInsightsPopup:getLast8WeeksData()
         }
     end
 
-    withStatsDb(nil, function(conn)
+    StatsDb.withDb(nil, function(conn)
         local sql = string.format([[
             SELECT date(start_time, 'unixepoch', 'localtime') AS day,
                    SUM(sum_dur) AS total_sec,
@@ -4248,7 +2611,7 @@ function ReadingInsightsPopup:getLast8WeeksData()
             GROUP BY day
         ]], period_start_ts)
 
-        withStatement(conn, sql, function(stmt)
+        StatsDb.withStatement(conn, sql, function(stmt)
             for row in stmt:rows() do
                 local day_str = row[1]
                 local secs  = tonumber(row[2]) or 0
@@ -4268,7 +2631,7 @@ function ReadingInsightsPopup:getLast8WeeksData()
         end)
     end)
 
-    setMinuteCache(_cache, _stale_cache, "last8weeks", "last8weeks_minute", minute, weeks)
+    Cache.setMinuteCache(Cache._cache, Cache._stale_cache, "last8weeks", "last8weeks_minute", minute, weeks)
     return weeks
 end
 
@@ -4298,17 +2661,17 @@ function ReadingInsightsPopup:showWeeklyTrendPopup(metric)
     local box_width   = math.floor(Screen:getWidth() * 0.86)
     local chart_width = box_width - 2 * inner_padding
 
-    local title_w = TextWidget:new{ text = trendTitle(metric), face = fonts.section, fgcolor = Colors.section() }
+    local title_w = TextWidget:new{ text = Trend.trendTitle(metric), face = fonts.section, fgcolor = Colors.section() }
     local title_centered = CenterContainer:new{
         dimen = Geom:new{ w = chart_width, h = title_w:getSize().h }, title_w,
     }
 
-    local value_w = TextWidget:new{ text = totalForMetric(metric, weeks), face = fonts.value, fgcolor = Colors.value() }
+    local value_w = TextWidget:new{ text = Trend.totalForMetric(metric, weeks), face = fonts.value, fgcolor = Colors.value() }
     local value_centered = CenterContainer:new{
         dimen = Geom:new{ w = chart_width, h = value_w:getSize().h }, value_w,
     }
 
-    local chart_widget = buildLine8WeekChart(weeks, metric, chart_width, fonts)
+    local chart_widget = Trend.buildLine8WeekChart(weeks, metric, chart_width, fonts)
 
     local content = VerticalGroup:new{
         align = "center",
@@ -4330,224 +2693,23 @@ function ReadingInsightsPopup:showWeeklyTrendPopup(metric)
         content,
     }
 
-    UIManager:show(WeeklyTrendPopup:new{ box_content = box })
+    UIManager:show(Trend.Popup:new{ box_content = box })
 end
 
--- Sums the .duration field (seconds) across a list of books; used to build
--- the "(H:MM:SS)" suffix in the various "books read in <period>" titles.
-local function sumDuration(books)
-    local total_secs = 0
-    for _, b in ipairs(books) do
-        total_secs = total_secs + (b.duration or 0)
-    end
-    return total_secs
-end
 
-local function getBooksForPeriod(period_format, period_value)
-    local books = {}
-    return withStatsDb(books, function(conn)
-        -- De-duplicated reading time per book for the period.
-        -- period_format inserted via concatenation to avoid %% escape conflicts.
-        local sql = [[
-            SELECT book.title, book.authors,
-                   COUNT(DISTINCT ps_dedup.page) AS pages_read,
-                   SUM(ps_dedup.period_sum) AS duration_sec,
-                   fin.finish_time,
-                   MAX(ps_dedup.last_read) AS last_read_time,
-                   day_counts.days_read,
-                   book.id AS id_book
-            FROM (
-                SELECT id_book, page,
-                       SUM(duration) AS period_sum,
-                       MAX(start_time) AS last_read
-                FROM page_stat
-                WHERE strftime(']] .. period_format .. [[', start_time, 'unixepoch', 'localtime') = ']] .. period_value .. [['
-                GROUP BY id_book, page
-            ) ps_dedup
-            JOIN book ON ps_dedup.id_book = book.id
-            LEFT JOIN (
-                SELECT ps2.id_book, MAX(ps2.start_time) AS finish_time
-                FROM page_stat ps2
-                JOIN book b2 ON ps2.id_book = b2.id
-                WHERE b2.pages > 0
-                GROUP BY ps2.id_book
-                HAVING MAX(ps2.page) >= b2.pages
-            ) fin ON ps_dedup.id_book = fin.id_book
-            LEFT JOIN (
-                SELECT id_book,
-                       COUNT(DISTINCT date(start_time, 'unixepoch', 'localtime')) AS days_read
-                FROM page_stat
-                WHERE strftime(']] .. period_format .. [[', start_time, 'unixepoch', 'localtime') = ']] .. period_value .. [['
-                GROUP BY id_book
-            ) day_counts ON ps_dedup.id_book = day_counts.id_book
-            GROUP BY ps_dedup.id_book
-            ORDER BY MAX(ps_dedup.last_read) DESC
-        ]]
 
-        withStatement(conn, sql, function(stmt)
-            for row in stmt:rows() do
-                table.insert(books, {
-                    title     = row[1] or _("Unknown"),
-                    authors   = "",
-                    pages     = tonumber(row[3]) or 0,
-                    duration  = tonumber(row[4]) or 0,
-                    days_read = tonumber(row[7]) or 0,
-                    id_book   = tonumber(row[8]),
-                })
-            end
-        end)
-        return books
-    end)
-end
-
-local function getAllBooks()
-    local books = {}
-    return withStatsDb(books, function(conn)
-        local sql = [[
-            SELECT book.title, book.authors,
-                   COUNT(DISTINCT ps_dedup.page) AS pages_read,
-                   SUM(ps_dedup.period_sum) AS duration_sec,
-                   MAX(ps_dedup.last_read) AS last_read_time,
-                   book.id AS id_book
-            FROM (
-                SELECT id_book, page,
-                       SUM(duration) AS period_sum,
-                       MAX(start_time) AS last_read
-                FROM page_stat
-                GROUP BY id_book, page
-            ) ps_dedup
-            JOIN book ON ps_dedup.id_book = book.id
-            GROUP BY ps_dedup.id_book
-            ORDER BY last_read_time DESC
-        ]]
-        withStatement(conn, sql, function(stmt)
-            for row in stmt:rows() do
-                table.insert(books, {
-                    title    = row[1] or _("Unknown"),
-                    authors  = "",
-                    pages    = tonumber(row[3]) or 0,
-                    duration = tonumber(row[4]) or 0,
-                    id_book  = tonumber(row[6]),
-                })
-            end
-        end)
-        return books
-    end)
-end
 
 function ReadingInsightsPopup:getBooksForMonth(year_month)
-    return getBooksForPeriod("%Y-%m", year_month)
+    return BookList.getBooksForPeriod("%Y-%m", year_month)
 end
 
-local function showBookList(title, books, on_close, stats_plugin)
-    local KeyValuePage = require("ui/widget/keyvaluepage")
 
-    if #books == 0 then
-        UIManager:show(InfoMessage:new{ text = _("No books read") })
-        return
-    end
-
-    local kv_pairs = {}
-    for _, book in ipairs(books) do
-        local display_text = book.title
-        if book.authors and book.authors ~= "" then
-            display_text = display_text .. "\n" .. book.authors
-        end
-
-        local time_str
-        if book.duration and book.duration > 0 then
-            time_str = formatHHMMSS(book.duration)
-        else
-            time_str = "00:00:00"
-        end
-        local time_text = time_str
-        local book_id = book.id_book
-        local book_title = book.title
-        local cb = nil
-        if book_id and stats_plugin then
-            cb = function()
-                local kv2
-                kv2 = KeyValuePage:new{
-                    title           = book_title,
-                    kv_pairs        = stats_plugin:getBookStat(book_id),
-                    value_align     = "right",
-                    single_page     = true,
-                    callback_return = function()
-                        UIManager:close(kv2)
-                    end,
-                    close_callback  = function() kv2 = nil end,
-                }
-                UIManager:show(kv2)
-            end
-        end
-        table.insert(kv_pairs, {
-            display_text,
-            time_text,
-            callback = cb,
-        })
-    end
-
-    local kv
-    kv = KeyValuePage:new{
-        title          = title,
-        kv_pairs       = kv_pairs,
-        value_align    = "right",
-        close_callback = function()
-            UIManager:close(kv)
-            UIManager:scheduleIn(0, function()
-                if on_close then on_close() end
-            end)
-        end,
-    }
-    UIManager:show(kv)
-end
-
-local function showBooksForPeriod(popup_self, books, empty_text, title)
-    if #books == 0 then
-        UIManager:show(InfoMessage:new{ text = empty_text })
-        return
-    end
-
-    local saved_year     = popup_self.selected_year
-    local saved_mode     = popup_self.mode
-    local saved_ui       = popup_self.ui
-
-    local saved_streaks        = popup_self._streaks
-    local saved_yr             = popup_self._year_range
-    local saved_yearly         = popup_self._yearly
-    local saved_monthly        = popup_self._monthly
-    local saved_all_time       = popup_self._all_time
-    local saved_goal_finished  = popup_self._goal_finished
-    local saved_last_week      = popup_self._last_week
-    local saved_last_week_daily = popup_self._last_week_daily
-
-    popup_self._closed = true
-    UIManager:close(popup_self)
-
-    local stats_plugin = saved_ui and saved_ui.statistics or nil
-    showBookList(title, books, function()
-        local p = ReadingInsightsPopup:new{
-            ui               = saved_ui,
-            selected_year    = saved_year,
-            mode             = saved_mode,
-            _streaks         = saved_streaks,
-            _year_range      = saved_yr,
-            _yearly          = saved_yearly,
-            _monthly         = saved_monthly,
-            _all_time        = saved_all_time,
-            _goal_finished   = saved_goal_finished,
-            _last_week       = saved_last_week,
-            _last_week_daily = saved_last_week_daily,
-        }
-        UIManager:show(p)
-    end, stats_plugin)
-end
 
 function ReadingInsightsPopup:showBooksForMonth(year_month, month_label_full)
     local books = self:getBooksForMonth(year_month)
-    local total_secs = sumDuration(books)
+    local total_secs = BookList.sumDuration(books)
     local title = T(N_("%1 - book read %2", "%1 - books read %2", #books), month_label_full, formatCount(#books)) .. " (" .. formatHHMMSS(total_secs) .. ")"
-    showBooksForPeriod(
+    BookList.showBooksForPeriod(
         self, books,
         T(_("No books read in %1"), month_label_full),
         title)
@@ -4725,20 +2887,20 @@ function ReadingInsightsPopup:openCalendarForCurrentMonth()
 end
 
 function ReadingInsightsPopup:getMonthlyBookCounts(year, shared_conn)
-    local today         = todayDateStr()
+    local today         = Cache.todayDateStr()
     local key           = "books:" .. year .. ":" .. today
     local base_key      = "books:" .. year
     local current_month = today:sub(1, 7)
-    local minute        = currentMinute()
+    local minute        = Cache.currentMinute()
 
-    local cached_val = getMinuteCache(_monthly_cache, key, key .. ":minute", minute)
+    local cached_val = Cache.getMinuteCache(Cache._monthly_cache, key, key .. ":minute", minute)
     if cached_val then
         return cached_val
     end
 
-    local cached_base = getCachedBase(_monthly_base_cache, base_key, today)
+    local cached_base = Cache.getCachedBase(Cache._monthly_base_cache, base_key, today)
 
-    local merged = withDb(shared_conn, nil, function(conn)
+    local merged = StatsDb.withShared(shared_conn, nil, function(conn)
         local base = cached_base
         if not base then
             local year_str = tostring(year)
@@ -4753,7 +2915,7 @@ function ReadingInsightsPopup:getMonthlyBookCounts(year, shared_conn)
             ]], year_str, today)
 
             local counts = {}
-            withStatement(conn, sql, function(stmt)
+            StatsDb.withStatement(conn, sql, function(stmt)
                 for row in stmt:rows() do counts[row[1]] = tonumber(row[2]) or 0 end
             end)
 
@@ -4764,7 +2926,7 @@ function ReadingInsightsPopup:getMonthlyBookCounts(year, shared_conn)
                   AND date(start_time, 'unixepoch', 'localtime') < '%s'
             ]], current_month, today)
             local book_ids = {}
-            withStatement(conn, ids_sql, function(stmt)
+            StatsDb.withStatement(conn, ids_sql, function(stmt)
                 for row in stmt:rows() do book_ids[tostring(row[1])] = true end
             end)
 
@@ -4772,7 +2934,7 @@ function ReadingInsightsPopup:getMonthlyBookCounts(year, shared_conn)
         end
 
         local new_books_today = 0
-        withStatement(conn, string.format([[
+        StatsDb.withStatement(conn, string.format([[
             SELECT DISTINCT id_book FROM page_stat
             WHERE date(start_time, 'unixepoch', 'localtime') = '%s'
         ]], today), function(stmt)
@@ -4787,13 +2949,13 @@ function ReadingInsightsPopup:getMonthlyBookCounts(year, shared_conn)
         return { base = base, new_books_today = new_books_today }
     end)
     if not merged then
-        local known_good = bestKnownFullResult(_monthly_cache, key, _stale_monthly, base_key .. ":")
+        local known_good = Cache.bestKnownFullResult(Cache._monthly_cache, key, Cache._stale_monthly, base_key .. ":")
         if known_good then return known_good end
         merged = { base = cached_base or { counts = {}, current_month_book_ids = {} }, new_books_today = 0 }
     end
 
-    if ENABLE_CACHE and not cached_base then
-        _monthly_base_cache[base_key] = makeCachedBase(today, merged.base)
+    if Cache.ENABLE_CACHE and not cached_base then
+        Cache._monthly_base_cache[base_key] = Cache.makeCachedBase(today, merged.base)
     end
 
     local months = buildMonthlyArray(year, function(year_month)
@@ -4804,18 +2966,18 @@ function ReadingInsightsPopup:getMonthlyBookCounts(year, shared_conn)
         return { book_count = book_count }
     end)
 
-    setMinuteCache(_monthly_cache, _stale_monthly, key, key .. ":minute", minute, months)
+    Cache.setMinuteCache(Cache._monthly_cache, Cache._stale_monthly, key, key .. ":minute", minute, months)
     return months
 end
 
 function ReadingInsightsPopup:getBooksForYear(year)
-    return getBooksForPeriod("%Y", tostring(year))
+    return BookList.getBooksForPeriod("%Y", tostring(year))
 end
 
 function ReadingInsightsPopup:showAllBooks()
-    local books = getAllBooks()
-    local total_secs = sumDuration(books)
-    showBooksForPeriod(
+    local books = BookList.getAllBooks()
+    local total_secs = BookList.sumDuration(books)
+    BookList.showBooksForPeriod(
         self, books,
         _("No books read"),
         T(_("All books read %1"), formatCount(#books)) .. " (" .. formatHHMMSS(total_secs) .. ")")
@@ -4823,8 +2985,8 @@ end
 
 function ReadingInsightsPopup:showBooksForYear(year)
     local books = self:getBooksForYear(year)
-    local total_secs = sumDuration(books)
-    showBooksForPeriod(
+    local total_secs = BookList.sumDuration(books)
+    BookList.showBooksForPeriod(
         self, books,
         _("No books read in ") .. year,
         T(N_("%1 - book read %2", "%1 - books read %2", #books), year, formatCount(#books)) .. " (" .. formatHHMMSS(total_secs) .. ")")
@@ -4835,221 +2997,16 @@ end
 -- getFinishedBookCountForYear.
 function ReadingInsightsPopup:showFinishedBooksForYear(year)
     local books = getFinishedBooksForYearCombined(self, year)
-    local total_secs = sumDuration(books)
-    showBooksForPeriod(
+    local total_secs = BookList.sumDuration(books)
+    BookList.showBooksForPeriod(
         self, books,
         T(_("No books finished in %1"), tostring(year)),
         T(N_("%1 - book finished %2", "%1 - books finished %2", #books), tostring(year), formatCount(#books)) .. " (" .. formatHHMMSS(total_secs) .. ")")
 end
 
--- Long-press target for the same cell: a checklist of every book with
--- activity that year (same candidate pool as showBooksForYear), each row
--- showing a checkbox for whether it currently counts as "finished"
--- (query result, corrected by any existing override - see
--- FinishedBooksChecklistPopup:_isFinished). Tapping a row toggles and
--- immediately persists that book's override (saveFinishedOverrides), so
--- the reading-goal count and showFinishedBooksForYear's list both reflect
--- it as soon as this popup closes.
-local FinishedBooksChecklistPopup = InputContainer:extend{
-    modal          = true,
-    year           = nil,
-    insights_popup = nil,
-}
-
-function FinishedBooksChecklistPopup:init()
-    self.screen_w = Screen:getWidth()
-    self.screen_h = Screen:getHeight()
-    self.dimen = Geom:new{ x = 0, y = 0, w = self.screen_w, h = self.screen_h }
-
-    self.books = self.insights_popup:getBooksForYear(self.year)
-
-    self.base_finished = {}
-    for _, b in ipairs(getFinishedBooksForYear(self.year)) do
-        self.base_finished[tostring(b.id_book)] = true
-    end
-
-    self.overrides = readFinishedOverrides(self.year)
-
-    self:_buildUI()
-end
-
-function FinishedBooksChecklistPopup:_isFinished(id_str)
-    local ov = self.overrides[id_str]
-    if ov ~= nil then return ov end
-    return self.base_finished[id_str] == true
-end
-
-function FinishedBooksChecklistPopup:_toggle(id_book)
-    local id_str = tostring(id_book)
-    local new_state = not self:_isFinished(id_str)
-    if new_state == (self.base_finished[id_str] == true) then
-        self.overrides[id_str] = nil
-    else
-        self.overrides[id_str] = new_state
-    end
-    saveFinishedOverrides(self.year, self.overrides)
-
-    self:_buildUI()
-    UIManager:setDirty(self, function()
-        return "ui", self.popup_frame.dimen
-    end)
-end
-
-function FinishedBooksChecklistPopup:_buildUI()
-    local fonts      = getCachedFonts()
-    local layout      = getCachedLayout()
-    local padding_h   = layout.padding_h
-    local row_width   = self.screen_w - 2 * padding_h
-    local checklist_self = self
-
-    local title_bar = TitleBar:new{
-        fullscreen     = true,
-        width          = self.screen_w,
-        align          = "left",
-        title          = T(_("Mark book finished - %1"), tostring(self.year)),
-        close_callback = function() self:_close() end,
-        show_parent    = self,
-        top_v_padding    = Size.padding.default,
-        bottom_v_padding = Size.padding.default,
-    }
-    self._title_bar_height = title_bar:getSize().h
-
-    local rows = VerticalGroup:new{ align = "left" }
-    table.insert(rows, VerticalSpan:new{ height = Size.padding.default })
-
-    if #self.books == 0 then
-        table.insert(rows, padded(padding_h, TextBoxWidget:new{
-            text      = _("No books read in this year"),
-            face      = fonts.label,
-            fgcolor   = Colors.label(),
-            width     = row_width,
-            alignment = "left",
-        }))
-    end
-
-    for _, book in ipairs(self.books) do
-        local id_str  = tostring(book.id_book)
-        local checked = checklist_self:_isFinished(id_str)
-        -- U+2611 BALLOT BOX WITH CHECK / U+2610 BALLOT BOX
-        local mark = checked and "\xe2\x98\x91" or "\xe2\x98\x90"
-
-        local mark_widget = TextWidget:new{ text = mark, face = fonts.value, fgcolor = Colors.value() }
-        local gap   = Size.padding.default
-        local mark_w = mark_widget:getSize().w
-        local title_widget = TextBoxWidget:new{
-            text      = book.title,
-            face      = fonts.label,
-            fgcolor   = Colors.label(),
-            width     = row_width - mark_w - gap,
-            alignment = "left",
-        }
-        local row_content = HorizontalGroup:new{
-            align = "center",
-            mark_widget,
-            HorizontalSpan:new{ width = gap },
-            title_widget,
-        }
-
-        local id_book = book.id_book
-        local row_cell = InputContainer:new{
-            dimen = Geom:new{ x = 0, y = 0, w = row_width, h = row_content:getSize().h },
-            row_content,
-        }
-        row_cell.ges_events = {
-            Tap = { GestureRange:new{ ges = "tap", range = row_cell.dimen } },
-        }
-        function row_cell:onTap()
-            checklist_self:_toggle(id_book)
-            return true
-        end
-
-        table.insert(rows, padded(padding_h, row_cell))
-        table.insert(rows, VerticalSpan:new{ height = Size.padding.default })
-        table.insert(rows, padded(padding_h,
-            Colors.newBar(row_width, Size.line.thin, Colors.separator())))
-        table.insert(rows, VerticalSpan:new{ height = Size.padding.default })
-    end
-
-    local content = VerticalGroup:new{
-        align = "left",
-        title_bar,
-        padded(padding_h, Colors.newBar(layout.content_width, Size.line.thick, Colors.separator())),
-        rows,
-        VerticalSpan:new{ height = title_bar:getSize().h },
-    }
-
-    local ScrollableContainer = require("ui/widget/container/scrollablecontainer")
-    self.scroll_container = ScrollableContainer:new{
-        dimen               = Geom:new{ w = self.screen_w, h = self.screen_h },
-        show_parent         = self,
-        scroll_bar_position = "right",
-        content,
-    }
-
-    self.popup_frame = FrameContainer:new{
-        background = Blitbuffer.COLOR_WHITE,
-        bordersize = 0,
-        radius     = 0,
-        padding    = 0,
-        width      = self.screen_w,
-        VerticalGroup:new{
-            align = "left",
-            self.scroll_container,
-        },
-    }
-    self.popup_frame.dimen = Geom:new{ x = 0, y = 0, w = self.screen_w, h = self.screen_h }
-
-    self[1] = VerticalGroup:new{ self.popup_frame }
-end
-
--- Closes and, once the checklist is off-screen, refreshes the parent
--- popup's reading-goal section so the updated count and finished-books
--- list are visible immediately without a full close/reopen.
-function FinishedBooksChecklistPopup:_close()
-    UIManager:close(self)
-    local ip   = self.insights_popup
-    local year = self.year
-    UIManager:scheduleIn(0, function()
-        if not ip or ip._closed then return end
-        ip._goal_finished = ip:getFinishedBookCountForYear(year)
-        ip:_buildUI()
-        UIManager:setDirty(ip, function()
-            return "ui", ip.popup_frame.dimen
-        end)
-    end)
-end
-
-function FinishedBooksChecklistPopup:onSwipe(arg, ges_ev)
-    if not ges_ev then return false end
-    local dir = ges_ev.direction
-    if dir == "south" or dir == "down" then
-        self:_close()
-        return true
-    end
-    return false
-end
-
-function FinishedBooksChecklistPopup:onAnyKeyPressed()
-    self:_close()
-    return true
-end
-
-function FinishedBooksChecklistPopup:onShow()
-    UIManager:setDirty(self, function()
-        return "ui", self.popup_frame.dimen
-    end)
-    return true
-end
-
-function FinishedBooksChecklistPopup:onCloseWidget()
-    if self.scroll_container then
-        self.scroll_container:free()
-    end
-    UIManager:setDirty(nil, "ui")
-end
 
 function ReadingInsightsPopup:showFinishedBooksChecklist(year)
-    UIManager:show(FinishedBooksChecklistPopup:new{
+    UIManager:show(BookList.Checklist:new{
         year           = year,
         insights_popup = self,
     })
@@ -5115,41 +3072,136 @@ function ReadingInsightsPopup:_buildUI()
         return
     end
 
-    local sections = buildInsightsSections(
-        self,
-        self._streaks    or { current_days=0, best_days=0, current_weeks=0, best_weeks=0 },
-        self._yearly     or { days=0, pages=0, duration=0 },
-        self._year_range or { min_year=self.selected_year, max_year=self.selected_year },
-        self._monthly    or {},
-        self._all_time   or { hours=0, pages=0 },
-        self._last_week  or { avg_seconds=0, avg_pages=0 },
-        self._last_week_daily or nil,
-        fonts, layout,
-        self._goal_finished)
+    -- One full pass: build the sections with whatever bar heights are
+    -- currently in force (VS.Opt.auto_height in auto mode, see
+    -- VS.Opt.weeklyBarHeight/monthlyBarHeight) and wrap them in the
+    -- scrollable content group.
+    -- Returns the group plus its total height, which is what the auto-fit
+    -- loop below compares against the screen height.
+    local auto_fit    = VS.Opt.readBarHeightAuto()
+    local bottom_span = auto_fit and Size.padding.large or nil
 
-    local title_bar_inner = TitleBar:new{
-        fullscreen     = true,
-        width          = screen_w,
-        align          = "left",
-        title          = self:_titleBarText(),
-        close_callback = (not self.readonly) and function() UIManager:close(self) end or nil,
-        show_parent    = self,
-        top_v_padding    = Size.padding.default,
-        bottom_v_padding = Size.padding.default,
-    }
+    local function buildContent()
+        VS.Opt.built_weekly  = false
+        VS.Opt.built_monthly = false
 
-    local title_bar_h = title_bar_inner:getSize().h
-    self._title_bar_height = title_bar_h
+        local sections = buildInsightsSections(
+            self,
+            self._streaks    or { current_days=0, best_days=0, current_weeks=0, best_weeks=0 },
+            self._yearly     or { days=0, pages=0, duration=0 },
+            self._year_range or { min_year=self.selected_year, max_year=self.selected_year },
+            self._monthly    or {},
+            self._all_time   or { hours=0, pages=0 },
+            self._last_week  or { avg_seconds=0, avg_pages=0 },
+            self._last_week_daily or nil,
+            fonts, layout,
+            self._goal_finished)
 
-    local title_bar = title_bar_inner
+        local title_bar_inner = TitleBar:new{
+            fullscreen     = true,
+            width          = screen_w,
+            align          = "left",
+            title          = self:_titleBarText(),
+            close_callback = (not self.readonly) and function() UIManager:close(self) end or nil,
+            show_parent    = self,
+            top_v_padding    = Size.padding.default,
+            bottom_v_padding = Size.padding.default,
+        }
 
-    local content = VerticalGroup:new{
-        align = "left",
-        title_bar,
-        padded(layout.padding_h, Colors.newBar(layout.content_width, Size.line.thick, Colors.separator())),
-        sections,
-        VerticalSpan:new{ height = title_bar:getSize().h },
-    }
+        local title_bar_h = title_bar_inner:getSize().h
+        self._title_bar_height = title_bar_h
+
+        -- Manual mode keeps the generous title-bar-tall bottom spacer it
+        -- always had (the page is expected to scroll there anyway); auto
+        -- mode uses a small one, so the space it would have eaten goes to
+        -- the charts instead.
+        local group = VerticalGroup:new{
+            align = "left",
+            title_bar_inner,
+            UI.padded(layout.padding_h, Colors.newBar(layout.content_width, Size.line.thick, Colors.separator())),
+            sections,
+            VerticalSpan:new{ height = bottom_span or title_bar_h },
+        }
+        return group, group:getSize().h
+    end
+
+    -- Auto-fit: grow/shrink the two adjustable charts until the page is as
+    -- close to exactly one screen tall as it can get without going over
+    -- (which is what makes the scroll bar appear).
+    --
+    -- Each build is measured rather than predicted, because a lot of what
+    -- surrounds the charts has data- and font-dependent height (year
+    -- header, streak rows, wrapped labels...). The per-point pixel cost of
+    -- a bar is known though (Screen:scaleBySize is linear), so one
+    -- measurement is enough to compute the next candidate directly instead
+    -- of stepping towards it - in practice this settles in one or two extra
+    -- builds on the very first open, and in zero afterwards, since the
+    -- heights that fit last time are kept as the next starting guess.
+    local content, content_h = buildContent()
+
+    local adjusted = false
+    if auto_fit then
+        local px_per_point = Screen:scaleBySize(1000) / 1000
+        if px_per_point <= 0 then px_per_point = 1 end
+
+        for _ = 1, 4 do
+            local n_charts = (VS.Opt.built_weekly and 1 or 0) + (VS.Opt.built_monthly and 1 or 0)
+            if n_charts == 0 then break end -- nothing adjustable on this page
+
+            local slack_px = screen_h - content_h
+            -- Good enough: it fits, with less than two points of growth
+            -- left over - one for the granularity of a single point of bar
+            -- height, one for the safety point taken off below. Without
+            -- that second point every reopen would see the safety point as
+            -- room to grow, hand it back, take it off again, and pay for
+            -- two extra builds to end up exactly where it started.
+            if slack_px >= 0 and slack_px < px_per_point * n_charts * 2 then break end
+
+            local delta_points = math.floor(slack_px / (px_per_point * n_charts))
+            if delta_points == 0 then
+                -- Overflowing by less than one point per chart: still has
+                -- to come off, or the scroll bar stays.
+                delta_points = (slack_px < 0) and -1 or 0
+            end
+            if delta_points == 0 then break end
+
+            local current = VS.Opt.auto_height or VS.DEFAULT_MONTHLY_BAR_HEIGHT
+            local new_height = math.max(VS.Opt.AUTO_MIN,
+                math.min(VS.Opt.AUTO_MAX, current + delta_points))
+
+            -- Clamped, so another build would produce the exact same page:
+            -- give up and let it scroll (tiny screen, huge fonts) or stay
+            -- slightly short (huge screen, few sections).
+            if new_height == current then break end
+
+            VS.Opt.auto_height = new_height
+            adjusted = true
+
+            local discarded = content
+            content, content_h = buildContent()
+            -- Free the measured-then-thrown-away build; failure here is
+            -- harmless (worst case it's collected later), so it must never
+            -- take the popup down with it.
+            pcall(function() if discarded.free then discarded:free() end end)
+        end
+
+        -- One point of headroom on top of the fit. The loop stops at the
+        -- largest height that still measured as fitting, which leaves the
+        -- page exactly as tall as the screen - close enough to the edge
+        -- that a font or spacing that rounds differently on some other
+        -- device would tip it into showing a scroll bar. Giving the bars a
+        -- point back costs a few pixels of chart and removes that risk.
+        --
+        -- Only when this build actually adjusted something: on later opens
+        -- the loop breaks immediately with the remembered height, and
+        -- subtracting again each time would shrink the charts away.
+        if adjusted and (VS.Opt.auto_height or 0) > VS.Opt.AUTO_MIN then
+            VS.Opt.auto_height = VS.Opt.auto_height - 1
+            local discarded = content
+            content, content_h = buildContent()
+            pcall(function() if discarded.free then discarded:free() end end)
+        end
+    end
 
     local ScrollableContainer = require("ui/widget/container/scrollablecontainer")
 
@@ -5181,18 +3233,21 @@ function ReadingInsightsPopup:_loadAndRebuild()
     -- Re-fetch all data using a single shared DB connection (6→1 open/close cycles).
     -- Each getter still manages its own cache; shared_conn is just passed through
     -- so it skips the redundant open/close when data is actually read.
-    local shared_conn = openStatsDb()
+    local shared_conn = StatsDb.open()
 
     local new_streaks    = self:calculateStreaks(shared_conn)
     local new_year_range = self:getYearRange(shared_conn)
     local new_yearly     = self:getYearlyStats(self.selected_year, shared_conn)
     local new_all_time   = self:getAllTimeStats(shared_conn)
-    local new_goal_finished = self:getFinishedBookCountForYear(self.selected_year, shared_conn)
+    -- Only worth querying when the section that displays it is actually on.
+    local new_goal_finished = VS.Opt.readShowReadingGoal()
+        and self:getFinishedBookCountForYear(self.selected_year, shared_conn)
+        or nil
     local new_last_week, new_last_week_daily = self:getLastWeekAll(shared_conn)
     local new_monthly
-    if self.mode == INSIGHTS_MODE_HOURS then
+    if self.mode == VS.INSIGHTS_MODE_HOURS then
         new_monthly = self:getMonthlyReadingHours(self.selected_year, shared_conn)
-    elseif self.mode == INSIGHTS_MODE_BOOKS then
+    elseif self.mode == VS.INSIGHTS_MODE_BOOKS then
         new_monthly = self:getMonthlyBookCounts(self.selected_year, shared_conn)
     else
         new_monthly = self:getMonthlyReadingDays(self.selected_year, shared_conn)
@@ -5226,7 +3281,7 @@ function ReadingInsightsPopup:_loadAndRebuild()
         self._last_week       = new_last_week
         self._last_week_daily = new_last_week_daily
         self._monthly         = new_monthly
-        saveDiskCache()
+        Cache.saveDiskCache()
         return
     end
 
@@ -5244,7 +3299,7 @@ function ReadingInsightsPopup:_loadAndRebuild()
     UIManager:setDirty(self, function()
         return "ui", self.popup_frame.dimen
     end)
-    saveDiskCache()
+    Cache.saveDiskCache()
 end
 
 -- init() shows cached/stale data immediately, then _loadAndRebuild() refreshes in the background.
@@ -5259,42 +3314,42 @@ function ReadingInsightsPopup:init()
     -- below (stale-while-revalidate); _loadAndRebuild() then replaces them
     -- with the freshly-flushed numbers a moment later.
     flushStatsToDB(self.ui)
-    _cache.last_week              = nil
-    _cache.last_week_minute       = nil
-    _cache.last_week_daily        = nil
-    _cache.last_week_daily_minute = nil
+    Cache._cache.last_week              = nil
+    Cache._cache.last_week_minute       = nil
+    Cache._cache.last_week_daily        = nil
+    Cache._cache.last_week_daily_minute = nil
 
     -- Use fresh cache if available.
-    if ENABLE_CACHE then
-        self._streaks    = self._streaks    or _cache.streaks
-        local minute = currentMinute()
-        self._year_range = self._year_range or _cache.year_range
-        self._all_time   = self._all_time   or _cache.all_time
-        local year_key = (self.selected_year or tonumber(os.date("%Y"))) .. ":v3:" .. todayDateStr()
-        self._yearly  = self._yearly  or _yearly_cache[year_key]
-        local mode = normalizeInsightsMode(self.mode or readInsightsMode())
-        local month_key = monthKeyPrefixForMode(mode) .. (self.selected_year or tonumber(os.date("%Y"))) .. ":" .. todayDateStr()
-        self._monthly = self._monthly or _monthly_cache[month_key]
+    if Cache.ENABLE_CACHE then
+        self._streaks    = self._streaks    or Cache._cache.streaks
+        local minute = Cache.currentMinute()
+        self._year_range = self._year_range or Cache._cache.year_range
+        self._all_time   = self._all_time   or Cache._cache.all_time
+        local year_key = (self.selected_year or tonumber(os.date("%Y"))) .. ":v3:" .. Cache.todayDateStr()
+        self._yearly  = self._yearly  or Cache._yearly_cache[year_key]
+        local mode = VS.normalizeInsightsMode(self.mode or VS.readInsightsMode())
+        local month_key = VS.monthKeyPrefixForMode(mode) .. (self.selected_year or tonumber(os.date("%Y"))) .. ":" .. Cache.todayDateStr()
+        self._monthly = self._monthly or Cache._monthly_cache[month_key]
         if not self._last_week or not self._last_week_daily then
-            local lw_cached    = getMinuteCache(_cache, "last_week", "last_week_minute", minute)
-            local daily_cached = getMinuteCache(_cache, "last_week_daily", "last_week_daily_minute", minute)
+            local lw_cached    = Cache.getMinuteCache(Cache._cache, "last_week", "last_week_minute", minute)
+            local daily_cached = Cache.getMinuteCache(Cache._cache, "last_week_daily", "last_week_daily_minute", minute)
             self._last_week       = self._last_week       or lw_cached
             self._last_week_daily = self._last_week_daily or daily_cached
         end
     end
 
     -- Fall back to stale cache for anything still missing (e.g. after a restart or day rollover).
-    if ENABLE_CACHE then
+    if Cache.ENABLE_CACHE then
         local year_key_any   = (self.selected_year or tonumber(os.date("%Y"))) .. ":v3:"
-        local mode_fb = normalizeInsightsMode(self.mode or readInsightsMode())
-        local month_key_fb = monthKeyPrefixForMode(mode_fb) .. (self.selected_year or tonumber(os.date("%Y"))) .. ":"
+        local mode_fb = VS.normalizeInsightsMode(self.mode or VS.readInsightsMode())
+        local month_key_fb = VS.monthKeyPrefixForMode(mode_fb) .. (self.selected_year or tonumber(os.date("%Y"))) .. ":"
 
         if not self._streaks then
-            self._streaks = _stale_cache.streaks
+            self._streaks = Cache._stale_cache.streaks
         end
 
         if not self._year_range then
-            self._year_range = _stale_cache.year_range
+            self._year_range = Cache._stale_cache.year_range
             -- Ensure selected_year stays within the stale range if we got one.
             if self._year_range and self.selected_year then
                 if self.selected_year < self._year_range.min_year then
@@ -5306,23 +3361,23 @@ function ReadingInsightsPopup:init()
         end
 
         if not self._all_time then
-            self._all_time = _stale_cache.all_time
+            self._all_time = Cache._stale_cache.all_time
         end
 
         if not self._last_week then
-            self._last_week = _stale_cache.last_week
+            self._last_week = Cache._stale_cache.last_week
         end
 
         if not self._last_week_daily then
-            self._last_week_daily = _stale_cache.last_week_daily
+            self._last_week_daily = Cache._stale_cache.last_week_daily
         end
         -- Find any stale yearly entry for the current year.
         if not self._yearly then
-            self._yearly = findStaleByPrefix(_stale_yearly, year_key_any)
+            self._yearly = Cache.findStaleByPrefix(Cache._stale_yearly, year_key_any)
         end
         -- Find any stale monthly entry for the current year + mode.
         if not self._monthly then
-            self._monthly = findStaleByPrefix(_stale_monthly, month_key_fb)
+            self._monthly = Cache.findStaleByPrefix(Cache._stale_monthly, month_key_fb)
         end
         -- The finished-book count for the reading-goal section: seeded
         -- straight from the persisted, disk-backed finished-books list
@@ -5332,7 +3387,7 @@ function ReadingInsightsPopup:init()
         -- later.
         if not self._goal_finished then
             local goal_year_key = tostring(self.selected_year or tonumber(os.date("%Y")))
-            local known = _goal_finished_books[goal_year_key]
+            local known = Cache._goal_finished_books[goal_year_key]
             if type(known) == "table" then
                 local c = 0
                 for _ in pairs(known) do c = c + 1 end
@@ -5341,8 +3396,8 @@ function ReadingInsightsPopup:init()
         end
     end
 
-    self.mode = normalizeInsightsMode(self.mode or readInsightsMode())
-    self.weekly_chart_mode = normalizeWeeklyChartMode(self.weekly_chart_mode or readWeeklyChartMode())
+    self.mode = VS.normalizeInsightsMode(self.mode or VS.readInsightsMode())
+    self.weekly_chart_mode = VS.normalizeWeeklyChartMode(self.weekly_chart_mode or VS.readWeeklyChartMode())
 
     -- True only on a genuine cold start (e.g. right after a KOReader restart):
     -- no fresh cache and no stale fallback for any of the core stats. In that
@@ -5406,7 +3461,7 @@ function ReadingInsightsPopup:onHold(arg, ges_ev)
         UIManager:show(msg)
         UIManager:scheduleIn(0.5, function()
             UIManager:close(msg)
-            clearAllCache()
+            Cache.clearAllCache()
             self._streaks         = nil
             self._yearly          = nil
             self._monthly         = nil
@@ -5466,15 +3521,15 @@ function ReadingInsightsPopup:editReadingGoal(year)
         -- rather than appearing on top of it as intended.
         modal           = true,
         title_text      = buildGoalEditTitle(year),
-        value           = readReadingGoal(year),
+        value           = VS.readReadingGoal(year),
         value_min       = 1,
         value_max       = 999,
         value_step      = 1,
         value_hold_step = 5,
-        default_value   = DEFAULT_READING_GOAL,
+        default_value   = VS.DEFAULT_READING_GOAL,
         ok_text         = _("Save"),
         callback        = function(spin)
-            saveReadingGoal(year, spin.value)
+            VS.saveReadingGoal(year, spin.value)
             popup_self:_buildUI()
             UIManager:setDirty(popup_self, function()
                 return "ui", popup_self.popup_frame.dimen
@@ -5491,19 +3546,19 @@ end
 -- wiring elsewhere calls, but there's only one implementation.
 function ReadingInsightsPopup:cycleInsightsMode()
     local new_mode
-    if self.mode == INSIGHTS_MODE_HOURS then
-        new_mode = INSIGHTS_MODE_DAYS
-    elseif self.mode == INSIGHTS_MODE_DAYS then
-        new_mode = INSIGHTS_MODE_BOOKS
+    if self.mode == VS.INSIGHTS_MODE_HOURS then
+        new_mode = VS.INSIGHTS_MODE_DAYS
+    elseif self.mode == VS.INSIGHTS_MODE_DAYS then
+        new_mode = VS.INSIGHTS_MODE_BOOKS
     else
-        new_mode = INSIGHTS_MODE_HOURS
+        new_mode = VS.INSIGHTS_MODE_HOURS
     end
 
-    saveInsightsMode(new_mode)
+    VS.saveInsightsMode(new_mode)
     self.mode = new_mode
 
-    local month_key_fb = monthKeyPrefixForMode(new_mode) .. (self.selected_year or tonumber(os.date("%Y"))) .. ":"
-    self._monthly = findStaleByPrefix(_stale_monthly, month_key_fb)
+    local month_key_fb = VS.monthKeyPrefixForMode(new_mode) .. (self.selected_year or tonumber(os.date("%Y"))) .. ":"
+    self._monthly = Cache.findStaleByPrefix(Cache._stale_monthly, month_key_fb)
 
     self:_buildUI()
     UIManager:setDirty(self, function()
@@ -5525,11 +3580,11 @@ end
 -- by getLastWeekAll(), so this just flips the persisted display mode and
 -- rebuilds the UI.
 function ReadingInsightsPopup:toggleWeeklyChartMode()
-    local new_mode = (self.weekly_chart_mode == WEEKLY_CHART_MODE_PAGES)
-        and WEEKLY_CHART_MODE_TIME or WEEKLY_CHART_MODE_PAGES
+    local new_mode = (self.weekly_chart_mode == VS.WEEKLY_CHART_MODE_PAGES)
+        and VS.WEEKLY_CHART_MODE_TIME or VS.WEEKLY_CHART_MODE_PAGES
 
     self.weekly_chart_mode = new_mode
-    saveWeeklyChartMode(new_mode)
+    VS.saveWeeklyChartMode(new_mode)
 
     self:_buildUI()
     UIManager:setDirty(self, function()
@@ -5552,10 +3607,10 @@ function ReadingInsightsPopup:_goToYear(delta)
     self._yearly  = nil
     -- Serve stale data for the target year immediately.
     local year_key_any = self.selected_year .. ":v3:"
-    local mode_fb       = self.mode or INSIGHTS_MODE_HOURS
-    local month_key_fb  = monthKeyPrefixForMode(mode_fb) .. self.selected_year .. ":"
-    self._yearly  = findStaleByPrefix(_stale_yearly, year_key_any)
-    self._monthly = findStaleByPrefix(_stale_monthly, month_key_fb)
+    local mode_fb       = self.mode or VS.INSIGHTS_MODE_HOURS
+    local month_key_fb  = VS.monthKeyPrefixForMode(mode_fb) .. self.selected_year .. ":"
+    self._yearly  = Cache.findStaleByPrefix(Cache._stale_yearly, year_key_any)
+    self._monthly = Cache.findStaleByPrefix(Cache._stale_monthly, month_key_fb)
 
     self:_buildUI()
     UIManager:setDirty(self, function()
@@ -5586,7 +3641,7 @@ function ReadingInsightsPopup:onGoToNextYear()
 end
 
 function ReadingInsightsPopup:onShow()
-    if readFullRefreshSetting() then
+    if VS.readFullRefreshSetting() then
         UIManager:setDirty(self, function()
             return "full", self.popup_frame.dimen
         end)
@@ -5609,7 +3664,7 @@ function ReadingInsightsPopup:onCloseWidget()
     if self.scroll_container then
         self.scroll_container:free()
     end
-    if readFullRefreshSetting() then
+    if VS.readFullRefreshSetting() then
         UIManager:setDirty(nil, "full")
     else
         UIManager:setDirty(nil, "ui")
@@ -5617,28 +3672,30 @@ function ReadingInsightsPopup:onCloseWidget()
 end
 
 
+-- The book-list popups replace this popup and reopen it when they close, so
+-- they need the class and a few of the helpers defined above. Registering
+-- them here (rather than having booklist_view.lua require this file back)
+-- keeps the dependency one-way.
+Heatmap.bind{
+    getCachedFonts = getCachedFonts,
+    parseDateYMD   = parseDateYMD,
+}
+
+BookList.bind{
+    popup_class             = ReadingInsightsPopup,
+    getCachedFonts          = getCachedFonts,
+    getCachedLayout         = getCachedLayout,
+    getFinishedBooksForYear = getFinishedBooksForYear,
+    formatHHMMSS            = formatHHMMSS,
+}
+
 -- Module export.
--- The Popup class is what main.lua instantiates on demand; the setting
--- helpers are exposed too because main.lua's Tools-menu entries (full-screen
--- refresh toggle, 8-week chart order, heatmap range) read/write the same
--- settings keys.
+--
+-- Just the Popup class main.lua instantiates on demand. The setting
+-- accessors that used to be re-exported from here now live in
+-- lib/insights_settings.lua, which main.lua loads itself and hands to this
+-- file - so the Tools-menu entries read and write exactly the same
+-- functions this view does, without the view having to pass them through.
 return {
-    Popup                       = ReadingInsightsPopup,
-    readFullRefreshSetting      = readFullRefreshSetting,
-    readAscendingSetting        = readAscendingSetting,
-    saveFullRefreshSetting      = saveFullRefreshSetting,
-    saveAscendingSetting        = saveAscendingSetting,
-    readWeeklyBarHeightSetting  = readWeeklyBarHeightSetting,
-    saveWeeklyBarHeightSetting  = saveWeeklyBarHeightSetting,
-    readMonthlyBarHeightSetting = readMonthlyBarHeightSetting,
-    saveMonthlyBarHeightSetting = saveMonthlyBarHeightSetting,
-    readHeatmapMonthsSetting    = readHeatmapMonthsSetting,
-    saveHeatmapMonthsSetting    = saveHeatmapMonthsSetting,
-    readHeatmapHourFormatSetting = readHeatmapHourFormatSetting,
-    saveHeatmapHourFormatSetting = saveHeatmapHourFormatSetting,
-    readWeekStartSetting        = readWeekStartSetting,
-    saveWeekStartSetting        = saveWeekStartSetting,
-    DEFAULT_WEEKLY_BAR_HEIGHT   = DEFAULT_WEEKLY_BAR_HEIGHT,
-    DEFAULT_MONTHLY_BAR_HEIGHT  = DEFAULT_MONTHLY_BAR_HEIGHT,
-    DEFAULT_HEATMAP_MONTHS      = DEFAULT_HEATMAP_MONTHS,
+    Popup = ReadingInsightsPopup,
 }

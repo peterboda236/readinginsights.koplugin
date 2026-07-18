@@ -53,8 +53,14 @@ local UIManager    = require("ui/uimanager")
 local Widget      = require("ui/widget/widget")
 
 -- Shared modules passed in by main.lua: Locale (translations), PluginUtil
--- (plugin dir + loader) and Settings (G_reader_settings wrappers).
-local Locale, PluginUtil, Settings = ...
+-- (plugin dir + loader) and Prefs (G_reader_settings wrappers).
+-- Shared modules, passed in as one named table by main.lua. Named rather
+-- than positional on purpose: the list had grown long enough that
+-- inserting one module in the middle would silently shift every module
+-- after it, and the resulting nil would only surface far from the cause.
+local deps = ...
+local Locale, PluginUtil, Prefs =
+    deps.Locale, deps.PluginUtil, deps.Prefs
 local _ = Locale._
 
 -- Load ColorWheelWidget from this plugin's own directory (not on
@@ -210,13 +216,13 @@ local function hexToHsv(hex)
 end
 
 local function readHex(key)
-    local n = normalizeHex(Settings.read(SETTINGS_PREFIX .. key, nil))
+    local n = normalizeHex(Prefs.read(SETTINGS_PREFIX .. key, nil))
     if n then return n end
     return DEFAULTS[key]
 end
 
 local function saveHex(key, hex)
-    Settings.save(SETTINGS_PREFIX .. key, hex)
+    Prefs.save(SETTINGS_PREFIX .. key, hex)
 end
 
 -- Small cache of built Blitbuffer color objects: getColor() is called a
