@@ -1,4 +1,4 @@
-### Reading insights plugin
+### 📊 Reading insights plugin
 
 <img width="255" height="340" alt="FileManager_2026-07-17_152310" src="https://github.com/user-attachments/assets/54116e81-b1aa-41ef-be93-ecab2604f7c8" />
 <img width="255" height="340" alt="FileManager_2026-07-17_152344" src="https://github.com/user-attachments/assets/4a3d2fb9-cc51-4342-a952-36f23bb1925c" />
@@ -10,15 +10,13 @@
 
 More screenshots
 
-<img width="192" height="256" alt="reading-insights-v2-0-0-new-book-progress-popup-colors-v0-zoh19sw42rbh1" src="https://github.com/user-attachments/assets/52f851b7-8955-4739-b3a7-96ff8c2cbfe6" />
-<img width="192" height="256" alt="FileManager_2026-07-02_083306" src="https://github.com/user-attachments/assets/3026267b-d29d-4487-99a5-6efdcc4baa37" />
-<img width="192" height="256" alt="FileManager_2026-07-02_083320" src="https://github.com/user-attachments/assets/8193ba8b-7f7e-4b35-9efb-81d0d4a1df8e" />
+<img width="192" height="256" alt="reading-insights-v2-0-0-new-book-progress-popup-colors-v0-zoh19sw42rbh1" src="https://github.com/user-attachments/assets/52f851b7-8955-4739-b3a7-96ff8c2cbfe6" /><img width="192" height="256" alt="FileManager_2026-07-02_083306" src="https://github.com/user-attachments/assets/3026267b-d29d-4487-99a5-6efdcc4baa37" /><img width="192" height="256" alt="FileManager_2026-07-02_083320" src="https://github.com/user-attachments/assets/8193ba8b-7f7e-4b35-9efb-81d0d4a1df8e" />
 
 
 This plugin bundles three reading-stats popups, powered by KOReader's
 statistics database.
 
-### 📊 Reading insights (full-screen history)
+### Reading insights (full-screen history)
 
 A full-screen scrollable overlay with a comprehensive overview of your reading history.
 
@@ -40,6 +38,20 @@ A full-screen scrollable overlay with a comprehensive overview of your reading h
   older/newer periods as far back as there's data (the popup's own header
   shows the year, or a year range on its own line if the period spans a
   Dec/Jan boundary)
+- **Reading goal** — this year's finished-book count next to a target you
+  set for that year, shown as two side-by-side cells, each with a large
+  number followed by its label (e.g. "12" "books finished" next to "10"
+  "books goal" — singular "1 book goal" when the target is set to 1);
+  swipes left/right on the popup (see **Controls** below) move the goal
+  section to that year too, same as the rest of the popup
+  - **Tap** the left cell (the finished-book count) to see the list of
+    books counted as finished that year
+  - **Long-press** the left cell to open a checklist of every book with
+    activity that year; tap a row to toggle whether it counts as finished
+    — saved immediately, so both the count and the list above reflect the
+    change right away
+  - **Long-press** the right cell (the goal number) to open a number
+    picker and set/change that year's target (1–999, defaults to 12)
 - **Use as sleep screen** — show this same popup instead of KOReader's own lock screen when the device suspends, with no double flash (see **Sleep screen** below)
 - **Reading heatmap range** — how many months the calendar/time-of-day
     heatmap grids show at once: 3, 4, or 6
@@ -48,7 +60,7 @@ A full-screen scrollable overlay with a comprehensive overview of your reading h
   - **Week start day** — Monday or Sunday, controls which day starts each
     row in both heatmap grids
 
-**Controls:** swipe left/right to change year, tap the "Total read" header to open the reading heatmap, tap bars to open book lists, tap the chart header to toggle hours/days mode, long-press to force-reload data.
+**Controls:** swipe left/right to change year, tap the "Total read" header to open the reading heatmap, tap bars to open book lists, tap the chart header to toggle hours/days mode, long-press the title bar to force-reload data (see **Reading goal** above for that section's own tap/long-press targets).
 
 **Caching:** uses a stale-while-revalidate strategy — the popup opens instantly with cached data while fresh values load in the background. The last known values are also mirrored to disk, so this still holds true for the very first popup open after a KOReader restart — no blocking "Loading data..." wait.
 

@@ -120,23 +120,14 @@ msgstr "olvasott oldal"
 msgid "pages read"
 msgstr "olvasott oldal"
 
-msgid "week in a row"
-msgstr "egymást követő hét"
+msgid "week"
+msgstr "hét"
 
-msgid "weeks in a row"
-msgstr "egymást követő hét"
+msgid "weeks"
+msgstr "hét"
 
-msgid "day in a row"
-msgstr "egymást követő nap"
-
-msgid "days in a row"
-msgstr "egymást követő nap"
-
-msgid "No weekly streak"
-msgstr "Nincs heti sorozat"
-
-msgid "No daily streak"
-msgstr "Nincs napi sorozat"
+msgid "No streak"
+msgstr "Nincs sorozat"
 
 msgid "Current streak"
 msgstr "Aktuális sorozat"
@@ -170,6 +161,39 @@ msgstr "%1: %2 könyv olvasva"
 
 msgid "%1 - books read %2"
 msgstr "%1: %2 könyv olvasva"
+
+msgid "Reading goal"
+msgstr "Olvasási cél"
+
+msgid "%1 - reading goal"
+msgstr "%1 - olvasási cél"
+
+msgid "book finished"
+msgstr "elolvasott könyv"
+
+msgid "books finished"
+msgstr "elolvasott könyv"
+
+msgid "book goal"
+msgstr "könyves cél"
+
+msgid "books goal"
+msgstr "könyves cél"
+
+msgid "%1 - book finished %2"
+msgstr "%1: %2 könyv elolvasva"
+
+msgid "%1 - books finished %2"
+msgstr "%1: %2 könyv elolvasva"
+
+msgid "No books finished in %1"
+msgstr "Nincs elolvasott könyv: %1"
+
+msgid "Mark book finished - %1"
+msgstr "Elolvasott könyv megjelölése - %1"
+
+msgid "No books read in this year"
+msgstr "Ebben az évben nincs olvasott könyv"
 
 msgid "Reloading data..."
 msgstr "Adatok újraolvasása..."

@@ -17,6 +17,11 @@ Sections:
   - Streaks       current and best daily/weekly streaks
   - Year          time, days read, or books read + pages, navigable by year
   - Monthly chart bar chart per month (hours, days, or books mode, tappable)
+  - Reading goal  finished-book count vs. a per-year target, navigable by
+                  year like the sections above (tap the count to see the
+                  finished books; long press the count to manually correct
+                  which books count as finished; long press the goal value
+                  to change it)
   - Total read    all-time totals (tap header to open the reading heatmap)
 
 Gestures:
@@ -39,6 +44,10 @@ Gestures:
   - Tap value in Last week section     show 8-week trend popup (line chart)
   - Tap on Today in Last week          open Today Timeline
   - Long Press on Current month        open Calendar View
+  - Tap finished-book count            show finished books for that year
+  - Long Press on finished-book count  checklist to manually correct which
+                                        books count as finished that year
+  - Long Press on reading goal value   set/change that year's reading goal
 
 Monthly chart modes (cycle by tapping header):
   hours  – reading time per month (HH:MM bars)
@@ -150,11 +159,20 @@ end
 -- chart height"). Values are the same "points" number previously hardcoded
 -- into Screen:scaleBySize(...) at each chart's call site, so restoring the
 -- default here reproduces the exact original look.
-local SETTINGS_KEY_WEEKLY_BAR_HEIGHT  = "reading_insights_weekly_bar_height"
-local SETTINGS_KEY_MONTHLY_BAR_HEIGHT = "reading_insights_monthly_bar_height"
+--
+-- Renamed from reading_insights_weekly_bar_height /
+-- reading_insights_monthly_bar_height (default 44) to the _v2 keys below
+-- (default 30): a plain default-constant change only affects users who
+-- never touched this setting - anyone who had already saved a value (even
+-- one that happened to equal the old default) would keep it forever.
+-- Reading from a brand-new, never-before-saved key means *everyone* -
+-- including previous customizers - starts fresh from the new default after
+-- upgrading. The old keys are simply left orphaned in the settings file.
+local SETTINGS_KEY_WEEKLY_BAR_HEIGHT  = "reading_insights_weekly_bar_height_v2"
+local SETTINGS_KEY_MONTHLY_BAR_HEIGHT = "reading_insights_monthly_bar_height_v2"
 
-local DEFAULT_WEEKLY_BAR_HEIGHT  = 44
-local DEFAULT_MONTHLY_BAR_HEIGHT = 44
+local DEFAULT_WEEKLY_BAR_HEIGHT  = 30
+local DEFAULT_MONTHLY_BAR_HEIGHT = 30
 
 local function readNumSetting(key, default)
     return Settings.readNum(key, default)
@@ -218,6 +236,51 @@ local function saveHeatmapHourFormatSetting(value)
     Settings.save(SETTINGS_KEY_HEATMAP_HOUR_FORMAT, value)
 end
 
+-- Per-year reading goal ("2026 reading goal" section, shown above "Total
+-- read"). One integer target per calendar year, keyed by year so switching
+-- years (swipe/arrow, same navigation as the rest of the popup) shows and
+-- edits that year's own goal. Edited via long press on the goal value (see
+-- ReadingInsightsPopup:onHold / editReadingGoal).
+local DEFAULT_READING_GOAL = 12
+
+local function readingGoalSettingsKey(year)
+    return "reading_insights_reading_goal_" .. tostring(year)
+end
+
+local function readReadingGoal(year)
+    return tonumber(Settings.read(readingGoalSettingsKey(year), DEFAULT_READING_GOAL)) or DEFAULT_READING_GOAL
+end
+
+local function saveReadingGoal(year, value)
+    Settings.save(readingGoalSettingsKey(year), value)
+end
+
+-- Per-book, per-year manual overrides for the reading-goal section's
+-- "finished" determination (see getFinishedBooksForYear's own query-based
+-- definition above it). Set via a long press on the "N book(s) finished"
+-- cell, which opens a checklist of every book with activity that year
+-- (FinishedBooksChecklistPopup below) letting the user tick/untick each
+-- one - e.g. to exclude a book the query counted as finished but the user
+-- considers unfinished (a reread left partway through), or to include one
+-- the query missed. Only entries that differ from the query's own verdict
+-- are stored - overrides[id_book] == true means "count as finished even
+-- though the query disagrees (or doesn't know about it)", == false means
+-- "don't count as finished even though the query says so". A book with no
+-- entry here just uses the query's verdict unchanged.
+local function finishedOverridesSettingsKey(year)
+    return "reading_insights_finished_overrides_" .. tostring(year)
+end
+
+local function readFinishedOverrides(year)
+    local raw = Settings.read(finishedOverridesSettingsKey(year), nil)
+    if type(raw) ~= "table" then return {} end
+    return raw
+end
+
+local function saveFinishedOverrides(year, overrides)
+    Settings.save(finishedOverridesSettingsKey(year), overrides)
+end
+
 -- Week start day for both reading heatmaps (Settings ▸ Advanced settings ▸
 -- "Week start day" - Monday or Sunday). This is the same global setting the
 -- per-book reading calendar keys off, so it now lives in the shared
@@ -260,6 +323,28 @@ local _cache = {
 
 local _yearly_cache  = {}
 local _monthly_cache = {}
+-- Finished-book count for the reading-goal section, keyed per year like
+-- _yearly_cache. Per-minute in-memory throttle only; the actual per-year
+-- results this wraps are backed by the persisted, incrementally-updated
+-- tables below (_goal_finished_books / _goal_scan_watermark), which is what
+-- makes each cache-miss cheap instead of a full-table rescan.
+local _goal_cache       = {}
+local _stale_goal_cache = {}
+
+-- Persisted "finished books" list for the reading-goal count (see
+-- getFinishedBookCountForYear below): once a book is confirmed finished in
+-- a given year, it stays on that year's list for good - a later refresh
+-- never re-checks it, it only looks for books that have become newly
+-- finished since the last scan for that year. This keeps the goal count
+-- cheap to refresh (no full page_stat table rescan on every popup open),
+-- and because both tables are mirrored to disk (see loadDiskCache/
+-- saveDiskCache) the list survives a KOReader restart instead of starting
+-- over from empty.
+--   _goal_finished_books[year] = { [id_book] = last_time, ... }
+--   _goal_scan_watermark[year] = start_time already scanned up to, for
+--                                that year's list
+local _goal_finished_books   = {}
+local _goal_scan_watermark   = {}
 
 -- "Up to yesterday" base aggregates (excludes today), kept separate from
 -- _yearly_cache/_monthly_cache so they never collide with the stale-prefix
@@ -297,10 +382,16 @@ local function clearAllCache()
     _yearly_base_cache     = {}
     _monthly_base_cache    = {}
     _alltime_base_cache    = nil
+    _goal_cache            = {}
+    -- Force a full re-scan of the finished-books lists on manual reload,
+    -- rather than only looking for activity since the last watermark.
+    _goal_finished_books   = {}
+    _goal_scan_watermark   = {}
     -- Stale cache is wiped on force-reload so stale data is not shown after a manual refresh.
     _stale_cache           = {}
     _stale_yearly          = {}
     _stale_monthly         = {}
+    _stale_goal_cache      = {}
 end
 
 -- Disk-persisted cache -------------------------------------------------
@@ -346,6 +437,8 @@ local function loadDiskCache()
     local alltime_base  = settings:readSetting("alltime_base")
     local yearly_base   = settings:readSetting("yearly_base")
     local monthly_base  = settings:readSetting("monthly_base")
+    local goal_finished_books = settings:readSetting("goal_finished_books")
+    local goal_scan_watermark = settings:readSetting("goal_scan_watermark")
 
     if type(stale_cache) == "table" then
         for k, v in pairs(stale_cache) do _stale_cache[k] = v end
@@ -386,6 +479,12 @@ local function loadDiskCache()
             _monthly_base_cache[k] = v
         end
     end
+    if type(goal_finished_books) == "table" then
+        for k, v in pairs(goal_finished_books) do _goal_finished_books[k] = v end
+    end
+    if type(goal_scan_watermark) == "table" then
+        for k, v in pairs(goal_scan_watermark) do _goal_scan_watermark[k] = v end
+    end
 end
 
 -- Best-effort save; any failure (full disk, odd permissions, ...) is
@@ -421,6 +520,8 @@ local function saveDiskCache()
     settings:saveSetting("alltime_base", _alltime_base_cache)
     settings:saveSetting("yearly_base", _yearly_base_cache)
     settings:saveSetting("monthly_base", _monthly_base_cache)
+    settings:saveSetting("goal_finished_books", _goal_finished_books)
+    settings:saveSetting("goal_scan_watermark", _goal_scan_watermark)
     local base_flush_ok, base_flush_err = pcall(function() settings:flush() end)
     if not base_flush_ok then
         logger.warn("ReadingInsights: failed to flush base caches: " .. tostring(base_flush_err))
@@ -1100,6 +1201,28 @@ local function buildYearHeader(font_section, layout, year_range, selected_year)
         padding_right  = layout.padding_h,
         header_content,
     }
+end
+
+-- Builds the reading-goal section header text, e.g. "Reading goal"
+-- (en) / "Olvasási cél" (hu). Deliberately year-agnostic: the section
+-- already shows and lets you navigate the selected year via swipe (like the
+-- yearly/monthly sections above it), so repeating it in the header itself
+-- (e.g. "2026-os olvasási cél") was redundant and needed a
+-- vowel-harmony-dependent Hungarian suffix ("-os/-es/...") that had to be
+-- recomputed per year.
+local function buildGoalYearLabel(year)
+    return _("Reading goal")
+end
+
+-- Title for the goal-edit popup (the SpinWidget opened by long-pressing the
+-- goal value - see editReadingGoal below), e.g. "2026 - reading goal" (en) /
+-- "2026 - olvasási cél" (hu). Unlike buildGoalYearLabel above, this one DOES
+-- include the year: the section header can stay year-agnostic because the
+-- section it titles is always on screen right below it, but this dialog is
+-- a separate popup on top of everything else, so the year needs to be
+-- spelled out here for it to be clear which year is being edited.
+local function buildGoalEditTitle(year)
+    return T(_("%1 - reading goal"), tostring(year))
 end
 
 local function buildYearlyRow(popup_self, yearly_stats, fonts, layout)
@@ -2377,7 +2500,7 @@ local function showStreakDatePopup(dates, is_weekly, is_current)
     UIManager:show(WeeklyTrendPopup:new{ box_content = box })
 end
 
-local function buildInsightsSections(popup_self, streaks, yearly_stats, year_range, monthly_data, all_time_stats, last_week_stats, last_week_daily, fonts, layout)
+local function buildInsightsSections(popup_self, streaks, yearly_stats, year_range, monthly_data, all_time_stats, last_week_stats, last_week_daily, fonts, layout, goal_finished_count)
     local sections = VerticalGroup:new{ align = "left" }
 
     do
@@ -2468,14 +2591,16 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
         return formatCount(n), unit_label(n)
     end
 
+    -- Compact unit labels ("days"/"weeks" instead of "days in a row") so that
+    -- the days/weeks values fit side by side within a single Current/Best column.
     local cd_val, cd_unit = streakDisplay(streaks.current_days,
-        function(n) return N_("day in a row",  "days in a row",  n) end, _("No daily streak"))
+        function(n) return N_("day",  "days",  n) end, _("No streak"))
     local cw_val, cw_unit = streakDisplay(streaks.current_weeks,
-        function(n) return N_("week in a row", "weeks in a row", n) end, _("No weekly streak"))
+        function(n) return N_("week", "weeks", n) end, _("No streak"))
     local bd_val, bd_unit = streakDisplay(streaks.best_days,
-        function(n) return N_("day in a row",  "days in a row",  n) end, _("No daily streak"))
+        function(n) return N_("day",  "days",  n) end, _("No streak"))
     local bw_val, bw_unit = streakDisplay(streaks.best_weeks,
-        function(n) return N_("week in a row", "weeks in a row", n) end, _("No weekly streak"))
+        function(n) return N_("week", "weeks", n) end, _("No streak"))
 
     -- Two-column streak header (tappable: shows date range for that streak).
     local streak_header_left  = buildSectionHeader(fonts.section, _("Current streak"), layout.col_width, 0)
@@ -2515,54 +2640,62 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
         },
     }
 
-    -- Days row: tappable cells show date range
-    local cd_line = buildValueLine(fonts.value, fonts.label, layout.col_width, cd_val, cd_unit)
-    local bd_line = buildValueLine(fonts.value, fonts.label, layout.col_width, bd_val, bd_unit)
+    -- Single data row: each Current/Best column is split into a days sub-cell
+    -- and a weeks sub-cell (tappable, each shows its own date range), giving
+    -- a 2x2 grid overall: [Current | Best] header, [days|weeks  days|weeks] data.
+    local inner_gap        = math.floor(layout.column_gap / 2)
+    local half_col_width   = math.floor((layout.col_width - inner_gap) / 2)
+
+    local cd_line = buildValueLine(fonts.value, fonts.label, half_col_width, cd_val, cd_unit)
+    local cw_line = buildValueLine(fonts.value, fonts.label, half_col_width, cw_val, cw_unit)
+    local bd_line = buildValueLine(fonts.value, fonts.label, half_col_width, bd_val, bd_unit)
+    local bw_line = buildValueLine(fonts.value, fonts.label, half_col_width, bw_val, bw_unit)
 
     local tap_cd = InputContainer:new{
-        dimen = Geom:new{ x=0, y=0, w=layout.col_width, h=cd_line:getSize().h }, cd_line,
+        dimen = Geom:new{ x=0, y=0, w=half_col_width, h=cd_line:getSize().h }, cd_line,
     }
     tap_cd.ges_events = { Tap = { GestureRange:new{ ges="tap", range=tap_cd.dimen } } }
     function tap_cd:onTap() showStreakDatePopup(streaks.current_days_dates, false, true) return true end
 
-    local tap_bd = InputContainer:new{
-        dimen = Geom:new{ x=0, y=0, w=layout.col_width, h=bd_line:getSize().h }, bd_line,
-    }
-    tap_bd.ges_events = { Tap = { GestureRange:new{ ges="tap", range=tap_bd.dimen } } }
-    function tap_bd:onTap() showStreakDatePopup(streaks.best_days_dates, false, false) return true end
-
-    local days_row = buildTwoColRow(tap_cd, tap_bd, layout)
-
-    -- Weeks row: tappable cells show date range
-    local cw_line = buildValueLine(fonts.value, fonts.label, layout.col_width, cw_val, cw_unit)
-    local bw_line = buildValueLine(fonts.value, fonts.label, layout.col_width, bw_val, bw_unit)
-
     local tap_cw = InputContainer:new{
-        dimen = Geom:new{ x=0, y=0, w=layout.col_width, h=cw_line:getSize().h }, cw_line,
+        dimen = Geom:new{ x=0, y=0, w=half_col_width, h=cw_line:getSize().h }, cw_line,
     }
     tap_cw.ges_events = { Tap = { GestureRange:new{ ges="tap", range=tap_cw.dimen } } }
     function tap_cw:onTap() showStreakDatePopup(streaks.current_weeks_dates, true, true) return true end
 
+    local tap_bd = InputContainer:new{
+        dimen = Geom:new{ x=0, y=0, w=half_col_width, h=bd_line:getSize().h }, bd_line,
+    }
+    tap_bd.ges_events = { Tap = { GestureRange:new{ ges="tap", range=tap_bd.dimen } } }
+    function tap_bd:onTap() showStreakDatePopup(streaks.best_days_dates, false, false) return true end
+
     local tap_bw = InputContainer:new{
-        dimen = Geom:new{ x=0, y=0, w=layout.col_width, h=bw_line:getSize().h }, bw_line,
+        dimen = Geom:new{ x=0, y=0, w=half_col_width, h=bw_line:getSize().h }, bw_line,
     }
     tap_bw.ges_events = { Tap = { GestureRange:new{ ges="tap", range=tap_bw.dimen } } }
     function tap_bw:onTap() showStreakDatePopup(streaks.best_weeks_dates, true, false) return true end
 
-    local weeks_row = buildTwoColRow(tap_cw, tap_bw, layout)
+    local current_cell = HorizontalGroup:new{
+        align = "center",
+        fixedCol(tap_cd, half_col_width),
+        buildColumnSeparator(inner_gap, tap_cd:getSize().h),
+        fixedCol(tap_cw, half_col_width),
+    }
+    local best_cell = HorizontalGroup:new{
+        align = "center",
+        fixedCol(tap_bd, half_col_width),
+        buildColumnSeparator(inner_gap, tap_bd:getSize().h),
+        fixedCol(tap_bw, half_col_width),
+    }
+
+    local streak_data_row = buildTwoColRow(current_cell, best_cell, layout)
 
     local streak_rows = VerticalGroup:new{
         align = "left",
         FrameContainer:new{
             bordersize = 0,
             padding    = 0,
-            padded(layout.padding_h, days_row),
-        },
-        VerticalSpan:new{ height = Size.padding.default },
-        FrameContainer:new{
-            bordersize = 0,
-            padding    = 0,
-            padded(layout.padding_h, weeks_row),
+            padded(layout.padding_h, streak_data_row),
         },
     }
 
@@ -2598,6 +2731,58 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
             return true
         end
         addSectionWithRow(sections, tappable_chart_header, chart, layout, { add_divider = true, no_bottom_line = false })
+    end
+
+    do
+        local goal_year      = popup_self.selected_year
+        local finished_count = goal_finished_count or 0
+        local goal_value     = readReadingGoal(goal_year)
+
+        local left_value = formatCount(finished_count)
+        local left_unit  = N_("book finished", "books finished", finished_count)
+        local left_line  = buildValueLine(fonts.value, fonts.label, layout.col_width, left_value, left_unit)
+
+        local right_value = formatCount(goal_value)
+        local right_unit  = N_("book goal", "books goal", goal_value)
+        local right_line  = buildValueLine(fonts.value, fonts.label, layout.col_width, right_value, right_unit)
+
+        local left_cell = InputContainer:new{
+            dimen = Geom:new{ x = 0, y = 0, w = layout.col_width, h = left_line:getSize().h },
+            left_line,
+        }
+        left_cell.ges_events = {
+            Tap = { GestureRange:new{ ges = "tap", range = left_cell.dimen } },
+        }
+        function left_cell:onTap()
+            popup_self:showFinishedBooksForYear(goal_year)
+            return true
+        end
+        -- Also long-pressable (see ReadingInsightsPopup:onHold): opens the
+        -- finished-books checklist to manually correct which books count.
+        popup_self._goal_finished_cell_widget = left_cell
+
+        -- No tap handler: the goal value is edited via long press (see
+        -- ReadingInsightsPopup:onHold), which needs this widget's laid-out
+        -- dimen to know where the goal cell ended up on screen.
+        local right_cell = InputContainer:new{
+            dimen = Geom:new{ x = 0, y = 0, w = layout.col_width, h = right_line:getSize().h },
+            right_line,
+        }
+        popup_self._goal_cell_widget = right_cell
+
+        local goal_data_row = buildTwoColRow(left_cell, right_cell, layout)
+        local goal_row = VerticalGroup:new{
+            align = "left",
+            FrameContainer:new{
+                bordersize = 0,
+                padding    = 0,
+                padded(layout.padding_h, goal_data_row),
+            },
+        }
+
+        local goal_header = buildSectionHeader(fonts.section, buildGoalYearLabel(goal_year), layout.full_width)
+
+        addSectionWithRow(sections, goal_header, goal_row, layout, { pad_row = false })
     end
 
     do
@@ -3681,6 +3866,235 @@ function ReadingInsightsPopup:getAllTimeStats(shared_conn)
     return result
 end
 
+-- Counts books "finished" in `year` for the reading-goal section: a book
+-- counts as finished when its very last page_stat entry (by start_time,
+-- across its whole history - not just this year) falls on/after 99% of the
+-- book's page count, and that last entry's date falls within `year`. This
+-- is deliberately narrower than the existing "finished" check used by
+-- getBooksForPeriod (MAX(page) ever reached >= book.pages): a book that was
+-- fully read but then reopened and left partway back through (e.g. a
+-- reread) should not keep counting as "finished" once its last activity no
+-- longer reflects a completed read.
+--
+-- Rather than re-running that check against the *entire* page_stat history
+-- on every call, the result is a persisted, incrementally-updated list
+-- (_goal_finished_books[year], mirrored to disk - see loadDiskCache/
+-- saveDiskCache): once a book lands on that list it stays there, and each
+-- refresh only looks at books touched since _goal_scan_watermark[year] (the
+-- start_time up to which this year's list is already known-accurate) to see
+-- if any of them newly qualify. A manual "reload data" (long press on the
+-- title bar) resets both tables so the next check is a full re-scan.
+-- Adjusts a query-based finished count by the user's manual overrides for
+-- that year (see readFinishedOverrides above): +1 for each override=true
+-- book the query didn't already count, -1 for each override=false book the
+-- query did count. Applied on every return path of
+-- getFinishedBookCountForYear below, cached or freshly-scanned alike, so
+-- the "N book(s) finished" figure always matches what the checklist /
+-- showFinishedBooksForYear list actually shows.
+local function applyFinishedOverrides(year_key, count)
+    local overrides = readFinishedOverrides(year_key)
+    if not next(overrides) then return count end
+    local known_set = _goal_finished_books[year_key] or {}
+    local adjust = 0
+    for id_str, val in pairs(overrides) do
+        local in_base = known_set[id_str] ~= nil
+        if val == true and not in_base then
+            adjust = adjust + 1
+        elseif val == false and in_base then
+            adjust = adjust - 1
+        end
+    end
+    return count + adjust
+end
+
+function ReadingInsightsPopup:getFinishedBookCountForYear(year, shared_conn)
+    local minute = currentMinute()
+    local key = tostring(year) .. ":goal:v2"
+    local year_key = tostring(year)
+
+    local cached = getMinuteCache(_goal_cache, key, key .. ":minute", minute)
+    if cached ~= nil then
+        return applyFinishedOverrides(year_key, cached)
+    end
+
+    local known = _goal_finished_books[year_key]
+    if type(known) ~= "table" then
+        known = {}
+        _goal_finished_books[year_key] = known
+    end
+    local watermark = tonumber(_goal_scan_watermark[year_key]) or 0
+
+    local count = withDb(shared_conn, nil, function(conn)
+        -- Only books with *some* activity after the watermark can possibly
+        -- have changed status since the last check for this year; anything
+        -- else is either already on `known` or was already checked and
+        -- didn't qualify, and per the "fixed list" behaviour above isn't
+        -- re-checked again.
+        local candidates = {}
+        local candidates_sql = string.format(
+            "SELECT DISTINCT id_book FROM page_stat WHERE start_time > %d",
+            math.floor(watermark))
+        withStatement(conn, candidates_sql, function(stmt)
+            for row in stmt:rows() do
+                local id_book = tonumber(row[1])
+                if id_book and known[tostring(id_book)] == nil then
+                    table.insert(candidates, id_book)
+                end
+            end
+        end)
+
+        if #candidates > 0 then
+            local ids_sql = table.concat(candidates, ",")
+            local check_sql = string.format([[
+                WITH last_entry AS (
+                    SELECT id_book, MAX(start_time) AS last_time
+                    FROM page_stat
+                    WHERE id_book IN (%s)
+                    GROUP BY id_book
+                ),
+                last_page AS (
+                    SELECT le.id_book AS id_book, le.last_time AS last_time,
+                           MAX(ps.page) AS last_page
+                    FROM last_entry le
+                    JOIN page_stat ps ON ps.id_book = le.id_book AND ps.start_time = le.last_time
+                    GROUP BY le.id_book, le.last_time
+                )
+                SELECT lp.id_book, lp.last_time
+                FROM last_page lp
+                JOIN book b ON b.id = lp.id_book
+                WHERE b.pages > 0
+                  AND CAST(lp.last_page AS REAL) / b.pages >= 0.99
+                  AND strftime('%%Y', lp.last_time, 'unixepoch', 'localtime') = '%s'
+            ]], ids_sql, year_key)
+            withStatement(conn, check_sql, function(stmt)
+                for row in stmt:rows() do
+                    local id_book   = tonumber(row[1])
+                    local last_time = tonumber(row[2])
+                    if id_book then
+                        known[tostring(id_book)] = last_time or true
+                    end
+                end
+            end)
+        end
+
+        local new_watermark = watermark
+        withStatement(conn, "SELECT MAX(start_time) FROM page_stat", function(stmt)
+            for row in stmt:rows() do
+                new_watermark = tonumber(row[1]) or new_watermark
+            end
+        end)
+        _goal_scan_watermark[year_key] = new_watermark
+
+        local c = 0
+        for _ in pairs(known) do c = c + 1 end
+        return c
+    end)
+
+    if count == nil then
+        if _goal_cache[key] ~= nil then return applyFinishedOverrides(year_key, _goal_cache[key]) end
+        if _stale_goal_cache[key] ~= nil then return applyFinishedOverrides(year_key, _stale_goal_cache[key]) end
+        local c = 0
+        for _ in pairs(known) do c = c + 1 end
+        count = c
+    end
+
+    setMinuteCache(_goal_cache, _stale_goal_cache, key, key .. ":minute", minute, count)
+    return applyFinishedOverrides(year_key, count)
+end
+
+-- Same "last entry >= 99%" definition as getFinishedBookCountForYear above,
+-- but returns the book rows themselves (for the goal section's "N book(s)
+-- finished" tap → book list). Not cached: only queried on demand, when the
+-- list is actually opened.
+local function getFinishedBooksForYear(year)
+    local books = {}
+    return withStatsDb(books, function(conn)
+        local sql = string.format([[
+            WITH last_entry AS (
+                SELECT id_book, MAX(start_time) AS last_time
+                FROM page_stat
+                GROUP BY id_book
+            ),
+            last_page AS (
+                SELECT le.id_book AS id_book, le.last_time AS last_time,
+                       MAX(ps.page) AS last_page
+                FROM last_entry le
+                JOIN page_stat ps ON ps.id_book = le.id_book AND ps.start_time = le.last_time
+                GROUP BY le.id_book, le.last_time
+            )
+            SELECT book.title, book.id AS id_book, lp.last_time AS last_time,
+                   (SELECT SUM(duration) FROM page_stat
+                    WHERE id_book = book.id
+                      AND strftime('%%Y', start_time, 'unixepoch', 'localtime') = '%s') AS duration_sec
+            FROM last_page lp
+            JOIN book ON book.id = lp.id_book
+            WHERE book.pages > 0
+              AND CAST(lp.last_page AS REAL) / book.pages >= 0.99
+              AND strftime('%%Y', lp.last_time, 'unixepoch', 'localtime') = '%s'
+            ORDER BY lp.last_time DESC
+        ]], tostring(year), tostring(year))
+        withStatement(conn, sql, function(stmt)
+            for row in stmt:rows() do
+                table.insert(books, {
+                    title    = row[1] or _("Unknown"),
+                    authors  = "",
+                    id_book  = tonumber(row[2]),
+                    duration = tonumber(row[4]) or 0,
+                })
+            end
+        end)
+        return books
+    end)
+end
+
+-- Combines getFinishedBooksForYear's query-based list with the user's
+-- manual overrides (see readFinishedOverrides above) for that year: drops
+-- any book explicitly overridden to "not finished", and adds any book
+-- explicitly overridden to "finished" that the query didn't already
+-- include (looked up from popup_self:getBooksForYear, the same candidate
+-- pool the checklist itself is built from - see
+-- ReadingInsightsPopup:showFinishedBooksChecklist below). This is what
+-- both the goal section's tap-to-list (showFinishedBooksForYear) and the
+-- checklist's own checkbox state are based on, so all three stay in sync.
+local function getFinishedBooksForYearCombined(popup_self, year)
+    local base_books = getFinishedBooksForYear(year)
+    local overrides = readFinishedOverrides(year)
+    if not next(overrides) then
+        return base_books
+    end
+
+    local by_id = {}
+    for _, b in ipairs(base_books) do
+        by_id[tostring(b.id_book)] = b
+    end
+
+    local result = {}
+    for _, b in ipairs(base_books) do
+        if overrides[tostring(b.id_book)] ~= false then
+            table.insert(result, b)
+        end
+    end
+
+    local missing = false
+    for id_str, val in pairs(overrides) do
+        if val == true and not by_id[id_str] then
+            missing = true
+            break
+        end
+    end
+    if missing then
+        local candidates = popup_self:getBooksForYear(year)
+        for _, b in ipairs(candidates) do
+            local id_str = tostring(b.id_book)
+            if overrides[id_str] == true and not by_id[id_str] then
+                table.insert(result, b)
+            end
+        end
+    end
+
+    return result
+end
+
 -- Returns both last-week stats in one DB connection:
 --   last_week:       { avg_seconds, avg_pages }
 --   last_week_daily: array[7] of { hours, seconds, pages, label, midnight_ts }, index 1 = today
@@ -4103,6 +4517,7 @@ local function showBooksForPeriod(popup_self, books, empty_text, title)
     local saved_yearly         = popup_self._yearly
     local saved_monthly        = popup_self._monthly
     local saved_all_time       = popup_self._all_time
+    local saved_goal_finished  = popup_self._goal_finished
     local saved_last_week      = popup_self._last_week
     local saved_last_week_daily = popup_self._last_week_daily
 
@@ -4120,6 +4535,7 @@ local function showBooksForPeriod(popup_self, books, empty_text, title)
             _yearly          = saved_yearly,
             _monthly         = saved_monthly,
             _all_time        = saved_all_time,
+            _goal_finished   = saved_goal_finished,
             _last_week       = saved_last_week,
             _last_week_daily = saved_last_week_daily,
         }
@@ -4162,6 +4578,7 @@ function ReadingInsightsPopup:openCalendarForMonth(year_month)
     local saved_yearly           = self._yearly
     local saved_monthly          = self._monthly
     local saved_all_time         = self._all_time
+    local saved_goal_finished    = self._goal_finished
     local saved_last_week        = self._last_week
     local saved_last_week_daily  = self._last_week_daily
 
@@ -4182,6 +4599,7 @@ function ReadingInsightsPopup:openCalendarForMonth(year_month)
                 _yearly          = saved_yearly,
                 _monthly         = saved_monthly,
                 _all_time        = saved_all_time,
+                _goal_finished   = saved_goal_finished,
                 _last_week       = saved_last_week,
                 _last_week_daily = saved_last_week_daily,
             }
@@ -4236,6 +4654,7 @@ function ReadingInsightsPopup:openTodayTimeline()
     local saved_yearly           = self._yearly
     local saved_monthly          = self._monthly
     local saved_all_time         = self._all_time
+    local saved_goal_finished    = self._goal_finished
     local saved_last_week        = self._last_week
     local saved_last_week_daily  = self._last_week_daily
 
@@ -4260,6 +4679,7 @@ function ReadingInsightsPopup:openTodayTimeline()
                 _yearly          = saved_yearly,
                 _monthly         = saved_monthly,
                 _all_time        = saved_all_time,
+                _goal_finished   = saved_goal_finished,
                 _last_week       = saved_last_week,
                 _last_week_daily = saved_last_week_daily,
             }
@@ -4410,7 +4830,233 @@ function ReadingInsightsPopup:showBooksForYear(year)
         T(N_("%1 - book read %2", "%1 - books read %2", #books), year, formatCount(#books)) .. " (" .. formatHHMMSS(total_secs) .. ")")
 end
 
+-- Tap target for the reading-goal section's left cell ("N book(s)
+-- finished"). Uses the same "last entry >= 99% progress" definition as
+-- getFinishedBookCountForYear.
+function ReadingInsightsPopup:showFinishedBooksForYear(year)
+    local books = getFinishedBooksForYearCombined(self, year)
+    local total_secs = sumDuration(books)
+    showBooksForPeriod(
+        self, books,
+        T(_("No books finished in %1"), tostring(year)),
+        T(N_("%1 - book finished %2", "%1 - books finished %2", #books), tostring(year), formatCount(#books)) .. " (" .. formatHHMMSS(total_secs) .. ")")
+end
+
+-- Long-press target for the same cell: a checklist of every book with
+-- activity that year (same candidate pool as showBooksForYear), each row
+-- showing a checkbox for whether it currently counts as "finished"
+-- (query result, corrected by any existing override - see
+-- FinishedBooksChecklistPopup:_isFinished). Tapping a row toggles and
+-- immediately persists that book's override (saveFinishedOverrides), so
+-- the reading-goal count and showFinishedBooksForYear's list both reflect
+-- it as soon as this popup closes.
+local FinishedBooksChecklistPopup = InputContainer:extend{
+    modal          = true,
+    year           = nil,
+    insights_popup = nil,
+}
+
+function FinishedBooksChecklistPopup:init()
+    self.screen_w = Screen:getWidth()
+    self.screen_h = Screen:getHeight()
+    self.dimen = Geom:new{ x = 0, y = 0, w = self.screen_w, h = self.screen_h }
+
+    self.books = self.insights_popup:getBooksForYear(self.year)
+
+    self.base_finished = {}
+    for _, b in ipairs(getFinishedBooksForYear(self.year)) do
+        self.base_finished[tostring(b.id_book)] = true
+    end
+
+    self.overrides = readFinishedOverrides(self.year)
+
+    self:_buildUI()
+end
+
+function FinishedBooksChecklistPopup:_isFinished(id_str)
+    local ov = self.overrides[id_str]
+    if ov ~= nil then return ov end
+    return self.base_finished[id_str] == true
+end
+
+function FinishedBooksChecklistPopup:_toggle(id_book)
+    local id_str = tostring(id_book)
+    local new_state = not self:_isFinished(id_str)
+    if new_state == (self.base_finished[id_str] == true) then
+        self.overrides[id_str] = nil
+    else
+        self.overrides[id_str] = new_state
+    end
+    saveFinishedOverrides(self.year, self.overrides)
+
+    self:_buildUI()
+    UIManager:setDirty(self, function()
+        return "ui", self.popup_frame.dimen
+    end)
+end
+
+function FinishedBooksChecklistPopup:_buildUI()
+    local fonts      = getCachedFonts()
+    local layout      = getCachedLayout()
+    local padding_h   = layout.padding_h
+    local row_width   = self.screen_w - 2 * padding_h
+    local checklist_self = self
+
+    local title_bar = TitleBar:new{
+        fullscreen     = true,
+        width          = self.screen_w,
+        align          = "left",
+        title          = T(_("Mark book finished - %1"), tostring(self.year)),
+        close_callback = function() self:_close() end,
+        show_parent    = self,
+        top_v_padding    = Size.padding.default,
+        bottom_v_padding = Size.padding.default,
+    }
+    self._title_bar_height = title_bar:getSize().h
+
+    local rows = VerticalGroup:new{ align = "left" }
+    table.insert(rows, VerticalSpan:new{ height = Size.padding.default })
+
+    if #self.books == 0 then
+        table.insert(rows, padded(padding_h, TextBoxWidget:new{
+            text      = _("No books read in this year"),
+            face      = fonts.label,
+            fgcolor   = Colors.label(),
+            width     = row_width,
+            alignment = "left",
+        }))
+    end
+
+    for _, book in ipairs(self.books) do
+        local id_str  = tostring(book.id_book)
+        local checked = checklist_self:_isFinished(id_str)
+        -- U+2611 BALLOT BOX WITH CHECK / U+2610 BALLOT BOX
+        local mark = checked and "\xe2\x98\x91" or "\xe2\x98\x90"
+
+        local mark_widget = TextWidget:new{ text = mark, face = fonts.value, fgcolor = Colors.value() }
+        local gap   = Size.padding.default
+        local mark_w = mark_widget:getSize().w
+        local title_widget = TextBoxWidget:new{
+            text      = book.title,
+            face      = fonts.label,
+            fgcolor   = Colors.label(),
+            width     = row_width - mark_w - gap,
+            alignment = "left",
+        }
+        local row_content = HorizontalGroup:new{
+            align = "center",
+            mark_widget,
+            HorizontalSpan:new{ width = gap },
+            title_widget,
+        }
+
+        local id_book = book.id_book
+        local row_cell = InputContainer:new{
+            dimen = Geom:new{ x = 0, y = 0, w = row_width, h = row_content:getSize().h },
+            row_content,
+        }
+        row_cell.ges_events = {
+            Tap = { GestureRange:new{ ges = "tap", range = row_cell.dimen } },
+        }
+        function row_cell:onTap()
+            checklist_self:_toggle(id_book)
+            return true
+        end
+
+        table.insert(rows, padded(padding_h, row_cell))
+        table.insert(rows, VerticalSpan:new{ height = Size.padding.default })
+        table.insert(rows, padded(padding_h,
+            Colors.newBar(row_width, Size.line.thin, Colors.separator())))
+        table.insert(rows, VerticalSpan:new{ height = Size.padding.default })
+    end
+
+    local content = VerticalGroup:new{
+        align = "left",
+        title_bar,
+        padded(padding_h, Colors.newBar(layout.content_width, Size.line.thick, Colors.separator())),
+        rows,
+        VerticalSpan:new{ height = title_bar:getSize().h },
+    }
+
+    local ScrollableContainer = require("ui/widget/container/scrollablecontainer")
+    self.scroll_container = ScrollableContainer:new{
+        dimen               = Geom:new{ w = self.screen_w, h = self.screen_h },
+        show_parent         = self,
+        scroll_bar_position = "right",
+        content,
+    }
+
+    self.popup_frame = FrameContainer:new{
+        background = Blitbuffer.COLOR_WHITE,
+        bordersize = 0,
+        radius     = 0,
+        padding    = 0,
+        width      = self.screen_w,
+        VerticalGroup:new{
+            align = "left",
+            self.scroll_container,
+        },
+    }
+    self.popup_frame.dimen = Geom:new{ x = 0, y = 0, w = self.screen_w, h = self.screen_h }
+
+    self[1] = VerticalGroup:new{ self.popup_frame }
+end
+
+-- Closes and, once the checklist is off-screen, refreshes the parent
+-- popup's reading-goal section so the updated count and finished-books
+-- list are visible immediately without a full close/reopen.
+function FinishedBooksChecklistPopup:_close()
+    UIManager:close(self)
+    local ip   = self.insights_popup
+    local year = self.year
+    UIManager:scheduleIn(0, function()
+        if not ip or ip._closed then return end
+        ip._goal_finished = ip:getFinishedBookCountForYear(year)
+        ip:_buildUI()
+        UIManager:setDirty(ip, function()
+            return "ui", ip.popup_frame.dimen
+        end)
+    end)
+end
+
+function FinishedBooksChecklistPopup:onSwipe(arg, ges_ev)
+    if not ges_ev then return false end
+    local dir = ges_ev.direction
+    if dir == "south" or dir == "down" then
+        self:_close()
+        return true
+    end
+    return false
+end
+
+function FinishedBooksChecklistPopup:onAnyKeyPressed()
+    self:_close()
+    return true
+end
+
+function FinishedBooksChecklistPopup:onShow()
+    UIManager:setDirty(self, function()
+        return "ui", self.popup_frame.dimen
+    end)
+    return true
+end
+
+function FinishedBooksChecklistPopup:onCloseWidget()
+    if self.scroll_container then
+        self.scroll_container:free()
+    end
+    UIManager:setDirty(nil, "ui")
+end
+
+function ReadingInsightsPopup:showFinishedBooksChecklist(year)
+    UIManager:show(FinishedBooksChecklistPopup:new{
+        year           = year,
+        insights_popup = self,
+    })
+end
+
 -- Normally just "Reading insights"; when shown as a sleep-screen (readonly)
+
 -- with a text indicator configured, appends it, e.g. "Reading insights
 -- (sleeping…)".
 function ReadingInsightsPopup:_titleBarText()
@@ -4478,7 +5124,8 @@ function ReadingInsightsPopup:_buildUI()
         self._all_time   or { hours=0, pages=0 },
         self._last_week  or { avg_seconds=0, avg_pages=0 },
         self._last_week_daily or nil,
-        fonts, layout)
+        fonts, layout,
+        self._goal_finished)
 
     local title_bar_inner = TitleBar:new{
         fullscreen     = true,
@@ -4540,6 +5187,7 @@ function ReadingInsightsPopup:_loadAndRebuild()
     local new_year_range = self:getYearRange(shared_conn)
     local new_yearly     = self:getYearlyStats(self.selected_year, shared_conn)
     local new_all_time   = self:getAllTimeStats(shared_conn)
+    local new_goal_finished = self:getFinishedBookCountForYear(self.selected_year, shared_conn)
     local new_last_week, new_last_week_daily = self:getLastWeekAll(shared_conn)
     local new_monthly
     if self.mode == INSIGHTS_MODE_HOURS then
@@ -4564,6 +5212,7 @@ function ReadingInsightsPopup:_loadAndRebuild()
        valuesEqual(new_year_range,      self._year_range)      and
        valuesEqual(new_yearly,          self._yearly)          and
        valuesEqual(new_all_time,        self._all_time)        and
+       valuesEqual(new_goal_finished,   self._goal_finished)   and
        valuesEqual(new_last_week,       self._last_week)       and
        valuesEqual(new_last_week_daily, self._last_week_daily) and
        valuesEqual(new_monthly,         self._monthly)         then
@@ -4573,6 +5222,7 @@ function ReadingInsightsPopup:_loadAndRebuild()
         self._year_range      = new_year_range
         self._yearly          = new_yearly
         self._all_time        = new_all_time
+        self._goal_finished   = new_goal_finished
         self._last_week       = new_last_week
         self._last_week_daily = new_last_week_daily
         self._monthly         = new_monthly
@@ -4580,11 +5230,12 @@ function ReadingInsightsPopup:_loadAndRebuild()
         return
     end
 
-    self._streaks         = new_streaks
-    self._year_range      = new_year_range
-    self._yearly          = new_yearly
-    self._all_time        = new_all_time
-    self._last_week       = new_last_week
+    self._streaks          = new_streaks
+    self._year_range       = new_year_range
+    self._yearly           = new_yearly
+    self._all_time         = new_all_time
+    self._goal_finished    = new_goal_finished
+    self._last_week        = new_last_week
     self._last_week_daily = new_last_week_daily
     self._monthly         = new_monthly
     self._initial_loading = false
@@ -4673,6 +5324,21 @@ function ReadingInsightsPopup:init()
         if not self._monthly then
             self._monthly = findStaleByPrefix(_stale_monthly, month_key_fb)
         end
+        -- The finished-book count for the reading-goal section: seeded
+        -- straight from the persisted, disk-backed finished-books list
+        -- (see getFinishedBookCountForYear) rather than left nil, so the
+        -- popup doesn't open showing "0 books finished" for a moment
+        -- before _loadAndRebuild() replaces it with the real count a beat
+        -- later.
+        if not self._goal_finished then
+            local goal_year_key = tostring(self.selected_year or tonumber(os.date("%Y")))
+            local known = _goal_finished_books[goal_year_key]
+            if type(known) == "table" then
+                local c = 0
+                for _ in pairs(known) do c = c + 1 end
+                self._goal_finished = applyFinishedOverrides(goal_year_key, c)
+            end
+        end
     end
 
     self.mode = normalizeInsightsMode(self.mode or readInsightsMode())
@@ -4684,7 +5350,7 @@ function ReadingInsightsPopup:init()
     -- flash of zeroed-out sections; cleared as soon as _loadAndRebuild()
     -- brings in real data.
     self._initial_loading = not (self._streaks or self._yearly or self._monthly
-        or self._all_time or self._last_week)
+        or self._all_time or self._last_week or self._goal_finished)
 
     -- selected_year needs an initial value before _loadAndRebuild runs.
     if not self.selected_year then
@@ -4729,6 +5395,7 @@ end
 -- Hold dispatch by touch position:
 --   title bar      → cache reload
 --   chart header   → CalendarView for current month
+--   goal value     → edit the reading goal for the currently shown year
 function ReadingInsightsPopup:onHold(arg, ges_ev)
     if not ges_ev or not ges_ev.pos then return true end
     local pos = ges_ev.pos
@@ -4760,7 +5427,61 @@ function ReadingInsightsPopup:onHold(arg, ges_ev)
         end
     end
 
+    if self._goal_cell_widget then
+        local d = self._goal_cell_widget.dimen
+        if d and pos.x >= d.x and pos.x <= d.x + d.w
+              and pos.y >= d.y and pos.y <= d.y + d.h then
+            self:editReadingGoal(self.selected_year)
+            return true
+        end
+    end
+
+    if self._goal_finished_cell_widget then
+        local d = self._goal_finished_cell_widget.dimen
+        if d and pos.x >= d.x and pos.x <= d.x + d.w
+              and pos.y >= d.y and pos.y <= d.y + d.h then
+            self:showFinishedBooksChecklist(self.selected_year)
+            return true
+        end
+    end
+
     return true
+end
+
+-- Opens a numeric picker (long press on the goal value in the reading-goal
+-- section) to set/change that year's target. Saved immediately on "Save";
+-- the popup is rebuilt in place so the new value shows without a full
+-- close/reopen.
+function ReadingInsightsPopup:editReadingGoal(year)
+    local SpinWidget = require("ui/widget/spinwidget")
+    local popup_self = self
+    local widget
+    widget = SpinWidget:new{
+        -- ReadingInsightsPopup itself is modal = true (see its class
+        -- definition above). UIManager stacks a *non*-modal widget shown
+        -- while a modal one is already on top *underneath* that modal
+        -- widget, not above it (see UIManager:show()'s window-stack
+        -- ordering) - so without this, the goal-edit dialog would be
+        -- pushed behind the popup and effectively invisible/untappable,
+        -- rather than appearing on top of it as intended.
+        modal           = true,
+        title_text      = buildGoalEditTitle(year),
+        value           = readReadingGoal(year),
+        value_min       = 1,
+        value_max       = 999,
+        value_step      = 1,
+        value_hold_step = 5,
+        default_value   = DEFAULT_READING_GOAL,
+        ok_text         = _("Save"),
+        callback        = function(spin)
+            saveReadingGoal(year, spin.value)
+            popup_self:_buildUI()
+            UIManager:setDirty(popup_self, function()
+                return "ui", popup_self.popup_frame.dimen
+            end)
+        end,
+    }
+    UIManager:show(widget)
 end
 
 -- Cycles the insights mode (hours -> days -> books -> hours) and reloads
