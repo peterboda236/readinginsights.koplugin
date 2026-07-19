@@ -22,6 +22,12 @@ This module is the single source of truth for all of them:
   StatsDb.withStatement(conn, sql, fn)
                                   prepare -> pcall(fn, stmt) -> close;
                                   returns fn's result (nil on failure)
+  StatsDb.withConn(conn, fallback, fn)
+                                  like withDb, but on a connection the
+                                  caller already owns (not closed here)
+  StatsDb.withShared(shared_conn, fallback, fn)
+                                  withConn when shared_conn is given,
+                                  withDb when it is nil
 ]]--
 
 local DataStorage = require("datastorage")
@@ -77,6 +83,29 @@ function M.withStatement(conn, sql, fn)
     local ok, result = pcall(fn, stmt)
     stmt:close()
     if ok then return result end
+end
+
+-- Run fn(conn) on an already-open connection the caller owns: never opens
+-- and never closes anything, it only adds the same pcall/fallback safety
+-- net M.withDb gives a connection of its own.
+function M.withConn(conn, fallback, fn)
+    if not conn then return fallback end
+    local ok, result = pcall(fn, conn)
+    if ok then return result end
+    return fallback
+end
+
+-- The "either way" form used by the views' data getters, which are all
+-- called both standalone and as part of a batch that already holds one
+-- shared connection: reuses `shared_conn` when there is one (leaving it
+-- open for the rest of the batch), and otherwise opens and closes a
+-- connection of its own, so callers don't have to branch on which case
+-- they're in.
+function M.withShared(shared_conn, fallback, fn)
+    if shared_conn then
+        return M.withConn(shared_conn, fallback, fn)
+    end
+    return M.withDb(fallback, fn)
 end
 
 return M

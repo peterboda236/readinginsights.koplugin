@@ -25,7 +25,10 @@ Exposes:
 local gettext = require("gettext")
 
 -- Shared plugin loader/dir helper, passed in by main.lua (see pluginutil.lua).
-local PluginUtil = ...
+-- Shared modules, passed in as one named table by main.lua (see there).
+local deps = ...
+local PluginUtil =
+    deps.PluginUtil
 local PLUGIN_DIR = PluginUtil.dir
 
 local function unescapePO(s)
@@ -224,6 +227,17 @@ local function formatDurationParts(seconds, without_seconds)
     return { value = clock_str, unit = "" }
 end
 
+-- Duration as value/unit parts with the seconds dropped, and an empty
+-- placeholder for "no data" (nil) or a NaN that slipped out of a division.
+-- Both the book progress view and its calendar formatted times this way with
+-- their own identical copies of this wrapper.
+local function formatTimeHHMM(seconds)
+    if not seconds or seconds ~= seconds then
+        return { value = "", unit = "" }
+    end
+    return formatDurationParts(seconds, true)
+end
+
 local function formatDuration(seconds, without_seconds)
     local parts = formatDurationParts(seconds, without_seconds)
     if parts.unit == "" then
@@ -241,6 +255,7 @@ return {
     formatCount                = formatCount,
     formatDuration             = formatDuration,
     formatDurationParts        = formatDurationParts,
+    formatTimeHHMM             = formatTimeHHMM,
     readDurationDaysSetting    = readDurationDaysSetting,
     saveDurationDaysSetting    = saveDurationDaysSetting,
 }

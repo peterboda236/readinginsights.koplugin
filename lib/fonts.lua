@@ -1,9 +1,8 @@
 --[[
 Reading Insights - shared popup font settings.
 
-Centralises the font choices used by both views (insights_view.lua and
-book_stats_view.lua), so there is exactly one "Fonts" menu and one set of
-settings driving every text role in the plugin:
+Centralises the font choices used by every popup, so there is exactly one
+"Fonts" menu and one set of settings driving every text role:
 
   insights_section  "Reading insights" section headers (Last week, Streaks,
                     year header, Monthly chart, Total read, ...)
@@ -39,9 +38,7 @@ so a missing/renamed font file (a device without that exact bundled font)
 can never leave a role without a usable face - it just silently falls back
 towards KOReader's own default fonts instead of erroring.
 
-Loaded by main.lua via loadfile(...)( Locale ) and handed straight to both
-view modules as their third chunk argument (alongside Locale and Colors), so
-`local Locale, Colors, Fonts = ...` at the top of each view is all they need.
+Loaded once by main.lua and handed to every popup that draws text.
 
 Exposes:
   getFace(role)          ready-to-use Font face for TextWidget/TextBoxWidget
@@ -69,8 +66,11 @@ local SpinWidget  = require("ui/widget/spinwidget")
 local UIManager   = require("ui/uimanager")
 
 -- Shared modules passed in by main.lua: Locale (translations), PluginUtil
--- (plugin dir + loader) and Settings (G_reader_settings wrappers).
-local Locale, PluginUtil, Settings = ...
+-- (plugin dir + loader) and Prefs (G_reader_settings wrappers).
+-- Shared modules, passed in as one named table by main.lua (see there).
+local deps = ...
+local Locale, PluginUtil, Prefs =
+    deps.Locale, deps.PluginUtil, deps.Prefs
 local _ = Locale._
 
 -- Order (and grouping) the "Fonts" menu is built in.
@@ -113,11 +113,11 @@ local SETTINGS_SIZE_PREFIX = "reading_insights_font_size_"
 local MIN_SIZE, MAX_SIZE = 8, 60
 
 local function readSetting(key)
-    return Settings.read(key, nil)
+    return Prefs.read(key, nil)
 end
 
 local function saveSetting(key, value)
-    Settings.save(key, value)
+    Prefs.save(key, value)
 end
 
 local function normalizeName(name)

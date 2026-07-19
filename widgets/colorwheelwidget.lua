@@ -1,3 +1,16 @@
+--[[
+Reading Insights - the colour wheel used by the Colors submenu.
+
+A touch colour picker: a hue/saturation wheel with a brightness slider
+beside it and a live hex preview, shown when a colour setting is tapped in
+Settings > Colors. Returns the chosen colour as a hex string through its
+callback; nothing here knows or cares which setting it is picking for.
+
+The only widget in the plugin that is a general-purpose control rather than
+part of one particular popup, which is why it lives in widgets/ alongside
+the chapter bar.
+]]--
+
 local Blitbuffer = require("ffi/blitbuffer")
 local Button = require("ui/widget/button")
 local CenterContainer = require("ui/widget/container/centercontainer")

@@ -11,10 +11,11 @@ view. The per-book reading calendar that used to live here now has its own
 file, book_calendar_view.lua; this popup opens it (tap the "Pace" title) via
 the injected BookCalendar module.
 
-Loaded by main.lua via loadfile(...)(Locale, Colors, Fonts, Settings, StatsDb,
-BookProgress, BookCalendar) - the shared modules for translations/number
-formatting (locale.lua), colors, fonts, G_reader_settings access, the
-statistics DB, per-book reading position, and the calendar view.
+Loaded by main.lua with one named table of dependencies: the shared modules
+for translations/number formatting (locale.lua), colors, fonts,
+G_reader_settings access, per-book reading position, the calendar view, the
+chapter maths and chapter bar, the layout helpers - and BookStatsData, which
+holds this popup's own queries (lib/book_stats_data.lua).
 
 Sections shown:
   - This chapter / Next chapter   estimated time left and time to read next
@@ -33,7 +34,6 @@ Controls:
 ]]--
 
 local Blitbuffer = require("ffi/blitbuffer")
-local CenterContainer = require("ui/widget/container/centercontainer")
 local Device = require("device")
 local FrameContainer = require("ui/widget/container/framecontainer")
 local Geom = require("ui/geometry")
@@ -41,9 +41,7 @@ local GestureRange = require("ui/gesturerange")
 local HorizontalGroup = require("ui/widget/horizontalgroup")
 local HorizontalSpan = require("ui/widget/horizontalspan")
 local InputContainer = require("ui/widget/container/inputcontainer")
-local LeftContainer = require("ui/widget/container/leftcontainer")
 local LineWidget = require("ui/widget/linewidget")
-local OverlapGroup = require("ui/widget/overlapgroup")
 local Size = require("ui/size")
 local TextBoxWidget = require("ui/widget/textboxwidget")
 local TextWidget = require("ui/widget/textwidget")
@@ -56,38 +54,17 @@ local Screen = Device.screen
 -- Shared translations/number-formatting, and shared chart/text color
 -- settings, both passed in as this chunk's arguments by main.lua (see the
 -- header comment above).
-local Locale, Colors, Fonts, Settings, StatsDb, BookProgress, BookCalendar = ...
+-- Shared modules, passed in as one named table by main.lua (see there).
+local deps = ...
+local Locale, Colors, Fonts, Prefs, BookProgress, BookCalendar, ChapterInfo, ChapterBar, UI, BookStatsData =
+    deps.Locale, deps.Colors, deps.Fonts, deps.Prefs, deps.BookProgress,
+    deps.BookCalendar, deps.ChapterInfo, deps.ChapterBar, deps.UI,
+    deps.BookStatsData
 local _            = Locale._
 local N_           = Locale.N_
 local getLangBase  = Locale.getLangBase
 local formatNumber = Locale.formatNumber
 local formatCount  = Locale.formatCount
-
--- Chapter-bar height setting (Settings ▸ "Oszlopdiagram magassága" /
--- "Bar chart height" ▸ "Book progress: Fejezetek"). Same "points" value
--- previously hardcoded into Screen:scaleBySize(46) below; restoring the
--- default reproduces the exact original look.
-local SETTINGS_KEY_CHAPTER_BAR_HEIGHT = "reading_insights_chapter_bar_height"
-local DEFAULT_CHAPTER_BAR_HEIGHT      = 46
-
-local function readChapterBarHeightSetting()
-    if G_reader_settings and G_reader_settings.readSetting then
-        local v = G_reader_settings:readSetting(SETTINGS_KEY_CHAPTER_BAR_HEIGHT)
-        if v == nil then return DEFAULT_CHAPTER_BAR_HEIGHT end
-        return v
-    end
-    return DEFAULT_CHAPTER_BAR_HEIGHT
-end
-
-local function saveChapterBarHeightSetting(value)
-    if G_reader_settings and G_reader_settings.saveSetting then
-        G_reader_settings:saveSetting(SETTINGS_KEY_CHAPTER_BAR_HEIGHT, value)
-    end
-end
-
-local function emptyValue()
-    return { value = "", unit = "" }
-end
 
 local function formatFraction(numerator, denominator)
     return string.format("%s / %s", formatCount(numerator), formatCount(denominator))
@@ -154,21 +131,6 @@ local function tappableWrap(widget, width)
     }
 end
 
--- Format seconds as a clock-style duration honouring KOReader's global
--- "duration_format" setting (classic "1:30", modern "1h30'", ...) - see
--- Locale.formatDuration() in locale.lua for details.
--- Returns { value = "<formatted>", unit = "" } so it fits the buildValueLine API.
--- When the "24h+ as days" setting is on and the duration crosses a day,
--- Locale.formatDurationParts() splits the trailing "day"/"nap" word into
--- `unit`, so buildValueLine renders it in the plain label style instead of
--- bolding it along with the number.
-local function formatTimeHHMM(seconds)
-    if not seconds or seconds ~= seconds then
-        return emptyValue()
-    end
-    return Locale.formatDurationParts(seconds, true)
-end
-
 local function dayCountLabel(kind, unit, count)
     if kind == "reading" then
         if unit == "week"  then return N_("week reading",  "weeks reading",  count) end
@@ -196,221 +158,6 @@ local function humanizeDayCount(days, kind)
     return { value = formatCount(count), unit = dayCountLabel(kind, unit, count) }
 end
 
--- Single DB connection, all stats fetched at once.
-local function getBookAndTodayStats(book_id)
-    if not book_id then return nil, nil, nil, nil, nil, nil, nil end
-
-    local conn = StatsDb.open()
-    if not conn then return nil, nil, nil, nil, nil, nil, nil end
-
-    local days_sql = string.format([[
-        SELECT count(*)
-        FROM (
-            SELECT strftime('%%Y-%%m-%%d', start_time, 'unixepoch', 'localtime') AS dates
-            FROM   page_stat
-            WHERE  id_book = %d
-            GROUP  BY dates
-        );
-    ]], book_id)
-    local total_days = conn:rowexec(days_sql)
-    total_days = total_days and tonumber(total_days) or nil
-
-    local today_book_sql = string.format([[
-        SELECT count(*), sum(duration)
-        FROM (
-            SELECT page, sum(duration) AS duration
-            FROM   page_stat
-            WHERE  strftime('%%Y-%%m-%%d', start_time, 'unixepoch', 'localtime')
-                   = strftime('%%Y-%%m-%%d', 'now', 'localtime')
-            AND    id_book = %d
-            GROUP  BY page
-        );
-    ]], book_id)
-    local today_pages, today_time = conn:rowexec(today_book_sql)
-    today_pages = tonumber(today_pages)
-    today_time  = tonumber(today_time)
-
-    local today_all_sql = [[
-        SELECT count(*), sum(duration)
-        FROM (
-            SELECT page, sum(duration) AS duration
-            FROM   page_stat
-            WHERE  strftime('%Y-%m-%d', start_time, 'unixepoch', 'localtime')
-                   = strftime('%Y-%m-%d', 'now', 'localtime')
-            GROUP  BY id_book, page
-        );
-    ]]
-    local today_pages_all, today_time_all = conn:rowexec(today_all_sql)
-    today_pages_all = tonumber(today_pages_all)
-    today_time_all  = tonumber(today_time_all)
-
-    -- Days elapsed since this book's very first page_stat entry (i.e. since
-    -- reading it was started). Used for the "N days since started" cell.
-    local first_read_sql = string.format([[
-        SELECT start_time,
-               CAST(julianday('now', 'localtime')
-                    - julianday(date(start_time, 'unixepoch', 'localtime')) AS INTEGER)
-        FROM   page_stat
-        WHERE  id_book = %d
-        ORDER  BY start_time ASC
-        LIMIT  1
-    ]], book_id)
-    local started_timestamp, days_since_start = conn:rowexec(first_read_sql)
-    started_timestamp = started_timestamp and tonumber(started_timestamp) or nil
-    days_since_start  = days_since_start  and tonumber(days_since_start)  or nil
-
-    conn:close()
-    return total_days, today_pages, today_time, today_pages_all, today_time_all, days_since_start, started_timestamp
-end
-
--- TOC cache: single entry keyed by book_id, validated against total page count.
-local _toc_cache     = {}   -- [book_id] = entry table, or false on parse failure
-local _toc_cache_key = nil  -- book_id of the single cached entry
-
--- Shared helper: current chapter index + progress ratio from a resolved TOC entry.
-local function computeChapterResult(toc_items, items_are_tables, total_chapters, page_counts, pageno)
-    local current_chapter = 0
-    if items_are_tables then
-        for i = total_chapters, 1, -1 do
-            if toc_items[i].page <= pageno then
-                current_chapter = i
-                break
-            end
-        end
-    else
-        for i = total_chapters, 1, -1 do
-            if toc_items[i] <= pageno then
-                current_chapter = i
-                break
-            end
-        end
-    end
-    if current_chapter == 0 then current_chapter = 1 end
-
-    local chapter_progress_ratio = 0.0
-    local cur_pc = (page_counts or {})[current_chapter] or 1
-    if cur_pc > 0 then
-        local cur_start = items_are_tables
-            and toc_items[current_chapter].page
-            or  toc_items[current_chapter]
-        local pages_read_in_chapter = math.max(0, pageno - cur_start) + 0.5
-        chapter_progress_ratio = math.min(0.95, pages_read_in_chapter / cur_pc)
-    end
-
-    return {
-        current                = current_chapter,
-        total                  = total_chapters,
-        page_counts            = page_counts,
-        chapter_progress_ratio = chapter_progress_ratio,
-    }
-end
-
-local function getCachedChapterInfo(book_id, toc, pages, pageno)
-    if not book_id then return nil end
-
-    -- explicit cache-hit / miss / invalidate branches
-    local cached = _toc_cache[book_id]
-    if cached == false then
-        return nil
-    elseif cached ~= nil then
-        if cached._pages ~= pages then
-            _toc_cache[book_id] = nil
-            _toc_cache_key      = nil
-        else
-            return computeChapterResult(
-                cached._toc_items,
-                cached._items_are_tables,
-                cached._total,
-                cached._page_counts,
-                pageno
-            )
-        end
-    end
-
-    -- Cache miss: parse TOC and store (at most 1 entry).
-    local chapter_info = nil
-    local ok = pcall(function()
-        local toc_items = nil
-
-        if toc.getToc and type(toc.getToc) == "function" then
-            local raw = toc:getToc()
-            if raw and #raw > 0 then
-                local chapter_entries = {}
-                local has_depth = raw[1] and raw[1].depth ~= nil
-                for _, entry in ipairs(raw) do
-                    if not has_depth or (entry.depth or 1) == 1 then
-                        table.insert(chapter_entries, entry)
-                    end
-                end
-                if #chapter_entries == 0 then chapter_entries = raw end
-                toc_items = chapter_entries
-            end
-        end
-
-        if not toc_items and toc.toc_ticks and #toc.toc_ticks > 0 then
-            toc_items = toc.toc_ticks
-        end
-        if not toc_items and toc.toc and type(toc.toc) == "table" and #toc.toc > 0 then
-            toc_items = toc.toc
-        end
-
-        if not toc_items or #toc_items == 0 then return end
-
-        local total_chapters   = #toc_items
-        local page_counts      = {}
-        local items_are_tables = type(toc_items[1]) == "table" and toc_items[1].page ~= nil
-
-        if items_are_tables then
-            for i = 1, total_chapters do
-                local start_p = toc_items[i].page
-                local end_p   = (i < total_chapters) and (toc_items[i + 1].page - 1) or pages
-                page_counts[i] = math.max(1, end_p - start_p + 1)
-            end
-        elseif type(toc_items[1]) == "number" then
-            for i = 1, total_chapters do
-                local start_p = toc_items[i]
-                local end_p   = (i < total_chapters) and (toc_items[i + 1] - 1) or pages
-                page_counts[i] = math.max(1, end_p - start_p + 1)
-            end
-        else
-            return  -- unknown TOC format
-        end
-
-        -- evict previous entry before storing the new one
-        if _toc_cache_key and _toc_cache_key ~= book_id then
-            _toc_cache[_toc_cache_key] = nil
-        end
-        _toc_cache[book_id] = {
-            _toc_items        = toc_items,
-            _items_are_tables = items_are_tables,
-            _page_counts      = page_counts,
-            _total            = total_chapters,
-            _pages            = pages,
-        }
-        _toc_cache_key = book_id
-
-        chapter_info = computeChapterResult(
-            toc_items, items_are_tables, total_chapters, page_counts, pageno
-        )
-    end)
-
-    if not ok or not chapter_info then
-        _toc_cache[book_id] = false
-        return nil
-    end
-
-    return chapter_info
-end
-
-local function getChapterPagesLeft(ui, pageno)
-    if not ui or not ui.toc then return end
-    local pages_left = ui.toc:getChapterPagesLeft(pageno, true)
-    if pages_left == nil and ui.document then
-        pages_left = ui.document:getTotalPagesLeft(pageno)
-    end
-    return pages_left
-end
-
 -- Font faces for this popup's three text roles, sourced from the shared
 -- Fonts settings module (see fonts.lua) so they're user-configurable via
 -- the "Fonts" Tools-menu entry, the same way Colors.* works for colors.
@@ -421,50 +168,6 @@ local function buildSerifFonts()
         section = Fonts.getFace("stats_section"),
         value   = Fonts.getFace("stats_value"),
         label   = Fonts.getFace("stats_label"),
-    }
-end
-
-local function buildLayout(screen_w, padding_h, column_gap)
-    local separator_width = 2 * column_gap + Size.line.medium
-    local col_width = math.floor((screen_w - 2 * padding_h - separator_width) / 2)
-    return {
-        full_width    = screen_w,
-        padding_h     = padding_h,
-        column_gap    = column_gap,
-        separator_width = separator_width,
-        col_width     = col_width,
-    }
-end
-
-local function buildColumnSeparator(column_gap, height)
-    local v_padding = Size.padding.default
-    return HorizontalGroup:new{
-        HorizontalSpan:new{ width = column_gap },
-        VerticalGroup:new{
-            align = "center",
-            VerticalSpan:new{ height = v_padding },
-            Colors.newBar(Size.line.medium, height - 2 * v_padding, Colors.separator()),
-            VerticalSpan:new{ height = v_padding },
-        },
-        HorizontalSpan:new{ width = column_gap },
-    }
-end
-
--- No radius, left-aligned text with padding_left; width comes from parent.
-local function buildSectionHeader(font_section, text, width, left_padding)
-    left_padding = left_padding or Size.padding.large
-    local text_widget = TextWidget:new{ text = text, face = font_section, fgcolor = Colors.section() }
-    return FrameContainer:new{
-        background     = Blitbuffer.COLOR_WHITE,
-        bordersize     = 0,
-        padding_top    = Size.padding.small,
-        padding_bottom = Size.padding.small,
-        padding_left   = left_padding,
-        padding_right  = 0,
-        LeftContainer:new{
-            dimen = Geom:new{ w = width - left_padding, h = text_widget:getSize().h },
-            text_widget,
-        },
     }
 end
 
@@ -517,37 +220,7 @@ local function buildValueLine(font_value, font_label, col_width, time_data, labe
     }
 end
 
-local function fixedCol(widget, width, height)
-    height = height or widget:getSize().h
-    return LeftContainer:new{
-        dimen  = Geom:new{ w = width, h = height },
-        widget,
-    }
-end
-
-local function padded(padding_h, widget)
-    return HorizontalGroup:new{
-        HorizontalSpan:new{ width = padding_h },
-        widget,
-    }
-end
-
-local function buildTwoColRow(left_widget, right_widget, layout, hide_separator)
-    local left_h   = left_widget:getSize().h
-    local right_h  = right_widget:getSize().h
-    local row_height = math.max(left_h, right_h)
-    local separator = hide_separator
-        and HorizontalSpan:new{ width = layout.separator_width }
-        or  buildColumnSeparator(layout.column_gap, row_height)
-    return HorizontalGroup:new{
-        align = "center",
-        fixedCol(left_widget,  layout.col_width, row_height),
-        separator,
-        fixedCol(right_widget, layout.col_width, row_height),
-    }
-end
-
--- Two buildSectionHeader widgets in a HorizontalGroup.
+-- Two UI.buildSectionHeader widgets in a HorizontalGroup.
 -- When show_next is false (no next chapter), the "Next chapter" label is
 -- omitted, leaving that side blank instead of showing a misleading header.
 local function buildChapterHeaders(font_section, layout, show_next)
@@ -557,181 +230,9 @@ local function buildChapterHeaders(font_section, layout, show_next)
     local next_chapter_text = show_next and _("Next chapter") or ""
     return HorizontalGroup:new{
         align = "center",
-        buildSectionHeader(font_section, _("This chapter"), left_width),
-        buildSectionHeader(font_section, next_chapter_text, right_width, next_chapter_padding),
+        UI.buildSectionHeader(font_section, _("This chapter"), left_width),
+        UI.buildSectionHeader(font_section, next_chapter_text, right_width, next_chapter_padding),
     }
-end
-
--- header → span → line → row → span.
-local function addSectionWithRow(sections, header_widget, row, layout)
-    table.insert(sections, header_widget)
-    table.insert(sections, VerticalSpan:new{ height = Size.padding.default })
-    table.insert(sections, padded(layout.padding_h,
-        Colors.newBar(layout.full_width - 2 * layout.padding_h, Size.line.thin, Colors.separator())))
-    table.insert(sections, padded(layout.padding_h, row))
-    table.insert(sections, VerticalSpan:new{ height = Size.padding.large })
-end
-
--- Chapter progress bar.
--- Always shows exactly PAGE_SIZE columns per page; empty slots on the last page.
--- Arrows always visible: black = can navigate, gray = cannot.
-local CHAPTER_BAR_PAGE_SIZE = 25
-
-local function buildChapterBar(chapter_info, full_width, padding_h, offset_override, on_prev, on_next)
-    if not chapter_info or not chapter_info.total or chapter_info.total == 0 then
-        return nil
-    end
-
-    local total                  = chapter_info.total
-    local current                = chapter_info.current or 0
-    local page_counts            = chapter_info.page_counts
-    local chapter_progress_ratio = chapter_info.chapter_progress_ratio or 0.0
-
-    local col_h_max = Screen:scaleBySize(readChapterBarHeightSetting())
-
-    local max_pages = 0
-    if page_counts then
-        for i = 1, total do
-            local pc = page_counts[i] or 0
-            if pc > max_pages then max_pages = pc end
-        end
-    end
-
-    local function barHeight(ch_idx)
-        if page_counts and max_pages > 0 then
-            local pc = page_counts[ch_idx] or 0
-            return math.max(1, math.floor(1 + (pc / max_pages) * (col_h_max - 1)))
-        end
-        return col_h_max
-    end
-
-    local v_pad      = Size.padding.large
-    local arrow_face = Fonts.getFace("stats_arrow")
-    local inner_pad  = Size.padding.default
-
-    -- Measure arrow glyph width once; both arrows use the same face so width is identical.
-    local arrow_glyph_w = TextWidget:new{ text = "\xe2\x80\xb9", face = arrow_face }:getSize().w
-    local slot_w        = arrow_glyph_w + 2 * inner_pad
-
-    -- Available width for exactly PAGE_SIZE columns, after symmetric padding and both arrow slots.
-    local avail_w   = full_width - 2 * padding_h - 2 * slot_w
-    local col_w     = math.floor(avail_w / CHAPTER_BAR_PAGE_SIZE)
-    local remainder = avail_w - col_w * CHAPTER_BAR_PAGE_SIZE  -- extra pixels, absorbed into right padding
-    local gap       = math.max(1, math.floor(col_w * 0.15))
-    local bar_w     = col_w - gap
-
-    -- offset snaps to PAGE_SIZE pages: 1, 26, 51, …
-    local offset = math.max(1, math.min(offset_override or 1, total))
-
-    local can_go_left  = (offset > 1)
-    local can_go_right = (offset + CHAPTER_BAR_PAGE_SIZE - 1 < total)
-    local left_arrow_color  = can_go_left  and Blitbuffer.COLOR_BLACK or Blitbuffer.COLOR_GRAY_E
-    local right_arrow_color = can_go_right and Blitbuffer.COLOR_BLACK or Blitbuffer.COLOR_GRAY_E
-
-    -- Build exactly PAGE_SIZE slots; slots beyond total are white (empty).
-    local bar_row = HorizontalGroup:new{ align = "bottom" }
-    for i = 1, CHAPTER_BAR_PAGE_SIZE do
-        local ch_idx = offset + i - 1
-        if ch_idx <= total then
-            local bh = barHeight(ch_idx)
-            if ch_idx == current then
-                local read_h   = math.max(1, math.floor(bh * chapter_progress_ratio))
-                local unread_h = bh - read_h
-                table.insert(bar_row, VerticalGroup:new{
-                    align = "left",
-                    VerticalSpan:new{ height = col_h_max - bh },
-                    unread_h > 0 and Colors.newBar(bar_w, unread_h, Colors.inactiveBar())
-                        or VerticalSpan:new{ height = 0 },
-                    read_h > 0 and Colors.newBar(bar_w, read_h, Colors.activeBar())
-                        or VerticalSpan:new{ height = 0 },
-                })
-            else
-                table.insert(bar_row, VerticalGroup:new{
-                    align = "left",
-                    VerticalSpan:new{ height = col_h_max - bh },
-                    Colors.newBar(bar_w, bh, ch_idx < current and Colors.activeBar() or Colors.inactiveBar()),
-                })
-            end
-        else
-            -- empty slot: same width as a real bar so the total row width stays fixed
-            table.insert(bar_row, LineWidget:new{
-                dimen      = Geom:new{ w = bar_w, h = col_h_max },
-                background = Blitbuffer.COLOR_WHITE,
-            })
-        end
-        if i < CHAPTER_BAR_PAGE_SIZE then
-            table.insert(bar_row, LineWidget:new{
-                dimen      = Geom:new{ w = gap, h = col_h_max },
-                background = Blitbuffer.COLOR_WHITE,
-            })
-        end
-    end
-
-    local function makeArrowSpan(symbol, fgcolor)
-        local tw      = TextWidget:new{ text = symbol, face = arrow_face, fgcolor = fgcolor }
-        local gh      = tw:getSize().h
-        local top_pad = math.floor((col_h_max - gh) / 2)
-        return FrameContainer:new{
-            background     = nil,
-            bordersize     = 0,
-            padding_top    = 0,
-            padding_bottom = 0,
-            padding_left   = 0,
-            padding_right  = 0,
-            margin         = 0,
-            VerticalGroup:new{
-                align = "left",
-                VerticalSpan:new{ height = top_pad },
-                HorizontalGroup:new{
-                    align = "center",
-                    HorizontalSpan:new{ width = inner_pad },
-                    tw,
-                    HorizontalSpan:new{ width = inner_pad },
-                },
-                VerticalSpan:new{ height = col_h_max - gh - top_pad },
-            },
-        }
-    end
-
-    -- Layout: (padding_h + remainder/2) | left_arrow | [PAGE_SIZE slots] | right_arrow | (padding_h + remainder/2)
-    -- The leftover rounding pixels from col_w's floor() are split evenly between
-    -- both sides (any odd extra pixel goes to the right) so the empty space
-    -- around the two arrows stays visually symmetric.
-    local remainder_left  = math.floor(remainder / 2)
-    local remainder_right = remainder - remainder_left
-    
-    local left_arrow_widget  = makeArrowSpan("\xe2\x80\xb9", left_arrow_color)
-    local right_arrow_widget = makeArrowSpan("\xe2\x80\xba", right_arrow_color)
-    
-    local flat_row = HorizontalGroup:new{ align = "center" }
-    table.insert(flat_row, HorizontalSpan:new{ width = padding_h + remainder_left })
-    table.insert(flat_row, left_arrow_widget)
-    table.insert(flat_row, bar_row)
-    table.insert(flat_row, right_arrow_widget)
-    table.insert(flat_row, HorizontalSpan:new{ width = padding_h + remainder_right })
-
-    local bar_h = col_h_max + 2 * Size.padding.default
-
-    local fixed_bar_row = FrameContainer:new{
-        bordersize     = 0,
-        padding_top    = Size.padding.default,
-        padding_bottom = Size.padding.default,
-        padding_left   = 0,
-        padding_right  = 0,
-        background     = Blitbuffer.COLOR_WHITE,
-        dimen          = Geom:new{ w = full_width, h = bar_h },
-        flat_row,
-    }
-
-    local result = VerticalGroup:new{
-        align = "left",
-        VerticalSpan:new{ height = v_pad },
-        fixed_bar_row,
-        VerticalSpan:new{ height = v_pad },
-    }
-    result._on_swipe_left  = can_go_right and on_next or nil
-    result._on_swipe_right = can_go_left  and on_prev or nil
-    return result, left_arrow_widget, right_arrow_widget, can_go_left, can_go_right
 end
 
 -- Main section builder.
@@ -755,7 +256,7 @@ local function buildSections(stats, fonts, layout, popup)
         chapter_val1 = valueLine(left_data, left_label)
 
         local next_count = stats.next_chapter_pages_count
-        local next_data  = next_count and { value = formatCount(next_count), unit = "" } or emptyValue()
+        local next_data  = next_count and { value = formatCount(next_count), unit = "" } or UI.emptyValue()
         local next_label = next_count and N_("page", "pages", next_count) or ""
         chapter_val2 = valueLine(next_data, next_label)
     else
@@ -805,21 +306,21 @@ local function buildSections(stats, fonts, layout, popup)
     end
 
     local chapter_headers_content = buildChapterHeaders(fonts.section, layout, stats.has_next_chapter)
-    local chapter_values_content  = buildTwoColRow(chapter_val1, chapter_val2, layout, not stats.has_next_chapter)
+    local chapter_values_content  = UI.buildTwoColRow(chapter_val1, chapter_val2, layout, not stats.has_next_chapter)
     -- Wrapped in tappableWrap (fixed dimen) rather than used raw, so tapping
     -- either row reliably hits (same reasoning as started_tap/finish_tap
     -- below: a bare HorizontalGroup isn't guaranteed a usable .dimen for
-    -- hitTest the way a FrameContainer with an explicit dimen is).
+    -- UI.hitTest the way a FrameContainer with an explicit dimen is).
     local chapter_headers = tappableWrap(chapter_headers_content, chapter_headers_content:getSize().w)
     local chapter_values  = tappableWrap(chapter_values_content, chapter_values_content:getSize().w)
     if popup then
         popup._chapter_headers = chapter_headers
         popup._chapter_values  = chapter_values
     end
-    local book_progress_row = buildTwoColRow(book_progress, book_pages_read, layout)
+    local book_progress_row = UI.buildTwoColRow(book_progress, book_pages_read, layout)
     local book_progress_tap = book_progress_row
-    local book_row          = buildTwoColRow(book_col1, book_col2, layout)
-    local pace_row_content = buildTwoColRow(days_col2, pace_col2, layout)
+    local book_row          = UI.buildTwoColRow(book_col1, book_col2, layout)
+    local pace_row_content = UI.buildTwoColRow(days_col2, pace_col2, layout)
     local pace_row = tappableWrap(pace_row_content, pace_row_content:getSize().w)
     if popup then
         popup._pace_row = pace_row
@@ -829,19 +330,19 @@ local function buildSections(stats, fonts, layout, popup)
         align = "left",
     }
 
-    addSectionWithRow(sections, chapter_headers, chapter_values, layout, true)
+    UI.addSectionWithRow(sections, chapter_headers, chapter_values, layout, { no_bottom_line = true })
 
     local chapter_on_prev = popup and function()
-        popup.chapter_bar_offset = math.max(1, (popup.chapter_bar_offset or 1) - CHAPTER_BAR_PAGE_SIZE)
+        popup.chapter_bar_offset = math.max(1, (popup.chapter_bar_offset or 1) - ChapterBar.PAGE_SIZE)
         popup:_rebuildUI()
     end or nil
     local chapter_on_next = popup and function()
-        popup.chapter_bar_offset = math.max(1, (popup.chapter_bar_offset or 1) + CHAPTER_BAR_PAGE_SIZE)
+        popup.chapter_bar_offset = math.max(1, (popup.chapter_bar_offset or 1) + ChapterBar.PAGE_SIZE)
         popup:_rebuildUI()
     end or nil
 
     local chapter_bar, chapter_left_arrow, chapter_right_arrow, chapter_can_go_left, chapter_can_go_right =
-        buildChapterBar(
+        ChapterBar.build(
             stats.chapter_info,
             layout.full_width,
             layout.padding_h,
@@ -849,13 +350,13 @@ local function buildSections(stats, fonts, layout, popup)
             chapter_on_prev,
             chapter_on_next
         )
-    table.insert(sections, padded(layout.padding_h,
+    table.insert(sections, UI.padded(layout.padding_h,
         Colors.newBar(layout.full_width - 2 * layout.padding_h, Size.line.thick, Colors.separator())))
-    local this_book_header = buildSectionHeader(fonts.section, _("This book"), layout.full_width)
+    local this_book_header = UI.buildSectionHeader(fonts.section, _("This book"), layout.full_width)
     if popup then
         popup._this_book_header = this_book_header
     end
-    addSectionWithRow(
+    UI.addSectionWithRow(
         sections,
         this_book_header,
         VerticalGroup:new{
@@ -865,7 +366,9 @@ local function buildSections(stats, fonts, layout, popup)
             book_row,
         },
         layout,
-        false
+        -- Same look as before the shared uikit: header, thin divider, row,
+        -- and no closing line (the chapter bar follows right below).
+        { no_bottom_line = true }
     )
 
     if chapter_bar then
@@ -876,19 +379,19 @@ local function buildSections(stats, fonts, layout, popup)
             popup._chapter_bar_on_prev    = chapter_on_prev
             popup._chapter_bar_on_next    = chapter_on_next
         end
-            table.insert(sections, padded(layout.padding_h,
+            table.insert(sections, UI.padded(layout.padding_h,
                 Colors.newBar(layout.full_width - 2 * layout.padding_h, Size.line.thin, Colors.separator())))
         table.insert(sections, chapter_bar)
     end
-    table.insert(sections, padded(layout.padding_h,
+    table.insert(sections, UI.padded(layout.padding_h,
         Colors.newBar(layout.full_width - 2 * layout.padding_h, Size.line.thick, Colors.separator())))
-    local pace_header = buildSectionHeader(fonts.section, _("Pace"), layout.full_width)
+    local pace_header = UI.buildSectionHeader(fonts.section, _("Pace"), layout.full_width)
     if popup then popup._pace_header = pace_header end
     table.insert(sections, pace_header)
     table.insert(sections, VerticalSpan:new{ height = Size.padding.default })
-    table.insert(sections, padded(layout.padding_h,
+    table.insert(sections, UI.padded(layout.padding_h,
         Colors.newBar(layout.full_width - 2 * layout.padding_h, Size.line.thin, Colors.separator())))
-    table.insert(sections, padded(layout.padding_h, pace_row))
+    table.insert(sections, UI.padded(layout.padding_h, pace_row))
 
     -- Last row: "started N days ago" | "N days of reading left".
     -- The right cell (and the separator to its left) only appears once
@@ -912,7 +415,7 @@ local function buildSections(stats, fonts, layout, popup)
                 popup._finish_widget  = finish_tap
             end
             table.insert(sections, VerticalSpan:new{ height = Size.padding.small })
-            table.insert(sections, padded(layout.padding_h, buildTwoColRow(started_tap, finish_tap, layout)))
+            table.insert(sections, UI.padded(layout.padding_h, UI.buildTwoColRow(started_tap, finish_tap, layout)))
             table.insert(sections, VerticalSpan:new{ height = Size.padding.default })
         elseif started_widget then
             local started_full_widget = buildValueLine(
@@ -922,7 +425,7 @@ local function buildSections(stats, fonts, layout, popup)
             local started_tap = tappableWrap(started_full_widget, layout.full_width - 2 * layout.padding_h)
             if popup then popup._started_widget = started_tap end
             table.insert(sections, VerticalSpan:new{ height = Size.padding.small })
-            table.insert(sections, padded(layout.padding_h, started_tap))
+            table.insert(sections, UI.padded(layout.padding_h, started_tap))
             table.insert(sections, VerticalSpan:new{ height = Size.padding.default })
         elseif stats.finish_days_left then
             local finish_widget = buildValueLine(
@@ -934,7 +437,7 @@ local function buildSections(stats, fonts, layout, popup)
             local finish_tap = tappableWrap(finish_widget, layout.full_width - 2 * layout.padding_h)
             if popup then popup._finish_widget = finish_tap end
             table.insert(sections, VerticalSpan:new{ height = Size.padding.small })
-            table.insert(sections, padded(layout.padding_h, finish_tap))
+            table.insert(sections, UI.padded(layout.padding_h, finish_tap))
             table.insert(sections, VerticalSpan:new{ height = Size.padding.default })
         end
     end
@@ -946,13 +449,7 @@ local function buildSections(stats, fonts, layout, popup)
     return sections
 end
 
-local function hitTest(widget, x, y)
-    local d = widget and widget.dimen
-    if not d then return false end
-    return x >= d.x and x <= d.x + d.w and y >= d.y and y <= d.y + d.h
-end
-
--- Same as hitTest, but grows the widget's box by `pad` on every side before
+-- Same as UI.hitTest, but grows the widget's box by `pad` on every side before
 -- testing. Used for small tap targets - like the ‹ / › paging arrows - where
 -- the visible glyph is much smaller than a comfortable finger-sized tap
 -- area, without having to make the arrow itself visually bigger.
@@ -986,7 +483,7 @@ function ReadingStatsPopup:init()
         local info = self._stats.chapter_info
         -- Start on the page that contains the current chapter.
         -- Pages are 1, 1+PAGE_SIZE, 1+2*PAGE_SIZE, …
-        local page_start = math.floor((info.current - 1) / CHAPTER_BAR_PAGE_SIZE) * CHAPTER_BAR_PAGE_SIZE + 1
+        local page_start = math.floor((info.current - 1) / ChapterBar.PAGE_SIZE) * ChapterBar.PAGE_SIZE + 1
         self.chapter_bar_offset = math.max(1, page_start)
     end
     self:_buildUI()
@@ -996,7 +493,7 @@ end
 function ReadingStatsPopup:_buildUI()
     local screen_w = Screen:getWidth()
     local screen_h = Screen:getHeight()
-    self._layout   = buildLayout(screen_w, Size.padding.large, Screen:scaleBySize(20))
+    self._layout   = UI.buildLayout(screen_w, Size.padding.large, Screen:scaleBySize(20))
     local sections = buildSections(self._stats, self._fonts, self._layout, self)
 
     self.popup_frame = FrameContainer:new{
@@ -1057,7 +554,7 @@ function ReadingStatsPopup:gatherStats()
     local na_hhmm = { value = "—:—", unit = "" }
     local stats = {
         chapter_time_left_hhmm = na_hhmm,
-        next_chapter_time_hhmm = emptyValue(),
+        next_chapter_time_hhmm = UI.emptyValue(),
         book_time_left_hhmm    = na_hhmm,
         book_time_spent_hhmm   = zero_hhmm,
         book_progress          = zero_progress,
@@ -1066,9 +563,9 @@ function ReadingStatsPopup:gatherStats()
         pages_per_minute       = zero_pages_per_minute,
         days_reading           = zero_days_reading,
         days_to_go             = zero_days_to_go,
-        today_pages            = emptyValue(),
+        today_pages            = UI.emptyValue(),
         today_time_hhmm        = zero_hhmm,
-        today_pages_all        = emptyValue(),
+        today_pages_all        = UI.emptyValue(),
         today_time_all_hhmm    = zero_hhmm,
         chapter_info           = nil,
         has_next_chapter       = false,
@@ -1128,12 +625,12 @@ function ReadingStatsPopup:gatherStats()
     -- buildSections works even before the reader has enough history for a
     -- time estimate. The *_hhmm time estimates still need avg_time.
     if toc then
-        local chapter_pages_left = getChapterPagesLeft(ui, pageno)
+        local chapter_pages_left = ChapterInfo.getChapterPagesLeft(ui, pageno)
         if chapter_pages_left and chapter_pages_left >= 0 then
             stats.chapter_pages_left_count = chapter_pages_left
             if has_stats then
                 local ch_secs = chapter_pages_left * avg_time
-                stats.chapter_time_left_hhmm = formatTimeHHMM(ch_secs)
+                stats.chapter_time_left_hhmm = Locale.formatTimeHHMM(ch_secs)
             end
         end
 
@@ -1150,7 +647,7 @@ function ReadingStatsPopup:gatherStats()
             stats.next_chapter_pages_count = next_chapter_pages
             if has_stats then
                 local nc_secs = next_chapter_pages * avg_time
-                stats.next_chapter_time_hhmm = formatTimeHHMM(nc_secs)
+                stats.next_chapter_time_hhmm = Locale.formatTimeHHMM(nc_secs)
             end
         end
     end
@@ -1159,7 +656,7 @@ function ReadingStatsPopup:gatherStats()
         pages_left = BookProgress.pagesLeft(ui)
         if pages_left and pages_left > 0 then
             local bl_secs = (pages_left + 1) * avg_time
-            stats.book_time_left_hhmm = formatTimeHHMM(bl_secs)
+            stats.book_time_left_hhmm = Locale.formatTimeHHMM(bl_secs)
             stats.book_time_left_raw  = bl_secs
         elseif pages_left then
             -- Pace data exists and the book is genuinely finished (no pages
@@ -1193,11 +690,11 @@ function ReadingStatsPopup:gatherStats()
             total_time = tonumber(time_val) or 0
         end
         if total_time and total_time > 0 then
-            stats.book_time_spent_hhmm = formatTimeHHMM(total_time)
+            stats.book_time_spent_hhmm = Locale.formatTimeHHMM(total_time)
         end
 
         local total_days, today_p, today_t, all_p, all_t, days_since_start, started_timestamp =
-            getBookAndTodayStats(plugin.id_curr_book)
+            BookStatsData.getBookAndTodayStats(plugin.id_curr_book)
 
         -- "Started N days ago": only shown when there is at least one
         -- page_stat entry for this book (i.e. reading has actually begun).
@@ -1212,7 +709,7 @@ function ReadingStatsPopup:gatherStats()
         if total_days ~= nil then
             if total_time and total_time > 0 then
                 local avg_secs = total_time / total_days
-                stats.avg_time_per_day_hhmm = formatTimeHHMM(avg_secs)
+                stats.avg_time_per_day_hhmm = Locale.formatTimeHHMM(avg_secs)
             end
             -- current_page_count is the live reading position (set above,
             -- from BookProgress.counts) - a reliable proxy for "pages
@@ -1244,7 +741,7 @@ function ReadingStatsPopup:gatherStats()
             }
         end
         if today_t and today_t > 0 then
-            stats.today_time_hhmm = formatTimeHHMM(today_t)
+            stats.today_time_hhmm = Locale.formatTimeHHMM(today_t)
         end
 
         if all_p and all_p > 0 then
@@ -1254,7 +751,7 @@ function ReadingStatsPopup:gatherStats()
             }
         end
         if all_t and all_t > 0 then
-            stats.today_time_all_hhmm = formatTimeHHMM(all_t)
+            stats.today_time_all_hhmm = Locale.formatTimeHHMM(all_t)
         end
 
         self._has_book_id = true
@@ -1263,7 +760,7 @@ function ReadingStatsPopup:gatherStats()
     -- TOC cache
     if toc then
         local book_id = stats_plugin and stats_plugin.id_curr_book
-        stats.chapter_info = getCachedChapterInfo(book_id, toc, pages, pageno)
+        stats.chapter_info = ChapterInfo.getCachedChapterInfo(book_id, toc, pages, pageno)
     end
 
     return stats
@@ -1351,13 +848,13 @@ function ReadingStatsPopup:onTapClose(arg, ges_ev)
     if ges_ev then
         local x, y = ges_ev.pos.x, ges_ev.pos.y
 
-        if hitTest(self._chapter_headers, x, y) or hitTest(self._chapter_values, x, y) then
+        if UI.hitTest(self._chapter_headers, x, y) or UI.hitTest(self._chapter_values, x, y) then
             self._chapter_view_mode = (self._chapter_view_mode == "pages") and "time" or "pages"
             self:_rebuildUI()
             return true
         end
 
-        if hitTest(self._this_book_header, x, y) then
+        if UI.hitTest(self._this_book_header, x, y) then
             UIManager:close(self)
             if self.ui then
                 self.ui:handleEvent(require("ui/event"):new("ShowBookStats"))
@@ -1365,12 +862,12 @@ function ReadingStatsPopup:onTapClose(arg, ges_ev)
             return true
         end
 
-        if hitTest(self._pace_header, x, y) and self._stats and self._stats.book_id then
+        if UI.hitTest(self._pace_header, x, y) and self._stats and self._stats.book_id then
             self:openBookCalendar()
             return true
         end
 
-        if hitTest(self._pace_row, x, y) then
+        if UI.hitTest(self._pace_row, x, y) then
             self._pace_view_mode = (self._pace_view_mode == "pages") and "time" or "pages"
             self:_rebuildUI()
             return true
@@ -1386,14 +883,14 @@ function ReadingStatsPopup:onTapClose(arg, ges_ev)
             return true
         end
 
-        if hitTest(self._started_widget, x, y) and self._stats and self._stats.started_timestamp then
+        if UI.hitTest(self._started_widget, x, y) and self._stats and self._stats.started_timestamp then
             UIManager:show(InfoMessage:new{
                 text = _("Started:") .. " " .. formatEventDateTime(self._stats.started_timestamp),
             })
             return true
         end
 
-        if hitTest(self._finish_widget, x, y) and self._stats and self._stats.finish_timestamp then
+        if UI.hitTest(self._finish_widget, x, y) and self._stats and self._stats.finish_timestamp then
             UIManager:show(InfoMessage:new{
                 text = _("Expected finish:") .. " " .. formatEventDateTime(self._stats.finish_timestamp),
             })
@@ -1417,10 +914,5 @@ end
 -- from both the menu and the gesture/dispatcher system.
 --
 -- The chapter-bar height setting helpers are attached as static fields so
--- main.lua can reach them as StatsPopup.readChapterBarHeightSetting() etc,
--- the same way Insights.readFullRefreshSetting() works for the other view.
-ReadingStatsPopup.readChapterBarHeightSetting = readChapterBarHeightSetting
-ReadingStatsPopup.saveChapterBarHeightSetting = saveChapterBarHeightSetting
-ReadingStatsPopup.DEFAULT_CHAPTER_BAR_HEIGHT  = DEFAULT_CHAPTER_BAR_HEIGHT
 
 return ReadingStatsPopup

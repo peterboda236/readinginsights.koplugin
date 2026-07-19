@@ -23,7 +23,13 @@ and forwards the two "show popup" events to the right view.
 
 Both view files are loaded with loadfile()(...) rather than require(...)
 so they don't depend on this plugin's directory being on package.path -
-they get the shared Locale module passed straight in as their chunk argument.
+they get their dependencies passed in as one named table (see below).
+
+The insights view's settings (lib/insights_settings.lua) and data cache
+(lib/insights_cache.lua) are loaded here rather than from inside the view,
+for two reasons: the Tools-menu entries built below and the view itself
+then read and write one shared copy, and the view's own top-level local
+count stays clear of Lua's 200-per-scope limit (see those files' headers).
 ]]--
 
 local Dispatcher = require("dispatcher")
@@ -49,23 +55,16 @@ do
     PluginUtil = chunk()
 end
 local loadModule = PluginUtil.load
-local Settings     = loadModule("lib/settings.lua")
+local Prefs        = loadModule("lib/prefs.lua")
 local StatsDb      = loadModule("lib/statsdb.lua")
 local PopupUtil    = loadModule("lib/popuputil.lua")
 local BookProgress = loadModule("lib/bookprogress.lua")
+local ChapterInfo  = loadModule("lib/chapterinfo.lua")
+-- Queries behind the two book-specific popups, kept apart from the widgets
+-- that draw them, the same way the insights and records popups are split.
+local BookStatsData    = loadModule("lib/book_stats_data.lua",    { StatsDb = StatsDb })
+local BookCalendarData = loadModule("lib/book_calendar_data.lua", { StatsDb = StatsDb })
 
---[[
-Sleep-screen integration.
-
-Reading insights now registers itself as a genuine value of KOReader's own
-"screensaver_type" setting - the same global setting its own Settings >
-Screen > Sleep screen menu writes to for "Cover", "Random image", etc. -
-instead of keeping a separate on/off setting and overriding/restoring
-screensaver_type behind the scenes on every suspend/resume. See
-patchCoreScreensaver() below for how the core Screensaver module is taught
-to recognize this value, and addToMainMenu() for how "Reading insights"
-gets added as a selectable entry directly in that core menu.
-]]--
 local SCREENSAVER_TYPE_VALUE = "readinginsights"
 
 -- What to show in the title, in place of the (hidden) close button, while
@@ -74,11 +73,11 @@ local SCREENSAVER_TYPE_VALUE = "readinginsights"
 local SCREENSAVER_LABEL_SETTING = "readinginsights_screensaver_label_mode"
 
 local function readScreensaverLabelMode()
-    return Settings.read(SCREENSAVER_LABEL_SETTING, "none")
+    return Prefs.read(SCREENSAVER_LABEL_SETTING, "none")
 end
 
 local function saveScreensaverLabelMode(mode)
-    Settings.save(SCREENSAVER_LABEL_SETTING, mode)
+    Prefs.save(SCREENSAVER_LABEL_SETTING, mode)
 end
 
 --[[
@@ -97,30 +96,30 @@ local LAST_INSTALL_SOURCE_SETTING = "readinginsights_last_install_source"
 local CHECK_UPDATES_SETTING       = "readinginsights_check_updates"
 
 local function readDevBranch()
-    return Settings.read(DEV_BRANCH_SETTING, "")
+    return Prefs.read(DEV_BRANCH_SETTING, "")
 end
 
 local function saveDevBranch(branch)
-    Settings.save(DEV_BRANCH_SETTING, branch)
+    Prefs.save(DEV_BRANCH_SETTING, branch)
 end
 
 local function readLastInstallSource()
-    return Settings.read(LAST_INSTALL_SOURCE_SETTING, "release")
+    return Prefs.read(LAST_INSTALL_SOURCE_SETTING, "release")
 end
 
 local function saveLastInstallSource(source)
-    Settings.save(LAST_INSTALL_SOURCE_SETTING, source)
+    Prefs.save(LAST_INSTALL_SOURCE_SETTING, source)
 end
 
 local function readCheckUpdates()
-    return Settings.isTrue(CHECK_UPDATES_SETTING)
+    return Prefs.isTrue(CHECK_UPDATES_SETTING)
 end
 
 local function saveCheckUpdates(value)
     if value then
-        Settings.makeTrue(CHECK_UPDATES_SETTING)
+        Prefs.makeTrue(CHECK_UPDATES_SETTING)
     else
-        Settings.makeFalse(CHECK_UPDATES_SETTING)
+        Prefs.makeFalse(CHECK_UPDATES_SETTING)
     end
 end
 
@@ -184,45 +183,69 @@ local function patchCoreScreensaver()
     end
 end
 
-local Locale = loadModule("lib/locale.lua", PluginUtil)
+-- Every module below takes its dependencies as one named table rather than
+-- as positional chunk arguments, so adding a module here can't shift what
+-- an existing one receives. Load order is still bottom-up: nothing is
+-- passed before it exists.
+local Locale = loadModule("lib/locale.lua", { PluginUtil = PluginUtil })
 local _ = Locale._
+local Colors = loadModule("lib/colors.lua", { Locale = Locale, PluginUtil = PluginUtil, Prefs = Prefs })
+local Fonts  = loadModule("lib/fonts.lua",  { Locale = Locale, PluginUtil = PluginUtil, Prefs = Prefs })
+local UI     = loadModule("lib/uikit.lua",  { Colors = Colors })
 
--- Shared chart/text color settings (Colors menu), used by both views so
--- there's a single, unified place to configure them. See colors.lua.
-local Colors = loadModule("lib/colors.lua", Locale, PluginUtil, Settings)
+local ViewSettings  = loadModule("lib/insights_settings.lua", { Prefs = Prefs })
+local InsightsCache = loadModule("lib/insights_cache.lua")
 
--- Shared popup font settings (Fonts menu), same idea as Colors above but
--- for the section/value/label/small text roles in both popups. See
--- fonts.lua.
-local Fonts = loadModule("lib/fonts.lua", Locale, PluginUtil, Settings)
+local ChapterBar = loadModule("widgets/chapterbarwidget.lua",
+    { Colors = Colors, Fonts = Fonts, UI = UI })
 
-local Insights = loadModule("views/insights_view.lua", Locale, Colors, Fonts, Settings, StatsDb, PopupUtil)
+-- The insights popup's figures: streaks, yearly/monthly aggregates, the
+-- last-week and 8-week series, all-time totals and the reading-goal count.
+-- Kept apart from the popup that draws them (see lib/insights_data.lua).
+local InsightsData = loadModule("lib/insights_data.lua",
+    { Locale = Locale, StatsDb = StatsDb, Cache = InsightsCache, VS = ViewSettings })
 
--- Per-book reading calendar (its own file now). Loaded before the book-stats
--- overlay so that overlay can hand tapping the "Pace" title straight to it.
--- Also reached directly from the "current book calendar" gesture and exposes
--- the calendar-cell-content setting used in Advanced settings below. See
--- book_calendar_view.lua.
-local BookCalendar = loadModule("views/book_calendar_view.lua", Locale, Colors, Fonts, Settings, StatsDb, BookProgress)
+-- The three popups the insights view opens: its 8-week trend chart, the
+-- reading heatmaps, and the book lists. Loaded before the view because it
+-- receives them; the book lists get what they need from the view the other
+-- way round, through BookList.bind() (see booklist_view.lua).
+local Trend = loadModule("views/trend_view.lua",
+    { Colors = Colors, Locale = Locale, VS = ViewSettings })
+local Heatmap = loadModule("views/heatmap_view.lua", {
+    Colors = Colors, Fonts = Fonts, Locale = Locale, VS = ViewSettings, UI = UI,
+    Data = InsightsData,
+})
+local BookList = loadModule("views/booklist_view.lua", {
+    Colors = Colors, Locale = Locale, VS = ViewSettings, UI = UI,
+    Data = InsightsData,
+})
 
--- Compact live "current book progress" overlay (book view only). See
--- book_stats_view.lua (formerly stats_view.lua).
-local StatsPopup = loadModule("views/book_stats_view.lua", Locale, Colors, Fonts, Settings, StatsDb, BookProgress, BookCalendar)
-
--- Personal reading records / milestone popup (general - works in both
--- Reader view and File manager, same as Insights, since none of its data
--- is tied to a specific open book). See record_view.lua.
-local Records = loadModule("views/records_view.lua", Locale, Colors, Fonts, StatsDb, PopupUtil)
-
--- In-app updater (Updates menu): lets the user check for and install new
--- releases of this plugin straight from GitHub. See updater.lua.
-local Updater = loadModule("lib/updater.lua", Locale)
-
--- About dialog (About menu entry, right after Updates): a small popup
--- with the plugin title, installed version (via Updater, above), a short
--- description, and the GitHub repository URL. Uses its own hard-coded
--- fonts, not the (user-customisable) Fonts module. See about.lua.
-local About = loadModule("views/about.lua", Locale, Updater, PopupUtil)
+local Insights = loadModule("views/insights_view.lua", {
+    Locale = Locale, Colors = Colors, Fonts = Fonts,
+    PopupUtil = PopupUtil, VS = ViewSettings, Cache = InsightsCache, UI = UI,
+    Trend = Trend, Heatmap = Heatmap, BookList = BookList, Data = InsightsData,
+})
+local BookCalendar = loadModule("views/book_calendar_view.lua", {
+    Locale = Locale, Colors = Colors, Fonts = Fonts, Prefs = Prefs,
+    BookProgress = BookProgress, UI = UI, CalendarData = BookCalendarData,
+})
+local StatsPopup = loadModule("views/book_stats_view.lua", {
+    Locale = Locale, Colors = Colors, Fonts = Fonts, Prefs = Prefs,
+    BookProgress = BookProgress, BookCalendar = BookCalendar,
+    ChapterInfo = ChapterInfo, ChapterBar = ChapterBar, UI = UI,
+    BookStatsData = BookStatsData,
+})
+-- Records: the queries and their cache (lib/records_data.lua) are separate
+-- from the popup that draws them.
+local RecordsData = loadModule("lib/records_data.lua", { StatsDb = StatsDb })
+local Records = loadModule("views/records_view.lua", {
+    Locale = Locale, Colors = Colors, Fonts = Fonts, PopupUtil = PopupUtil,
+    RecordsData = RecordsData,
+})
+local Updater = loadModule("lib/updater.lua", { Locale = Locale })
+local About   = loadModule("views/about.lua",
+    { Locale = Locale, Updater = Updater, PopupUtil = PopupUtil })
+local Menu    = loadModule("lib/menu.lua", { Locale = Locale })
 
 --[[
 Plugin wiring.
@@ -741,439 +764,28 @@ end
 -- Sub-entries: open the insights popup, open the stats popup (book view
 -- only), a separator, then a "Settings" submenu holding the two
 -- persistent settings for the insights popup plus the Colors submenu.
+-- Everything the menu module needs beyond the plugin instance itself: the
+-- views it opens dialogs for, the settings modules its toggles read and
+-- write, and the two sleep-screen helpers that live here because the
+-- screensaver integration around them does too.
+function ReadingInsights:_menuDeps()
+    return {
+        BookCalendar                = BookCalendar,
+        About                       = About,
+        Colors                      = Colors,
+        Fonts                       = Fonts,
+        Locale                      = Locale,
+        ViewSettings                = ViewSettings,
+        ChapterBar                  = ChapterBar,
+        SCREENSAVER_TYPE_VALUE      = SCREENSAVER_TYPE_VALUE,
+        patchScreensaverMenuBuilder = patchScreensaverMenuBuilder,
+        readScreensaverLabelMode    = readScreensaverLabelMode,
+        saveScreensaverLabelMode    = saveScreensaverLabelMode,
+    }
+end
+
 function ReadingInsights:addToMainMenu(menu_items)
-    local sub_item_table = {
-        {
-            text = _("Show Reading insights"),
-            keep_menu_open = false,
-            callback = function()
-                self:onShowReadingInsightsPopup()
-            end,
-        },
-        {
-            text = _("Show Records"),
-            keep_menu_open = false,
-            callback = function()
-                self:onShowReadingRecordsPopup()
-            end,
-        },
-    }
-
-    local has_open_document = self:_hasOpenDocument()
-    if has_open_document then
-        table.insert(sub_item_table, {
-            text = _("Show Book progress"),
-            keep_menu_open = false,
-            callback = function()
-                self:onShowReadingStatsPopup()
-            end,
-        })
-        table.insert(sub_item_table, {
-            text = _("Show Book progress calendar"),
-            keep_menu_open = false,
-            callback = function()
-                self:onShowBookCalendarPopup()
-            end,
-        })
-    end
-
-    -- Separator after the two "open a popup" entries, before the
-    -- settings submenu below.
-    sub_item_table[#sub_item_table].separator = true
-
-    local settings_sub_item_table = {}
-
-    -- Whether/how it's used as a sleep screen is normally set directly in
-    -- KOReader's own Settings > Screen > Sleep screen menu (see the
-    -- menu_items.screensaver injection at the end of this function).
-    --
-    -- That injection depends on menu_items.screensaver already existing
-    -- (with a sub_item_table) by the time this addToMainMenu() runs, which
-    -- isn't a guaranteed, documented part of KOReader's plugin API - just
-    -- an observed implementation detail. If it ever doesn't hold (older/
-    -- newer core versions, a different frontend, plugin load order, an
-    -- interaction with another sleep-screen plugin, etc.) the injection
-    -- silently does nothing, and without a fallback here there would be no
-    -- way at all to turn this on. So the same control is duplicated here,
-    -- inside our own Settings submenu, guaranteed to always work
-    -- regardless of what core's menu looks like.
-    --[[
-    table.insert(settings_sub_item_table, {
-        text = _("Use as sleep screen"),
-        keep_menu_open = true,
-        checked_func = function()
-            return G_reader_settings:readSetting("screensaver_type") == SCREENSAVER_TYPE_VALUE
-        end,
-        callback = function()
-            if G_reader_settings:readSetting("screensaver_type") == SCREENSAVER_TYPE_VALUE then
-                G_reader_settings:saveSetting("screensaver_type", "disable")
-            else
-                G_reader_settings:saveSetting("screensaver_type", SCREENSAVER_TYPE_VALUE)
-            end
-        end,
-    })
-    ]]--
-
-    -- Sleep-screen indicator now lives at the top of Advanced settings
-    -- instead of here - see advanced_settings_sub_item_table below.
-
-    table.insert(settings_sub_item_table, {
-        text = _("Full-screen refresh on open/close"),
-        keep_menu_open = true,
-        checked_func = function()
-            return Insights.readFullRefreshSetting()
-        end,
-        callback = function()
-            Insights.saveFullRefreshSetting(not Insights.readFullRefreshSetting())
-        end,
-    })
-
-    -- Bar-chart height settings: one entry per chart, each opening a
-    -- SpinWidget (KOReader's standard numeric-value picker) with the
-    -- current value pre-filled and a "default" value to reset to. The
-    -- default matches the value that was hardcoded before this setting
-    -- existed, so "reset to default" reproduces the original look exactly.
-    local function buildBarHeightMenuEntry(text, read_fn, save_fn, default_value, value_min, value_max)
-        return {
-            text_func = function()
-                return text .. ": " .. tostring(read_fn())
-            end,
-            keep_menu_open = true,
-            callback = function(touchmenu_instance)
-                local SpinWidget = require("ui/widget/spinwidget")
-                UIManager:show(SpinWidget:new{
-                    title_text    = text,
-                    value         = read_fn(),
-                    value_min     = value_min,
-                    value_max     = value_max,
-                    value_step    = 1,
-                    value_hold_step = 5,
-                    default_value = default_value,
-                    ok_text       = _("Set"),
-                    callback      = function(spin)
-                        save_fn(spin.value)
-                        if touchmenu_instance then
-                            touchmenu_instance:updateItems()
-                        end
-                    end,
-                })
-            end,
-        }
-    end
-
-    -- Unified color settings for every chart/diagram and label in both
-    -- popups (insights and stats). Any change here applies to both, next
-    -- time each popup is (re)opened.
-    table.insert(settings_sub_item_table, {
-        text = _("Colors"),
-        keep_menu_open = true,
-        sub_item_table = Colors.buildMenu(),
-    })
-
-    -- Unified font settings (name + size) for every text role in both
-    -- popups. Same idea as Colors above. Any change here applies to both,
-    -- next time each popup is (re)opened.
-    table.insert(settings_sub_item_table, {
-        text = _("Fonts"),
-        keep_menu_open = true,
-        separator = true,
-        sub_item_table = Fonts.buildMenu(),
-    })
-
-    -- "Advanced settings": less commonly touched settings, tucked away in
-    -- their own submenu (bar chart height, reading heatmap range, and the
-    -- 8-week chart order, in that order - no separators inside). A
-    -- separator is placed above this entry itself (set on the preceding
-    -- "Fonts" entry) to set it apart from the rest of the Settings menu.
-    local advanced_settings_sub_item_table = {}
-
-    -- Moved here (to the very top) from the Settings submenu, keeping its
-    -- separator so it still visually stands apart from the entries below.
-    table.insert(advanced_settings_sub_item_table, {
-        text_func = function()
-            local label_mode = readScreensaverLabelMode()
-            return _("Sleep-screen indicator") .. ": " ..
-                ((label_mode == "text") and _("\"(sleeping…)\" after the title") or _("None"))
-        end,
-        keep_menu_open = true,
-        sub_item_table = {
-            {
-                text = _("None"),
-                keep_menu_open = true,
-                radio = true,
-                checked_func = function() return readScreensaverLabelMode() == "none" end,
-                callback = function() saveScreensaverLabelMode("none") end,
-            },
-            {
-                text = _("\"(sleeping…)\" after the title"),
-                keep_menu_open = true,
-                radio = true,
-                checked_func = function() return readScreensaverLabelMode() == "text" end,
-                callback = function() saveScreensaverLabelMode("text") end,
-            },
-        },
-    })
-
-    table.insert(advanced_settings_sub_item_table, {
-        text = _("Bar chart height"),
-        keep_menu_open = true,
-        sub_item_table = {
-            buildBarHeightMenuEntry(
-                _("Reading insights") .. ": " .. _("Last week"),
-                Insights.readWeeklyBarHeightSetting,
-                Insights.saveWeeklyBarHeightSetting,
-                Insights.DEFAULT_WEEKLY_BAR_HEIGHT,
-                10, 200
-            ),
-            buildBarHeightMenuEntry(
-                _("Reading insights") .. ": " .. _("Months"),
-                Insights.readMonthlyBarHeightSetting,
-                Insights.saveMonthlyBarHeightSetting,
-                Insights.DEFAULT_MONTHLY_BAR_HEIGHT,
-                10, 200
-            ),
-            buildBarHeightMenuEntry(
-                _("Book progress") .. ": " .. _("Chapters"),
-                StatsPopup.readChapterBarHeightSetting,
-                StatsPopup.saveChapterBarHeightSetting,
-                StatsPopup.DEFAULT_CHAPTER_BAR_HEIGHT,
-                10, 200
-            ),
-        },
-    })
-
-    table.insert(advanced_settings_sub_item_table, {
-        text_func = function()
-            local months = Insights.readHeatmapMonthsSetting()
-            local label
-            if months == 3 then label = _("3 months")
-            elseif months == 6 then label = _("6 months")
-            else label = _("4 months") end
-            return _("Reading heatmap range") .. ": " .. label
-        end,
-        keep_menu_open = true,
-        sub_item_table = {
-            {
-                text = _("3 months"),
-                keep_menu_open = true,
-                radio = true,
-                checked_func = function() return Insights.readHeatmapMonthsSetting() == 3 end,
-                callback = function() Insights.saveHeatmapMonthsSetting(3) end,
-            },
-            {
-                text = _("4 months"),
-                keep_menu_open = true,
-                radio = true,
-                checked_func = function() return Insights.readHeatmapMonthsSetting() == 4 end,
-                callback = function() Insights.saveHeatmapMonthsSetting(4) end,
-            },
-            {
-                text = _("6 months"),
-                keep_menu_open = true,
-                radio = true,
-                checked_func = function() return Insights.readHeatmapMonthsSetting() == 6 end,
-                callback = function() Insights.saveHeatmapMonthsSetting(6) end,
-            },
-        },
-    })
-
-    table.insert(advanced_settings_sub_item_table, {
-        text_func = function()
-            local fmt = Insights.readHeatmapHourFormatSetting() == "12"
-                and _("12-hour (AM/PM)")
-                or  _("24-hour")
-            return _("Heatmap hour format") .. ": " .. fmt
-        end,
-        keep_menu_open = true,
-        sub_item_table = {
-            {
-                text = _("24-hour"),
-                keep_menu_open = true,
-                radio = true,
-                checked_func = function()
-                    return Insights.readHeatmapHourFormatSetting() == "24"
-                end,
-                callback = function() Insights.saveHeatmapHourFormatSetting("24") end,
-            },
-            {
-                text = _("12-hour (AM/PM)"),
-                keep_menu_open = true,
-                radio = true,
-                checked_func = function()
-                    return Insights.readHeatmapHourFormatSetting() == "12"
-                end,
-                callback = function() Insights.saveHeatmapHourFormatSetting("12") end,
-            },
-        },
-    })
-
-    table.insert(advanced_settings_sub_item_table, {
-        text_func = function()
-            local start_day = Insights.readWeekStartSetting() == "sunday"
-                and _("Sunday")
-                or  _("Monday")
-            return _("Week start day") .. ": " .. start_day
-        end,
-        keep_menu_open = true,
-        sub_item_table = {
-            {
-                text = _("Monday"),
-                keep_menu_open = true,
-                radio = true,
-                checked_func = function()
-                    return Insights.readWeekStartSetting() == "monday"
-                end,
-                callback = function() Insights.saveWeekStartSetting("monday") end,
-            },
-            {
-                text = _("Sunday"),
-                keep_menu_open = true,
-                radio = true,
-                checked_func = function()
-                    return Insights.readWeekStartSetting() == "sunday"
-                end,
-                callback = function() Insights.saveWeekStartSetting("sunday") end,
-            },
-        },
-    })
-
-    table.insert(advanced_settings_sub_item_table, {
-        text_func = function()
-            local order = Insights.readAscendingSetting()
-                and _("Oldest first")
-                or  _("Newest first")
-            return _("8-week chart order") .. ": " .. order
-        end,
-        keep_menu_open = true,
-        sub_item_table = {
-            {
-                text = _("Newest first (descending)"),
-                keep_menu_open = true,
-                radio = true,
-                checked_func = function()
-                    return not Insights.readAscendingSetting()
-                end,
-                callback = function()
-                    Insights.saveAscendingSetting(false)
-                end,
-            },
-            {
-                text = _("Oldest first (ascending)"),
-                keep_menu_open = true,
-                radio = true,
-                checked_func = function()
-                    return Insights.readAscendingSetting()
-                end,
-                callback = function()
-                    Insights.saveAscendingSetting(true)
-                end,
-            },
-        },
-    })
-
-    table.insert(advanced_settings_sub_item_table, {
-        text         = _("Show long durations (24h+) as days"),
-        keep_menu_open = true,
-        checked_func = function() return Locale.readDurationDaysSetting() end,
-        callback     = function()
-            Locale.saveDurationDaysSetting(not Locale.readDurationDaysSetting())
-        end,
-    })
-
-    -- What the per-book reading calendar's day cells show: cumulative
-    -- "+13%" progress through the whole book (default), that day's own
-    -- page count ("+101o"), or that day's own time spent (honoring
-    -- KOReader's global "Duration format" setting) - see
-    -- BookCalendar.readCalendarCellModeSetting in book_calendar_view.lua.
-    table.insert(advanced_settings_sub_item_table, {
-        text_func = function()
-            local mode_key = BookCalendar.readCalendarCellModeSetting()
-            local mode = (mode_key == "pages" and _("Pages"))
-                or (mode_key == "time" and _("Time"))
-                or _("Percent")
-            return _("Book calendar cell content") .. ": " .. mode
-        end,
-        keep_menu_open = true,
-        sub_item_table = {
-            {
-                text = _("Percent"),
-                keep_menu_open = true,
-                radio = true,
-                checked_func = function()
-                    return BookCalendar.readCalendarCellModeSetting() == "percent"
-                end,
-                callback = function() BookCalendar.saveCalendarCellModeSetting("percent") end,
-            },
-            {
-                text = _("Pages"),
-                keep_menu_open = true,
-                radio = true,
-                checked_func = function()
-                    return BookCalendar.readCalendarCellModeSetting() == "pages"
-                end,
-                callback = function() BookCalendar.saveCalendarCellModeSetting("pages") end,
-            },
-            {
-                text = _("Time"),
-                keep_menu_open = true,
-                radio = true,
-                checked_func = function()
-                    return BookCalendar.readCalendarCellModeSetting() == "time"
-                end,
-                callback = function() BookCalendar.saveCalendarCellModeSetting("time") end,
-            },
-        },
-    })
-
-    table.insert(settings_sub_item_table, {
-        text = _("Advanced settings"),
-        keep_menu_open = true,
-        sub_item_table = advanced_settings_sub_item_table,
-    })
-
-    table.insert(sub_item_table, {
-        text = _("Settings"),
-        keep_menu_open = true,
-        sub_item_table = settings_sub_item_table,
-    })
-
-    -- In-app updater: check for / install new releases straight from
-    -- GitHub. See updater.lua and the ReadingInsights:_updateSubItems()
-    -- family of methods above.
-    table.insert(sub_item_table, {
-        text                = _("Updates"),
-        sub_item_table_func = function() return self:_updateSubItems() end,
-        separator           = true,
-    })
-
-    -- About: plugin title, installed version, short description, and the
-    -- GitHub repository URL. See about.lua.
-    table.insert(sub_item_table, {
-        text = _("About"),
-        keep_menu_open = true,
-        callback = function()
-            About.show()
-        end,
-    })
-
-    menu_items.reading_insights_popup = {
-        text = _("Reading insights"),
-        sorting_hint = "tools",
-        sub_item_table = sub_item_table,
-    }
-
-    --[[
-    No standalone top-level "Reading insights sleep screen" entry anymore -
-    the "Reading insights" choice already lives inside KOReader's own
-    Settings > Screen > Sleep screen > Wallpaper radio group (alongside
-    "Document cover", "Random image", etc.), baked in by
-    patchScreensaverMenuBuilder() above. Having a second, separate entry
-    right next to the Sleep screen submenu just duplicated that same
-    screensaver_type toggle in a confusing spot, so it's been removed -
-    the Wallpaper-submenu entry is now the only place to pick it from
-    (besides the Tools > Reading insights > Settings > "Use as sleep
-    screen" quick toggle below, which stays).
-    ]]--
+    menu_items.reading_insights_popup = Menu.build(self, self:_menuDeps())
 end
 
 return ReadingInsights

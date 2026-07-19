@@ -17,8 +17,8 @@ Two ways in, both funnelled through M.show(opts) at the bottom:
     already-computed total_pages / finish / started timestamps plus an
     on_close callback so it can reopen itself afterwards).
 
-Loaded by main.lua via loadfile(...)(Locale, Colors, Fonts, Settings,
-StatsDb, BookProgress), the same shared modules the other views get.
+Loaded by main.lua with the usual shared modules plus CalendarData, this
+popup's own queries (lib/book_calendar_data.lua).
 ]]--
 
 local Blitbuffer      = require("ffi/blitbuffer")
@@ -41,8 +41,11 @@ local VerticalGroup   = require("ui/widget/verticalgroup")
 local VerticalSpan    = require("ui/widget/verticalspan")
 local Screen          = Device.screen
 
--- Shared modules, passed in by main.lua (see header).
-local Locale, Colors, Fonts, Settings, StatsDb, BookProgress = ...
+-- Shared modules, passed in as one named table by main.lua (see there).
+local deps = ...
+local Locale, Colors, Fonts, Prefs, BookProgress, UI, CalendarData =
+    deps.Locale, deps.Colors, deps.Fonts, deps.Prefs, deps.BookProgress,
+    deps.UI, deps.CalendarData
 local _            = Locale._
 local N_           = Locale.N_
 local getLangBase  = Locale.getLangBase
@@ -65,31 +68,6 @@ local MONTH_FULL_HU_LC = {
     "július", "augusztus", "szeptember", "október", "november", "december",
 }
 
-
--- { value = "", unit = "" } placeholder, matching the shape formatTimeHHMM
--- returns for real durations (kept tiny and local; book_stats_view.lua has
--- its own copy for its own value lines).
-local function emptyValue()
-    return { value = "", unit = "" }
-end
-
--- Seconds as a clock-style duration honouring KOReader's global duration
--- format (see Locale.formatDuration); returns { value, unit } so the cell/
--- day-detail text can render a split "day"/"nap" suffix in plain style.
-local function formatTimeHHMM(seconds)
-    if not seconds or seconds ~= seconds then
-        return emptyValue()
-    end
-    return Locale.formatDurationParts(seconds, true)
-end
-
--- Point-in-widget hit test (widget must have a resolved .dimen).
-local function hitTest(widget, x, y)
-    local d = widget and widget.dimen
-    if not d then return false end
-    return x >= d.x and x <= d.x + d.w and y >= d.y and y <= d.y + d.h
-end
-
 -- ---------------------------------------------------------------------
 -- Book-calendar cell content setting (Settings > Advanced settings >
 -- "Book calendar cell content"). Controls the small text line under each
@@ -105,168 +83,14 @@ local SETTINGS_KEY_CALENDAR_CELL_MODE = "reading_insights_calendar_cell_mode"
 local DEFAULT_CALENDAR_CELL_MODE      = "percent"
 
 local function readCalendarCellModeSetting()
-    local v = Settings.read(SETTINGS_KEY_CALENDAR_CELL_MODE, DEFAULT_CALENDAR_CELL_MODE)
+    local v = Prefs.read(SETTINGS_KEY_CALENDAR_CELL_MODE, DEFAULT_CALENDAR_CELL_MODE)
     if v == nil then return DEFAULT_CALENDAR_CELL_MODE end
     return v
 end
 
 local function saveCalendarCellModeSetting(mode)
-    Settings.save(SETTINGS_KEY_CALENDAR_CELL_MODE, mode)
+    Prefs.save(SETTINGS_KEY_CALENDAR_CELL_MODE, mode)
 end
-
-
--- ---------------------------------------------------------------------
--- Per-book calendar queries (statistics.sqlite3, via the shared StatsDb).
--- ---------------------------------------------------------------------
-
--- Per-day { pages, duration } for one month, plus that month's max daily
--- duration (for heatmap scaling). pages = distinct pages touched that day.
-local function getBookDailyStatsForMonth(book_id, year, month)
-    local daily_map = {}
-    if not book_id then return daily_map, 0 end
-
-    local conn = StatsDb.open()
-    if not conn then return daily_map, 0 end
-
-    local year_month = string.format("%04d-%02d", year, month)
-    local sql = string.format([[
-        SELECT day, count(*), sum(duration)
-        FROM (
-            SELECT strftime('%%d', start_time, 'unixepoch', 'localtime') AS day,
-                   page,
-                   sum(duration) AS duration
-            FROM   page_stat
-            WHERE  id_book = %d
-            AND    strftime('%%Y-%%m', start_time, 'unixepoch', 'localtime') = '%s'
-            GROUP  BY day, page
-        )
-        GROUP BY day
-        ORDER BY day;
-    ]], book_id, year_month)
-
-    local max_duration = 0
-    StatsDb.withStatement(conn, sql, function(stmt)
-        for row in stmt:rows() do
-            local day      = tonumber(row[1])
-            local pages    = tonumber(row[2]) or 0
-            local duration = tonumber(row[3]) or 0
-            if day then
-                daily_map[day] = { pages = pages, duration = duration }
-                if duration > max_duration then max_duration = duration end
-            end
-        end
-    end)
-
-    conn:close()
-    return daily_map, max_duration
-end
-
--- Year/month of this book's most recent page_stat entry, so the calendar
--- opens on the month last actually read in. nil, nil if no reading yet.
-local function getBookLastReadYearMonth(book_id)
-    if not book_id then return nil, nil end
-    local conn = StatsDb.open()
-    if not conn then return nil, nil end
-
-    local sql = string.format([[
-        SELECT strftime('%%Y', start_time, 'unixepoch', 'localtime'),
-               strftime('%%m', start_time, 'unixepoch', 'localtime')
-        FROM   page_stat
-        WHERE  id_book = %d
-        ORDER  BY start_time DESC
-        LIMIT  1
-    ]], book_id)
-    local y, m = conn:rowexec(sql)
-    conn:close()
-    if not y or not m then return nil, nil end
-    return tonumber(y), tonumber(m)
-end
-
--- This book's first-ever page_stat start_time (when reading started), or
--- nil if there's no reading data yet.
-local function getBookStartedTimestamp(book_id)
-    if not book_id then return nil end
-    local conn = StatsDb.open()
-    if not conn then return nil end
-
-    local sql = string.format([[
-        SELECT start_time
-        FROM   page_stat
-        WHERE  id_book = %d
-        ORDER  BY start_time ASC
-        LIMIT  1
-    ]], book_id)
-    local started_timestamp = conn:rowexec(sql)
-    conn:close()
-    return started_timestamp and tonumber(started_timestamp) or nil
-end
-
--- Whether this book has any page_stat entry in the given year/month, used
--- to stop paging back into empty months.
-local function bookCalendarMonthHasData(book_id, year, month)
-    if not book_id then return false end
-    local conn = StatsDb.open()
-    if not conn then return false end
-
-    local year_month = string.format("%04d-%02d", year, month)
-    local sql = string.format([[
-        SELECT EXISTS(
-            SELECT 1 FROM page_stat
-            WHERE  id_book = %d
-            AND    strftime('%%Y-%%m', start_time, 'unixepoch', 'localtime') = '%s'
-            LIMIT  1
-        );
-    ]], book_id, year_month)
-    local exists = conn:rowexec(sql)
-    conn:close()
-    return tonumber(exists) == 1
-end
-
-
--- "How far into the book had I gotten as of the last page reached this day"
--- ratio (0..1), from each day's chronologically LAST page_stat entry /
--- total_pages. Deliberately not MAX(page) (avoids end-of-book glossary
--- jumps spiking it) and not a running ratchet across days. Only fills in
--- days that actually have reading recorded.
-local function getBookCumulativeProgressForMonth(book_id, year, month, total_pages)
-    local ratios = {}
-    if not book_id or not total_pages or total_pages <= 0 then return ratios end
-
-    local conn = StatsDb.open()
-    if not conn then return ratios end
-
-    local year_month = string.format("%04d-%02d", year, month)
-
-    -- Ordered ASC so the last write per day wins - each day's value ends up
-    -- being its chronologically last page, no window function needed.
-    local day_rows_sql = string.format([[
-        SELECT strftime('%%d', start_time, 'unixepoch', 'localtime') AS day, page
-        FROM   page_stat
-        WHERE  id_book = %d
-        AND    strftime('%%Y-%%m', start_time, 'unixepoch', 'localtime') = '%s'
-        ORDER  BY start_time ASC
-    ]], book_id, year_month)
-
-    local day_last_page = {}
-    StatsDb.withStatement(conn, day_rows_sql, function(stmt)
-        for row in stmt:rows() do
-            local day  = tonumber(row[1])
-            local page = tonumber(row[2])
-            if day and page then day_last_page[day] = page end
-        end
-    end)
-    conn:close()
-
-    for day, page in pairs(day_last_page) do
-        local ratio = page / total_pages
-        if ratio > 1 then ratio = 1 end
-        if ratio < 0 then ratio = 0 end
-        ratios[day] = ratio
-    end
-
-    return ratios
-end
-
 
 -- First letter of the already-translated "page(s)" word, used as a
 -- compact unit abbreviation in the calendar cell (see
@@ -284,8 +108,8 @@ end
 --   "pages"             - that day's own page count, e.g. "+101o"
 --   "time"              - that day's own time spent, e.g. "+0:23" or
 --                          "+23m", whichever clock style KOReader's global
---                          "Duration format" setting (Settings ▸ Time and
---                          date) is set to - see formatTimeHHMM above.
+--                          "Duration format" setting (Prefs ▸ Time and
+--                          date) is set to - see Locale.formatTimeHHMM above.
 -- Returns "" for days with no reading, in any mode.
 local function buildBookCalendarCellText(entry, total_pages)
     if not entry or not entry.pages or entry.pages <= 0 then return "" end
@@ -297,7 +121,7 @@ local function buildBookCalendarCellText(entry, total_pages)
     end
 
     if mode == "time" then
-        local time_td = formatTimeHHMM(entry.duration or 0)
+        local time_td = Locale.formatTimeHHMM(entry.duration or 0)
         local unit = time_td.unit ~= "" and (" " .. time_td.unit) or ""
         return time_td.value .. unit
     end
@@ -343,7 +167,7 @@ end
 -- same cell, the checkmark wins and the finish_day flag is suppressed for
 -- that cell - see is_book_finished_day below.
 local function buildBookCalendarGrid(daily_map, year, month, day_font, small_font, content_width, total_pages, cumulative_ratios, finish_day, start_day)
-    local week_start_wd = Settings.weekStartWday() -- 0=Sun, 1=Mon
+    local week_start_wd = Prefs.weekStartWday() -- 0=Sun, 1=Mon
     local gap    = Screen:scaleBySize(2)
     local cols   = 7
     local cell_w = math.floor((content_width - (cols - 1) * gap) / cols)
@@ -725,13 +549,13 @@ function BookCalendarPopup:_rebuild()
     -- calendar can't be paged back into empty months.
     local prev_month, prev_year = self.month - 1, self.year
     if prev_month < 1 then prev_month = 12; prev_year = prev_year - 1 end
-    local prev_available = bookCalendarMonthHasData(self.book_id, prev_year, prev_month)
+    local prev_available = CalendarData.bookCalendarMonthHasData(self.book_id, prev_year, prev_month)
 
     local title_row, left_arrow_frame, right_arrow_frame, left_w, right_w, header_h = buildBookCalendarHeader(
         title_str, content_width, Fonts.getFace("stats_section"), prev_available, next_available)
 
-    local daily_map = getBookDailyStatsForMonth(self.book_id, self.year, self.month)
-    local cumulative_ratios = getBookCumulativeProgressForMonth(
+    local daily_map = CalendarData.getBookDailyStatsForMonth(self.book_id, self.year, self.month)
+    local cumulative_ratios = CalendarData.getBookCumulativeProgressForMonth(
         self.book_id, self.year, self.month, self.total_pages)
     local grid, day_cells = buildBookCalendarGrid(
         daily_map, self.year, self.month, day_font, small_font, content_width, self.total_pages, cumulative_ratios,
@@ -829,7 +653,7 @@ function BookCalendarPopup:_showDayDetail(day, data)
     end
 
     local pages_line = "+" .. formatCount(data.pages) .. " " .. N_("page", "pages", data.pages)
-    local time_td     = formatTimeHHMM(data.duration)
+    local time_td     = Locale.formatTimeHHMM(data.duration)
     local time_line   = time_td.value .. (time_td.unit ~= "" and (" " .. time_td.unit) or "")
     local percent_line = ""
     if self.total_pages and self.total_pages > 0 then
@@ -860,7 +684,7 @@ function BookCalendarPopup:_goToMonth(delta)
     end
     if monthIsAfter(y, m, max_year, max_month) then return true end
     -- Don't navigate back into a month with no reading recorded for this book.
-    if delta < 0 and not bookCalendarMonthHasData(self.book_id, y, m) then return true end
+    if delta < 0 and not CalendarData.bookCalendarMonthHasData(self.book_id, y, m) then return true end
 
     local old_rect = self:_centeredRect(self.box_content)
     self.year, self.month = y, m
@@ -887,7 +711,7 @@ function BookCalendarPopup:onTap(arg, ges_ev)
             end
         end
         for _, cell in ipairs(self._day_cells or {}) do
-            if hitTest(cell.frame, x, y) then
+            if UI.hitTest(cell.frame, x, y) then
                 self:_showDayDetail(cell.day, cell.data)
                 return true
             end
@@ -966,7 +790,7 @@ function M.show(opts)
 
     local open_year, open_month = opts.year, opts.month
     if not open_year or not open_month then
-        open_year, open_month = getBookLastReadYearMonth(book_id)
+        open_year, open_month = CalendarData.getBookLastReadYearMonth(book_id)
         if not open_year or not open_month then
             local now = os.date("*t")
             open_year, open_month = now.year, now.month
@@ -975,7 +799,7 @@ function M.show(opts)
 
     local started_timestamp = opts.started_timestamp
     if started_timestamp == nil then
-        started_timestamp = getBookStartedTimestamp(book_id)
+        started_timestamp = CalendarData.getBookStartedTimestamp(book_id)
     end
 
     local popup = BookCalendarPopup:new{
@@ -1001,4 +825,3 @@ function M.show(opts)
 end
 
 return M
-

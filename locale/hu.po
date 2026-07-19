@@ -120,23 +120,14 @@ msgstr "olvasott oldal"
 msgid "pages read"
 msgstr "olvasott oldal"
 
-msgid "week in a row"
-msgstr "egymást követő hét"
+msgid "week"
+msgstr "hét"
 
-msgid "weeks in a row"
-msgstr "egymást követő hét"
+msgid "weeks"
+msgstr "hét"
 
-msgid "day in a row"
-msgstr "egymást követő nap"
-
-msgid "days in a row"
-msgstr "egymást követő nap"
-
-msgid "No weekly streak"
-msgstr "Nincs heti sorozat"
-
-msgid "No daily streak"
-msgstr "Nincs napi sorozat"
+msgid "No streak"
+msgstr "Nincs sorozat"
 
 msgid "Current streak"
 msgstr "Aktuális sorozat"
@@ -170,6 +161,39 @@ msgstr "%1: %2 könyv olvasva"
 
 msgid "%1 - books read %2"
 msgstr "%1: %2 könyv olvasva"
+
+msgid "Reading goal"
+msgstr "Olvasási cél"
+
+msgid "%1 - reading goal"
+msgstr "%1 - olvasási cél"
+
+msgid "book finished"
+msgstr "elolvasott könyv"
+
+msgid "books finished"
+msgstr "elolvasott könyv"
+
+msgid "book goal"
+msgstr "könyves cél"
+
+msgid "books goal"
+msgstr "könyves cél"
+
+msgid "%1 - book finished %2"
+msgstr "%1: %2 könyv elolvasva"
+
+msgid "%1 - books finished %2"
+msgstr "%1: %2 könyv elolvasva"
+
+msgid "No books finished in %1"
+msgstr "Nincs elolvasott könyv: %1"
+
+msgid "Mark book finished - %1"
+msgstr "Elolvasott könyv megjelölése - %1"
+
+msgid "No books read in this year"
+msgstr "Ebben az évben nincs olvasott könyv"
 
 msgid "Reloading data..."
 msgstr "Adatok újraolvasása..."
@@ -261,8 +285,6 @@ msgstr "Elmúlt 8 hét átlagos napi oldalszáma"
 msgid "No reading data in the last 8 weeks"
 msgstr "Nincs olvasási adat az elmúlt 8 héten"
 
-msgid "total reading time"
-msgstr "összes olvasási idő"
 
 msgid "avg time/day"
 msgstr "átlag idő/nap"
@@ -880,3 +902,27 @@ msgstr "Rekordok megjelenítése"
 
 msgid "Sub-values (date / book title)"
 msgstr "Alértékek (dátum / könyvcím)"
+
+
+
+msgid "Reading goal section"
+msgstr "Olvasási cél szakasz"
+
+msgid "Shows the number of books finished this year next to your yearly goal. Long press the goal value to change it."
+msgstr "Az idén befejezett könyvek számát mutatja az éves cél mellett. A cél értékét hosszan nyomva módosíthatod."
+
+msgid "book to read"
+msgstr "könyv a cél"
+
+msgid "books to read"
+msgstr "könyv a cél"
+
+msgid "* = changed by you"
+msgstr "* = általad módosítva"
+
+msgid "Automatic"
+msgstr "Automatikus"
+
+msgid "Sizes the Reading insights bar charts so the page fits the screen without a scroll bar."
+msgstr "Az Olvasási áttekintés oszlopdiagramjait úgy méretezi, hogy az oldal görgetősáv nélkül elférjen a képernyőn."
+
