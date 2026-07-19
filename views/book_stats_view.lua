@@ -11,10 +11,11 @@ view. The per-book reading calendar that used to live here now has its own
 file, book_calendar_view.lua; this popup opens it (tap the "Pace" title) via
 the injected BookCalendar module.
 
-Loaded by main.lua via loadfile(...)(Locale, Colors, Fonts, Prefs, StatsDb,
-BookProgress, BookCalendar) - the shared modules for translations/number
-formatting (locale.lua), colors, fonts, G_reader_settings access, the
-statistics DB, per-book reading position, and the calendar view.
+Loaded by main.lua with one named table of dependencies: the shared modules
+for translations/number formatting (locale.lua), colors, fonts,
+G_reader_settings access, per-book reading position, the calendar view, the
+chapter maths and chapter bar, the layout helpers - and BookStatsData, which
+holds this popup's own queries (lib/book_stats_data.lua).
 
 Sections shown:
   - This chapter / Next chapter   estimated time left and time to read next
@@ -33,7 +34,6 @@ Controls:
 ]]--
 
 local Blitbuffer = require("ffi/blitbuffer")
-local CenterContainer = require("ui/widget/container/centercontainer")
 local Device = require("device")
 local FrameContainer = require("ui/widget/container/framecontainer")
 local Geom = require("ui/geometry")
@@ -41,9 +41,7 @@ local GestureRange = require("ui/gesturerange")
 local HorizontalGroup = require("ui/widget/horizontalgroup")
 local HorizontalSpan = require("ui/widget/horizontalspan")
 local InputContainer = require("ui/widget/container/inputcontainer")
-local LeftContainer = require("ui/widget/container/leftcontainer")
 local LineWidget = require("ui/widget/linewidget")
-local OverlapGroup = require("ui/widget/overlapgroup")
 local Size = require("ui/size")
 local TextBoxWidget = require("ui/widget/textboxwidget")
 local TextWidget = require("ui/widget/textwidget")
@@ -56,15 +54,12 @@ local Screen = Device.screen
 -- Shared translations/number-formatting, and shared chart/text color
 -- settings, both passed in as this chunk's arguments by main.lua (see the
 -- header comment above).
--- Shared modules, passed in as one named table by main.lua. Named rather
--- than positional on purpose: the list had grown long enough that
--- inserting one module in the middle would silently shift every module
--- after it, and the resulting nil would only surface far from the cause.
+-- Shared modules, passed in as one named table by main.lua (see there).
 local deps = ...
-local Locale, Colors, Fonts, Prefs, StatsDb, BookProgress, BookCalendar, ChapterInfo, ChapterBar, UI =
-    deps.Locale, deps.Colors, deps.Fonts, deps.Prefs, deps.StatsDb,
-    deps.BookProgress, deps.BookCalendar, deps.ChapterInfo, deps.ChapterBar,
-    deps.UI
+local Locale, Colors, Fonts, Prefs, BookProgress, BookCalendar, ChapterInfo, ChapterBar, UI, BookStatsData =
+    deps.Locale, deps.Colors, deps.Fonts, deps.Prefs, deps.BookProgress,
+    deps.BookCalendar, deps.ChapterInfo, deps.ChapterBar, deps.UI,
+    deps.BookStatsData
 local _            = Locale._
 local N_           = Locale.N_
 local getLangBase  = Locale.getLangBase
@@ -161,73 +156,6 @@ local function humanizeDayCount(days, kind)
     end
     if count < 0 then count = 0 end
     return { value = formatCount(count), unit = dayCountLabel(kind, unit, count) }
-end
-
--- Single DB connection, all stats fetched at once.
-local function getBookAndTodayStats(book_id)
-    if not book_id then return nil, nil, nil, nil, nil, nil, nil end
-
-    local conn = StatsDb.open()
-    if not conn then return nil, nil, nil, nil, nil, nil, nil end
-
-    local days_sql = string.format([[
-        SELECT count(*)
-        FROM (
-            SELECT strftime('%%Y-%%m-%%d', start_time, 'unixepoch', 'localtime') AS dates
-            FROM   page_stat
-            WHERE  id_book = %d
-            GROUP  BY dates
-        );
-    ]], book_id)
-    local total_days = conn:rowexec(days_sql)
-    total_days = total_days and tonumber(total_days) or nil
-
-    local today_book_sql = string.format([[
-        SELECT count(*), sum(duration)
-        FROM (
-            SELECT page, sum(duration) AS duration
-            FROM   page_stat
-            WHERE  strftime('%%Y-%%m-%%d', start_time, 'unixepoch', 'localtime')
-                   = strftime('%%Y-%%m-%%d', 'now', 'localtime')
-            AND    id_book = %d
-            GROUP  BY page
-        );
-    ]], book_id)
-    local today_pages, today_time = conn:rowexec(today_book_sql)
-    today_pages = tonumber(today_pages)
-    today_time  = tonumber(today_time)
-
-    local today_all_sql = [[
-        SELECT count(*), sum(duration)
-        FROM (
-            SELECT page, sum(duration) AS duration
-            FROM   page_stat
-            WHERE  strftime('%Y-%m-%d', start_time, 'unixepoch', 'localtime')
-                   = strftime('%Y-%m-%d', 'now', 'localtime')
-            GROUP  BY id_book, page
-        );
-    ]]
-    local today_pages_all, today_time_all = conn:rowexec(today_all_sql)
-    today_pages_all = tonumber(today_pages_all)
-    today_time_all  = tonumber(today_time_all)
-
-    -- Days elapsed since this book's very first page_stat entry (i.e. since
-    -- reading it was started). Used for the "N days since started" cell.
-    local first_read_sql = string.format([[
-        SELECT start_time,
-               CAST(julianday('now', 'localtime')
-                    - julianday(date(start_time, 'unixepoch', 'localtime')) AS INTEGER)
-        FROM   page_stat
-        WHERE  id_book = %d
-        ORDER  BY start_time ASC
-        LIMIT  1
-    ]], book_id)
-    local started_timestamp, days_since_start = conn:rowexec(first_read_sql)
-    started_timestamp = started_timestamp and tonumber(started_timestamp) or nil
-    days_since_start  = days_since_start  and tonumber(days_since_start)  or nil
-
-    conn:close()
-    return total_days, today_pages, today_time, today_pages_all, today_time_all, days_since_start, started_timestamp
 end
 
 -- Font faces for this popup's three text roles, sourced from the shared
@@ -766,7 +694,7 @@ function ReadingStatsPopup:gatherStats()
         end
 
         local total_days, today_p, today_t, all_p, all_t, days_since_start, started_timestamp =
-            getBookAndTodayStats(plugin.id_curr_book)
+            BookStatsData.getBookAndTodayStats(plugin.id_curr_book)
 
         -- "Started N days ago": only shown when there is at least one
         -- page_stat entry for this book (i.e. reading has actually begun).

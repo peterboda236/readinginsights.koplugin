@@ -23,7 +23,7 @@ and forwards the two "show popup" events to the right view.
 
 Both view files are loaded with loadfile()(...) rather than require(...)
 so they don't depend on this plugin's directory being on package.path -
-they get the shared Locale module passed straight in as their chunk argument.
+they get their dependencies passed in as one named table (see below).
 
 The insights view's settings (lib/insights_settings.lua) and data cache
 (lib/insights_cache.lua) are loaded here rather than from inside the view,
@@ -60,6 +60,10 @@ local StatsDb      = loadModule("lib/statsdb.lua")
 local PopupUtil    = loadModule("lib/popuputil.lua")
 local BookProgress = loadModule("lib/bookprogress.lua")
 local ChapterInfo  = loadModule("lib/chapterinfo.lua")
+-- Queries behind the two book-specific popups, kept apart from the widgets
+-- that draw them, the same way the insights and records popups are split.
+local BookStatsData    = loadModule("lib/book_stats_data.lua",    { StatsDb = StatsDb })
+local BookCalendarData = loadModule("lib/book_calendar_data.lua", { StatsDb = StatsDb })
 
 local SCREENSAVER_TYPE_VALUE = "readinginsights"
 
@@ -195,34 +199,48 @@ local InsightsCache = loadModule("lib/insights_cache.lua")
 local ChapterBar = loadModule("widgets/chapterbarwidget.lua",
     { Colors = Colors, Fonts = Fonts, UI = UI })
 
+-- The insights popup's figures: streaks, yearly/monthly aggregates, the
+-- last-week and 8-week series, all-time totals and the reading-goal count.
+-- Kept apart from the popup that draws them (see lib/insights_data.lua).
+local InsightsData = loadModule("lib/insights_data.lua",
+    { Locale = Locale, StatsDb = StatsDb, Cache = InsightsCache, VS = ViewSettings })
+
 -- The three popups the insights view opens: its 8-week trend chart, the
 -- reading heatmaps, and the book lists. Loaded before the view because it
 -- receives them; the book lists get what they need from the view the other
 -- way round, through BookList.bind() (see booklist_view.lua).
 local Trend = loadModule("views/trend_view.lua",
     { Colors = Colors, Locale = Locale, VS = ViewSettings })
-local Heatmap = loadModule("views/heatmap_view.lua",
-    { Colors = Colors, Fonts = Fonts, Locale = Locale, VS = ViewSettings, UI = UI })
-local BookList = loadModule("views/booklist_view.lua",
-    { Colors = Colors, Locale = Locale, StatsDb = StatsDb, VS = ViewSettings, UI = UI })
+local Heatmap = loadModule("views/heatmap_view.lua", {
+    Colors = Colors, Fonts = Fonts, Locale = Locale, VS = ViewSettings, UI = UI,
+    Data = InsightsData,
+})
+local BookList = loadModule("views/booklist_view.lua", {
+    Colors = Colors, Locale = Locale, VS = ViewSettings, UI = UI,
+    Data = InsightsData,
+})
 
 local Insights = loadModule("views/insights_view.lua", {
-    Locale = Locale, Colors = Colors, Fonts = Fonts, StatsDb = StatsDb,
+    Locale = Locale, Colors = Colors, Fonts = Fonts,
     PopupUtil = PopupUtil, VS = ViewSettings, Cache = InsightsCache, UI = UI,
-    Trend = Trend, Heatmap = Heatmap, BookList = BookList,
+    Trend = Trend, Heatmap = Heatmap, BookList = BookList, Data = InsightsData,
 })
 local BookCalendar = loadModule("views/book_calendar_view.lua", {
     Locale = Locale, Colors = Colors, Fonts = Fonts, Prefs = Prefs,
-    StatsDb = StatsDb, BookProgress = BookProgress, UI = UI,
+    BookProgress = BookProgress, UI = UI, CalendarData = BookCalendarData,
 })
 local StatsPopup = loadModule("views/book_stats_view.lua", {
     Locale = Locale, Colors = Colors, Fonts = Fonts, Prefs = Prefs,
-    StatsDb = StatsDb, BookProgress = BookProgress, BookCalendar = BookCalendar,
+    BookProgress = BookProgress, BookCalendar = BookCalendar,
     ChapterInfo = ChapterInfo, ChapterBar = ChapterBar, UI = UI,
+    BookStatsData = BookStatsData,
 })
+-- Records: the queries and their cache (lib/records_data.lua) are separate
+-- from the popup that draws them.
+local RecordsData = loadModule("lib/records_data.lua", { StatsDb = StatsDb })
 local Records = loadModule("views/records_view.lua", {
-    Locale = Locale, Colors = Colors, Fonts = Fonts, StatsDb = StatsDb,
-    PopupUtil = PopupUtil,
+    Locale = Locale, Colors = Colors, Fonts = Fonts, PopupUtil = PopupUtil,
+    RecordsData = RecordsData,
 })
 local Updater = loadModule("lib/updater.lua", { Locale = Locale })
 local About   = loadModule("views/about.lua",
@@ -753,7 +771,6 @@ end
 function ReadingInsights:_menuDeps()
     return {
         BookCalendar                = BookCalendar,
-        Records                     = Records,
         About                       = About,
         Colors                      = Colors,
         Fonts                       = Fonts,

@@ -23,10 +23,7 @@ menu_deps table main.lua passes in.
 
 local UIManager = require("ui/uimanager")
 
--- Shared modules, passed in as one named table by main.lua. Named rather
--- than positional on purpose: the list had grown long enough that
--- inserting one module in the middle would silently shift every module
--- after it, and the resulting nil would only surface far from the cause.
+-- Shared modules, passed in as one named table by main.lua (see there).
 local deps = ...
 local Locale =
     deps.Locale

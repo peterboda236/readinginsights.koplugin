@@ -1,6 +1,6 @@
 ### 📊 Reading insights plugin
 
-<img width="255" height="340" alt="FileManager_2026-07-18_205310" src="https://github.com/user-attachments/assets/2686e3ea-66cb-4d34-8af4-77fe147c47a3" />
+<img width="255" height="340" alt="FileManager_2026-07-17_152310" src="https://github.com/user-attachments/assets/54116e81-b1aa-41ef-be93-ecab2604f7c8" />
 <img width="255" height="340" alt="FileManager_2026-07-17_152344" src="https://github.com/user-attachments/assets/4a3d2fb9-cc51-4342-a952-36f23bb1925c" />
 <img width="255" height="340" alt="Reader_Az Elso Torveny vilaga 1  - Hidegen talalva - Abercrombie, Joe #p(878) epub_p1117_2026-07-06_084654" src="https://github.com/user-attachments/assets/555ab8c6-d9ce-4ebc-a6ac-cfdf097ec51d" />
 <br/><br/>
@@ -10,9 +10,7 @@
 
 More screenshots
 
-<img width="192" height="256" alt="reading-insights-v2-0-0-new-book-progress-popup-colors-v0-zoh19sw42rbh1" src="https://github.com/user-attachments/assets/52f851b7-8955-4739-b3a7-96ff8c2cbfe6" />
-<img width="192" height="256" alt="FileManager_2026-07-18_211837" src="https://github.com/user-attachments/assets/e4e5d617-98c6-40bc-8844-f23fa5837e95" />
-<img width="192" height="256" alt="FileManager_2026-07-02_083320" src="https://github.com/user-attachments/assets/8193ba8b-7f7e-4b35-9efb-81d0d4a1df8e" />
+<img width="192" height="256" alt="reading-insights-v2-0-0-new-book-progress-popup-colors-v0-zoh19sw42rbh1" src="https://github.com/user-attachments/assets/52f851b7-8955-4739-b3a7-96ff8c2cbfe6" /><img width="192" height="256" alt="FileManager_2026-07-02_083306" src="https://github.com/user-attachments/assets/3026267b-d29d-4487-99a5-6efdcc4baa37" /><img width="192" height="256" alt="FileManager_2026-07-02_083320" src="https://github.com/user-attachments/assets/8193ba8b-7f7e-4b35-9efb-81d0d4a1df8e" />
 
 
 This plugin bundles three reading-stats popups, powered by KOReader's
@@ -23,7 +21,6 @@ statistics database.
 A full-screen scrollable overlay with a comprehensive overview of your reading history.
 
 **Highlights:**
-- **Today** — reading time and pages read so far today
 - **Last week** — 7-day average time and pages per day; tap either value to open its own 8-week trend popup (time trend or pages trend)
 - **Streaks** — current and best daily & weekly reading streaks; tap any of
   the four to open a popup summarising that streak: its name and date range
@@ -317,7 +314,15 @@ readinginsights.koplugin/
 ├── pluginutil.lua       shared plugin-dir + module loader (the bootstrap
 │                        anchor; replaces the old per-file pluginDir copies)
 ├── locale/              one .po file per language (en.po, hu.po, de.po)
-├── lib/                 shared, UI-less infrastructure
+├── tests/               checks that run without KOReader (see tests/README.md)
+├── lib/                 shared modules: data queries, settings, caching,
+│                        and the layout/menu building blocks
+│   ├── book_calendar_data.lua  the per-book calendar's queries (per-day
+│   │                         pages/time for a month, cumulative progress,
+│   │                         which months have data)
+│   ├── book_stats_data.lua   the book progress overlay's query (days read,
+│   │                         today's pages/time for this book and for all
+│   │                         books, when the book was started)
 │   ├── bookprogress.lua      per-book reading-position helpers (progress percent /
 │   │                         pages left / page counts)
 │   ├── chapterinfo.lua       chapter/TOC maths for the book progress view: which
@@ -326,6 +331,11 @@ readinginsights.koplugin/
 │   │                         parsed TOC cached per book)
 │   ├── colors.lua            chart/text color settings (the "Colors" submenu)
 │   ├── fonts.lua             font settings (the "Fonts" submenu)
+│   ├── insights_data.lua     every figure the insights popup shows: streaks,
+│   │                         yearly/monthly aggregates for all three modes,
+│   │                         the last-week and 8-week series, all-time
+│   │                         totals, the heatmap matrices and the
+│   │                         reading-goal count
 │   ├── insights_cache.lua    the insights popup's data cache: per-minute /
 │   │                         per-day in-memory caches, the "stale" copies behind
 │   │                         stale-while-revalidate, the "up to yesterday" base
@@ -340,6 +350,10 @@ readinginsights.koplugin/
 │   ├── menu.lua              the whole *Tools → Reading insights* menu tree
 │   │                         (actions, Settings, Advanced settings, Updates, About)
 │   ├── popuputil.lua         shared "any tap/swipe/key dismisses" popup handlers
+│   ├── records_data.lua      the Records popup's queries and their cache
+│   │                         (record values + a DB fingerprint that decides
+│   │                         between an incremental update and a full
+│   │                         recompute)
 │   ├── prefs.lua             nil-guarded G_reader_settings wrappers + the shared
 │   │                         week-start-day setting (named prefs, not
 │   │                         settings, so it isn't confused with the
@@ -366,8 +380,10 @@ readinginsights.koplugin/
 │   │                           and weekday x hour-of-day) plus their
 │   │                           full-screen popup
 │   ├── insights_view.lua       full-screen "Reading insights" popup: the page
-│   │                           itself, its data queries and its caching
-│   ├── records_view.lua        personal records and milestones
+│   │                           itself (its figures come from
+│   │                           lib/insights_data.lua)
+│   ├── records_view.lua        personal records and milestones (the popup;
+│   │                           its data lives in lib/records_data.lua)
 │   └── trend_view.lua          the 8-week trend line chart popup
 └── widgets/             reusable UI widgets
     ├── chapterbarwidget.lua  the per-chapter bar under "This book" in the
@@ -408,7 +424,7 @@ The other splits are about duplication and cohesion rather than that limit:
 - `views/trend_view.lua`, `views/heatmap_view.lua` and
   `views/booklist_view.lua` are the three self-contained popups the insights
   view opens. The view file now holds the insights page itself rather than
-  every popup reachable from it, and went from ~5600 lines to ~3700.
+  every popup reachable from it, and went from ~5600 lines to ~3600.
 - `lib/uikit.lua` replaces three copies of the same layout helpers that had
   begun to diverge (`buildLayout`, `buildSectionHeader`, `buildTwoColRow`,
   `addSectionWithRow`, `padded`, `fixedCol`, `buildColumnSeparator`,
@@ -419,7 +435,44 @@ The other splits are about duplication and cohesion rather than that limit:
 - `lib/chapterinfo.lua` and `widgets/chapterbarwidget.lua` split the book
   progress view's chapter handling into "work out the numbers" and "draw
   them". The first has no UI at all, which makes it testable on its own.
-- `lib/menu.lua` takes the ~470-line Tools menu out of `main.lua`.
+- Every popup now has its figures in `lib/` and its widgets in `views/`:
+  `insights_data.lua`, `records_data.lua`, `book_stats_data.lua` and
+  `book_calendar_data.lua`, alongside the older `chapterinfo.lua` and
+  `bookprogress.lua`. The split is symmetric on purpose - a new figure has
+  one obvious place to go, and none of the query code needs KOReader's UI
+  to be exercised - no file under `views/` contains a single SQL statement
+  or opens the statistics DB any more. The insights queries were already
+  plain functions in
+  disguise - written as methods on the popup class, but not one of them
+  touched popup state - so the move cost them only the `self` they never
+  used, and took `insights_view.lua` from ~3600 lines to ~2300. The records
+  cache file keeps the path and key layout it always had, so upgrading
+  doesn't cost a recompute; only the hand-written serializer behind it was
+  replaced with LuaSettings.
+- `lib/menu.lua` takes the ~500-line Tools menu out of `main.lua`.
+
+## Tests
+
+```sh
+./tests/run.sh
+```
+
+Needs `lua5.1` and `luac5.1`, nothing else — the `lib/` modules are all
+plain computation over the statistics DB, so they load and run outside
+KOReader. The suite covers the settings, cache, chapter maths and records
+queries, loads every module the way `main.lua` does to verify the wiring,
+and statically checks the tree for accidental globals, unused requires,
+`popup:method()` calls that no longer resolve, module surfaces and
+translation coverage. See `tests/README.md`.
+
+It cannot cover drawing: everything under `views/` builds widgets, which
+need a real device. Open each popup once before releasing.
+
+The release zip should leave the tests behind:
+
+```sh
+zip -r readinginsights.koplugin.zip readinginsights.koplugin -x '*/tests/*' -x '*/.git/*'
+```
 
 ## Translations
 

@@ -8,26 +8,13 @@ per-year reading goal and its manual finished-book overrides, the week
 start day, and the two "which numbers am I looking at" display modes
 (monthly chart mode, weekly chart mode) that are persisted the same way.
 
-Split out of insights_view.lua for two reasons. The obvious one is that
-~50 settings accessors are their own concern and don't need to sit in the
-middle of a view file. The less obvious, and more pressing, one: Lua allows
-at most 200 active local variables per function scope, and every
-`local SETTINGS_KEY_x` / `local read_x` / `local save_x` at the top level
-of insights_view.lua counted against that limit for the whole file. It had
-crept to within a handful of the ceiling, at which point the next feature
-would have failed to compile with "main function has more than 200 local
-variables". Everything here is a field on one table, so it now costs the
-view exactly one local no matter how many options are added later.
-
-Loaded by main.lua with the shared Settings module (lib/prefs.lua) as
-its only chunk argument, and handed to insights_view.lua the same way the
-other shared modules are.
+Split out of insights_view.lua, which was carrying ~50 settings accessors
+as top-level locals - close enough to Lua's limit of 200 per scope that the
+next feature would have failed to compile. Everything here is a field on one
+table, so it costs the view a single local however many options are added.
 ]]--
 
--- Shared modules, passed in as one named table by main.lua. Named rather
--- than positional on purpose: the list had grown long enough that
--- inserting one module in the middle would silently shift every module
--- after it, and the resulting nil would only surface far from the cause.
+-- Shared modules, passed in as one named table by main.lua (see there).
 local deps = ...
 local Prefs =
     deps.Prefs
@@ -111,12 +98,8 @@ function M.saveMonthlyBarHeightSetting(value)
     M.saveNumSetting(M.SETTINGS_KEY_MONTHLY_BAR_HEIGHT, value)
 end
 
--- Newer view options, all kept on one table on purpose: this file's main
--- chunk is very close to Lua's hard limit of 200 locals per function, so
--- every additional top-level `local` risks a "main function has more than
--- 200 local variables" compile error and takes the whole plugin down. One
--- table with fields costs exactly one local no matter how much is added to
--- it later.
+-- Newer view options, kept on one table for the reason in the header: a
+-- field costs no local, a top-level `local` costs one of the 200.
 M.Opt = {
     -- Bar-chart height mode (Settings > Advanced settings > "Bar chart
     -- height" > "Automatic (Reading insights)").

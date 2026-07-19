@@ -25,8 +25,7 @@ format KOReader itself accepts (see Blitbuffer.colorFromString), so any
 hex code the user can look up (a website color picker, another app, ...)
 works here too.
 
-Loaded by main.lua via loadfile(...)( Locale ) and handed straight to both
-view modules as their second chunk argument (alongside Locale), so
+Loaded once by main.lua and handed to every module that draws, so
 `local Locale, Colors = ...` at the top of each view is all they need.
 
 Exposes:
@@ -54,10 +53,7 @@ local Widget      = require("ui/widget/widget")
 
 -- Shared modules passed in by main.lua: Locale (translations), PluginUtil
 -- (plugin dir + loader) and Prefs (G_reader_settings wrappers).
--- Shared modules, passed in as one named table by main.lua. Named rather
--- than positional on purpose: the list had grown long enough that
--- inserting one module in the middle would silently shift every module
--- after it, and the resulting nil would only surface far from the cause.
+-- Shared modules, passed in as one named table by main.lua (see there).
 local deps = ...
 local Locale, PluginUtil, Prefs =
     deps.Locale, deps.PluginUtil, deps.Prefs

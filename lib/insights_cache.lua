@@ -149,34 +149,16 @@ end
 
 -- Disk-persisted cache -------------------------------------------------
 --
--- Everything above (M._cache, M._stale_cache, M._yearly_cache, ...) lives only in
--- memory, so it is empty right after a KOReader restart (this module is
--- freshly loaded). Without a disk copy, the very first popup open after a
--- restart has nothing to show and falls back to a blocking "Loading data..."
--- placeholder until _loadAndRebuild() finishes querying the DB.
---
--- To avoid that, the stale-cache tables (the same ones used for
--- stale-while-revalidate display) are mirrored to a small Lua settings file
--- on disk: loaded once into memory when this module loads (i.e. on plugin
--- start/KOReader start), and saved every time _loadAndRebuild() finishes
--- refreshing the popup's data. This way the popup can always open instantly
--- with the last known numbers, then refresh in the background and redraw -
--- restart or not.
---
--- The "up to yesterday" base aggregates (M._alltime_base_cache,
--- M._yearly_base_cache, M._monthly_base_cache) are mirrored to disk as well, for
--- a different reason: they aren't needed for instant display (the stale
--- cache above already covers that), but without a disk copy each of them is
--- nil right after a restart, so the first getAllTimeStats() /
--- getYearlyStats() / getMonthlyReading*() call of the day has to rescan the
--- entire page_stat history from scratch (expensive, and it makes the
--- on-screen total visibly jump once that rescan finishes and replaces the
--- stale placeholder). Restoring them from disk means a restart only has to
--- redo the cheap today-only query, same as any other same-day cache hit.
--- Each entry already carries its own `date` field (see M.makeCachedBase()), so
--- a stale (yesterday-or-older) entry loaded from disk is simply ignored by
--- M.getCachedBase() and recomputed once, exactly as if it had never been
--- persisted.
+-- Everything above lives in memory only, so it is empty right after a
+-- KOReader restart and the first popup open would have nothing to show but
+-- a "Loading data..." placeholder. Two things are therefore mirrored to a
+-- small settings file: the stale tables, so the popup can open instantly
+-- with the last known numbers and refresh behind them, and the "up to
+-- yesterday" base aggregates, so the first call of the day doesn't have to
+-- rescan the whole history (which would also make the displayed total jump
+-- once the rescan replaced the placeholder). A base entry carries its own
+-- date, so an out-of-date one loaded from disk is ignored and recomputed
+-- exactly as if it had never been saved.
 local LuaSettings = require("luasettings")
 
 local DISK_CACHE_PATH = DataStorage:getSettingsDir() .. "/reading_insights_cache.lua"

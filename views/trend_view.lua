@@ -34,7 +34,6 @@ local Widget = require("ui/widget/widget")
 local Blitbuffer = require("ffi/blitbuffer")
 local Device = require("device")
 local GestureRange = require("ui/gesturerange")
-local UIManager = require("ui/uimanager")
 local Screen = Device.screen
 
 -- Shared modules, passed in as one table by main.lua (see the deps table

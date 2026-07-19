@@ -32,7 +32,7 @@ gatherer, the insights one takes a plain value and label. Merging those
 would mean one function doing two jobs; they're better left apart until
 there's a reason to unify them.
 
-Loaded by main.lua with the shared Colors module as its chunk argument.
+Loaded once by main.lua with the shared Colors module.
 ]]--
 
 local Blitbuffer = require("ffi/blitbuffer")
@@ -46,10 +46,7 @@ local TextWidget = require("ui/widget/textwidget")
 local VerticalGroup = require("ui/widget/verticalgroup")
 local VerticalSpan = require("ui/widget/verticalspan")
 
--- Shared modules, passed in as one named table by main.lua. Named rather
--- than positional on purpose: the list had grown long enough that
--- inserting one module in the middle would silently shift every module
--- after it, and the resulting nil would only surface far from the cause.
+-- Shared modules, passed in as one named table by main.lua (see there).
 local deps = ...
 local Colors =
     deps.Colors

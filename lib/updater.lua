@@ -8,11 +8,8 @@ for and install new releases of this plugin directly from GitHub, without
 having to plug the device into a computer. Also supports pulling a specific
 development branch's tip, for testing pre-release builds.
 
-Loaded by main.lua via loadfile(...)( Locale ) and handed straight in, so
-`-- Shared modules, passed in as one named table by main.lua. Named rather
--- than positional on purpose: the list had grown long enough that
--- inserting one module in the middle would silently shift every module
--- after it, and the resulting nil would only surface far from the cause.
+Loaded once by main.lua, so
+`-- Shared modules, passed in as one named table by main.lua (see there).
 local deps = ...
 local Locale =
     deps.Locale` at the top is all this module needs.
@@ -40,10 +37,7 @@ local Device      = require("device")
 local InfoMessage = require("ui/widget/infomessage")
 local UIManager   = require("ui/uimanager")
 
--- Shared modules, passed in as one named table by main.lua. Named rather
--- than positional on purpose: the list had grown long enough that
--- inserting one module in the middle would silently shift every module
--- after it, and the resulting nil would only surface far from the cause.
+-- Shared modules, passed in as one named table by main.lua (see there).
 local deps = ...
 local Locale =
     deps.Locale

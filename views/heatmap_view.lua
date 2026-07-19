@@ -59,7 +59,8 @@ local Screen = Device.screen
 -- the view: the view opens M.Popup, so a require back into the view
 -- would be circular.
 local deps = ...
-local Colors, Fonts, Locale, VS, UI = deps.Colors, deps.Fonts, deps.Locale, deps.VS, deps.UI
+local Colors, Fonts, Locale, VS, UI, Data =
+    deps.Colors, deps.Fonts, deps.Locale, deps.VS, deps.UI, deps.Data
 local _ = Locale._
 
 local M = {}
@@ -670,7 +671,7 @@ end
 function M.buildHeatmapBoxContent(popup_self, periods_back)
     local start_t, end_t = M.getHeatmapPeriodRange(periods_back)
     local daily_map        = popup_self:getDailyReadingDataForRange(start_t, end_t)
-    local weekday_hour_map = popup_self:getWeekdayHourReadingData(start_t, end_t)
+    local weekday_hour_map = Data.getWeekdayHourReadingData(start_t, end_t)
 
     local fonts = getCachedFonts()
     local inner_padding = Size.padding.large
@@ -680,7 +681,7 @@ function M.buildHeatmapBoxContent(popup_self, periods_back)
     -- Older/newer availability, needed up front now (not just at the end)
     -- since the calendar heatmap's own header needs it to decide whether
     -- to show its ‹ / › paging arrows.
-    local year_range      = popup_self:getYearRange()
+    local year_range      = Data.getYearRange()
     local older_available = periods_back < M.heatmapMaxPeriodsBack(year_range.min_year, year_range.min_month)
     local newer_available = periods_back > 0
 

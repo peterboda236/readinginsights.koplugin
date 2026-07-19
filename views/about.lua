@@ -13,7 +13,7 @@ A small, tap-anywhere-to-close box centered on screen with:
   - a short description of the plugin, translated (see locale/*.po)
   - the GitHub repository URL, bold and centered
 
-Loaded by main.lua via loadfile(...)( Locale, Updater ), following the same
+Loaded by main.lua with Locale and Updater, following the same
 "small standalone module" pattern as colors.lua/fonts.lua.
 
 Fonts: deliberately hard-coded here (NotoSans-Bold.ttf @ 26 for the title,
@@ -48,10 +48,7 @@ local VerticalSpan    = require("ui/widget/verticalspan")
 
 -- Locale (translations) and Updater (installed-version lookup) plus the
 -- shared dismissable-popup helper, all passed in by main.lua.
--- Shared modules, passed in as one named table by main.lua. Named rather
--- than positional on purpose: the list had grown long enough that
--- inserting one module in the middle would silently shift every module
--- after it, and the resulting nil would only surface far from the cause.
+-- Shared modules, passed in as one named table by main.lua (see there).
 local deps = ...
 local Locale, Updater, PopupUtil =
     deps.Locale, deps.Updater, deps.PopupUtil

@@ -43,10 +43,7 @@ local Screen = require("device").screen
 
 -- Shared color and font settings, passed in as this chunk's arguments by
 -- main.lua.
--- Shared modules, passed in as one named table by main.lua. Named rather
--- than positional on purpose: the list had grown long enough that
--- inserting one module in the middle would silently shift every module
--- after it, and the resulting nil would only surface far from the cause.
+-- Shared modules, passed in as one named table by main.lua (see there).
 local deps = ...
 local Colors, Fonts, UI =
     deps.Colors, deps.Fonts, deps.UI

@@ -25,10 +25,7 @@ Exposes:
 local gettext = require("gettext")
 
 -- Shared plugin loader/dir helper, passed in by main.lua (see pluginutil.lua).
--- Shared modules, passed in as one named table by main.lua. Named rather
--- than positional on purpose: the list had grown long enough that
--- inserting one module in the middle would silently shift every module
--- after it, and the resulting nil would only surface far from the cause.
+-- Shared modules, passed in as one named table by main.lua (see there).
 local deps = ...
 local PluginUtil =
     deps.PluginUtil

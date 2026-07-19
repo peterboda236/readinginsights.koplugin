@@ -23,8 +23,6 @@ so nothing here guards against it.
   BookList.showBooksForPeriod(popup, books, empty_text, title)
                                 close the insights popup, show a list,
                                 reopen it on close
-  BookList.getBooksForPeriod(...) / BookList.getAllBooks(...)
-                                the queries behind those lists
   BookList.Checklist:new{ year = ..., insights_popup = ... }
 ]]--
 
@@ -47,7 +45,8 @@ local Screen = require("device").screen
 local T = require("ffi/util").template
 
 local deps = ...
-local Colors, Locale, StatsDb, VS, UI = deps.Colors, deps.Locale, deps.StatsDb, deps.VS, deps.UI
+local Colors, Locale, VS, UI, Data =
+    deps.Colors, deps.Locale, deps.VS, deps.UI, deps.Data
 local _  = Locale._
 local N_ = Locale.N_
 
@@ -64,108 +63,6 @@ function M.bind(hooks)
     getCachedLayout         = hooks.getCachedLayout
     getFinishedBooksForYear = hooks.getFinishedBooksForYear
     formatHHMMSS            = hooks.formatHHMMSS
-end
-
--- Sums the .duration field (seconds) across a list of books; used to build
--- the "(H:MM:SS)" suffix in the various "books read in <period>" titles.
-function M.sumDuration(books)
-    local total_secs = 0
-    for _, b in ipairs(books) do
-        total_secs = total_secs + (b.duration or 0)
-    end
-    return total_secs
-end
-
-function M.getBooksForPeriod(period_format, period_value)
-    local books = {}
-    return StatsDb.withDb(books, function(conn)
-        -- De-duplicated reading time per book for the period.
-        -- period_format inserted via concatenation to avoid %% escape conflicts.
-        local sql = [[
-            SELECT book.title, book.authors,
-                   COUNT(DISTINCT ps_dedup.page) AS pages_read,
-                   SUM(ps_dedup.period_sum) AS duration_sec,
-                   fin.finish_time,
-                   MAX(ps_dedup.last_read) AS last_read_time,
-                   day_counts.days_read,
-                   book.id AS id_book
-            FROM (
-                SELECT id_book, page,
-                       SUM(duration) AS period_sum,
-                       MAX(start_time) AS last_read
-                FROM page_stat
-                WHERE strftime(']] .. period_format .. [[', start_time, 'unixepoch', 'localtime') = ']] .. period_value .. [['
-                GROUP BY id_book, page
-            ) ps_dedup
-            JOIN book ON ps_dedup.id_book = book.id
-            LEFT JOIN (
-                SELECT ps2.id_book, MAX(ps2.start_time) AS finish_time
-                FROM page_stat ps2
-                JOIN book b2 ON ps2.id_book = b2.id
-                WHERE b2.pages > 0
-                GROUP BY ps2.id_book
-                HAVING MAX(ps2.page) >= b2.pages
-            ) fin ON ps_dedup.id_book = fin.id_book
-            LEFT JOIN (
-                SELECT id_book,
-                       COUNT(DISTINCT date(start_time, 'unixepoch', 'localtime')) AS days_read
-                FROM page_stat
-                WHERE strftime(']] .. period_format .. [[', start_time, 'unixepoch', 'localtime') = ']] .. period_value .. [['
-                GROUP BY id_book
-            ) day_counts ON ps_dedup.id_book = day_counts.id_book
-            GROUP BY ps_dedup.id_book
-            ORDER BY MAX(ps_dedup.last_read) DESC
-        ]]
-
-        StatsDb.withStatement(conn, sql, function(stmt)
-            for row in stmt:rows() do
-                table.insert(books, {
-                    title     = row[1] or _("Unknown"),
-                    authors   = "",
-                    pages     = tonumber(row[3]) or 0,
-                    duration  = tonumber(row[4]) or 0,
-                    days_read = tonumber(row[7]) or 0,
-                    id_book   = tonumber(row[8]),
-                })
-            end
-        end)
-        return books
-    end)
-end
-
-function M.getAllBooks()
-    local books = {}
-    return StatsDb.withDb(books, function(conn)
-        local sql = [[
-            SELECT book.title, book.authors,
-                   COUNT(DISTINCT ps_dedup.page) AS pages_read,
-                   SUM(ps_dedup.period_sum) AS duration_sec,
-                   MAX(ps_dedup.last_read) AS last_read_time,
-                   book.id AS id_book
-            FROM (
-                SELECT id_book, page,
-                       SUM(duration) AS period_sum,
-                       MAX(start_time) AS last_read
-                FROM page_stat
-                GROUP BY id_book, page
-            ) ps_dedup
-            JOIN book ON ps_dedup.id_book = book.id
-            GROUP BY ps_dedup.id_book
-            ORDER BY last_read_time DESC
-        ]]
-        StatsDb.withStatement(conn, sql, function(stmt)
-            for row in stmt:rows() do
-                table.insert(books, {
-                    title    = row[1] or _("Unknown"),
-                    authors  = "",
-                    pages    = tonumber(row[3]) or 0,
-                    duration = tonumber(row[4]) or 0,
-                    id_book  = tonumber(row[6]),
-                })
-            end
-        end)
-        return books
-    end)
 end
 
 function M.showBookList(title, books, on_close, stats_plugin)
@@ -451,7 +348,7 @@ function M.Checklist:_close()
     local year = self.year
     UIManager:scheduleIn(0, function()
         if not ip or ip._closed then return end
-        ip._goal_finished = ip:getFinishedBookCountForYear(year)
+        ip._goal_finished = Data.getFinishedBookCountForYear(year)
         ip:_buildUI()
         UIManager:setDirty(ip, function()
             return "ui", ip.popup_frame.dimen
