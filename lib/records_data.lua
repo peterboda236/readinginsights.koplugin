@@ -240,69 +240,63 @@ local function getDbFingerprint(conn)
     return max_time, row_count
 end
 
--- Returns updated most-reading-time day: checks whether any calendar day
--- touched by new rows (summed across all books) beats the cached champion.
+-- Returns the updated most-reading-time day: any calendar day that new rows
+-- landed in has to be re-totalled in full (the new rows alone don't describe
+-- a day already partly counted), but all such days are totalled in one
+-- grouped pass. The previous version ran a separate full-history query per
+-- touched day, so being away from the popup for a month cost thirty of them.
 local function incrMostReadingTimeDay(conn, hw_time, cached)
     local result = { duration_sec = cached.duration_sec, date = cached.date }
-    -- For each day that has new rows, recompute that day's total across all
-    -- books (new rows alone can't give the full picture for a day already
-    -- partially in cache, so we re-aggregate the whole day).
-    local touched_days = {}
     StatsDb.withStatement(conn, string.format([[
-        SELECT DISTINCT date(start_time, 'unixepoch', 'localtime') AS day
-        FROM page_stat
-        WHERE start_time > %d
+        SELECT day, SUM(duration) AS total
+        FROM (
+            SELECT date(start_time, 'unixepoch', 'localtime') AS day, duration
+            FROM page_stat
+            WHERE date(start_time, 'unixepoch', 'localtime') IN (
+                SELECT DISTINCT date(start_time, 'unixepoch', 'localtime')
+                FROM page_stat WHERE start_time > %d
+            )
+        )
+        GROUP BY day
+        ORDER BY total DESC
+        LIMIT 1
     ]], hw_time), function(stmt)
         for row in stmt:rows() do
-            table.insert(touched_days, row[1])
+            local dur = tonumber(row[2]) or 0
+            if dur > result.duration_sec then
+                result.duration_sec = dur
+                result.date         = row[1]
+            end
         end
     end)
-    for _, day in ipairs(touched_days) do
-        StatsDb.withStatement(conn, string.format([[
-            SELECT SUM(duration)
-            FROM page_stat
-            WHERE date(start_time, 'unixepoch', 'localtime') = %q
-        ]], day), function(stmt)
-            for row in stmt:rows() do
-                local dur = tonumber(row[1]) or 0
-                if dur > result.duration_sec then
-                    result.duration_sec = dur
-                    result.date         = day
-                end
-            end
-        end)
-    end
     return result
 end
 
--- Returns updated most-pages day similarly.
+-- Same single-pass shape for the most-pages day.
 local function incrMostPagesDay(conn, hw_time, cached)
     local result = { pages = cached.pages, date = cached.date }
-    local touched_days = {}
     StatsDb.withStatement(conn, string.format([[
-        SELECT DISTINCT date(start_time, 'unixepoch', 'localtime') AS day
-        FROM page_stat
-        WHERE start_time > %d
+        SELECT day, COUNT(DISTINCT id_book || '-' || page) AS pages
+        FROM (
+            SELECT date(start_time, 'unixepoch', 'localtime') AS day, id_book, page
+            FROM page_stat
+            WHERE date(start_time, 'unixepoch', 'localtime') IN (
+                SELECT DISTINCT date(start_time, 'unixepoch', 'localtime')
+                FROM page_stat WHERE start_time > %d
+            )
+        )
+        GROUP BY day
+        ORDER BY pages DESC
+        LIMIT 1
     ]], hw_time), function(stmt)
         for row in stmt:rows() do
-            table.insert(touched_days, row[1])
+            local cnt = tonumber(row[2]) or 0
+            if cnt > result.pages then
+                result.pages = cnt
+                result.date  = row[1]
+            end
         end
     end)
-    for _, day in ipairs(touched_days) do
-        StatsDb.withStatement(conn, string.format([[
-            SELECT COUNT(DISTINCT id_book || '-' || page)
-            FROM page_stat
-            WHERE date(start_time, 'unixepoch', 'localtime') = %q
-        ]], day), function(stmt)
-            for row in stmt:rows() do
-                local cnt = tonumber(row[1]) or 0
-                if cnt > result.pages then
-                    result.pages = cnt
-                    result.date  = day
-                end
-            end
-        end)
-    end
     return result
 end
 

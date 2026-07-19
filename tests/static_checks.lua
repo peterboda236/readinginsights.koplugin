@@ -157,48 +157,93 @@ end
 --------------------------------------------------------------------------
 print("\n5. Module surfaces")
 --------------------------------------------------------------------------
--- alias used in the code -> file that must define it
-local MODULES = {
-    VS           = "lib/insights_settings.lua",
-    Cache        = "lib/insights_cache.lua",
-    UI           = "lib/uikit.lua",
-    Data         = "lib/insights_data.lua",
-    RecordsData  = "lib/records_data.lua",
-    ChapterInfo  = "lib/chapterinfo.lua",
-    ChapterBar   = "widgets/chapterbarwidget.lua",
-    CalendarData = "lib/book_calendar_data.lua",
-    BookStatsData = "lib/book_stats_data.lua",
-    Menu         = "lib/menu.lua",
-}
-for alias, path in pairs(MODULES) do
+-- Which file backs which name, worked out from the source rather than from
+-- a list kept here by hand - a hand-kept list is exactly what let a bug
+-- through: three calls to BookList.getBooksForPeriod() survived the query
+-- moving into lib/insights_data.lua, because BookList wasn't on the list.
+--
+-- Two hops: main.lua maps a deps key to the module it passes
+-- (Data = InsightsData -> lib/insights_data.lua), and each consumer maps its
+-- own local alias to that deps key (local Data = deps.Data).
+local main = read("main.lua")
+
+local module_file = {}      -- main.lua local -> file it was loaded from
+for name, path in main:gmatch("local%s+([%w_]+)%s*=%s*loadModule%(\"([^\"]+)\"") do
+    module_file[name] = path
+end
+for name, path in main:gmatch("\n([%w_]+)%s*=%s*loadModule%(\"([^\"]+)\"") do
+    module_file[name] = path
+end
+
+local deps_file = {}        -- deps key -> file
+for args in main:gmatch("loadModule%(\"[^\"]+\"%s*,%s*{(.-)}") do
+    for key, value in args:gmatch("([%w_]+)%s*=%s*([%w_]+)") do
+        if module_file[value] then deps_file[key] = module_file[value] end
+    end
+end
+
+-- What each module file actually exposes.
+local exports = {}
+local function exportsOf(path)
+    if exports[path] then return exports[path] end
     local src = read(path)
-    if not src then
-        fail(alias .. " -> " .. path .. " is missing")
-    else
-        local defined = {}
-        for name in src:gmatch("\nfunction M%.([%w_]+)") do defined[name] = true end
-        for name in src:gmatch("\nM%.([%w_]+)%s*=") do defined[name] = true end
-        for name in src:gmatch("\nlocal M = {(.-)\n}") do
-            for key in name:gmatch("([%w_]+)%s*=") do defined[key] = true end
+    local t = {}
+    if src then
+        -- Modules name their table M, except updater.lua which calls it
+        -- Updater; take whatever name the file returns at the end.
+        local self_name = src:match("\nreturn ([%w_]+)%s*$") or "M"
+        for name in src:gmatch("\nfunction " .. self_name .. "%.([%w_]+)") do t[name] = true end
+        for name in src:gmatch("\n" .. self_name .. "%.([%w_]+)%s*=") do t[name] = true end
+        for name in src:gmatch("\nfunction M%.([%w_]+)") do t[name] = true end
+        for name in src:gmatch("\nM%.([%w_]+)%s*=") do t[name] = true end
+        -- fields of a `local M = { ... }` / `M.Opt = { ... }` table literal
+        for block in src:gmatch("\nM?%.?[%w_]*%s*=%s*{(.-)\n}") do
+            for key in block:gmatch("\n%s*([%w_]+)%s*=") do t[key] = true end
         end
-        for name in src:gmatch("\n    ([%w_]+)%s*=") do defined[name] = true end
-        local missing = {}
-        for _, f in ipairs(files) do
-            if f ~= path then
-                for _, line in ipairs(lines(read(f))) do
-                    if not line:match("^%s*%-%-") then
-                        for name in line:gmatch("[^%w_.]" .. alias .. "%.([%w_]+)") do
-                            if not defined[name] then missing[name] = true end
+        -- a plain `return { name = ..., }` export table
+        for block in src:gmatch("\nreturn {(.-)\n}") do
+            for key in block:gmatch("\n%s*([%w_]+)%s*=") do t[key] = true end
+        end
+    end
+    exports[path] = t
+    return t
+end
+
+for _, f in ipairs(files) do
+    local src = read(f)
+    -- local alias -> deps key, from `local A, B = deps.X, deps.Y`
+    local alias_file = {}
+    for lhs, rhs in src:gmatch("\nlocal ([%w_,%s]+)=%s*\n?%s*(deps%.[%w_,%s.]+)") do
+        local names, keys = {}, {}
+        for n in lhs:gmatch("[%w_]+") do names[#names + 1] = n end
+        for k in rhs:gmatch("deps%.([%w_]+)") do keys[#keys + 1] = k end
+        for i, n in ipairs(names) do
+            if keys[i] and deps_file[keys[i]] then alias_file[n] = deps_file[keys[i]] end
+        end
+    end
+    local bad = {}
+    for alias, path in pairs(alias_file) do
+        if path ~= f then
+            for _, line in ipairs(lines(src)) do
+                if not line:match("^%s*%-%-") then
+                    for name in line:gmatch("[^%w_.]" .. alias .. "%.([%w_]+)") do
+                        if not exportsOf(path)[name] then
+                            bad[alias .. "." .. name .. " (not in " .. path .. ")"] = true
                         end
                     end
                 end
             end
         end
-        local list = {}
-        for n in pairs(missing) do list[#list + 1] = n end
-        table.sort(list)
-        if #list == 0 then pass(alias .. " (" .. path .. ")")
-        else fail(alias .. " used but not defined: " .. table.concat(list, ", ")) end
+    end
+    local list = {}
+    for n in pairs(bad) do list[#list + 1] = n end
+    table.sort(list)
+    if #list == 0 then
+        local n = 0
+        for _ in pairs(alias_file) do n = n + 1 end
+        pass(f .. " (" .. n .. " module aliases)")
+    else
+        fail(f .. " calls: " .. table.concat(list, ", "))
     end
 end
 

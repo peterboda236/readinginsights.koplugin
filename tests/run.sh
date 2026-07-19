@@ -37,6 +37,14 @@ run tests/static_checks.lua
 run tests/test_modules.lua
 run tests/test_chapterinfo.lua
 run tests/test_records.lua
+
+# The day-bounds arithmetic is timezone-dependent, so it is run under a
+# timezone that actually observes DST rather than whatever the machine has.
+echo ""
+echo "=============================================================="
+echo " tests/test_daybounds.lua (TZ=Europe/Budapest)"
+echo "=============================================================="
+if ! TZ=Europe/Budapest lua5.1 tests/test_daybounds.lua; then failed=1; fi
 run tests/test_wiring.lua
 
 echo ""

@@ -174,6 +174,25 @@ function M.computeStreaksWithDates(entries_desc, is_consecutive, is_current_star
     return current, best, current_dates, best_dates
 end
 
+-- Local midnight bounds of a "YYYY-MM-DD" day, as epoch seconds: everything
+-- from lo (inclusive) to hi (exclusive) belongs to that local day.
+--
+-- Why this exists: `WHERE date(start_time,'unixepoch','localtime') = '...'`
+-- reads well but wraps the indexed column in a function, so SQLite can use
+-- no index and converts every row's timestamp to local time to test it. The
+-- same filter written as a plain range on start_time uses
+-- page_stat_data_start_time and is an order of magnitude cheaper on a real
+-- database. os.time() normalises the components, so day + 1 rolls over
+-- months and years correctly, and both ends are computed in local time, so
+-- a DST day is 23 or 25 hours wide exactly as it should be.
+function M.dayBounds(date_str)
+    local y, m, d = M.parseDateYMD(date_str)
+    if not y then return nil, nil end
+    local lo = os.time{ year = y, month = m, day = d,     hour = 0, min = 0, sec = 0 }
+    local hi = os.time{ year = y, month = m, day = d + 1, hour = 0, min = 0, sec = 0 }
+    return lo, hi
+end
+
 function M.parseDateYMD(date_str)
     if not date_str then return end
     local year = tonumber(date_str:sub(1,4))
@@ -396,11 +415,12 @@ function M.getMonthlyReadingDays(year, shared_conn)
         end
 
         local today_has_activity = false
+        local day_lo, day_hi = M.dayBounds(today)
         StatsDb.withStatement(conn, string.format([[
             SELECT 1 FROM page_stat
-            WHERE date(start_time, 'unixepoch', 'localtime') = '%s'
+            WHERE start_time >= %d AND start_time < %d
             LIMIT 1
-        ]], today), function(stmt)
+        ]], day_lo, day_hi), function(stmt)
             for _ in stmt:rows() do today_has_activity = true end
         end)
 
@@ -468,6 +488,11 @@ function M.getMonthlyReadingHours(year, shared_conn)
         end
 
         local today_seconds = 0
+        -- Left as a date() filter on purpose: with a start_time range
+        -- SQLite reorders page_stat's internal join and scans the
+        -- `numbers` table first, which measured 20x slower on a real
+        -- database. The range form only pays off where it doesn't
+        -- disturb that join order.
         StatsDb.withStatement(conn, string.format([[
             SELECT id_book, page, SUM(duration) AS dur
             FROM page_stat
@@ -574,6 +599,11 @@ function M.getYearlyStats(year, shared_conn)
         -- added on top of a past, already-closed year's total.
         if year == tonumber(os.date("%Y")) then
             local seen = {}
+            -- Left as a date() filter on purpose: with a start_time range
+            -- SQLite reorders page_stat's internal join and scans the
+            -- `numbers` table first, which measured 20x slower on a real
+            -- database. The range form only pays off where it doesn't
+            -- disturb that join order.
             StatsDb.withStatement(conn, string.format([[
                 SELECT id_book, page, SUM(duration) AS dur
                 FROM page_stat
@@ -800,27 +830,37 @@ function M.getAllTimeStats(shared_conn)
 
         local t = { duration = 0, new_pages = 0, new_books = 0 }
 
+        local day_lo, day_hi = M.dayBounds(today)
+
         StatsDb.withStatement(conn, string.format([[
             SELECT SUM(duration) FROM page_stat
-            WHERE date(start_time, 'unixepoch', 'localtime') = '%s'
-        ]], today), function(stmt)
+            WHERE start_time >= %d AND start_time < %d
+        ]], day_lo, day_hi), function(stmt)
             for row in stmt:rows() do t.duration = tonumber(row[1]) or 0 end
         end)
 
+        -- "Pages seen for the first time today", asked the cheap way round.
+        -- The obvious phrasing - take today's pages, then for each one check
+        -- that no earlier row exists - runs that check once per page, and
+        -- each check re-scans history. Asking instead for the first time
+        -- every page was ever seen, and counting the ones that land in
+        -- today, is a single grouped pass: 64ms -> 8ms on a real
+        -- statistics.sqlite3, with identical answers on every one of its 79
+        -- days.
         StatsDb.withStatement(conn, string.format([[
             SELECT COUNT(*) FROM (
-                SELECT DISTINCT id_book, page FROM page_stat
-                WHERE date(start_time, 'unixepoch', 'localtime') = '%s'
-            ) t
-            WHERE NOT EXISTS (
-                SELECT 1 FROM page_stat p
-                WHERE p.id_book = t.id_book AND p.page = t.page
-                  AND date(p.start_time, 'unixepoch', 'localtime') < '%s'
+                SELECT id_book, page, MIN(start_time) AS first_seen
+                FROM page_stat GROUP BY id_book, page
             )
-        ]], today, today), function(stmt)
+            WHERE first_seen >= %d AND first_seen < %d
+        ]], day_lo, day_hi), function(stmt)
             for row in stmt:rows() do t.new_pages = tonumber(row[1]) or 0 end
         end)
 
+        -- Not rewritten like the pages query above: there are only ever a
+        -- handful of books, so the correlated form is already cheap, while
+        -- grouping would have to walk the whole history (measured 2.5x
+        -- slower).
         StatsDb.withStatement(conn, string.format([[
             SELECT COUNT(DISTINCT id_book) FROM page_stat t
             WHERE date(start_time, 'unixepoch', 'localtime') = '%s'
@@ -1318,10 +1358,11 @@ function M.getMonthlyBookCounts(year, shared_conn)
         end
 
         local new_books_today = 0
+        local day_lo, day_hi = M.dayBounds(today)
         StatsDb.withStatement(conn, string.format([[
             SELECT DISTINCT id_book FROM page_stat
-            WHERE date(start_time, 'unixepoch', 'localtime') = '%s'
-        ]], today), function(stmt)
+            WHERE start_time >= %d AND start_time < %d
+        ]], day_lo, day_hi), function(stmt)
             for row in stmt:rows() do
                 local id_book = tostring(row[1])
                 if not (base.current_month_book_ids and base.current_month_book_ids[id_book]) then

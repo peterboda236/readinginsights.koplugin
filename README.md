@@ -1,6 +1,6 @@
 ### 📊 Reading insights plugin
 
-<img width="255" height="340" alt="FileManager_2026-07-17_152310" src="https://github.com/user-attachments/assets/54116e81-b1aa-41ef-be93-ecab2604f7c8" />
+<img width="255" height="340" alt="FileManager_2026-07-18_205310" src="https://github.com/user-attachments/assets/2686e3ea-66cb-4d34-8af4-77fe147c47a3" />
 <img width="255" height="340" alt="FileManager_2026-07-17_152344" src="https://github.com/user-attachments/assets/4a3d2fb9-cc51-4342-a952-36f23bb1925c" />
 <img width="255" height="340" alt="Reader_Az Elso Torveny vilaga 1  - Hidegen talalva - Abercrombie, Joe #p(878) epub_p1117_2026-07-06_084654" src="https://github.com/user-attachments/assets/555ab8c6-d9ce-4ebc-a6ac-cfdf097ec51d" />
 <br/><br/>
@@ -10,7 +10,9 @@
 
 More screenshots
 
-<img width="192" height="256" alt="reading-insights-v2-0-0-new-book-progress-popup-colors-v0-zoh19sw42rbh1" src="https://github.com/user-attachments/assets/52f851b7-8955-4739-b3a7-96ff8c2cbfe6" /><img width="192" height="256" alt="FileManager_2026-07-02_083306" src="https://github.com/user-attachments/assets/3026267b-d29d-4487-99a5-6efdcc4baa37" /><img width="192" height="256" alt="FileManager_2026-07-02_083320" src="https://github.com/user-attachments/assets/8193ba8b-7f7e-4b35-9efb-81d0d4a1df8e" />
+<img width="192" height="256" alt="reading-insights-v2-0-0-new-book-progress-popup-colors-v0-zoh19sw42rbh1" src="https://github.com/user-attachments/assets/52f851b7-8955-4739-b3a7-96ff8c2cbfe6" />
+<img width="192" height="256" alt="FileManager_2026-07-18_211837" src="https://github.com/user-attachments/assets/e4e5d617-98c6-40bc-8844-f23fa5837e95" />
+<img width="192" height="256" alt="FileManager_2026-07-02_083320" src="https://github.com/user-attachments/assets/8193ba8b-7f7e-4b35-9efb-81d0d4a1df8e" />
 
 
 This plugin bundles three reading-stats popups, powered by KOReader's
@@ -76,6 +78,18 @@ A full-screen scrollable overlay with a comprehensive overview of your reading h
     row in both heatmap grids
 
 **Controls:** swipe left/right to change year, tap the "Total read" header to open the reading heatmap, tap bars to open book lists, tap the chart header to toggle hours/days mode, long-press the title bar to force-reload data (see **Reading goal** above for that section's own tap/long-press targets).
+
+**Query shape:** `page_stat` is a view that rescales pages, joining
+`page_stat_data`, `book` and a `numbers` table. Filters written as
+`date(start_time, 'unixepoch', 'localtime') = ...` read well but hide the
+indexed column inside a function, so SQLite scans instead of seeking - and
+converts every row to local time to test it. Where it measurably helps, the
+plugin uses a plain `start_time >= lo AND start_time < hi` range instead
+(`InsightsData.dayBounds` works the local midnights out in Lua, DST
+included). Where it doesn't, the `date()` form stays: with a range predicate
+SQLite sometimes reorders the view's internal join and scans `numbers`
+first, which is far slower. Both forms are in the code deliberately, each
+with a comment saying which measurement put it there.
 
 **Caching:** uses a stale-while-revalidate strategy — the popup opens instantly with cached data while fresh values load in the background. The last known values are also mirrored to disk, so this still holds true for the very first popup open after a KOReader restart — no blocking "Loading data..." wait. The reading goal's finished-book list is cached the same way and only updated incrementally (books read since the last check are re-examined, the rest are left alone); if `statistics.sqlite3` is restored from a backup, merged with another device's, or has rows removed, that is detected and the year is rescanned from scratch. A long press on the title bar force-reloads everything regardless.
 
