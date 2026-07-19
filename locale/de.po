@@ -905,6 +905,16 @@ msgstr "Bücher als Ziel"
 msgid "* = changed by you"
 msgstr "* = von dir geändert"
 
+msgid "You changed 1 book. Go back?"
+msgstr "Du hast 1 Buch geändert. Zurück?"
+
+msgid "You changed %d books. Go back?"
+msgstr "Du hast %d Bücher geändert. Zurück?"
+
+
+msgid "Keep editing"
+msgstr "Weiter bearbeiten"
+
 msgid "Automatic"
 msgstr "Automatisch"
 
