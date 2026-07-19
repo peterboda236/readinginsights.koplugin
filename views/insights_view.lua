@@ -1318,12 +1318,12 @@ function ReadingInsightsPopup:showWeeklyTrendPopup(metric)
 end
 
 function ReadingInsightsPopup:getBooksForMonth(year_month)
-    return BookList.getBooksForPeriod("%Y-%m", year_month)
+    return Data.getBooksForPeriod("%Y-%m", year_month)
 end
 
 function ReadingInsightsPopup:showBooksForMonth(year_month, month_label_full)
     local books = self:getBooksForMonth(year_month)
-    local total_secs = BookList.sumDuration(books)
+    local total_secs = Data.sumDuration(books)
     local title = T(N_("%1 - book read %2", "%1 - books read %2", #books), month_label_full, formatCount(#books)) .. " (" .. formatHHMMSS(total_secs) .. ")"
     BookList.showBooksForPeriod(
         self, books,
@@ -1503,12 +1503,12 @@ function ReadingInsightsPopup:openCalendarForCurrentMonth()
 end
 
 function ReadingInsightsPopup:getBooksForYear(year)
-    return BookList.getBooksForPeriod("%Y", tostring(year))
+    return Data.getBooksForPeriod("%Y", tostring(year))
 end
 
 function ReadingInsightsPopup:showAllBooks()
-    local books = BookList.getAllBooks()
-    local total_secs = BookList.sumDuration(books)
+    local books = Data.getAllBooks()
+    local total_secs = Data.sumDuration(books)
     BookList.showBooksForPeriod(
         self, books,
         _("No books read"),
@@ -1517,7 +1517,7 @@ end
 
 function ReadingInsightsPopup:showBooksForYear(year)
     local books = self:getBooksForYear(year)
-    local total_secs = BookList.sumDuration(books)
+    local total_secs = Data.sumDuration(books)
     BookList.showBooksForPeriod(
         self, books,
         _("No books read in ") .. year,
@@ -1529,7 +1529,7 @@ end
 -- getFinishedBookCountForYear.
 function ReadingInsightsPopup:showFinishedBooksForYear(year)
     local books = getFinishedBooksForYearCombined(self, year)
-    local total_secs = BookList.sumDuration(books)
+    local total_secs = Data.sumDuration(books)
     BookList.showBooksForPeriod(
         self, books,
         T(_("No books finished in %1"), tostring(year)),
