@@ -933,3 +933,64 @@ msgstr "Months"
 msgid "Total read"
 msgstr "Total read"
 
+
+msgid "Last read (newest first)"
+msgstr "Last read (newest first)"
+
+msgid "Last read (oldest first)"
+msgstr "Last read (oldest first)"
+
+msgid "Title (A to Z)"
+msgstr "Title (A to Z)"
+
+msgid "Title (Z to A)"
+msgstr "Title (Z to A)"
+
+msgid "Books finished in %1"
+msgstr "Books finished in %1"
+
+msgid "Mark books finished"
+msgstr "Mark books finished"
+
+
+
+msgid "Add book"
+msgstr "Add book"
+
+msgid "Edit book"
+msgstr "Edit book"
+
+msgid "Edit"
+msgstr "Edit"
+
+msgid "Delete"
+msgstr "Delete"
+
+msgid "Delete \"%1\"?"
+msgstr "Delete \"%1\"?"
+
+msgid "Title"
+msgstr "Title"
+
+msgid "Author"
+msgstr "Author"
+
+msgid "Please enter a title"
+msgstr "Please enter a title"
+
+
+
+msgid "Date read (YYYY-MM-DD)"
+msgstr "Date read (YYYY-MM-DD)"
+
+msgid "Please enter the date as YYYY-MM-DD"
+msgstr "Please enter the date as YYYY-MM-DD"
+
+msgid "Reload data"
+msgstr "Reload data"
+
+msgid "Add books manually"
+msgstr "Add books manually"
+
+msgid "Add books manually - %1"
+msgstr "Add books manually - %1"

@@ -147,6 +147,30 @@ function M.clearAllCache()
     M._stale_goal_cache      = {}
 end
 
+-- Drops the per-minute cached reading-goal count for one year, so the next
+-- getFinishedBookCountForYear() re-runs its (incremental) scan instead of
+-- handing back a number that was worked out up to a minute ago. Used when
+-- something just changed the answer - a book ticked in the checklist, a
+-- hand-added book saved - and the popup is about to show the count again.
+function M.clearGoalMinuteCacheForYear(year)
+    local key = tostring(year) .. ":goal:v3"
+    M._goal_cache[key]                = nil
+    M._goal_cache[key .. ":minute"]   = nil
+    M._stale_goal_cache[key]              = nil
+    M._stale_goal_cache[key .. ":minute"] = nil
+end
+
+-- The same, plus this year's remembered finished-books list and the
+-- watermark that says how far the last scan got - so the next call rebuilds
+-- the list from scratch rather than only looking at rows added since. The
+-- expensive one; only for an explicit "reload" by the reader.
+function M.clearGoalCacheForYear(year)
+    M.clearGoalMinuteCacheForYear(year)
+    local year_key = tostring(year)
+    M._goal_finished_books[year_key] = nil
+    M._goal_scan_watermark[year_key] = nil
+end
+
 -- Disk-persisted cache -------------------------------------------------
 --
 -- Everything above lives in memory only, so it is empty right after a

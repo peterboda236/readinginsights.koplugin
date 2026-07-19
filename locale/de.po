@@ -933,3 +933,64 @@ msgstr "Monate"
 msgid "Total read"
 msgstr "Insgesamt gelesen"
 
+
+msgid "Last read (newest first)"
+msgstr "Zuletzt gelesen (neueste zuerst)"
+
+msgid "Last read (oldest first)"
+msgstr "Zuletzt gelesen (älteste zuerst)"
+
+msgid "Title (A to Z)"
+msgstr "Titel (A bis Z)"
+
+msgid "Title (Z to A)"
+msgstr "Titel (Z bis A)"
+
+msgid "Books finished in %1"
+msgstr "Beendete Bücher %1"
+
+msgid "Mark books finished"
+msgstr "Bücher als beendet markieren"
+
+
+
+msgid "Add book"
+msgstr "Buch hinzufügen"
+
+msgid "Edit book"
+msgstr "Buch bearbeiten"
+
+msgid "Edit"
+msgstr "Bearbeiten"
+
+msgid "Delete"
+msgstr "Löschen"
+
+msgid "Delete \"%1\"?"
+msgstr "Löschen: \"%1\"?"
+
+msgid "Title"
+msgstr "Titel"
+
+msgid "Author"
+msgstr "Autor"
+
+msgid "Please enter a title"
+msgstr "Bitte einen Titel eingeben"
+
+
+
+msgid "Date read (YYYY-MM-DD)"
+msgstr "Lesedatum (JJJJ-MM-TT)"
+
+msgid "Please enter the date as YYYY-MM-DD"
+msgstr "Bitte das Datum als JJJJ-MM-TT eingeben"
+
+msgid "Reload data"
+msgstr "Daten neu laden"
+
+msgid "Add books manually"
+msgstr "Bücher manuell hinzufügen"
+
+msgid "Add books manually - %1"
+msgstr "Bücher manuell hinzufügen - %1"

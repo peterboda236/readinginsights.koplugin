@@ -49,14 +49,37 @@ A full-screen scrollable overlay with a comprehensive overview of your reading h
   when the target is set to 1);
   swipes left/right on the popup (see **Controls** below) move the goal
   section to that year too, same as the rest of the popup
-  - **Tap** the left cell (the finished-book count) to see the list of
-    books counted as finished that year
-  - **Long-press** the left cell to open a checklist of every book with
-    activity that year; tap a row to toggle whether it counts as finished
-    — saved immediately, so both the count and the list above reflect the
-    change right away. Rows you changed yourself are marked with a trailing
-    `*`, so it stays clear which entries came from the automatic rule and
-    which you set by hand
+  - **Tap** the left cell (the finished-book count) to see the books that
+    make up it, most recently finished first. This list shows the **date**
+    each book was finished on the right, rather than the reading time the
+    other book lists show — it is ordered by that date, and books you added
+    yourself have no measured time at all. Those hand-added entries are
+    shown as a bare title with a leading `*` on their date
+  - **Long-press** the left cell to choose between the two ways of
+    correcting that count:
+    - **Mark books finished** — a checklist of every book with activity
+      that year: checkbox and title on the left, the date of that book's
+      last reading entry on the right. Tap a row to toggle whether it
+      counts as finished. The
+      check mark at the bottom right keeps your changes, the `X` at the
+      bottom left puts them back as they were. Rows you changed yourself
+      are marked with a trailing `*`, so it stays clear which entries came
+      from the automatic rule and which you set by hand. The list is
+      queried fresh every time it is opened, with the running reading
+      session written out to the statistics database first, so a book you
+      have just finished comes up already ticked; **Reload data** in the
+      sort menu re-runs those queries without closing the list
+    - **Add books manually** — your own list of books the statistics
+      database knows nothing about (read on paper, in another app, on
+      another device). Tap **Add book** to enter a title, an author and the
+      date you read it (`YYYY-MM-DD`, prefilled with today for the current
+      year); tap an entry to edit or delete it. Rows show the title on the
+      left and that date on the right. The date stands in for a reading
+      entry: it is what both this list and the finished-books list sort
+      those entries by. Entries belong to the year the list was opened
+      from, are kept in their own file (`reading_insights_manual_books.lua`,
+      next to KOReader's settings) and count towards that year's reading
+      goal
   - **Long-press** the right cell (the goal number) to open a number
     picker and set/change that year's target (1–999, defaults to 12)
   - A book counts as finished when its **last** reading entry reached at
@@ -65,7 +88,9 @@ A full-screen scrollable overlay with a comprehensive overview of your reading h
     finished it, and a finished book you later reopen and leave partway
     through stops counting. Books whose page count KOReader doesn't know
     (`pages = 0`) can't be judged this way and are never counted
-    automatically; add them with the checklist above
+    automatically; tick them in **Mark books finished** (or, if the book
+    isn't in the statistics database at all, put it in **Add books
+    manually**)
   - The whole section can be switched off under *Settings → Advanced
     settings → Reading goal section* (on by default); when off, its data
     isn't even queried when the popup opens
@@ -76,6 +101,16 @@ A full-screen scrollable overlay with a comprehensive overview of your reading h
     time-of-day heatmap's hour columns
   - **Week start day** — Monday or Sunday, controls which day starts each
     row in both heatmap grids
+
+**Book lists:** the read-only lists (books read in a period, books counted
+as finished) are plain lists of title/author and a value on the right. The
+two lists you edit — **Mark books finished** and **Add books manually** —
+are paged lists with a sort menu behind the icon at the top left: by last
+reading entry (newest or oldest first, newest by default) or by title
+(A→Z, Z→A), remembered separately for each list. The `X` at the top right
+closes the list; **Mark books finished** also has a cancel `X` and an
+accept check mark in the bottom bar, since it is the one list where
+changes can be thrown away.
 
 **Controls:** swipe left/right to change year, tap the "Total read" header to open the reading heatmap, tap bars to open book lists, tap the chart header to toggle hours/days mode, long-press the title bar to force-reload data (see **Reading goal** above for that section's own tap/long-press targets).
 
@@ -355,6 +390,10 @@ readinginsights.koplugin/
 │   │                         stale-while-revalidate, the "up to yesterday" base
 │   │                         aggregates, the persisted finished-books lists for
 │   │                         the reading goal, and the disk mirror of all of it
+│   ├── manual_books.lua      the books the reader adds by hand (ones the
+│   │                         statistics DB knows nothing about) with the
+│   │                         date each was read, one list per year, in its
+│   │                         own settings file
 │   ├── insights_settings.lua every user-settable option of the insights
 │   │                         popup (bar-chart heights + automatic mode, heatmap
 │   │                         options, reading goal + finished-book overrides,
@@ -387,9 +426,12 @@ readinginsights.koplugin/
 │   ├── book_stats_view.lua     compact "current book progress" overlay
 │   │                           (formerly stats_view.lua)
 │   ├── booklist_view.lua       the book lists the insights popup opens on a
-│   │                           tap: books read in a period, books counted
-│   │                           towards the reading goal, and the checklist
-│   │                           for correcting that list by hand
+│   │                           tap or long press: books read in a period and
+│   │                           books counted towards the reading goal (plain
+│   │                           KeyValuePage lists), plus the checklist for
+│   │                           correcting that count by hand and the list
+│   │                           of books added manually (both drawn with
+│   │                           widgets/booklistwidget.lua)
 │   ├── heatmap_view.lua        both reading heatmaps (calendar-style range,
 │   │                           and weekday x hour-of-day) plus their
 │   │                           full-screen popup
@@ -400,6 +442,11 @@ readinginsights.koplugin/
 │   │                           its data lives in lib/records_data.lua)
 │   └── trend_view.lua          the 8-week trend line chart popup
 └── widgets/             reusable UI widgets
+    ├── booklistwidget.lua    the list widget the two editable book lists are
+    │                         drawn with: sort menu in the title bar, paged
+    │                         rows (checkbox + title left, date right) and
+    │                         optional cancel/accept buttons - a subclass of
+    │                         KOReader's SortWidget with its own row widget
     ├── chapterbarwidget.lua  the per-chapter bar under "This book" in the
     │                         book progress view (plus its own height
     │                         setting), paged with the arrows either side
