@@ -216,7 +216,18 @@ function M.Checklist:_toggle(id_book)
     end
     VS.saveFinishedOverrides(self.year, self.overrides)
 
+    -- _buildUI() rebuilds the scroll container from scratch, which would
+    -- otherwise snap the view back to the top on every tap - annoying when
+    -- ticking several books near the bottom of a long list. Save the
+    -- current scroll position and restore it on the freshly built container.
+    local prev_offset = self.scroll_container and self.scroll_container:getScrolledOffset()
+
     self:_buildUI()
+
+    if prev_offset then
+        self.scroll_container:setScrolledOffset(prev_offset)
+    end
+
     UIManager:setDirty(self, function()
         return "ui", self.popup_frame.dimen
     end)
@@ -226,7 +237,16 @@ function M.Checklist:_buildUI()
     local fonts      = getCachedFonts()
     local layout      = getCachedLayout()
     local padding_h   = layout.padding_h
-    local row_width   = self.screen_w - 2 * padding_h
+    -- ScrollableContainer reserves 3 * scroll_bar_width on the right for its
+    -- vertical scrollbar (which this list, being long, almost always needs).
+    -- padding_h alone (used below on both sides) is narrower than that
+    -- reservation, so without this the rows nudged a few pixels into the
+    -- scrollbar's margin - which made ScrollableContainer think the content
+    -- didn't fit horizontally either, and draw a useless horizontal
+    -- scrollbar along the bottom on top of the vertical one.
+    local ScrollableContainer = require("ui/widget/container/scrollablecontainer")
+    local scrollbar_reserve = ScrollableContainer:getScrollbarWidth()
+    local row_width   = self.screen_w - 2 * padding_h - scrollbar_reserve
     local checklist_self = self
 
     local title_bar = TitleBar:new{
@@ -307,17 +327,21 @@ function M.Checklist:_buildUI()
         table.insert(rows, VerticalSpan:new{ height = Size.padding.default })
     end
 
+    -- Only the separator + rows scroll; the title bar (and its close "X")
+    -- stays fixed above them, rather than being scrolled off-screen with
+    -- the rest of the content. This also stops the content height from
+    -- being padded out by an extra title-bar-height of empty space at the
+    -- bottom, which used to make the scrollbar appear even on short lists
+    -- that would otherwise fit on one screen.
     local content = VerticalGroup:new{
         align = "left",
-        title_bar,
-        UI.padded(padding_h, Colors.newBar(layout.content_width, Size.line.thick, Colors.separator())),
+        UI.padded(padding_h, Colors.newBar(row_width, Size.line.thick, Colors.separator())),
         rows,
-        VerticalSpan:new{ height = title_bar:getSize().h },
+        VerticalSpan:new{ height = Size.padding.default },
     }
 
-    local ScrollableContainer = require("ui/widget/container/scrollablecontainer")
     self.scroll_container = ScrollableContainer:new{
-        dimen               = Geom:new{ w = self.screen_w, h = self.screen_h },
+        dimen               = Geom:new{ w = self.screen_w, h = self.screen_h - self._title_bar_height },
         show_parent         = self,
         scroll_bar_position = "right",
         content,
@@ -331,6 +355,7 @@ function M.Checklist:_buildUI()
         width      = self.screen_w,
         VerticalGroup:new{
             align = "left",
+            title_bar,
             self.scroll_container,
         },
     }
@@ -339,10 +364,40 @@ function M.Checklist:_buildUI()
     self[1] = VerticalGroup:new{ self.popup_frame }
 end
 
+function M.Checklist:_countChanges()
+    local n = 0
+    for _ in pairs(self.overrides) do
+        n = n + 1
+    end
+    return n
+end
+
 -- Closes and, once the checklist is off-screen, refreshes the parent
 -- popup's reading-goal section so the updated count and finished-books
 -- list are visible immediately without a full close/reopen.
 function M.Checklist:_close()
+    local changed = self:_countChanges()
+    if changed == 0 then
+        self:_finishClose()
+        return
+    end
+
+    -- Every tap already saved immediately (VS.saveFinishedOverrides in
+    -- _toggle), so nothing is actually at risk of being lost here - this
+    -- is just a checkpoint so a swipe or accidental tap on the close
+    -- button doesn't leave without the reader noticing what got changed.
+    local ConfirmBox = require("ui/widget/confirmbox")
+    UIManager:show(ConfirmBox:new{
+        text = string.format(
+            N_("You changed 1 book. Go back?", "You changed %d books. Go back?", changed),
+            changed),
+        ok_text     = _("Yes"),
+        cancel_text = _("Keep editing"),
+        ok_callback = function() self:_finishClose() end,
+    })
+end
+
+function M.Checklist:_finishClose()
     UIManager:close(self)
     local ip   = self.insights_popup
     local year = self.year

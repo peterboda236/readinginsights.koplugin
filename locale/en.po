@@ -905,6 +905,16 @@ msgstr "books to read"
 msgid "* = changed by you"
 msgstr "* = changed by you"
 
+msgid "You changed 1 book. Go back?"
+msgstr "You changed 1 book. Go back?"
+
+msgid "You changed %d books. Go back?"
+msgstr "You changed %d books. Go back?"
+
+
+msgid "Keep editing"
+msgstr "Keep editing"
+
 msgid "Automatic"
 msgstr "Automatic"
 

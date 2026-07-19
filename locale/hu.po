@@ -920,6 +920,16 @@ msgstr "könyv a cél"
 msgid "* = changed by you"
 msgstr "* = általad módosítva"
 
+msgid "You changed 1 book. Go back?"
+msgstr "1 könyvet módosítottál. Visszalépsz?"
+
+msgid "You changed %d books. Go back?"
+msgstr "%d könyvet módosítottál. Visszalépsz?"
+
+
+msgid "Keep editing"
+msgstr "Folytatom a szerkesztést"
+
 msgid "Automatic"
 msgstr "Automatikus"
 
