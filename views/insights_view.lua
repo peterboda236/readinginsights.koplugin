@@ -69,10 +69,10 @@ local T = require("ffi/util").template
 -- loadModule() call for this file).
 -- Shared modules, passed in as one named table by main.lua (see there).
 local deps = ...
-local Locale, Colors, Fonts, PopupUtil, VS, Cache, UI, Trend, Heatmap, BookList, Data =
+local Locale, Colors, Fonts, PopupUtil, VS, Cache, UI, Trend, Heatmap, BookList, Data, Manual =
     deps.Locale, deps.Colors, deps.Fonts, deps.PopupUtil,
     deps.VS, deps.Cache, deps.UI, deps.Trend, deps.Heatmap, deps.BookList,
-    deps.Data
+    deps.Data, deps.Manual
 
 -- true: today's bar in the weekly chart is black. false: all bars gray.
 local WEEKLY_CHART_HIGHLIGHT_TODAY = true
@@ -1217,11 +1217,48 @@ end
 -- ReadingInsightsPopup:showFinishedBooksChecklist below). This is what
 -- both the goal section's tap-to-list (showFinishedBooksForYear) and the
 -- checklist's own checkbox state are based on, so all three stay in sync.
+-- The list is shown in the order the query returns it (last reading entry
+-- first), and the two kinds of book added to it afterwards - the ones the
+-- reader ticked by hand, and the hand-added ones - have to be merged into
+-- that order rather than dropped at the end, or a book finished today
+-- shows up below one finished in January.
+local function sortByLastRead(books)
+    table.sort(books, function(a, b)
+        local ta, tb = a.last_read or 0, b.last_read or 0
+        if ta == tb then return (a.title or "") < (b.title or "") end
+        return ta > tb
+    end)
+    return books
+end
+
 local function getFinishedBooksForYearCombined(popup_self, year)
     local base_books = Data.getFinishedBooksForYear(year)
     local overrides = VS.readFinishedOverrides(year)
+
+    -- The books the reader added by hand (lib/manual_books.lua) have no
+    -- rows in the statistics DB at all, so no query can find them - they
+    -- are appended here, as book-shaped entries with no reading time, so
+    -- this list matches the goal count (which adds them the same way, see
+    -- Data.applyFinishedOverrides).
+    local manual_books = {}
+    for _idx, e in ipairs(Manual.list(year)) do
+        table.insert(manual_books, {
+            title     = e.title,
+            -- No author and no reading time in this list: the row is shown
+            -- as a bare title (see BookList.showBookList's `manual` branch).
+            authors   = "",
+            duration  = 0,
+            last_read = e.read_ts or e.ts or 0,
+            manual    = true,
+        })
+    end
+
     if not next(overrides) then
-        return base_books
+        if #manual_books == 0 then return base_books end
+        local out = {}
+        for _idx, b in ipairs(base_books) do table.insert(out, b) end
+        for _idx, b in ipairs(manual_books) do table.insert(out, b) end
+        return sortByLastRead(out)
     end
 
     local by_id = {}
@@ -1253,7 +1290,11 @@ local function getFinishedBooksForYearCombined(popup_self, year)
         end
     end
 
-    return result
+    for _idx, b in ipairs(manual_books) do
+        table.insert(result, b)
+    end
+
+    return sortByLastRead(result)
 end
 
 -- Build and show the 8-week trend popup for the given metric:
@@ -1533,14 +1574,57 @@ function ReadingInsightsPopup:showFinishedBooksForYear(year)
     BookList.showBooksForPeriod(
         self, books,
         T(_("No books finished in %1"), tostring(year)),
-        T(N_("%1 - book finished %2", "%1 - books finished %2", #books), tostring(year), formatCount(#books)) .. " (" .. formatHHMMSS(total_secs) .. ")")
+        T(N_("%1 - book finished %2", "%1 - books finished %2", #books), tostring(year), formatCount(#books)) .. " (" .. formatHHMMSS(total_secs) .. ")",
+        -- This list is about *when* each book was finished (it's ordered by
+        -- that), so its value column shows the date rather than the time
+        -- spent - see BookList.showBookList's opts.show_dates.
+        { show_dates = true })
 end
 
 function ReadingInsightsPopup:showFinishedBooksChecklist(year)
-    UIManager:show(BookList.Checklist:new{
-        year           = year,
-        insights_popup = self,
-    })
+    BookList.showFinishedChecklist(self, year)
+end
+
+-- The other half of the long-press menu on the same cell: the reader's own
+-- list of books the statistics DB knows nothing about (see
+-- lib/manual_books.lua), kept per year - the year currently shown by the
+-- popup is the one entries are added to.
+function ReadingInsightsPopup:showManualBooksList(year)
+    BookList.showManualBooks(self, year)
+end
+
+-- Long press on the reading goal's "N book(s) finished" cell. Two ways to
+-- correct that count, so the press opens a chooser rather than one of them
+-- directly: the checklist for books the statistics DB does know about, and
+-- the hand-kept list for the ones it doesn't.
+function ReadingInsightsPopup:showFinishedBooksMenu(year)
+    local ButtonDialog = require("ui/widget/buttondialog")
+    local dialog
+    dialog = ButtonDialog:new{
+        -- The insights popup itself is modal, and UIManager puts non-modal
+        -- windows below the topmost modal one - without this the chooser
+        -- would open behind the popup that spawned it.
+        modal       = true,
+        title       = T(_("Books finished in %1"), tostring(year)),
+        title_align = "center",
+        buttons = {
+            {{
+                text = _("Mark books finished"),
+                callback = function()
+                    UIManager:close(dialog)
+                    self:showFinishedBooksChecklist(year)
+                end,
+            }},
+            {{
+                text = _("Add books manually"),
+                callback = function()
+                    UIManager:close(dialog)
+                    self:showManualBooksList(year)
+                end,
+            }},
+        },
+    }
+    UIManager:show(dialog)
 end
 
 -- Normally just "Reading insights"; when shown as a sleep-screen (readonly)
@@ -2040,7 +2124,7 @@ function ReadingInsightsPopup:onHold(arg, ges_ev)
         local d = self._goal_finished_cell_widget.dimen
         if d and pos.x >= d.x and pos.x <= d.x + d.w
               and pos.y >= d.y and pos.y <= d.y + d.h then
-            self:showFinishedBooksChecklist(self.selected_year)
+            self:showFinishedBooksMenu(self.selected_year)
             return true
         end
     end
@@ -2227,8 +2311,6 @@ Heatmap.bind{
 
 BookList.bind{
     popup_class             = ReadingInsightsPopup,
-    getCachedFonts          = getCachedFonts,
-    getCachedLayout         = getCachedLayout,
     getFinishedBooksForYear = Data.getFinishedBooksForYear,
     formatHHMMSS            = formatHHMMSS,
 }

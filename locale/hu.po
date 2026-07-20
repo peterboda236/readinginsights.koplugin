@@ -936,3 +936,64 @@ msgstr "Automatikus"
 msgid "Sizes the Reading insights bar charts so the page fits the screen without a scroll bar."
 msgstr "Az Olvasási áttekintés oszlopdiagramjait úgy méretezi, hogy az oldal görgetősáv nélkül elférjen a képernyőn."
 
+
+msgid "Last read (newest first)"
+msgstr "Utolsó olvasás szerint (legújabb elöl)"
+
+msgid "Last read (oldest first)"
+msgstr "Utolsó olvasás szerint (legrégebbi elöl)"
+
+msgid "Title (A to Z)"
+msgstr "Cím szerint (A-tól Z-ig)"
+
+msgid "Title (Z to A)"
+msgstr "Cím szerint (Z-től A-ig)"
+
+msgid "Books finished in %1"
+msgstr "%1 - befejezett könyvek"
+
+msgid "Mark books finished"
+msgstr "Könyvek befejezettnek jelölése"
+
+
+
+msgid "Add book"
+msgstr "Könyv hozzáadása"
+
+msgid "Edit book"
+msgstr "Könyv szerkesztése"
+
+msgid "Edit"
+msgstr "Szerkesztés"
+
+msgid "Delete"
+msgstr "Törlés"
+
+msgid "Delete \"%1\"?"
+msgstr "Törlöd ezt: \"%1\"?"
+
+msgid "Title"
+msgstr "Cím"
+
+msgid "Author"
+msgstr "Szerző"
+
+msgid "Please enter a title"
+msgstr "Adj meg egy címet"
+
+
+
+msgid "Date read (YYYY-MM-DD)"
+msgstr "Olvasás dátuma (ÉÉÉÉ-HH-NN)"
+
+msgid "Please enter the date as YYYY-MM-DD"
+msgstr "A dátumot ÉÉÉÉ-HH-NN formában add meg"
+
+msgid "Reload data"
+msgstr "Adatok újratöltése"
+
+msgid "Add books manually"
+msgstr "Könyvek kézi felvétele"
+
+msgid "Add books manually - %1"
+msgstr "Könyvek kézi felvétele - %1"

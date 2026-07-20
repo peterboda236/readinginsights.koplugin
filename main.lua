@@ -196,6 +196,17 @@ local UI     = loadModule("lib/uikit.lua",  { Colors = Colors })
 local ViewSettings  = loadModule("lib/insights_settings.lua", { Prefs = Prefs })
 local InsightsCache = loadModule("lib/insights_cache.lua")
 
+-- The reader's hand-kept list of finished books (books with no rows in the
+-- statistics DB at all), stored in its own file and counted into the
+-- reading goal. Loaded before insights_data.lua, which adds its count to
+-- every finished-book figure.
+local ManualBooks   = loadModule("lib/manual_books.lua")
+
+-- The shared list widget every book list popup is drawn with: sort menu in
+-- the title bar, paged rows, optional checkboxes and cancel/accept buttons.
+local ListWidget = loadModule("widgets/booklistwidget.lua",
+    { Locale = Locale, Prefs = Prefs })
+
 local ChapterBar = loadModule("widgets/chapterbarwidget.lua",
     { Colors = Colors, Fonts = Fonts, UI = UI })
 
@@ -203,7 +214,8 @@ local ChapterBar = loadModule("widgets/chapterbarwidget.lua",
 -- last-week and 8-week series, all-time totals and the reading-goal count.
 -- Kept apart from the popup that draws them (see lib/insights_data.lua).
 local InsightsData = loadModule("lib/insights_data.lua",
-    { Locale = Locale, StatsDb = StatsDb, Cache = InsightsCache, VS = ViewSettings })
+    { Locale = Locale, StatsDb = StatsDb, Cache = InsightsCache, VS = ViewSettings,
+      Manual = ManualBooks })
 
 -- The three popups the insights view opens: its 8-week trend chart, the
 -- reading heatmaps, and the book lists. Loaded before the view because it
@@ -217,13 +229,15 @@ local Heatmap = loadModule("views/heatmap_view.lua", {
 })
 local BookList = loadModule("views/booklist_view.lua", {
     Colors = Colors, Locale = Locale, VS = ViewSettings, UI = UI,
-    Data = InsightsData,
+    Data = InsightsData, Cache = InsightsCache,
+    ListWidget = ListWidget, Manual = ManualBooks,
 })
 
 local Insights = loadModule("views/insights_view.lua", {
     Locale = Locale, Colors = Colors, Fonts = Fonts,
     PopupUtil = PopupUtil, VS = ViewSettings, Cache = InsightsCache, UI = UI,
     Trend = Trend, Heatmap = Heatmap, BookList = BookList, Data = InsightsData,
+    Manual = ManualBooks,
 })
 local BookCalendar = loadModule("views/book_calendar_view.lua", {
     Locale = Locale, Colors = Colors, Fonts = Fonts, Prefs = Prefs,

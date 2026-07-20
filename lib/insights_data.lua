@@ -42,8 +42,8 @@ rest, and stale copies as a fallback when the DB can't be read at all.
 ]]--
 
 local deps = ...
-local Locale, StatsDb, Cache, VS =
-    deps.Locale, deps.StatsDb, deps.Cache, deps.VS
+local Locale, StatsDb, Cache, VS, Manual =
+    deps.Locale, deps.StatsDb, deps.Cache, deps.VS, deps.Manual
 local Math = require("optmath")
 
 -- Month labels for the monthly series. Same strings the view uses for its
@@ -929,8 +929,15 @@ end
 -- the "N book(s) finished" figure always matches what the checklist /
 -- showFinishedBooksForYear list actually shows.
 function M.applyFinishedOverrides(year_key, count)
+    -- Books the reader added by hand (lib/manual_books.lua): read on
+    -- paper, in another app, on another device - nothing in the statistics
+    -- DB to find, so they are simply added on top of whatever the scan
+    -- counted. Done here rather than at each call site because every
+    -- return path of getFinishedBookCountForYear (fresh scan, minute
+    -- cache, stale cache) goes through this one function.
+    local manual = Manual and Manual.count(year_key) or 0
     local overrides = VS.readFinishedOverrides(year_key)
-    if not next(overrides) then return count end
+    if not next(overrides) then return count + manual end
     local known_set = Cache._goal_finished_books[year_key] or {}
     local adjust = 0
     for id_str, val in pairs(overrides) do
@@ -941,7 +948,7 @@ function M.applyFinishedOverrides(year_key, count)
             adjust = adjust - 1
         end
     end
-    return count + adjust
+    return count + adjust + manual
 end
 
 function M.getFinishedBookCountForYear(year, shared_conn)
@@ -1126,6 +1133,7 @@ function M.getFinishedBooksForYear(year)
                     authors  = "",
                     id_book  = tonumber(row[2]),
                     duration = tonumber(row[4]) or 0,
+                    last_read = tonumber(row[3]) or 0,
                 })
             end
         end)
@@ -1455,6 +1463,9 @@ function M.getBooksForPeriod(period_format, period_value)
                     duration  = tonumber(row[4]) or 0,
                     days_read = tonumber(row[7]) or 0,
                     id_book   = tonumber(row[8]),
+                    -- Last reading entry for this book in the period; what
+                    -- the book lists sort on by default.
+                    last_read = tonumber(row[6]) or 0,
                 })
             end
         end)
@@ -1490,6 +1501,7 @@ function M.getAllBooks()
                     pages    = tonumber(row[3]) or 0,
                     duration = tonumber(row[4]) or 0,
                     id_book  = tonumber(row[6]),
+                    last_read = tonumber(row[5]) or 0,
                 })
             end
         end)

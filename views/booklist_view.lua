@@ -1,71 +1,106 @@
 --[[
 Reading Insights - the book list popups.
 
-The three list views the insights popup opens on a tap:
+The list views the insights popup opens on a tap or a long press:
 
-  - the books read in a given month/year/period (with time and pages each),
-  - the books that count towards the reading goal for a year, and
+  - the books read in a given month/year/period (with the time spent on
+    each),
+  - the books that count towards the reading goal for a year,
   - the checklist for correcting that last list by hand, where a trailing
-    "*" marks every book whose state the reader changed.
+    "*" marks every book whose state the reader changed, and
+  - the hand-kept list of books the statistics DB knows nothing about
+    (read on paper, in another app, on another device), which counts
+    towards the reading goal all the same - see lib/manual_books.lua.
 
-Split out of insights_view.lua along with the heatmap and the 8-week trend
-popup, so the view file holds the insights page itself rather than every
-popup reachable from it.
+The first two are read-only, and keep the KeyValuePage look they have
+always had - with the same sort menu behind the title bar's left icon as
+the editable ones (M.showSortMenu in widgets/booklistwidget.lua is shared
+by both). The last two are the ones the reader edits, and are drawn by
+widgets/booklistwidget.lua (a thin subclass of KOReader's SortWidget): a
+sort menu behind the title bar's left icon (by last reading entry or by
+title, each way round - last entry, newest first by default), a close "X"
+on the right, paged rows with checkboxes where there's something to tick,
+and a bottom bar with the page navigation plus a cancel "X" and an accept
+check mark.
 
-These popups replace the insights popup rather than stacking on top of it:
-they close it, and reopen it with the same data when they close. That needs
-the popup class, which would be a circular require - so the view registers
-what's needed here instead, by calling M.bind() once at load time. Calling
-any of these before bind() is a programming error, not a runtime condition,
-so nothing here guards against it.
+The read-only period lists replace the insights popup rather than stacking
+on top of it: they close it, and reopen it with the same data when they
+close. That needs the popup class, which would be a circular require - so
+the view registers what's needed here instead, by calling M.bind() once at
+load time. Calling any of these before bind() is a programming error, not a
+runtime condition, so nothing here guards against it.
 
   BookList.bind(hooks)          wire in the view's popup class and helpers
   BookList.showBooksForPeriod(popup, books, empty_text, title)
                                 close the insights popup, show a list,
                                 reopen it on close
-  BookList.Checklist:new{ year = ..., insights_popup = ... }
+  BookList.showFinishedChecklist(popup, year)
+  BookList.showManualBooks(popup, year)
 ]]--
 
-local Blitbuffer = require("ffi/blitbuffer")
-local FrameContainer = require("ui/widget/container/framecontainer")
-local Geom = require("ui/geometry")
-local GestureRange = require("ui/gesturerange")
-local HorizontalGroup = require("ui/widget/horizontalgroup")
-local HorizontalSpan = require("ui/widget/horizontalspan")
 local InfoMessage = require("ui/widget/infomessage")
-local InputContainer = require("ui/widget/container/inputcontainer")
-local Size = require("ui/size")
-local TextBoxWidget = require("ui/widget/textboxwidget")
-local TextWidget = require("ui/widget/textwidget")
-local TitleBar = require("ui/widget/titlebar")
 local UIManager = require("ui/uimanager")
-local VerticalGroup = require("ui/widget/verticalgroup")
-local VerticalSpan = require("ui/widget/verticalspan")
-local Screen = require("device").screen
 local T = require("ffi/util").template
 
 local deps = ...
-local Colors, Locale, VS, UI, Data =
-    deps.Colors, deps.Locale, deps.VS, deps.UI, deps.Data
+local Locale, VS, Data, Cache, ListWidget, Manual =
+    deps.Locale, deps.VS, deps.Data, deps.Cache, deps.ListWidget, deps.Manual
 local _  = Locale._
-local N_ = Locale.N_
 
 local M = {}
 
 -- Filled in by M.bind() from insights_view.lua: the popup class these lists
--- reopen, and the few view-level helpers they share with it (cached fonts
--- and layout, the year's finished-book query, duration formatting).
-local ReadingInsightsPopup, getCachedFonts, getCachedLayout, getFinishedBooksForYear, formatHHMMSS
+-- reopen, and the few view-level helpers they share with it (the year's
+-- finished-book query, duration formatting).
+local ReadingInsightsPopup, getFinishedBooksForYear, formatHHMMSS
 
 function M.bind(hooks)
     ReadingInsightsPopup    = hooks.popup_class
-    getCachedFonts          = hooks.getCachedFonts
-    getCachedLayout         = hooks.getCachedLayout
     getFinishedBooksForYear = hooks.getFinishedBooksForYear
     formatHHMMSS            = hooks.formatHHMMSS
 end
 
-function M.showBookList(title, books, on_close, stats_plugin)
+-- Settings keys the three lists remember their sort order under. Kept
+-- apart so ordering the goal checklist by title doesn't reorder the
+-- period lists as well.
+local SORT_KEY_BOOKS     = "reading_insights_booklist_sort"
+local SORT_KEY_CHECKLIST = "reading_insights_checklist_sort"
+local SORT_KEY_MANUAL    = "reading_insights_manuallist_sort"
+
+-- The right-hand column of a finished-books list: the day the book was
+-- finished, rather than the time spent on it. A hand-added book has no
+-- measured time at all, so a "00:00:00" there would read as a broken
+-- measurement instead of "nothing to measure" - and since this list is
+-- ordered by that very date, showing it explains the order too. Entries
+-- the reader added themselves keep the "*" the checklist uses for the same
+-- meaning: set by hand, not by the statistics.
+-- A timestamp as a plain date, in whatever format KOReader is set to show
+-- dates in. Empty string for "no date known", so it simply leaves the
+-- column blank rather than printing an epoch.
+local function dateText(ts)
+    if not ts or ts <= 0 then return "" end
+    local datetime = require("datetime")
+    return datetime.secondsToDate(ts)
+end
+
+local function finishedDateText(book)
+    local text = dateText(book.last_read)
+    if book.manual then
+        return text ~= "" and ("* " .. text) or "*"
+    end
+    return text
+end
+
+-- The read-only period lists keep KOReader's KeyValuePage look they always
+-- had: title and author on the left, reading time on the right, tap a row
+-- for that book's statistics. Only the two lists the reader edits (the
+-- finished-books checklist and the hand-kept list below) use the sortable
+-- widget, where the sort menu and the cancel/accept buttons earn their
+-- place.
+--
+-- opts.show_dates puts the finished-on date in the value column instead of
+-- the reading time; used by the reading goal's finished-books list only.
+function M.showBookList(title, books, on_close, stats_plugin, opts)
     local KeyValuePage = require("ui/widget/keyvaluepage")
 
     if #books == 0 then
@@ -73,62 +108,109 @@ function M.showBookList(title, books, on_close, stats_plugin)
         return
     end
 
-    local kv_pairs = {}
-    for _, book in ipairs(books) do
-        local display_text = book.title
-        if book.authors and book.authors ~= "" then
-            display_text = display_text .. "\n" .. book.authors
-        end
-
-        local time_str
-        if book.duration and book.duration > 0 then
-            time_str = formatHHMMSS(book.duration)
-        else
-            time_str = "00:00:00"
-        end
-        local time_text = time_str
-        local book_id = book.id_book
-        local book_title = book.title
-        local cb = nil
-        if book_id and stats_plugin then
-            cb = function()
-                local kv2
-                kv2 = KeyValuePage:new{
-                    title           = book_title,
-                    kv_pairs        = stats_plugin:getBookStat(book_id),
-                    value_align     = "right",
-                    single_page     = true,
-                    callback_return = function()
-                        UIManager:close(kv2)
-                    end,
-                    close_callback  = function() kv2 = nil end,
-                }
-                UIManager:show(kv2)
+    local function buildPairs(sorted_books)
+        local kv_pairs = {}
+        for _idx, book in ipairs(sorted_books) do
+            local display_text = book.title
+            -- Books the reader added by hand are shown as a bare title: they
+            -- have no reading time to report (nothing was ever timed), and the
+            -- author line would be the only thing filling the row out.
+            if not book.manual and book.authors and book.authors ~= "" then
+                display_text = display_text .. "\n" .. book.authors
             end
+
+            local time_str
+            if opts and opts.show_dates then
+                time_str = finishedDateText(book)
+            elseif book.manual then
+                time_str = ""
+            elseif book.duration and book.duration > 0 then
+                time_str = formatHHMMSS(book.duration)
+            else
+                time_str = "00:00:00"
+            end
+            local book_id = book.id_book
+            local book_title = book.title
+            local cb = nil
+            if book_id and stats_plugin then
+                cb = function()
+                    local kv2
+                    kv2 = KeyValuePage:new{
+                        title           = book_title,
+                        kv_pairs        = stats_plugin:getBookStat(book_id),
+                        value_align     = "right",
+                        single_page     = true,
+                        callback_return = function()
+                            UIManager:close(kv2)
+                        end,
+                        close_callback  = function() kv2 = nil end,
+                    }
+                    UIManager:show(kv2)
+                end
+            end
+            table.insert(kv_pairs, {
+                display_text,
+                time_str,
+                callback = cb,
+            })
         end
-        table.insert(kv_pairs, {
-            display_text,
-            time_text,
-            callback = cb,
-        })
+        return kv_pairs
     end
 
-    local kv
-    kv = KeyValuePage:new{
-        title          = title,
-        kv_pairs       = kv_pairs,
-        value_align    = "right",
-        close_callback = function()
-            UIManager:close(kv)
-            UIManager:scheduleIn(0, function()
-                if on_close then on_close() end
-            end)
-        end,
-    }
-    UIManager:show(kv)
+    -- Same four orders as the editable lists, from the same menu - but
+    -- these lists are KeyValuePages, which take their rows in init() and
+    -- have no way to swap them afterwards. Re-sorting therefore closes the
+    -- page and opens a fresh one; `resorting` keeps that from being
+    -- mistaken for the reader closing the list, which would reopen the
+    -- insights popup underneath it.
+    local sort_mode = ListWidget.readSortMode(SORT_KEY_BOOKS)
+    local kv, resorting
+
+    local function sortedBooks()
+        local sorted = {}
+        for _idx, book in ipairs(books) do table.insert(sorted, book) end
+        table.sort(sorted, ListWidget.comparator(sort_mode,
+            function(b) return b.title or "" end,
+            function(b) return b.last_read or 0 end))
+        return sorted
+    end
+
+    local function openPage()
+        kv = KeyValuePage:new{
+            title               = title,
+            kv_pairs            = buildPairs(sortedBooks()),
+            value_align         = "right",
+            title_bar_left_icon = "appbar.menu",
+            title_bar_left_icon_tap_callback = function()
+                ListWidget.showSortMenu{
+                    current       = sort_mode,
+                    anchor_widget = kv.title_bar and kv.title_bar.left_button,
+                    callback      = function(mode)
+                        if mode == sort_mode then return end
+                        sort_mode = mode
+                        ListWidget.saveSortMode(SORT_KEY_BOOKS, mode)
+                        resorting = true
+                        UIManager:close(kv)
+                        resorting = false
+                        openPage()
+                    end,
+                }
+            end,
+            close_callback = function()
+                if resorting then return end
+                UIManager:close(kv)
+                UIManager:scheduleIn(0, function()
+                    if on_close then on_close() end
+                end)
+            end,
+        }
+        UIManager:show(kv)
+    end
+
+    openPage()
 end
 
-function M.showBooksForPeriod(popup_self, books, empty_text, title)
+function M.showBooksForPeriod(popup_self, books, empty_text, title, opts)
     if #books == 0 then
         UIManager:show(InfoMessage:new{ text = empty_text })
         return
@@ -166,278 +248,324 @@ function M.showBooksForPeriod(popup_self, books, empty_text, title)
             _last_week_daily = saved_last_week_daily,
         }
         UIManager:show(p)
-    end, stats_plugin)
+    end, stats_plugin, opts)
 end
 
--- Long-press target for the same cell: a checklist of every book with
--- activity that year (same candidate pool as showBooksForYear), each row
--- showing a checkbox for whether it currently counts as "finished"
--- (query result, corrected by any existing override - see
--- M.Checklist:_isFinished). Tapping a row toggles and
--- immediately persists that book's override (VS.saveFinishedOverrides), so
--- the reading-goal count and showFinishedBooksForYear's list both reflect
--- it as soon as this popup closes.
-M.Checklist = InputContainer:extend{
-    modal          = true,
-    year           = nil,
-    insights_popup = nil,
-}
-
-function M.Checklist:init()
-    self.screen_w = Screen:getWidth()
-    self.screen_h = Screen:getHeight()
-    self.dimen = Geom:new{ x = 0, y = 0, w = self.screen_w, h = self.screen_h }
-
-    self.books = self.insights_popup:getBooksForYear(self.year)
-
-    self.base_finished = {}
-    for _, b in ipairs(getFinishedBooksForYear(self.year)) do
-        self.base_finished[tostring(b.id_book)] = true
-    end
-
-    self.overrides = VS.readFinishedOverrides(self.year)
-
-    self:_buildUI()
-end
-
-function M.Checklist:_isFinished(id_str)
-    local ov = self.overrides[id_str]
-    if ov ~= nil then return ov end
-    return self.base_finished[id_str] == true
-end
-
-function M.Checklist:_toggle(id_book)
-    local id_str = tostring(id_book)
-    local new_state = not self:_isFinished(id_str)
-    if new_state == (self.base_finished[id_str] == true) then
-        self.overrides[id_str] = nil
-    else
-        self.overrides[id_str] = new_state
-    end
-    VS.saveFinishedOverrides(self.year, self.overrides)
-
-    -- _buildUI() rebuilds the scroll container from scratch, which would
-    -- otherwise snap the view back to the top on every tap - annoying when
-    -- ticking several books near the bottom of a long list. Save the
-    -- current scroll position and restore it on the freshly built container.
-    local prev_offset = self.scroll_container and self.scroll_container:getScrolledOffset()
-
-    self:_buildUI()
-
-    if prev_offset then
-        self.scroll_container:setScrolledOffset(prev_offset)
-    end
-
-    UIManager:setDirty(self, function()
-        return "ui", self.popup_frame.dimen
+-- Refreshes the insights popup's reading-goal section in place, so the
+-- updated count is visible as soon as one of the editing lists closes -
+-- without the full close/reopen the read-only lists do.
+local function refreshGoalSection(insights_popup, year)
+    if not insights_popup or insights_popup._closed then return end
+    -- The count is cached for a minute at a time; something was just
+    -- changed by hand, so throw that away and let it be worked out again.
+    Cache.clearGoalMinuteCacheForYear(year)
+    insights_popup._goal_finished = Data.getFinishedBookCountForYear(year)
+    insights_popup:_buildUI()
+    UIManager:setDirty(insights_popup, function()
+        return "ui", insights_popup.popup_frame.dimen
     end)
 end
 
-function M.Checklist:_buildUI()
-    local fonts      = getCachedFonts()
-    local layout      = getCachedLayout()
-    local padding_h   = layout.padding_h
-    -- ScrollableContainer reserves 3 * scroll_bar_width on the right for its
-    -- vertical scrollbar (which this list, being long, almost always needs).
-    -- padding_h alone (used below on both sides) is narrower than that
-    -- reservation, so without this the rows nudged a few pixels into the
-    -- scrollbar's margin - which made ScrollableContainer think the content
-    -- didn't fit horizontally either, and draw a useless horizontal
-    -- scrollbar along the bottom on top of the vertical one.
-    local ScrollableContainer = require("ui/widget/container/scrollablecontainer")
-    local scrollbar_reserve = ScrollableContainer:getScrollbarWidth()
-    local row_width   = self.screen_w - 2 * padding_h - scrollbar_reserve
-    local checklist_self = self
+-- ---------------------------------------------------------------------
+-- "Mark book finished" - the checklist behind the reading goal's count.
+-- ---------------------------------------------------------------------
+--
+-- One row per book with any activity that year (the same candidate pool
+-- showBooksForYear uses), each with a checkbox for whether it currently
+-- counts as "finished": what the automatic "last entry reached 99%" rule
+-- found, corrected by any override the reader has set. Tapping a row
+-- toggles and immediately persists that book's override
+-- (VS.saveFinishedOverrides), so the goal count and the finished-books
+-- list both reflect it as soon as this list is accepted.
+--
+-- The bottom bar's check mark keeps those changes; its "X" (and the title
+-- bar's, and a swipe down) puts the overrides back exactly as they were
+-- when the list was opened.
+function M.showFinishedChecklist(insights_popup, year)
+    -- The statistics plugin keeps the running session's page timings in
+    -- memory and only writes them out now and then, so a book finished a
+    -- moment ago may have no row in the DB yet - and would come up
+    -- unticked. Ask for those rows first, then query.
+    Data.flushStatsToDB(insights_popup and insights_popup.ui)
 
-    local title_bar = TitleBar:new{
-        fullscreen     = true,
-        width          = self.screen_w,
-        align          = "left",
-        title          = T(_("Mark book finished - %1"), tostring(self.year)),
-        subtitle       = _("* = changed by you"),
-        close_callback = function() self:_close() end,
-        show_parent    = self,
-        top_v_padding    = Size.padding.default,
-        bottom_v_padding = Size.padding.default,
-    }
-    self._title_bar_height = title_bar:getSize().h
+    local books, base_finished
 
-    local rows = VerticalGroup:new{ align = "left" }
-    table.insert(rows, VerticalSpan:new{ height = Size.padding.default })
-
-    if #self.books == 0 then
-        table.insert(rows, UI.padded(padding_h, TextBoxWidget:new{
-            text      = _("No books read in this year"),
-            face      = fonts.label,
-            fgcolor   = Colors.label(),
-            width     = row_width,
-            alignment = "left",
-        }))
-    end
-
-    for _, book in ipairs(self.books) do
-        local id_str  = tostring(book.id_book)
-        local checked = checklist_self:_isFinished(id_str)
-        -- U+2611 BALLOT BOX WITH CHECK / U+2610 BALLOT BOX
-        local mark = checked and "\xe2\x98\x91" or "\xe2\x98\x90"
-
-        -- A trailing "*" marks the rows where this checklist disagrees with
-        -- what the automatic "last entry reached 99%" rule found - i.e. the
-        -- ones the reader set by hand. Without it there's no way to tell a
-        -- manual correction from the query's own verdict, which matters
-        -- when reviewing why the goal count says what it says.
-        local overridden = self.overrides[id_str] ~= nil
-            and self.overrides[id_str] ~= (self.base_finished[id_str] == true)
-        local row_title = overridden and (book.title .. " *") or book.title
-
-        local mark_widget = TextWidget:new{ text = mark, face = fonts.value, fgcolor = Colors.value() }
-        local gap   = Size.padding.default
-        local mark_w = mark_widget:getSize().w
-        local title_widget = TextBoxWidget:new{
-            text      = row_title,
-            face      = fonts.label,
-            fgcolor   = Colors.label(),
-            width     = row_width - mark_w - gap,
-            alignment = "left",
-        }
-        local row_content = HorizontalGroup:new{
-            align = "center",
-            mark_widget,
-            HorizontalSpan:new{ width = gap },
-            title_widget,
-        }
-
-        local id_book = book.id_book
-        local row_cell = InputContainer:new{
-            dimen = Geom:new{ x = 0, y = 0, w = row_width, h = row_content:getSize().h },
-            row_content,
-        }
-        row_cell.ges_events = {
-            Tap = { GestureRange:new{ ges = "tap", range = row_cell.dimen } },
-        }
-        function row_cell:onTap()
-            checklist_self:_toggle(id_book)
-            return true
+    local function loadFromDB()
+        books = insights_popup:getBooksForYear(year)
+        base_finished = {}
+        for _idx, b in ipairs(getFinishedBooksForYear(year)) do
+            base_finished[tostring(b.id_book)] = true
         end
+    end
+    loadFromDB()
 
-        table.insert(rows, UI.padded(padding_h, row_cell))
-        table.insert(rows, VerticalSpan:new{ height = Size.padding.default })
-        table.insert(rows, UI.padded(padding_h,
-            Colors.newBar(row_width, Size.line.thin, Colors.separator())))
-        table.insert(rows, VerticalSpan:new{ height = Size.padding.default })
+    local overrides = VS.readFinishedOverrides(year)
+
+    -- Snapshot for the cancel button. Every tap saves immediately (so
+    -- nothing is lost if the reader walks away or the device sleeps), and
+    -- cancelling simply writes this copy back.
+    local original = {}
+    for k, v in pairs(overrides) do original[k] = v end
+
+    local function isFinished(id_str)
+        local ov = overrides[id_str]
+        if ov ~= nil then return ov end
+        return base_finished[id_str] == true
     end
 
-    -- Only the separator + rows scroll; the title bar (and its close "X")
-    -- stays fixed above them, rather than being scrolled off-screen with
-    -- the rest of the content. This also stops the content height from
-    -- being padded out by an extra title-bar-height of empty space at the
-    -- bottom, which used to make the scrollbar appear even on short lists
-    -- that would otherwise fit on one screen.
-    local content = VerticalGroup:new{
-        align = "left",
-        UI.padded(padding_h, Colors.newBar(row_width, Size.line.thick, Colors.separator())),
-        rows,
-        VerticalSpan:new{ height = Size.padding.default },
-    }
-
-    self.scroll_container = ScrollableContainer:new{
-        dimen               = Geom:new{ w = self.screen_w, h = self.screen_h - self._title_bar_height },
-        show_parent         = self,
-        scroll_bar_position = "right",
-        content,
-    }
-
-    self.popup_frame = FrameContainer:new{
-        background = Blitbuffer.COLOR_WHITE,
-        bordersize = 0,
-        radius     = 0,
-        padding    = 0,
-        width      = self.screen_w,
-        VerticalGroup:new{
-            align = "left",
-            title_bar,
-            self.scroll_container,
-        },
-    }
-    self.popup_frame.dimen = Geom:new{ x = 0, y = 0, w = self.screen_w, h = self.screen_h }
-
-    self[1] = VerticalGroup:new{ self.popup_frame }
-end
-
-function M.Checklist:_countChanges()
-    local n = 0
-    for _ in pairs(self.overrides) do
-        n = n + 1
+    -- A trailing "*" marks the rows where this checklist disagrees with
+    -- what the automatic rule found - i.e. the ones the reader set by
+    -- hand. Without it there's no way to tell a manual correction from the
+    -- query's own verdict, which matters when reviewing why the goal count
+    -- says what it says.
+    local function rowText(book, id_str)
+        local overridden = overrides[id_str] ~= nil
+            and overrides[id_str] ~= (base_finished[id_str] == true)
+        local text = book.title or _("Unknown")
+        return overridden and (text .. " *") or text
     end
-    return n
-end
 
--- Closes and, once the checklist is off-screen, refreshes the parent
--- popup's reading-goal section so the updated count and finished-books
--- list are visible immediately without a full close/reopen.
-function M.Checklist:_close()
-    local changed = self:_countChanges()
-    if changed == 0 then
-        self:_finishClose()
+    local function buildItems()
+      local item_table = {}
+      for _idx, book in ipairs(books) do
+        local id_str = tostring(book.id_book)
+        local item
+        item = {
+            text         = rowText(book, id_str),
+            -- Right-hand column: the day of this book's last reading
+            -- entry - the very thing the "finished" rule is judged on, and
+            -- what the list is sorted by out of the box.
+            mandatory    = dateText(book.last_read),
+            sort_title   = book.title or "",
+            sort_time    = book.last_read or 0,
+            checked_func = function() return isFinished(id_str) end,
+            callback     = function()
+                local new_state = not isFinished(id_str)
+                if new_state == (base_finished[id_str] == true) then
+                    overrides[id_str] = nil
+                else
+                    overrides[id_str] = new_state
+                end
+                VS.saveFinishedOverrides(year, overrides)
+                item.text = rowText(book, id_str)
+            end,
+        }
+        table.insert(item_table, item)
+      end
+      return item_table
+    end
+
+    local item_table = buildItems()
+    if #item_table == 0 then
+        UIManager:show(InfoMessage:new{ text = _("No books read in this year") })
         return
     end
 
-    -- Every tap already saved immediately (VS.saveFinishedOverrides in
-    -- _toggle), so nothing is actually at risk of being lost here - this
-    -- is just a checkpoint so a swipe or accidental tap on the close
-    -- button doesn't leave without the reader noticing what got changed.
-    local ConfirmBox = require("ui/widget/confirmbox")
-    UIManager:show(ConfirmBox:new{
-        text = string.format(
-            N_("You changed 1 book. Go back?", "You changed %d books. Go back?", changed),
-            changed),
-        ok_text     = _("Yes"),
-        cancel_text = _("Keep editing"),
-        ok_callback = function() self:_finishClose() end,
-    })
+    local widget
+    widget = ListWidget.new{
+        title            = T(_("Mark book finished - %1"), tostring(year)),
+        item_table       = item_table,
+        sort_setting_key = SORT_KEY_CHECKLIST,
+        show_ok_cancel   = true,
+        -- Offered next to the sort orders in the title bar's menu: re-runs
+        -- both queries, so a book finished while this list was open (or
+        -- one whose reading session hadn't been written out yet when it was
+        -- opened) picks up its tick without closing and reopening.
+        extra_menu_buttons = {{
+            text = _("Reload data"),
+            callback = function()
+                Data.flushStatsToDB(insights_popup and insights_popup.ui)
+                Cache.clearGoalCacheForYear(year)
+                loadFromDB()
+                widget:updateItems(buildItems())
+            end,
+        }},
+        cancel_callback  = function()
+            VS.saveFinishedOverrides(year, original)
+        end,
+        close_callback   = function()
+            refreshGoalSection(insights_popup, year)
+        end,
+    }
+    UIManager:show(widget)
 end
 
-function M.Checklist:_finishClose()
-    UIManager:close(self)
-    local ip   = self.insights_popup
-    local year = self.year
-    UIManager:scheduleIn(0, function()
-        if not ip or ip._closed then return end
-        ip._goal_finished = Data.getFinishedBookCountForYear(year)
-        ip:_buildUI()
-        UIManager:setDirty(ip, function()
-            return "ui", ip.popup_frame.dimen
-        end)
-    end)
-end
+-- ---------------------------------------------------------------------
+-- "Add books manually" - the reader's own list for a year.
+-- ---------------------------------------------------------------------
 
-function M.Checklist:onSwipe(arg, ges_ev)
-    if not ges_ev then return false end
-    local dir = ges_ev.direction
-    if dir == "south" or dir == "down" then
-        self:_close()
-        return true
+-- The date a hand-added book is filed under. New entries start from today
+-- when the list belongs to the current year, and from the last day of the
+-- year otherwise - both are inside the year being edited, which is what
+-- the reading goal counts on.
+local function defaultManualDate(year)
+    local today = os.date("*t")
+    if tostring(today.year) == tostring(year) then
+        return os.date("%Y-%m-%d")
     end
-    return false
+    return string.format("%s-12-31", tostring(year))
 end
 
-function M.Checklist:onAnyKeyPressed()
-    self:_close()
-    return true
+local function editManualBook(year, entry, on_done)
+    local MultiInputDialog = require("ui/widget/multiinputdialog")
+    local dialog
+    dialog = MultiInputDialog:new{
+        -- The list this is opened from is modal, and UIManager inserts
+        -- non-modal windows below the topmost modal one - without this the
+        -- dialog would open behind the list.
+        modal  = true,
+        title  = entry and _("Edit book") or _("Add book"),
+        fields = {
+            {
+                description = _("Title"),
+                text        = entry and entry.title or "",
+                hint        = _("Title"),
+            },
+            {
+                description = _("Author"),
+                text        = entry and entry.authors or "",
+                hint        = _("Author"),
+            },
+            {
+                description = _("Date read (YYYY-MM-DD)"),
+                text        = (entry and entry.date ~= "" and entry.date)
+                    or defaultManualDate(year),
+                hint        = "YYYY-MM-DD",
+            },
+        },
+        buttons = {{
+            {
+                text     = _("Cancel"),
+                id       = "close",
+                callback = function() UIManager:close(dialog) end,
+            },
+            {
+                text     = _("Save"),
+                is_enter_default = true,
+                callback = function()
+                    local fields = dialog:getFields()
+                    local title   = (fields[1] or ""):gsub("^%s+", ""):gsub("%s+$", "")
+                    local authors = (fields[2] or ""):gsub("^%s+", ""):gsub("%s+$", "")
+                    local date    = (fields[3] or ""):gsub("^%s+", ""):gsub("%s+$", "")
+                    if title == "" then
+                        UIManager:show(InfoMessage:new{ text = _("Please enter a title") })
+                        return
+                    end
+                    -- An empty date is fine (the entry then sorts by when it
+                    -- was added); a date that isn't one is not, or it would
+                    -- be silently dropped on save.
+                    if date ~= "" and not Manual.parseDate(date) then
+                        UIManager:show(InfoMessage:new{
+                            text = _("Please enter the date as YYYY-MM-DD") })
+                        return
+                    end
+                    UIManager:close(dialog)
+                    local values = { title = title, authors = authors, date = date }
+                    if entry then
+                        Manual.update(year, entry.id, values)
+                    else
+                        Manual.add(year, values)
+                    end
+                    if on_done then on_done() end
+                end,
+            },
+        }},
+    }
+    UIManager:show(dialog)
+    dialog:onShowKeyboard()
 end
 
-function M.Checklist:onShow()
-    UIManager:setDirty(self, function()
-        return "ui", self.popup_frame.dimen
-    end)
-    return true
+-- Just the title; the date it was read is the row's right-hand value (see
+-- the item's `mandatory` field below), the same layout the finished-books
+-- list and the checklist use. The author is still stored and editable, it
+-- simply isn't what these rows are scanned for.
+local function manualRowText(entry)
+    return entry.title or _("Unknown")
 end
 
-function M.Checklist:onCloseWidget()
-    if self.scroll_container then
-        self.scroll_container:free()
+-- The list of hand-added books for one year: a pinned "add a book" row on
+-- top, then one row per entry. Tapping an entry offers edit and delete;
+-- both write straight through to the store and rebuild the list in place.
+-- No cancel/accept buttons at the bottom - there's nothing pending to
+-- accept, every change is already saved.
+function M.showManualBooks(insights_popup, year)
+    local widget
+
+    local function buildItems()
+        local items = {}
+        table.insert(items, {
+            -- U+2795 HEAVY PLUS SIGN
+            text     = "\xe2\x9e\x95  " .. _("Add book"),
+            pinned   = true,
+            callback = function()
+                editManualBook(year, nil, function()
+                    widget:updateItems(buildItems())
+                end)
+            end,
+        })
+        for _idx, entry in ipairs(Manual.list(year)) do
+            local this_entry = entry
+            table.insert(items, {
+                text       = manualRowText(this_entry),
+                -- Only a date the reader actually gave: entries saved
+                -- without one fall back to their creation time for
+                -- sorting, which isn't a reading date and shouldn't be
+                -- shown as one.
+                mandatory  = (this_entry.date ~= "" and dateText(this_entry.read_ts)) or "",
+                sort_title = this_entry.title or "",
+                sort_time  = this_entry.read_ts or this_entry.ts or 0,
+                callback   = function()
+                    local ButtonDialog = require("ui/widget/buttondialog")
+                    local dialog
+                    dialog = ButtonDialog:new{
+                        -- Same as above: modal, or it opens behind the list.
+                        modal       = true,
+                        title       = this_entry.title,
+                        title_align = "center",
+                        buttons = {
+                            {{
+                                text = _("Edit"),
+                                callback = function()
+                                    UIManager:close(dialog)
+                                    editManualBook(year, this_entry, function()
+                                        widget:updateItems(buildItems())
+                                    end)
+                                end,
+                            }},
+                            {{
+                                text = _("Delete"),
+                                callback = function()
+                                    UIManager:close(dialog)
+                                    local ConfirmBox = require("ui/widget/confirmbox")
+                                    UIManager:show(ConfirmBox:new{
+                                        text = T(_("Delete \"%1\"?"), this_entry.title),
+                                        ok_text = _("Delete"),
+                                        ok_callback = function()
+                                            Manual.remove(year, this_entry.id)
+                                            widget:updateItems(buildItems())
+                                        end,
+                                    })
+                                end,
+                            }},
+                        },
+                    }
+                    UIManager:show(dialog)
+                end,
+            })
+        end
+        return items
     end
-    UIManager:setDirty(nil, "ui")
+
+    widget = ListWidget.new{
+        title            = T(_("Add books manually - %1"), tostring(year)),
+        item_table       = buildItems(),
+        sort_setting_key = SORT_KEY_MANUAL,
+        show_ok_cancel   = false,
+        close_callback   = function()
+            refreshGoalSection(insights_popup, year)
+        end,
+    }
+    UIManager:show(widget)
 end
 
 return M
