@@ -13,9 +13,8 @@ More screenshots
 <img width="192" height="256" alt="reading-insights-v2-0-0-new-book-progress-popup-colors-v0-zoh19sw42rbh1" src="https://github.com/user-attachments/assets/52f851b7-8955-4739-b3a7-96ff8c2cbfe6" />
 <img width="192" height="256" alt="FileManager_2026-07-18_211837" src="https://github.com/user-attachments/assets/e4e5d617-98c6-40bc-8844-f23fa5837e95" />
 <img width="192" height="256" alt="FileManager_2026-07-02_083320" src="https://github.com/user-attachments/assets/8193ba8b-7f7e-4b35-9efb-81d0d4a1df8e" />
-
-
-This plugin bundles three reading-stats popups, powered by KOReader's
+<br/><br/>
+This plugin bundles reading-stats popups, powered by KOReader's
 statistics database.
 
 ### Reading insights (full-screen history)
