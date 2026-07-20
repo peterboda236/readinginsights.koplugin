@@ -74,14 +74,11 @@ local SORT_KEY_MANUAL    = "reading_insights_manuallist_sort"
 -- ordered by that very date, showing it explains the order too. Entries
 -- the reader added themselves keep the "*" the checklist uses for the same
 -- meaning: set by hand, not by the statistics.
--- A timestamp as a plain date, in whatever format KOReader is set to show
--- dates in. Empty string for "no date known", so it simply leaves the
--- column blank rather than printing an epoch.
-local function dateText(ts)
-    if not ts or ts <= 0 then return "" end
-    local datetime = require("datetime")
-    return datetime.secondsToDate(ts)
-end
+-- A timestamp as a plain date, in the format picked under Settings ▸
+-- Advanced settings ▸ "Date format" - the same one the insights, records
+-- and stats popups print their dates in. Empty string for "no date known",
+-- so it simply leaves the column blank rather than printing an epoch.
+local dateText = Locale.formatDateFromTS
 
 local function finishedDateText(book)
     local text = dateText(book.last_read)
@@ -398,6 +395,10 @@ end
 -- when the list belongs to the current year, and from the last day of the
 -- year otherwise - both are inside the year being edited, which is what
 -- the reading goal counts on.
+--
+-- Returned as "YYYY-MM-DD" (what the store keeps); the dialog below shows
+-- it, like every other date the entry is edited through, in the configured
+-- date format.
 local function defaultManualDate(year)
     local today = os.date("*t")
     if tostring(today.year) == tostring(year) then
@@ -408,6 +409,7 @@ end
 
 local function editManualBook(year, entry, on_done)
     local MultiInputDialog = require("ui/widget/multiinputdialog")
+    local date_hint = Locale.dateFormatHint()
     local dialog
     dialog = MultiInputDialog:new{
         -- The list this is opened from is modal, and UIManager inserts
@@ -426,11 +428,16 @@ local function editManualBook(year, entry, on_done)
                 text        = entry and entry.authors or "",
                 hint        = _("Author"),
             },
+            -- Shown and typed in the configured date format (Settings ▸
+            -- Advanced settings ▸ "Date format"), while the store keeps
+            -- ISO either way - so an entry added under one format still
+            -- reads back correctly after the setting is changed.
             {
-                description = _("Date read (YYYY-MM-DD)"),
-                text        = (entry and entry.date ~= "" and entry.date)
-                    or defaultManualDate(year),
-                hint        = "YYYY-MM-DD",
+                description = T(_("Date read (%1)"), date_hint),
+                text        = Locale.formatDate(
+                    (entry and entry.date ~= "" and entry.date)
+                    or defaultManualDate(year)),
+                hint        = date_hint,
             },
         },
         buttons = {{
@@ -453,11 +460,16 @@ local function editManualBook(year, entry, on_done)
                     end
                     -- An empty date is fine (the entry then sorts by when it
                     -- was added); a date that isn't one is not, or it would
-                    -- be silently dropped on save.
-                    if date ~= "" and not Manual.parseDate(date) then
-                        UIManager:show(InfoMessage:new{
-                            text = _("Please enter the date as YYYY-MM-DD") })
-                        return
+                    -- be silently dropped on save. What was typed is read
+                    -- back through the configured format and stored as ISO.
+                    if date ~= "" then
+                        local iso = Locale.parseDateInput(date)
+                        if not iso or not Manual.parseDate(iso) then
+                            UIManager:show(InfoMessage:new{
+                                text = T(_("Please enter the date as %1"), date_hint) })
+                            return
+                        end
+                        date = iso
                     end
                     UIManager:close(dialog)
                     local values = { title = title, authors = authors, date = date }

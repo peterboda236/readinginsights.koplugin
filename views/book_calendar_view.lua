@@ -644,8 +644,7 @@ end
 
 function BookCalendarPopup:_showDayDetail(day, data)
     local t = os.time{ year = self.year, month = self.month, day = day, hour = 12 }
-    local is_hu = (getLangBase() == "hu")
-    local date_str = is_hu and os.date("%Y.%m.%d.", t) or os.date("%d/%m/%Y", t)
+    local date_str = Locale.formatDateFromTS(t)
 
     if not data or (not data.pages or data.pages == 0) then
         UIManager:show(InfoMessage:new{ text = date_str .. "\n" .. _("No reading on this day.") })

@@ -822,6 +822,9 @@ msgstr "Peak activity (100%)"
 msgid "Show long durations (24h+) as days"
 msgstr "Show long durations (24h+) as days"
 
+msgid "Date format"
+msgstr "Date format"
+
 msgid "Book calendar cell content"
 msgstr "Book calendar cell content"
 
@@ -980,11 +983,11 @@ msgstr "Please enter a title"
 
 
 
-msgid "Date read (YYYY-MM-DD)"
-msgstr "Date read (YYYY-MM-DD)"
+msgid "Date read (%1)"
+msgstr "Date read (%1)"
 
-msgid "Please enter the date as YYYY-MM-DD"
-msgstr "Please enter the date as YYYY-MM-DD"
+msgid "Please enter the date as %1"
+msgstr "Please enter the date as %1"
 
 msgid "Reload data"
 msgstr "Reload data"

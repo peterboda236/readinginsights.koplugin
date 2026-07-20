@@ -143,6 +143,141 @@ local function formatCount(value)
     return tostring(value)
 end
 
+-- Date display format (Settings ▸ Advanced settings ▸ "Date format").
+-- Every numeric date this plugin prints goes through formatDate() /
+-- formatDateFromTS() below, so one setting covers the book lists, the
+-- streak/records/stats popups and the book calendar's day detail, instead
+-- of each of them guessing the pattern from the interface language.
+-- Places that don't print a numeric date - weekday names, month names, the
+-- 8-week chart's axis labels - are deliberately left alone.
+--
+-- No stored value means "what this plugin always did": YYYY.MM.DD. for
+-- Hungarian, DD/MM/YYYY everywhere else, so nobody's dates change shape
+-- until they pick a format themselves.
+local SETTINGS_KEY_DATE_FORMAT = "reading_insights_date_format"
+
+local DATE_FORMAT_YMD_DASH = "ymd_dash"   -- 2026-07-20
+local DATE_FORMAT_YMD_DOT  = "ymd_dot"    -- 2026.07.20.
+local DATE_FORMAT_DMY      = "dmy_slash"  -- 20/07/2026
+local DATE_FORMAT_MDY      = "mdy_slash"  -- 07/20/2026
+
+local VALID_DATE_FORMATS = {
+    [DATE_FORMAT_YMD_DASH] = true,
+    [DATE_FORMAT_YMD_DOT]  = true,
+    [DATE_FORMAT_DMY]      = true,
+    [DATE_FORMAT_MDY]      = true,
+}
+
+-- The pattern spelled out, as the settings menu lists it and as the manual
+-- book list's date field hints it.
+local DATE_FORMAT_HINTS = {
+    [DATE_FORMAT_YMD_DASH] = "YYYY-MM-DD",
+    [DATE_FORMAT_YMD_DOT]  = "YYYY.MM.DD.",
+    [DATE_FORMAT_DMY]      = "DD/MM/YYYY",
+    [DATE_FORMAT_MDY]      = "MM/DD/YYYY",
+}
+
+local function defaultDateFormat()
+    return (getLangBase() == "hu") and DATE_FORMAT_YMD_DOT or DATE_FORMAT_DMY
+end
+
+local function readDateFormatSetting()
+    local v
+    if G_reader_settings and G_reader_settings.readSetting then
+        v = G_reader_settings:readSetting(SETTINGS_KEY_DATE_FORMAT)
+    end
+    if not VALID_DATE_FORMATS[v] then return defaultDateFormat() end
+    return v
+end
+
+local function saveDateFormatSetting(value)
+    if not VALID_DATE_FORMATS[value] then return end
+    if G_reader_settings and G_reader_settings.saveSetting then
+        G_reader_settings:saveSetting(SETTINGS_KEY_DATE_FORMAT, value)
+    end
+end
+
+local function dateFormatHint()
+    return DATE_FORMAT_HINTS[readDateFormatSetting()]
+end
+
+-- no_trailing_dot drops the closing dot of the "2026.07.20." pattern, so
+-- the first date of a range reads "2026.07.13 - 2026.07.20."; the other
+-- three patterns have no trailing dot to drop and ignore it.
+local function formatYMDAs(fmt, y, m, d, no_trailing_dot)
+    if fmt == DATE_FORMAT_YMD_DASH then
+        return string.format("%04d-%02d-%02d", y, m, d)
+    elseif fmt == DATE_FORMAT_YMD_DOT then
+        return string.format("%04d.%02d.%02d%s", y, m, d, no_trailing_dot and "" or ".")
+    elseif fmt == DATE_FORMAT_MDY then
+        return string.format("%02d/%02d/%04d", m, d, y)
+    end
+    return string.format("%02d/%02d/%04d", d, m, y)
+end
+
+local function formatYMD(y, m, d, no_trailing_dot)
+    return formatYMDAs(readDateFormatSetting(), y, m, d, no_trailing_dot)
+end
+
+-- One date in a format other than the configured one, for the settings
+-- menu's "YYYY-MM-DD - 2026-07-20" entries: they show today's date as an
+-- example of each pattern, without having to store the pattern first.
+local function formatDateSample(fmt, ts)
+    local t = os.date("*t", ts or os.time())
+    return formatYMDAs(fmt, t.year, t.month, t.day)
+end
+
+-- A "YYYY-MM-DD" string (the shape the statistics DB and this plugin's own
+-- stores keep dates in) in the configured display format. Anything that
+-- isn't a date in that shape is handed back untouched, so a caller passing
+-- a DB value through can't turn a surprise into a crash.
+local function formatDate(date_str, no_trailing_dot)
+    if date_str == nil then return "" end
+    local s = tostring(date_str)
+    local y, m, d = s:match("^(%d%d%d%d)%-(%d%d?)%-(%d%d?)$")
+    if not y then return s end
+    return formatYMD(tonumber(y), tonumber(m), tonumber(d), no_trailing_dot)
+end
+
+-- Same, from a timestamp. Empty string for "no date" (nil / 0), so callers
+-- that fill a table column with it leave the cell blank rather than
+-- printing the epoch.
+local function formatDateFromTS(ts, no_trailing_dot)
+    if not ts or ts <= 0 then return "" end
+    local t = os.date("*t", ts)
+    return formatYMD(t.year, t.month, t.day, no_trailing_dot)
+end
+
+-- The reverse, for the one place a date is typed in rather than shown (the
+-- manual book list's date field): returns the "YYYY-MM-DD" the store keeps,
+-- or nil if the string isn't a date in any accepted pattern. Only the shape
+-- is checked here - whether the day exists is settled by the caller
+-- (ManualBooks.parseDate), which does the round trip anyway.
+--
+-- ISO is accepted whatever the setting is: it's unambiguous, and it's what
+-- earlier versions asked for, so old habits keep working. DD/MM vs MM/DD
+-- can't be told apart from the text alone, so those follow the setting.
+local function parseDateInput(str)
+    local s = tostring(str or ""):gsub("^%s+", ""):gsub("%s+$", "")
+    local y, m, d = s:match("^(%d%d%d%d)%-(%d%d?)%-(%d%d?)$")
+    if not y then
+        y, m, d = s:match("^(%d%d%d%d)%.(%d%d?)%.(%d%d?)%.?$")
+    end
+    if not y then
+        local a, b, c = s:match("^(%d%d?)/(%d%d?)/(%d%d%d%d)$")
+        if a then
+            y = c
+            if readDateFormatSetting() == DATE_FORMAT_MDY then
+                m, d = a, b
+            else
+                d, m = a, b
+            end
+        end
+    end
+    if not y then return nil end
+    return string.format("%04d-%02d-%02d", tonumber(y), tonumber(m), tonumber(d))
+end
+
 -- Long-duration display (Settings ▸ Advanced settings ▸ "Show long
 -- durations as days"). Off by default (existing "51:03"-style clock
 -- format is unchanged); when the user turns it on, any duration this
@@ -258,4 +393,18 @@ return {
     formatTimeHHMM             = formatTimeHHMM,
     readDurationDaysSetting    = readDurationDaysSetting,
     saveDurationDaysSetting    = saveDurationDaysSetting,
+    formatDate                 = formatDate,
+    formatDateFromTS           = formatDateFromTS,
+    formatDateSample           = formatDateSample,
+    parseDateInput             = parseDateInput,
+    dateFormatHint             = dateFormatHint,
+    readDateFormatSetting      = readDateFormatSetting,
+    saveDateFormatSetting      = saveDateFormatSetting,
+    DATE_FORMATS               = {
+        DATE_FORMAT_YMD_DASH,
+        DATE_FORMAT_YMD_DOT,
+        DATE_FORMAT_DMY,
+        DATE_FORMAT_MDY,
+    },
+    DATE_FORMAT_HINTS          = DATE_FORMAT_HINTS,
 }
