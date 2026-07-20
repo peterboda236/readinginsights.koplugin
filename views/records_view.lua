@@ -428,6 +428,11 @@ function RecordsPopup:onHold(arg, ges_ev)
     UIManager:show(msg)
     UIManager:scheduleIn(0.5, function()
         UIManager:close(msg)
+        -- The popup dismisses on any tap, so half a second is long enough
+        -- for it to be gone by the time this runs. Rebuilding a closed card
+        -- would recount the whole history for a widget nobody is looking at,
+        -- and then repaint over whatever took its place.
+        if self._closed then return end
         RecordsData.clearCache()
         self:_buildUI()
         -- The card is sized to its contents, so a reload can change its
@@ -443,5 +448,13 @@ end
 -- from the shared helper (see popuputil.lua). onHold above is defined first
 -- so it stays this popup's own - the helper never touches it.
 PopupUtil.makeDismissable(RecordsPopup, function(self) return self._box_dimen end)
+
+-- Wrapped after the helper installed its own, so the flag onHold's delayed
+-- reload checks gets set whichever way the card was dismissed.
+local dismissableCloseWidget = RecordsPopup.onCloseWidget
+function RecordsPopup:onCloseWidget()
+    self._closed = true
+    return dismissableCloseWidget(self)
+end
 
 return { Popup = RecordsPopup }
