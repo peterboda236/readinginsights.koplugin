@@ -13,7 +13,9 @@ The values and their caching live in lib/records_data.lua; this file draws
 them. Opened from Tools > Reading insights > Show Records, or the
 "reading_records_popup" gesture/dispatcher action - both available in reader
 and file manager view alike, since none of this is tied to an open book. Tap
-anywhere, swipe down or press any key to close.
+anywhere, swipe down or press any key to close; hold the "Records" title to
+throw the cache away and recount everything from the statistics database
+(the same gesture the insights popup uses on its own title bar).
 
 Shown as a content-sized bordered card centred on screen rather than a
 full-screen overlay, the same convention as the streak and trend popups: an
@@ -28,6 +30,7 @@ local Geom            = require("ui/geometry")
 local GestureRange    = require("ui/gesturerange")
 local HorizontalGroup = require("ui/widget/horizontalgroup")
 local HorizontalSpan  = require("ui/widget/horizontalspan")
+local InfoMessage     = require("ui/widget/infomessage")
 local InputContainer  = require("ui/widget/container/inputcontainer")
 local LeftContainer   = require("ui/widget/container/leftcontainer")
 local LineWidget      = require("ui/widget/linewidget")
@@ -35,6 +38,7 @@ local RightContainer  = require("ui/widget/container/rightcontainer")
 local Size            = require("ui/size")
 local TextBoxWidget   = require("ui/widget/textboxwidget")
 local TextWidget      = require("ui/widget/textwidget")
+local UIManager       = require("ui/uimanager")
 local VerticalGroup   = require("ui/widget/verticalgroup")
 local VerticalSpan    = require("ui/widget/verticalspan")
 local Screen          = Device.screen
@@ -222,6 +226,11 @@ function RecordsPopup:init()
     if Device:isTouchDevice() then
         self.ges_events.Tap   = { GestureRange:new{ ges = "tap",   range = self.dimen } }
         self.ges_events.Swipe = { GestureRange:new{ ges = "swipe", range = self.dimen } }
+        -- Hold is registered across the whole screen, but only the title
+        -- acts on it (see onHold): a hold anywhere else is swallowed rather
+        -- than dismissing the card, so a slightly-too-long tap aimed at the
+        -- title can't close the popup instead of reloading it.
+        self.ges_events.Hold  = { GestureRange:new{ ges = "hold",  range = self.dimen } }
     end
     if Device:hasKeys() then
         self.key_events.AnyKeyPressed = { { Device.input.group.Any } }
@@ -351,14 +360,21 @@ function RecordsPopup:_buildUI()
     local row_pad   = Size.padding.large
     local inner_w   = content_w - 2 * row_pad
 
+    -- Kept on self so onHold can hit-test against it: the container spans
+    -- the full inner width, so the whole header line is the target, not just
+    -- the few characters of "Records". Its dimen is filled in with absolute
+    -- coordinates when the card is painted.
+    local title_row = LeftContainer:new{
+        dimen = Geom:new{ w = inner_w, h = title_w:getSize().h },
+        title_w,
+    }
+    self._title_row = title_row
+
     local content = VerticalGroup:new{
         align = "left",
         HorizontalGroup:new{
             HorizontalSpan:new{ width = row_pad },
-            LeftContainer:new{
-                dimen = Geom:new{ w = inner_w, h = title_w:getSize().h },
-                title_w,
-            },
+            title_row,
         },
         VerticalSpan:new{ height = Size.padding.default },
         HorizontalGroup:new{
@@ -387,9 +403,45 @@ function RecordsPopup:_buildUI()
     self._box_dimen = box.dimen
 end
 
+-- Hold the title to recompute every record from the statistics database,
+-- the same gesture (and the same "Reloading data..." message) the insights
+-- popup uses for its own caches. Worth having here for the same reason it
+-- is worth having there - the records are cached and updated incrementally,
+-- so this is the way to say "forget all that and count it again" - and the
+-- only way that doesn't involve finding a cache file on the device.
+--
+-- A hold anywhere else is swallowed: this popup dismisses on any tap, and
+-- letting a missed hold close it would make the gesture feel unreliable.
+function RecordsPopup:onHold(arg, ges_ev)
+    if not ges_ev or not ges_ev.pos then return true end
+    local t = self._title_row and self._title_row.dimen
+    if not t then return true end
+    local pos = ges_ev.pos
+    if pos.x < t.x or pos.x > t.x + t.w or pos.y < t.y or pos.y > t.y + t.h then
+        return true
+    end
+
+    -- Shown, then given a moment to actually reach the screen, before the
+    -- recount blocks: on a full history it is the slowest thing this plugin
+    -- does, and it happens on the UI thread.
+    local msg = InfoMessage:new{ text = _("Reloading data...") }
+    UIManager:show(msg)
+    UIManager:scheduleIn(0.5, function()
+        UIManager:close(msg)
+        RecordsData.clearCache()
+        self:_buildUI()
+        -- The card is sized to its contents, so a reload can change its
+        -- width or height. Repainting from nil (rather than from self) takes
+        -- in whatever was showing underneath the old, possibly larger card.
+        UIManager:setDirty(nil, function() return "ui", self.dimen end)
+    end)
+    return true
+end
+
 -- Any tap / swipe / key dismisses; onShow/onCloseWidget mark the records
 -- box region (self._box_dimen, set in the build above) dirty. All five come
--- from the shared helper (see popuputil.lua).
+-- from the shared helper (see popuputil.lua). onHold above is defined first
+-- so it stays this popup's own - the helper never touches it.
 PopupUtil.makeDismissable(RecordsPopup, function(self) return self._box_dimen end)
 
 return { Popup = RecordsPopup }
