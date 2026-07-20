@@ -13,7 +13,9 @@ The list views the insights popup opens on a tap or a long press:
     towards the reading goal all the same - see lib/manual_books.lua.
 
 The first two are read-only, and keep the KeyValuePage look they have
-always had. The last two are the ones the reader edits, and are drawn by
+always had - with the same sort menu behind the title bar's left icon as
+the editable ones (M.showSortMenu in widgets/booklistwidget.lua is shared
+by both). The last two are the ones the reader edits, and are drawn by
 widgets/booklistwidget.lua (a thin subclass of KOReader's SortWidget): a
 sort menu behind the title bar's left icon (by last reading entry or by
 title, each way round - last entry, newest first by default), a close "X"
@@ -61,6 +63,7 @@ end
 -- Settings keys the three lists remember their sort order under. Kept
 -- apart so ordering the goal checklist by title doesn't reorder the
 -- period lists as well.
+local SORT_KEY_BOOKS     = "reading_insights_booklist_sort"
 local SORT_KEY_CHECKLIST = "reading_insights_checklist_sort"
 local SORT_KEY_MANUAL    = "reading_insights_manuallist_sort"
 
@@ -105,65 +108,106 @@ function M.showBookList(title, books, on_close, stats_plugin, opts)
         return
     end
 
-    local kv_pairs = {}
-    for _idx, book in ipairs(books) do
-        local display_text = book.title
-        -- Books the reader added by hand are shown as a bare title: they
-        -- have no reading time to report (nothing was ever timed), and the
-        -- author line would be the only thing filling the row out.
-        if not book.manual and book.authors and book.authors ~= "" then
-            display_text = display_text .. "\n" .. book.authors
-        end
-
-        local time_str
-        if opts and opts.show_dates then
-            time_str = finishedDateText(book)
-        elseif book.manual then
-            time_str = ""
-        elseif book.duration and book.duration > 0 then
-            time_str = formatHHMMSS(book.duration)
-        else
-            time_str = "00:00:00"
-        end
-        local book_id = book.id_book
-        local book_title = book.title
-        local cb = nil
-        if book_id and stats_plugin then
-            cb = function()
-                local kv2
-                kv2 = KeyValuePage:new{
-                    title           = book_title,
-                    kv_pairs        = stats_plugin:getBookStat(book_id),
-                    value_align     = "right",
-                    single_page     = true,
-                    callback_return = function()
-                        UIManager:close(kv2)
-                    end,
-                    close_callback  = function() kv2 = nil end,
-                }
-                UIManager:show(kv2)
+    local function buildPairs(sorted_books)
+        local kv_pairs = {}
+        for _idx, book in ipairs(sorted_books) do
+            local display_text = book.title
+            -- Books the reader added by hand are shown as a bare title: they
+            -- have no reading time to report (nothing was ever timed), and the
+            -- author line would be the only thing filling the row out.
+            if not book.manual and book.authors and book.authors ~= "" then
+                display_text = display_text .. "\n" .. book.authors
             end
+
+            local time_str
+            if opts and opts.show_dates then
+                time_str = finishedDateText(book)
+            elseif book.manual then
+                time_str = ""
+            elseif book.duration and book.duration > 0 then
+                time_str = formatHHMMSS(book.duration)
+            else
+                time_str = "00:00:00"
+            end
+            local book_id = book.id_book
+            local book_title = book.title
+            local cb = nil
+            if book_id and stats_plugin then
+                cb = function()
+                    local kv2
+                    kv2 = KeyValuePage:new{
+                        title           = book_title,
+                        kv_pairs        = stats_plugin:getBookStat(book_id),
+                        value_align     = "right",
+                        single_page     = true,
+                        callback_return = function()
+                            UIManager:close(kv2)
+                        end,
+                        close_callback  = function() kv2 = nil end,
+                    }
+                    UIManager:show(kv2)
+                end
+            end
+            table.insert(kv_pairs, {
+                display_text,
+                time_str,
+                callback = cb,
+            })
         end
-        table.insert(kv_pairs, {
-            display_text,
-            time_str,
-            callback = cb,
-        })
+        return kv_pairs
     end
 
-    local kv
-    kv = KeyValuePage:new{
-        title          = title,
-        kv_pairs       = kv_pairs,
-        value_align    = "right",
-        close_callback = function()
-            UIManager:close(kv)
-            UIManager:scheduleIn(0, function()
-                if on_close then on_close() end
-            end)
-        end,
-    }
-    UIManager:show(kv)
+    -- Same four orders as the editable lists, from the same menu - but
+    -- these lists are KeyValuePages, which take their rows in init() and
+    -- have no way to swap them afterwards. Re-sorting therefore closes the
+    -- page and opens a fresh one; `resorting` keeps that from being
+    -- mistaken for the reader closing the list, which would reopen the
+    -- insights popup underneath it.
+    local sort_mode = ListWidget.readSortMode(SORT_KEY_BOOKS)
+    local kv, resorting
+
+    local function sortedBooks()
+        local sorted = {}
+        for _idx, book in ipairs(books) do table.insert(sorted, book) end
+        table.sort(sorted, ListWidget.comparator(sort_mode,
+            function(b) return b.title or "" end,
+            function(b) return b.last_read or 0 end))
+        return sorted
+    end
+
+    local function openPage()
+        kv = KeyValuePage:new{
+            title               = title,
+            kv_pairs            = buildPairs(sortedBooks()),
+            value_align         = "right",
+            title_bar_left_icon = "appbar.menu",
+            title_bar_left_icon_tap_callback = function()
+                ListWidget.showSortMenu{
+                    current       = sort_mode,
+                    anchor_widget = kv.title_bar and kv.title_bar.left_button,
+                    callback      = function(mode)
+                        if mode == sort_mode then return end
+                        sort_mode = mode
+                        ListWidget.saveSortMode(SORT_KEY_BOOKS, mode)
+                        resorting = true
+                        UIManager:close(kv)
+                        resorting = false
+                        openPage()
+                    end,
+                }
+            end,
+            close_callback = function()
+                if resorting then return end
+                UIManager:close(kv)
+                UIManager:scheduleIn(0, function()
+                    if on_close then on_close() end
+                end)
+            end,
+        }
+        UIManager:show(kv)
+    end
+
+    openPage()
 end
 
 function M.showBooksForPeriod(popup_self, books, empty_text, title, opts)

@@ -50,7 +50,8 @@ A full-screen scrollable overlay with a comprehensive overview of your reading h
   swipes left/right on the popup (see **Controls** below) move the goal
   section to that year too, same as the rest of the popup
   - **Tap** the left cell (the finished-book count) to see the books that
-    make up it, most recently finished first. This list shows the **date**
+    make up it, most recently finished first (or in any other order, from
+    the sort menu at the top left). This list shows the **date**
     each book was finished on the right, rather than the reading time the
     other book lists show — it is ordered by that date, and books you added
     yourself have no measured time at all. Those hand-added entries are
@@ -60,9 +61,8 @@ A full-screen scrollable overlay with a comprehensive overview of your reading h
     - **Mark books finished** — a checklist of every book with activity
       that year: checkbox and title on the left, the date of that book's
       last reading entry on the right. Tap a row to toggle whether it
-      counts as finished. The
-      check mark at the bottom right keeps your changes, the `X` at the
-      bottom left puts them back as they were. Rows you changed yourself
+      counts as finished. The check mark at the bottom right keeps your
+      changes, the `X` at the bottom left puts them back as they were. Rows you changed yourself
       are marked with a trailing `*`, so it stays clear which entries came
       from the automatic rule and which you set by hand. The list is
       queried fresh every time it is opened, with the running reading
@@ -102,15 +102,16 @@ A full-screen scrollable overlay with a comprehensive overview of your reading h
   - **Week start day** — Monday or Sunday, controls which day starts each
     row in both heatmap grids
 
-**Book lists:** the read-only lists (books read in a period, books counted
-as finished) are plain lists of title/author and a value on the right. The
-two lists you edit — **Mark books finished** and **Add books manually** —
-are paged lists with a sort menu behind the icon at the top left: by last
-reading entry (newest or oldest first, newest by default) or by title
-(A→Z, Z→A), remembered separately for each list. The `X` at the top right
-closes the list; **Mark books finished** also has a cancel `X` and an
-accept check mark in the bottom bar, since it is the one list where
-changes can be thrown away.
+**Book lists:** every book list has the same sort menu behind the icon at
+the top left — by last reading entry (newest or oldest first, newest by
+default) or by title (A→Z, Z→A). The read-only lists (books read in a
+period, books counted as finished) keep their plain title/author rows with
+a value on the right; the two lists you edit — **Mark books finished** and
+**Add books manually** — are paged lists with checkboxes and a bottom bar.
+The chosen order is remembered separately for each kind of list. The `X` at
+the top right closes; **Mark books finished** also has a cancel `X` and an
+accept check mark in the bottom bar, since it is the one list where changes
+can be thrown away.
 
 **Controls:** swipe left/right to change year, tap the "Total read" header to open the reading heatmap, tap bars to open book lists, tap the chart header to toggle hours/days mode, long-press the title bar to force-reload data (see **Reading goal** above for that section's own tap/long-press targets).
 
@@ -443,10 +444,12 @@ readinginsights.koplugin/
 │   └── trend_view.lua          the 8-week trend line chart popup
 └── widgets/             reusable UI widgets
     ├── booklistwidget.lua    the list widget the two editable book lists are
-    │                         drawn with: sort menu in the title bar, paged
-    │                         rows (checkbox + title left, date right) and
-    │                         optional cancel/accept buttons - a subclass of
-    │                         KOReader's SortWidget with its own row widget
+    │                         drawn with: paged rows (checkbox + title left,
+    │                         date right) and optional cancel/accept buttons -
+    │                         a subclass of KOReader's SortWidget with its own
+    │                         row widget. Also holds the sort menu and the
+    │                         comparators behind it, which the plain
+    │                         KeyValuePage book lists share
     ├── chapterbarwidget.lua  the per-chapter bar under "This book" in the
     │                         book progress view (plus its own height
     │                         setting), paged with the arrows either side
@@ -483,8 +486,8 @@ top-level locals.
 The other splits are about duplication and cohesion rather than that limit:
 
 - `views/trend_view.lua`, `views/heatmap_view.lua` and
-  `views/booklist_view.lua` are the three self-contained popups the insights
-  view opens. The view file now holds the insights page itself rather than
+  `views/booklist_view.lua` are the three self-contained popup modules the
+  insights view opens (the book list one covers four lists). The view file now holds the insights page itself rather than
   every popup reachable from it, and went from ~5600 lines to ~3600.
 - `lib/uikit.lua` replaces three copies of the same layout helpers that had
   begun to diverge (`buildLayout`, `buildSectionHeader`, `buildTwoColRow`,

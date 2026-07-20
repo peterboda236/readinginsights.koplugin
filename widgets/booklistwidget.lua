@@ -111,19 +111,96 @@ local function titleLess(a, b)
     return la < lb
 end
 
-local function comparator(mode)
+-- A table.sort comparator for one of the four orders. The two getters say
+-- how to read a title and a timestamp out of whatever is being sorted, so
+-- the same orders work on this widget's items and on plain book records
+-- from the queries (which is what the KeyValuePage lists sort).
+function M.comparator(mode, get_title, get_time)
+    get_title = get_title or function(x) return x.sort_title end
+    get_time  = get_time  or function(x) return x.sort_time end
     if mode == "title_asc" then
-        return function(x, y) return titleLess(x.sort_title, y.sort_title) end
+        return function(x, y) return titleLess(get_title(x), get_title(y)) end
     elseif mode == "title_desc" then
-        return function(x, y) return titleLess(y.sort_title, x.sort_title) end
+        return function(x, y) return titleLess(get_title(y), get_title(x)) end
     end
     local newest_first = (mode ~= "recent_asc")
     return function(x, y)
-        local tx, ty = x.sort_time or 0, y.sort_time or 0
-        if tx == ty then return titleLess(x.sort_title, y.sort_title) end
+        local tx, ty = get_time(x) or 0, get_time(y) or 0
+        if tx == ty then return titleLess(get_title(x), get_title(y)) end
         if newest_first then return tx > ty end
         return tx < ty
     end
+end
+
+local function comparator(mode)
+    return M.comparator(mode)
+end
+
+-- The order a list was last left in, or the default if it has none stored.
+function M.readSortMode(setting_key)
+    local saved = setting_key and Prefs.read(setting_key, nil) or nil
+    return isValidSort(saved) and saved or M.DEFAULT_SORT
+end
+
+function M.saveSortMode(setting_key, mode)
+    if setting_key and isValidSort(mode) then
+        Prefs.save(setting_key, mode)
+    end
+end
+
+-- The sort menu itself: the four orders with the current one ticked, plus
+-- anything the caller wants underneath. Shared by this widget's title bar
+-- icon and by the KeyValuePage book lists, which have the same icon but
+-- none of the rest of this widget.
+--
+--   opts.current       the order currently in use (gets the tick)
+--   opts.callback      called with the chosen order
+--   opts.anchor_widget the title bar button to hang the menu under
+--   opts.extra_buttons { { text = ..., callback = ... }, ... }
+function M.showSortMenu(opts)
+    local dialog
+    local buttons = {}
+    for _idx, mode in ipairs(M.SORT_MODES) do
+        local this_mode = mode
+        table.insert(buttons, {{
+            -- U+2713 CHECK MARK in front of the order currently in use.
+            text  = (opts.current == this_mode and "\xe2\x9c\x93 " or "    ")
+                .. sortLabel(this_mode),
+            align = "left",
+            callback = function()
+                UIManager:close(dialog)
+                if opts.callback then opts.callback(this_mode) end
+            end,
+        }})
+    end
+    for _idx, btn in ipairs(opts.extra_buttons or {}) do
+        local cb = btn.callback
+        table.insert(buttons, {{
+            text  = btn.text,
+            align = "left",
+            callback = function()
+                UIManager:close(dialog)
+                if cb then cb() end
+            end,
+        }})
+    end
+    -- Anchored under the title bar's icon - but only if that button is
+    -- actually there (older KOReader title bars don't take a left icon, in
+    -- which case the dialog is simply centred).
+    local anchor_button = opts.anchor_widget
+    dialog = ButtonDialog:new{
+        -- Modal: the lists this is opened from are either modal themselves
+        -- or sit under one, and UIManager inserts non-modal windows *below*
+        -- the topmost modal one - a plain dialog would open behind them.
+        modal = true,
+        shrink_unneeded_width = true,
+        buttons = buttons,
+        anchor  = anchor_button and function()
+            return anchor_button.image.dimen
+        end or nil,
+    }
+    UIManager:show(dialog)
+    return dialog
 end
 
 -- One row of a list.
@@ -248,9 +325,7 @@ M.Widget = BookListWidget
 function BookListWidget:init()
     self.show_page = self.show_page or 1
     if not isValidSort(self.sort_mode) then
-        local saved = self.sort_setting_key
-            and Prefs.read(self.sort_setting_key, nil) or nil
-        self.sort_mode = isValidSort(saved) and saved or M.DEFAULT_SORT
+        self.sort_mode = M.readSortMode(self.sort_setting_key)
     end
     self:applySort()
 
@@ -307,60 +382,20 @@ end
 function BookListWidget:setSortMode(mode)
     if not isValidSort(mode) or mode == self.sort_mode then return end
     self.sort_mode = mode
-    if self.sort_setting_key then
-        Prefs.save(self.sort_setting_key, mode)
-    end
+    M.saveSortMode(self.sort_setting_key, mode)
     self.show_page = 1
     self:updateItems()
 end
 
 -- Replaces SortWidget's own A-Z menu with the four orders these book lists
--- offer; the current one is ticked.
+-- offer (see M.showSortMenu, which the KeyValuePage lists share).
 function BookListWidget:onShowWidgetMenu()
-    local dialog
-    local buttons = {}
-    for _idx, mode in ipairs(M.SORT_MODES) do
-        local this_mode = mode
-        table.insert(buttons, {{
-            -- U+2713 CHECK MARK in front of the order currently in use.
-            text  = (self.sort_mode == this_mode and "\xe2\x9c\x93 " or "    ")
-                .. sortLabel(this_mode),
-            align = "left",
-            callback = function()
-                UIManager:close(dialog)
-                self:setSortMode(this_mode)
-            end,
-        }})
-    end
-    if self.extra_menu_buttons then
-        for _idx, btn in ipairs(self.extra_menu_buttons) do
-            local cb = btn.callback
-            table.insert(buttons, {{
-                text  = btn.text,
-                align = "left",
-                callback = function()
-                    UIManager:close(dialog)
-                    if cb then cb() end
-                end,
-            }})
-        end
-    end
-    -- Anchored under the title bar's icon, like SortWidget's own menu -
-    -- but only if that button is actually there (older KOReader title bars
-    -- don't take a left icon, in which case the dialog is simply centred).
-    local anchor_button = self.title_bar and self.title_bar.left_button
-    dialog = ButtonDialog:new{
-        -- This widget is modal (see the class definition), and UIManager
-        -- inserts non-modal windows *below* the topmost modal one - so a
-        -- plain ButtonDialog would open behind the list it belongs to.
-        modal = true,
-        shrink_unneeded_width = true,
-        buttons = buttons,
-        anchor  = anchor_button and function()
-            return anchor_button.image.dimen
-        end or nil,
+    M.showSortMenu{
+        current       = self.sort_mode,
+        anchor_widget = self.title_bar and self.title_bar.left_button,
+        extra_buttons = self.extra_menu_buttons,
+        callback      = function(mode) self:setSortMode(mode) end,
     }
-    UIManager:show(dialog)
     return true
 end
 
