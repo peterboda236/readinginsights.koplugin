@@ -6,7 +6,7 @@ per-book stats/calendar views) read from the same statistics database, and
 each used to carry its own near-identical copy of:
 
   - the db path (DataStorage:getSettingsDir() .. "/statistics.sqlite3")
-  - a "does the file exist, open it, set the WAL/cache PRAGMAs" opener
+  - a "does the file exist, open it, set the connection PRAGMAs" opener
   - a withStatsDb(fallback, fn) "open, run, always close, return result or
     fallback" wrapper
   - a withStatement(conn, sql, fn) "prepare, run, always close" wrapper
@@ -39,17 +39,31 @@ local M = {}
 
 local db_path = DataStorage:getSettingsDir() .. "/statistics.sqlite3"
 
--- Same PRAGMAs every opener used before: WAL journalling, a modest page
--- cache, and in-memory temp tables, for snappy read-mostly access.
+-- Connection settings only. Every one of these applies to the handle we
+-- just opened and to nothing else, which is the whole point: this plugin
+-- never writes a row to the statistics database - it is KOReader's, and we
+-- only ever SELECT from it - so it has no business changing the file.
 --
--- busy_timeout comes first, and is the one addition: KOReader's own
--- statistics plugin writes to this database while we read it (every page
--- turn, every book close), and without a timeout SQLite gives up the
--- instant it meets a writer instead of waiting for it. The full-history
--- scans behind the Records popup are exactly the long readers that lose
--- that race. It is set before journal_mode because switching to WAL itself
--- needs the write lock, so it too benefits from being allowed to wait.
-local PRAGMAS = "PRAGMA busy_timeout=3000; PRAGMA journal_mode=WAL; PRAGMA cache_size=2000; PRAGMA temp_store=MEMORY;"
+-- That is why journal_mode is not here, though it used to be. Unlike the
+-- three below, journal_mode is a persistent property of the database file
+-- rather than of a connection: setting it rewrites the header for every
+-- future opener, KOReader's own statistics plugin included. Forcing WAL
+-- from here overrode both KOReader's own Device:canUseWAL() check (false
+-- on, say, a Kindle 2, whose kernel can't mmap /mnt/us) and the deliberate
+-- choice of anyone who keeps the database out of WAL so they can sync it
+-- as a single file - WAL keeps recent transactions in a -wal sidecar, so
+-- copying the .sqlite3 alone silently loses them. We gain nothing by
+-- setting it either: if the database is already in WAL, readers get the
+-- benefit without asking. Switching it also needs the write lock, so with
+-- busy_timeout below it could stall an open for seconds on a database
+-- someone else is writing.
+--
+-- busy_timeout is the deliberate addition: KOReader's statistics plugin
+-- writes here while we read (every page turn, every book close), and
+-- without a timeout SQLite gives up the instant it meets a writer instead
+-- of waiting for it. The full-history scans behind the Records popup are
+-- exactly the long readers that lose that race.
+local PRAGMAS = "PRAGMA busy_timeout=3000; PRAGMA cache_size=2000; PRAGMA temp_store=MEMORY;"
 
 function M.path()
     return db_path
