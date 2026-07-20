@@ -837,6 +837,9 @@ msgstr "Csúcsaktivitás (100%)"
 msgid "Show long durations (24h+) as days"
 msgstr "24 óra feletti időtartamok napokban"
 
+msgid "Date format"
+msgstr "Dátumformátum"
+
 msgid "Book calendar cell content"
 msgstr "Könyv naptár cella tartalma"
 
@@ -983,11 +986,11 @@ msgstr "Adj meg egy címet"
 
 
 
-msgid "Date read (YYYY-MM-DD)"
-msgstr "Olvasás dátuma (ÉÉÉÉ-HH-NN)"
+msgid "Date read (%1)"
+msgstr "Olvasás dátuma (%1)"
 
-msgid "Please enter the date as YYYY-MM-DD"
-msgstr "A dátumot ÉÉÉÉ-HH-NN formában add meg"
+msgid "Please enter the date as %1"
+msgstr "A dátumot %1 formában add meg"
 
 msgid "Reload data"
 msgstr "Adatok újratöltése"

@@ -323,6 +323,18 @@ Once installed, future updates can be installed in-app — see
       - **Week start day** — Monday or Sunday, controls which day starts
         each row in both heatmap grids
       - **8-week chart order** — newest-first or oldest-first
+      - **Date format** — how every numeric date the plugin prints is
+        spelled out: `YYYY-MM-DD` (2026-07-20), `YYYY.MM.DD.`
+        (2026.07.20.), `DD/MM/YYYY` (20/07/2026) or `MM/DD/YYYY`
+        (07/20/2026). Covers the book lists, the streak/records/stats
+        popups, the book calendar's day detail, and the date field of the
+        manual book list (which is also read back in the chosen format —
+        entries are stored as `YYYY-MM-DD` either way, so changing the
+        setting never disturbs a date already saved). Dates that aren't
+        numeric — weekday names, month names, the 8-week chart's axis
+        labels — are unaffected. Defaults to `YYYY.MM.DD.` in Hungarian
+        and `DD/MM/YYYY` elsewhere, which is what the plugin did before
+        this setting existed
       - **Show long durations (24h+) as days** — off by default; when on,
         any duration of 24h or more (yearly/streak totals, weekly
         averages, all-time totals, book progress) is shown as a day count

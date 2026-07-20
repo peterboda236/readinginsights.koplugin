@@ -50,7 +50,6 @@ local Locale, Colors, Fonts, PopupUtil, RecordsData =
 local _ = Locale._
 local N_ = Locale.N_
 local formatCount = Locale.formatCount
-local getLangBase = Locale.getLangBase
 
 -- ---------------------------------------------------------------------------
 -- Row icons
@@ -66,19 +65,10 @@ local ICONS = {
 -- ---------------------------------------------------------------------------
 -- Date helpers
 -- ---------------------------------------------------------------------------
--- Format a YYYY-MM-DD string for display (EN: DD/MM/YYYY, HU: YYYY.MM.DD.)
--- Same convention as insights_view.lua's formatDateForDisplay, so records,
--- insights and stats popups all show dates the same way.
-local function formatDate(date_str)
-    if not date_str then return "" end
-    local y, m, d = date_str:match("^(%d+)-(%d+)-(%d+)$")
-    if not y then return date_str end
-    if getLangBase() == "hu" then
-        return string.format("%s.%s.%s.", y, m, d)
-    else
-        return string.format("%s/%s/%s", d, m, y)
-    end
-end
+-- Format a YYYY-MM-DD string in the configured date format. The same
+-- shared formatter insights_view.lua's formatDateForDisplay uses, so
+-- records, insights and stats popups all show dates the same way.
+local formatDate = Locale.formatDate
 
 -- ---------------------------------------------------------------------------
 -- UI building helpers

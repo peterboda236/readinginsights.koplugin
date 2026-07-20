@@ -115,10 +115,15 @@ local function formatEventDateTime(timestamp)
         return _(WEEKDAY_NAMES[t.wday])
     end
 
+    -- The date itself follows the configured date format (Settings ▸
+    -- Advanced settings ▸ "Date format"); only where the weekday goes
+    -- stays language-bound, since Hungarian wants it after the date and in
+    -- lower case ("2026.06.24. szerda").
+    local date_str = Locale.formatDateFromTS(timestamp)
     if is_hu then
-        return os.date("%Y.%m.%d.", timestamp) .. " " .. WEEKDAY_NAMES_HU_LC[t.wday]
+        return date_str .. " " .. WEEKDAY_NAMES_HU_LC[t.wday]
     end
-    return _(WEEKDAY_NAMES[t.wday]) .. ", " .. os.date("%d/%m/%Y", timestamp)
+    return _(WEEKDAY_NAMES[t.wday]) .. ", " .. date_str
 end
 
 local function tappableWrap(widget, width)

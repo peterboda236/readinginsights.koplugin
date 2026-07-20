@@ -105,17 +105,13 @@ local getLangBase  = Locale.getLangBase
 local formatNumber = Locale.formatNumber
 local formatCount  = Locale.formatCount
 
--- Format a YYYY-MM-DD string for display (EN: DD/MM/YYYY, HU: YYYY.MM.DD.)
--- no_trailing_dot: HU only - omit the final dot (used for the first date in a range)
+-- Format a YYYY-MM-DD string in the configured date format (Settings ▸
+-- Advanced settings ▸ "Date format" - see Locale.formatDate).
+-- no_trailing_dot: the "2026.07.20." pattern only - omit the final dot
+-- (used for the first date in a range).
 local function formatDateForDisplay(date_str, no_trailing_dot)
     if not date_str then return "?" end
-    local y, m, d = date_str:match("^(%d+)-(%d+)-(%d+)$")
-    if not y then return date_str end
-    if getLangBase() == "hu" then
-        return string.format("%s.%s.%s%s", y, m, d, no_trailing_dot and "" or ".")
-    else
-        return string.format("%s/%s/%s", d, m, y)
-    end
+    return Locale.formatDate(date_str, no_trailing_dot)
 end
 
 local MONTH_NAMES_SHORT = {

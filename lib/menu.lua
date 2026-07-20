@@ -415,6 +415,43 @@ function M.build(self, deps)
         },
     })
 
+    -- How every numeric date this plugin prints is spelled out (book
+    -- lists, streak/records/stats popups, the book calendar's day detail,
+    -- and the manual book list's date field). One explicit setting instead
+    -- of following the interface language; see Locale.formatDate. The
+    -- entries are labelled with the pattern itself plus today's date as an
+    -- example, so neither needs translating.
+    do
+        local function dateFormatEntry(fmt)
+            return {
+                -- text_func, not text: the example is today's date, and
+                -- this table is built once when the menu is assembled.
+                text_func = function()
+                    return deps.Locale.DATE_FORMAT_HINTS[fmt] .. "  \xE2\x80\x93  " ..
+                        deps.Locale.formatDateSample(fmt)
+                end,
+                keep_menu_open = true,
+                radio = true,
+                checked_func = function()
+                    return deps.Locale.readDateFormatSetting() == fmt
+                end,
+                callback = function() deps.Locale.saveDateFormatSetting(fmt) end,
+            }
+        end
+        local date_format_sub_item_table = {}
+        for _idx, fmt in ipairs(deps.Locale.DATE_FORMATS) do
+            table.insert(date_format_sub_item_table, dateFormatEntry(fmt))
+        end
+        table.insert(advanced_settings_sub_item_table, {
+            text_func = function()
+                return _("Date format") .. ": " ..
+                    deps.Locale.DATE_FORMAT_HINTS[deps.Locale.readDateFormatSetting()]
+            end,
+            keep_menu_open = true,
+            sub_item_table = date_format_sub_item_table,
+        })
+    end
+
     table.insert(advanced_settings_sub_item_table, {
         text         = _("Show long durations (24h+) as days"),
         keep_menu_open = true,
