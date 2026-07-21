@@ -207,8 +207,8 @@ msgstr "Reading insights: all time statistics"
 msgid "Reading insights: current book progress"
 msgstr "Reading insights: current book progress"
 
-msgid "Reading insights: current book calendar"
-msgstr "Reading insights: current book calendar"
+msgid "Reading insights: book progress calendar"
+msgstr "Reading insights: book progress calendar"
 
 msgid "All books read %1"
 msgstr "All books read %1"
@@ -319,8 +319,8 @@ msgstr "4 months"
 msgid "6 months"
 msgstr "6 months"
 
-msgid "Heatmap hour format"
-msgstr "Heatmap hour format"
+msgid "Time format"
+msgstr "Time format"
 
 msgid "24-hour"
 msgstr "24-hour"
@@ -328,8 +328,8 @@ msgstr "24-hour"
 msgid "12-hour (AM/PM)"
 msgstr "12-hour (AM/PM)"
 
-msgid "Week start day"
-msgstr "Week start day"
+msgid "First day of week"
+msgstr "First day of week"
 
 msgid "Newest first"
 msgstr "Newest first"
@@ -825,8 +825,8 @@ msgstr "Show long durations (24h+) as days"
 msgid "Date format"
 msgstr "Date format"
 
-msgid "Book calendar cell content"
-msgstr "Book calendar cell content"
+msgid "Book progress calendar cell content"
+msgstr "Book progress calendar cell content"
 
 msgid "Percent"
 msgstr "Percent"
@@ -997,3 +997,33 @@ msgstr "Add books manually"
 
 msgid "Add books manually - %1"
 msgstr "Add books manually - %1"
+
+msgid "Date & time"
+msgstr "Date & time"
+
+msgid "Reading insight popup"
+msgstr "Reading insight popup"
+
+msgid "Last week chapter bar order"
+msgstr "Last week chapter bar order"
+
+msgid "Today on the left"
+msgstr "Today on the left"
+
+msgid "Today on the right"
+msgstr "Today on the right"
+
+msgid "Reading goal display"
+msgstr "Reading goal display"
+
+msgid "Goal total"
+msgstr "Goal total"
+
+msgid "Remaining"
+msgstr "Remaining"
+
+msgid "book left"
+msgstr "book left"
+
+msgid "books left"
+msgstr "books left"

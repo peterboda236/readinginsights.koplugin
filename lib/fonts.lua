@@ -222,7 +222,7 @@ end
 
 -- Bold-weight variant of an existing role's face, at that role's current
 -- (possibly user-overridden) size. Used e.g. for the expected-finish day
--- number in the per-book calendar (book_calendar_view.lua), so that one occasional
+-- number in the Book progress calendar (book_calendar_view.lua), so that one
 -- bold day number doesn't need a whole separate font role/menu entry of
 -- its own - it just piggybacks on whatever size the caller's role is set
 -- to, forcing NotoSans-Bold.ttf instead of that role's own file.

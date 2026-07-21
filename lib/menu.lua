@@ -2,10 +2,12 @@
 Reading Insights - the Tools menu.
 
 Builds the whole *Tools > Reading insights* entry: the "show popup" actions,
-the Settings submenu (sleep screen, full-screen refresh, colors, fonts), the
-Advanced settings submenu, and the Updates and About entries.
+the Settings submenu (sleep-screen indicator, full-screen refresh, colors,
+fonts), the Advanced settings submenu below it (bar chart height, long
+durations, then one group per area - Date & time, Reading insight popup,
+Book progress calendar), and the Updates and About entries.
 
-This is ~470 lines of pure menu description - nested tables of text_func /
+This is ~600 lines of pure menu description - nested tables of text_func /
 checked_func / callback - and it was the single largest thing in main.lua,
 which is otherwise about wiring: loading modules, registering dispatcher
 actions, and the sleep-screen integration. Keeping the two apart means a
@@ -104,12 +106,41 @@ function M.build(self, deps)
     })
     ]]--
 
-    -- Sleep-screen indicator now lives at the top of Advanced settings
-    -- instead of here - see advanced_settings_sub_item_table below.
+    -- Sleep-screen indicator: the one setting here that is about the sleep
+    -- screen rather than about the popups, so it sits at the top with a
+    -- divider under it, above the appearance settings that follow.
+    table.insert(settings_sub_item_table, {
+        text_func = function()
+            local label_mode = deps.readScreensaverLabelMode()
+            return _("Sleep-screen indicator") .. ": " ..
+                ((label_mode == "text") and _("\"(sleeping…)\" after the title") or _("None"))
+        end,
+        keep_menu_open = true,
+        separator = true,
+        sub_item_table = {
+            {
+                text = _("None"),
+                keep_menu_open = true,
+                radio = true,
+                checked_func = function() return deps.readScreensaverLabelMode() == "none" end,
+                callback = function() deps.saveScreensaverLabelMode("none") end,
+            },
+            {
+                text = _("\"(sleeping…)\" after the title"),
+                keep_menu_open = true,
+                radio = true,
+                checked_func = function() return deps.readScreensaverLabelMode() == "text" end,
+                callback = function() deps.saveScreensaverLabelMode("text") end,
+            },
+        },
+    })
 
     table.insert(settings_sub_item_table, {
         text = _("Full-screen refresh on open/close"),
         keep_menu_open = true,
+        -- Divider under it: the two entries above are behaviour, Colors and
+        -- Fonts below are appearance.
+        separator = true,
         checked_func = function()
             return deps.ViewSettings.readFullRefreshSetting()
         end,
@@ -184,38 +215,18 @@ function M.build(self, deps)
     })
 
     -- "Advanced settings": less commonly touched settings, tucked away in
-    -- their own submenu (bar chart height, reading heatmap range, and the
-    -- 8-week chart order, in that order - no separators inside). A
-    -- separator is placed above this entry itself (set on the preceding
-    -- "Fonts" entry) to set it apart from the rest of the Settings menu.
+    -- their own submenu. A separator is placed above this entry itself (set
+    -- on the preceding "Fonts" entry) to set it apart from the rest of the
+    -- Settings menu.
+    --
+    -- Two settings that apply to everything the plugin draws sit at the top
+    -- (bar chart height, long durations as days), then the rest grouped by
+    -- what it affects, one submenu each: "Date & time" (how dates and times
+    -- are spelled out anywhere), "Reading insight popup" and "Book progress
+    -- calendar". Dividers separate the three blocks: under the pair at the
+    -- top, and under "Date & time" (the only group that reaches outside the
+    -- two popups below it).
     local advanced_settings_sub_item_table = {}
-
-    -- Moved here (to the very top) from the Settings submenu, keeping its
-    -- separator so it still visually stands apart from the entries below.
-    table.insert(advanced_settings_sub_item_table, {
-        text_func = function()
-            local label_mode = deps.readScreensaverLabelMode()
-            return _("Sleep-screen indicator") .. ": " ..
-                ((label_mode == "text") and _("\"(sleeping…)\" after the title") or _("None"))
-        end,
-        keep_menu_open = true,
-        sub_item_table = {
-            {
-                text = _("None"),
-                keep_menu_open = true,
-                radio = true,
-                checked_func = function() return deps.readScreensaverLabelMode() == "none" end,
-                callback = function() deps.saveScreensaverLabelMode("none") end,
-            },
-            {
-                text = _("\"(sleeping…)\" after the title"),
-                keep_menu_open = true,
-                radio = true,
-                checked_func = function() return deps.readScreensaverLabelMode() == "text" end,
-                callback = function() deps.saveScreensaverLabelMode("text") end,
-            },
-        },
-    })
 
     table.insert(advanced_settings_sub_item_table, {
         text = _("Bar chart height"),
@@ -272,10 +283,96 @@ function M.build(self, deps)
         },
     })
 
+    -- Affects every duration this plugin prints, in all four popups, so it
+    -- stays a flat entry up here instead of going into one of the
+    -- per-view groups below.
+    table.insert(advanced_settings_sub_item_table, {
+        text         = _("Show long durations (24h+) as days"),
+        separator    = true,
+        keep_menu_open = true,
+        checked_func = function() return deps.Locale.readDurationDaysSetting() end,
+        callback     = function()
+            deps.Locale.saveDurationDaysSetting(not deps.Locale.readDurationDaysSetting())
+        end,
+    })
+
+    -- "Date & time": how clock times and dates are spelled out, wherever
+    -- the plugin prints one. Filled in here and closed off (inserted into
+    -- Advanced settings) after the date-format entry further down.
+    local date_time_sub_item_table = {}
+
+    -- Named "Time format" rather than after the one grid it currently
+    -- governs: it is the plugin's answer to "12- or 24-hour?", and lives
+    -- with the date settings for that reason.
+    table.insert(date_time_sub_item_table, {
+        text_func = function()
+            local fmt = deps.ViewSettings.readHeatmapHourFormatSetting() == "12"
+                and _("12-hour (AM/PM)")
+                or  _("24-hour")
+            return _("Time format") .. ": " .. fmt
+        end,
+        keep_menu_open = true,
+        sub_item_table = {
+            {
+                text = _("24-hour"),
+                keep_menu_open = true,
+                radio = true,
+                checked_func = function()
+                    return deps.ViewSettings.readHeatmapHourFormatSetting() == "24"
+                end,
+                callback = function() deps.ViewSettings.saveHeatmapHourFormatSetting("24") end,
+            },
+            {
+                text = _("12-hour (AM/PM)"),
+                keep_menu_open = true,
+                radio = true,
+                checked_func = function()
+                    return deps.ViewSettings.readHeatmapHourFormatSetting() == "12"
+                end,
+                callback = function() deps.ViewSettings.saveHeatmapHourFormatSetting("12") end,
+            },
+        },
+    })
+
+    table.insert(date_time_sub_item_table, {
+        text_func = function()
+            local start_day = deps.ViewSettings.readWeekStartSetting() == "sunday"
+                and _("Sunday")
+                or  _("Monday")
+            return _("First day of week") .. ": " .. start_day
+        end,
+        keep_menu_open = true,
+        sub_item_table = {
+            {
+                text = _("Monday"),
+                keep_menu_open = true,
+                radio = true,
+                checked_func = function()
+                    return deps.ViewSettings.readWeekStartSetting() == "monday"
+                end,
+                callback = function() deps.ViewSettings.saveWeekStartSetting("monday") end,
+            },
+            {
+                text = _("Sunday"),
+                keep_menu_open = true,
+                radio = true,
+                checked_func = function()
+                    return deps.ViewSettings.readWeekStartSetting() == "sunday"
+                end,
+                callback = function() deps.ViewSettings.saveWeekStartSetting("sunday") end,
+            },
+        },
+    })
+
+    -- "Reading insight popup": everything that changes what the insights
+    -- popup itself shows. Inserted into Advanced settings below, after the
+    -- "Date & time" group.
+    local insights_popup_sub_item_table = {}
+
     -- Shows/hides the whole "Reading goal" section of the insights popup
     -- (finished-book count vs. this year's target). On by default; when
     -- off, its data isn't even queried on open.
-    table.insert(advanced_settings_sub_item_table, {
+    table.insert(insights_popup_sub_item_table, {
         text = _("Reading goal section"),
         help_text = _("Shows the number of books finished this year next to your yearly goal. Long press the goal value to change it."),
         keep_menu_open = true,
@@ -286,7 +383,7 @@ function M.build(self, deps)
         end,
     })
 
-    table.insert(advanced_settings_sub_item_table, {
+    table.insert(insights_popup_sub_item_table, {
         text_func = function()
             local months = deps.ViewSettings.readHeatmapMonthsSetting()
             local label
@@ -321,67 +418,7 @@ function M.build(self, deps)
         },
     })
 
-    table.insert(advanced_settings_sub_item_table, {
-        text_func = function()
-            local fmt = deps.ViewSettings.readHeatmapHourFormatSetting() == "12"
-                and _("12-hour (AM/PM)")
-                or  _("24-hour")
-            return _("Heatmap hour format") .. ": " .. fmt
-        end,
-        keep_menu_open = true,
-        sub_item_table = {
-            {
-                text = _("24-hour"),
-                keep_menu_open = true,
-                radio = true,
-                checked_func = function()
-                    return deps.ViewSettings.readHeatmapHourFormatSetting() == "24"
-                end,
-                callback = function() deps.ViewSettings.saveHeatmapHourFormatSetting("24") end,
-            },
-            {
-                text = _("12-hour (AM/PM)"),
-                keep_menu_open = true,
-                radio = true,
-                checked_func = function()
-                    return deps.ViewSettings.readHeatmapHourFormatSetting() == "12"
-                end,
-                callback = function() deps.ViewSettings.saveHeatmapHourFormatSetting("12") end,
-            },
-        },
-    })
-
-    table.insert(advanced_settings_sub_item_table, {
-        text_func = function()
-            local start_day = deps.ViewSettings.readWeekStartSetting() == "sunday"
-                and _("Sunday")
-                or  _("Monday")
-            return _("Week start day") .. ": " .. start_day
-        end,
-        keep_menu_open = true,
-        sub_item_table = {
-            {
-                text = _("Monday"),
-                keep_menu_open = true,
-                radio = true,
-                checked_func = function()
-                    return deps.ViewSettings.readWeekStartSetting() == "monday"
-                end,
-                callback = function() deps.ViewSettings.saveWeekStartSetting("monday") end,
-            },
-            {
-                text = _("Sunday"),
-                keep_menu_open = true,
-                radio = true,
-                checked_func = function()
-                    return deps.ViewSettings.readWeekStartSetting() == "sunday"
-                end,
-                callback = function() deps.ViewSettings.saveWeekStartSetting("sunday") end,
-            },
-        },
-    })
-
-    table.insert(advanced_settings_sub_item_table, {
+    table.insert(insights_popup_sub_item_table, {
         text_func = function()
             local order = deps.ViewSettings.readAscendingSetting()
                 and _("Oldest first")
@@ -415,10 +452,78 @@ function M.build(self, deps)
         },
     })
 
+    -- Which end of the "Last week" bar chart today sits at. The default is
+    -- what the chart always did before this setting existed - today on the
+    -- left, the week running backwards from there.
+    do
+        -- Both the label and the two radio entries need the same two
+        -- constant names; spelled out in full they don't fit a line.
+        local VSet  = deps.ViewSettings
+        local FIRST = VSet.WEEKLY_BAR_ORDER_TODAY_FIRST
+        local LAST  = VSet.WEEKLY_BAR_ORDER_TODAY_LAST
+        local function orderEntry(value, text)
+            return {
+                text = text,
+                keep_menu_open = true,
+                radio = true,
+                checked_func = function()
+                    return VSet.readWeeklyBarOrderSetting() == value
+                end,
+                callback = function() VSet.saveWeeklyBarOrderSetting(value) end,
+            }
+        end
+        table.insert(insights_popup_sub_item_table, {
+            text_func = function()
+                local side = VSet.readWeeklyBarOrderSetting() == LAST
+                    and _("Today on the right")
+                    or  _("Today on the left")
+                return _("Last week chapter bar order") .. ": " .. side
+            end,
+            keep_menu_open = true,
+            sub_item_table = {
+                orderEntry(FIRST, _("Today on the left")),
+                orderEntry(LAST,  _("Today on the right")),
+            },
+        })
+    end
+
+    -- What the Reading goal section's right-hand value counts: the year's
+    -- goal itself, or how much of it is still left. Either way a long press
+    -- on that cell edits the goal.
+    do
+        local Opt       = deps.ViewSettings.Opt
+        local TOTAL     = Opt.GOAL_DISPLAY_TOTAL
+        local REMAINING = Opt.GOAL_DISPLAY_REMAINING
+        local function displayEntry(value, text)
+            return {
+                text = text,
+                keep_menu_open = true,
+                radio = true,
+                checked_func = function() return Opt.readGoalDisplay() == value end,
+                callback = function() Opt.saveGoalDisplay(value) end,
+            }
+        end
+        table.insert(insights_popup_sub_item_table, {
+            text_func = function()
+                local mode = Opt.readGoalDisplay() == REMAINING
+                    and _("Remaining")
+                    or  _("Goal total")
+                return _("Reading goal display") .. ": " .. mode
+            end,
+            -- Greyed out while the section it configures is switched off.
+            enabled_func = function() return Opt.readShowReadingGoal() end,
+            keep_menu_open = true,
+            sub_item_table = {
+                displayEntry(TOTAL,     _("Goal total")),
+                displayEntry(REMAINING, _("Remaining")),
+            },
+        })
+    end
+
     -- How every numeric date this plugin prints is spelled out (book
-    -- lists, streak/records/stats popups, the book calendar's day detail,
-    -- and the manual book list's date field). One explicit setting instead
-    -- of following the interface language; see Locale.formatDate. The
+    -- lists, streak/records/stats popups, the Book progress calendar's day
+    -- detail, and the manual book list's date field). One explicit setting
+    -- instead of following the interface language; see Locale.formatDate. The
     -- entries are labelled with the pattern itself plus today's date as an
     -- example, so neither needs translating.
     do
@@ -442,7 +547,7 @@ function M.build(self, deps)
         for _idx, fmt in ipairs(deps.Locale.DATE_FORMATS) do
             table.insert(date_format_sub_item_table, dateFormatEntry(fmt))
         end
-        table.insert(advanced_settings_sub_item_table, {
+        table.insert(date_time_sub_item_table, {
             text_func = function()
                 return _("Date format") .. ": " ..
                     deps.Locale.DATE_FORMAT_HINTS[deps.Locale.readDateFormatSetting()]
@@ -452,27 +557,35 @@ function M.build(self, deps)
         })
     end
 
+    -- The three groups, in the order they appear under Advanced settings.
+    -- Both tables above are complete by now.
     table.insert(advanced_settings_sub_item_table, {
-        text         = _("Show long durations (24h+) as days"),
+        text = _("Date & time"),
         keep_menu_open = true,
-        checked_func = function() return deps.Locale.readDurationDaysSetting() end,
-        callback     = function()
-            deps.Locale.saveDurationDaysSetting(not deps.Locale.readDurationDaysSetting())
-        end,
+        separator = true,
+        sub_item_table = date_time_sub_item_table,
     })
 
-    -- What the per-book reading calendar's day cells show: cumulative
+    table.insert(advanced_settings_sub_item_table, {
+        text = _("Reading insight popup"),
+        keep_menu_open = true,
+        sub_item_table = insights_popup_sub_item_table,
+    })
+
+    local book_calendar_sub_item_table = {}
+
+    -- What the Book progress calendar's day cells show: cumulative
     -- "+13%" progress through the whole book (default), that day's own
     -- page count ("+101o"), or that day's own time spent (honoring
     -- KOReader's global "Duration format" setting) - see
     -- deps.BookCalendar.readCalendarCellModeSetting in book_calendar_view.lua.
-    table.insert(advanced_settings_sub_item_table, {
+    table.insert(book_calendar_sub_item_table, {
         text_func = function()
             local mode_key = deps.BookCalendar.readCalendarCellModeSetting()
             local mode = (mode_key == "pages" and _("Pages"))
                 or (mode_key == "time" and _("Time"))
                 or _("Percent")
-            return _("Book calendar cell content") .. ": " .. mode
+            return _("Book progress calendar cell content") .. ": " .. mode
         end,
         keep_menu_open = true,
         sub_item_table = {
@@ -504,6 +617,12 @@ function M.build(self, deps)
                 callback = function() deps.BookCalendar.saveCalendarCellModeSetting("time") end,
             },
         },
+    })
+
+    table.insert(advanced_settings_sub_item_table, {
+        text = _("Book progress calendar"),
+        keep_menu_open = true,
+        sub_item_table = book_calendar_sub_item_table,
     })
 
     table.insert(settings_sub_item_table, {

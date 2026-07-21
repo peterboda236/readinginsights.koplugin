@@ -151,6 +151,17 @@ M.Opt = {
     -- turning it off also removes its share of the work on every open.
     SHOW_GOAL_KEY     = "reading_insights_show_reading_goal",
     SHOW_GOAL_DEFAULT = true,
+
+    -- What the right-hand cell of the "Reading goal" section counts
+    -- (Settings > Advanced settings > Reading insight popup > "Reading goal
+    -- display"). "total" (default) shows the year's goal itself - "30 books
+    -- to read"; "remaining" shows how many of it are still left after the
+    -- finished books on the left - "18 books left". Either way it is the
+    -- same goal value underneath, and a long press on the cell still edits
+    -- that goal.
+    GOAL_DISPLAY_KEY       = "reading_insights_goal_display",
+    GOAL_DISPLAY_TOTAL     = "total",
+    GOAL_DISPLAY_REMAINING = "remaining",
 }
 
 -- Reading heatmap period length (Prefs ▸ Advanced settings ▸ how many
@@ -173,8 +184,8 @@ function M.saveHeatmapMonthsSetting(value)
     M.saveNumSetting(M.SETTINGS_KEY_HEATMAP_MONTHS, value)
 end
 
--- Time-of-day heatmap hour format (Prefs ▸ Advanced settings ▸ "Heatmap
--- hour format" - 24-hour or 12-hour AM/PM). Previously the hour header
+-- Time-of-day heatmap hour format (Prefs ▸ Advanced settings ▸ Date & time
+-- ▸ "Time format" - 24-hour or 12-hour AM/PM). Previously the hour header
 -- always showed 24-hour labels ("00".."21"); this is now an explicit,
 -- language-independent setting instead of silently following the
 -- interface language. Read by buildDayPartHeatmapWidget every time the
@@ -240,9 +251,9 @@ function M.saveFinishedOverrides(year, overrides)
     Prefs.save(M.finishedOverridesSettingsKey(year), overrides)
 end
 
--- Week start day for both reading heatmaps (Prefs ▸ Advanced settings ▸
--- "Week start day" - Monday or Sunday). This is the same global setting the
--- per-book reading calendar keys off, so it now lives in the shared
+-- Week start day for both reading heatmaps (Prefs ▸ Advanced settings ▸ Date
+-- & time ▸ "First day of week" - Monday or Sunday). This is the same global
+-- Book progress calendar keys off, so it now lives in the shared
 -- Settings module (see settings.lua); these thin wrappers keep the existing
 -- local + exported names working. Read by buildRangeHeatmapGrid (calendar
 -- heatmap) and buildDayPartHeatmapWidget (time-of-day heatmap) every time
@@ -314,6 +325,29 @@ function M.saveWeeklyChartMode(mode)
     Prefs.save(M.SETTINGS_KEY_WEEKLY_CHART_MODE, mode)
 end
 
+-- "Last week" bar order (Prefs ▸ Advanced settings ▸ Reading insight popup ▸
+-- "Last week chapter bar order"). The chart's data always arrives with index
+-- 1 = today; this only decides which end of the row that first bar is drawn
+-- at, so everything keyed off "bar 1 is today" (the highlight colour, the tap
+-- that opens the Today Timeline) keeps working either way.
+M.SETTINGS_KEY_WEEKLY_BAR_ORDER = "reading_insights_weekly_bar_order"
+
+M.WEEKLY_BAR_ORDER_TODAY_FIRST = "today_first"
+
+M.WEEKLY_BAR_ORDER_TODAY_LAST  = "today_last"
+
+function M.readWeeklyBarOrderSetting()
+    -- default: today on the left, which is what the chart did before this
+    -- setting existed
+    local v = Prefs.read(M.SETTINGS_KEY_WEEKLY_BAR_ORDER, nil)
+    if v == M.WEEKLY_BAR_ORDER_TODAY_LAST then return M.WEEKLY_BAR_ORDER_TODAY_LAST end
+    return M.WEEKLY_BAR_ORDER_TODAY_FIRST
+end
+
+function M.saveWeeklyBarOrderSetting(value)
+    Prefs.save(M.SETTINGS_KEY_WEEKLY_BAR_ORDER, value)
+end
+
 function M.readInsightsMode()
     return M.normalizeInsightsMode(Prefs.read(M.INSIGHTS_MODE_KEY, M.INSIGHTS_MODE_HOURS))
 end
@@ -350,6 +384,16 @@ end
 
 function M.Opt.saveShowReadingGoal(value)
     M.saveBoolSetting(M.Opt.SHOW_GOAL_KEY, value)
+end
+
+function M.Opt.readGoalDisplay()
+    local v = Prefs.read(M.Opt.GOAL_DISPLAY_KEY, nil)
+    if v == M.Opt.GOAL_DISPLAY_REMAINING then return M.Opt.GOAL_DISPLAY_REMAINING end
+    return M.Opt.GOAL_DISPLAY_TOTAL
+end
+
+function M.Opt.saveGoalDisplay(value)
+    Prefs.save(M.Opt.GOAL_DISPLAY_KEY, value)
 end
 
 return M

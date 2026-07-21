@@ -86,7 +86,7 @@ end
 
 -- ---------------------------------------------------------------------
 -- Shared "week start day" setting.
--- The reading heatmaps and the per-book reading calendar both key their
+-- The reading heatmaps and the Book progress calendar both key their
 -- Monday/Sunday layout off this one global setting.
 -- ---------------------------------------------------------------------
 local WEEK_START_KEY   = "reading_insights_heatmap_week_start"
