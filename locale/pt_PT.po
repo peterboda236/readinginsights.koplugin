@@ -1,0 +1,1058 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-07-21 16:30+0000\n"
+"PO-Revision-Date: 2026-07-21 16:35+0000\n"
+"Last-Translator: \n"
+"Language-Team: Portuguese (Portugal)\n"
+"Language: pt-PT\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Loco-Source-Locale: pt_PT\n"
+"X-Loco-Parser: loco_parse_po\n"
+"X-Generator: Loco https://localise.biz/"
+
+msgid "Jan"
+msgstr "Jan"
+
+msgid "Feb"
+msgstr "Fev"
+
+msgid "Mar"
+msgstr "Mar"
+
+msgid "Apr"
+msgstr "Abr"
+
+msgid "May"
+msgstr "Mai"
+
+msgid "Jun"
+msgstr "Jun"
+
+msgid "Jul"
+msgstr "Jul"
+
+msgid "Aug"
+msgstr "Ago"
+
+msgid "Sep"
+msgstr "Set"
+
+msgid "Oct"
+msgstr "Out"
+
+msgid "Nov"
+msgstr "Nov"
+
+msgid "Dec"
+msgstr "Dez"
+
+msgid "January"
+msgstr "Janeiro"
+
+msgid "February"
+msgstr "Fevereiro"
+
+msgid "March"
+msgstr "Março"
+
+msgid "April"
+msgstr "Abril"
+
+msgid "May "
+msgstr "Maio"
+
+msgid "June"
+msgstr "Junho"
+
+msgid "July"
+msgstr "Julho"
+
+msgid "August"
+msgstr "Agosto"
+
+msgid "September"
+msgstr "Setembro"
+
+msgid "October"
+msgstr "Outubro"
+
+msgid "November"
+msgstr "Novembro"
+
+msgid "December"
+msgstr "Dezembro"
+
+msgid "second read"
+msgstr "segundo lido"
+
+msgid "seconds read"
+msgstr "segundos lidos"
+
+msgid "minute read"
+msgstr "minuto lido"
+
+msgid "minutes read"
+msgstr "minutos lidos"
+
+msgid "hour read"
+msgstr "hora lida"
+
+msgid "hours read"
+msgstr "horas lidas"
+
+msgid "day read"
+msgstr "dia lido"
+
+msgid "days read"
+msgstr "dias lidos"
+
+msgid "book read"
+msgstr "livro lido"
+
+msgid "books read"
+msgstr "livros lidos"
+
+msgid "day/book avg"
+msgstr "méd. dias/livro"
+
+msgid "days/book avg"
+msgstr "méd. dias/livro"
+
+msgid "of days read"
+msgstr "de dias lidos"
+
+msgid "page read"
+msgstr "página lida"
+
+msgid "pages read"
+msgstr "páginas lidas"
+
+msgid "week"
+msgstr "semana"
+
+msgid "weeks"
+msgstr "semanas"
+
+msgid "No streak"
+msgstr "Sem sequência"
+
+msgid "Current streak"
+msgstr "Sequência atual"
+
+msgid "Best streak"
+msgstr "Melhor sequência"
+
+msgid "Days read per month"
+msgstr "Dias lidos por mês"
+
+msgid "Time read per month"
+msgstr "Tempo lido por mês"
+
+msgid "Books read per month"
+msgstr "Livros lidos por mês"
+
+msgid "Unknown"
+msgstr "Desconhecido"
+
+msgid "No books read"
+msgstr "Nenhum livro lido"
+
+msgid "No books read in %1"
+msgstr "Nenhum livro lido em %1"
+
+msgid "No books read in "
+msgstr "Nenhum livro lido em "
+
+msgid "%1 - book read %2"
+msgstr "%1 - livro lido %2"
+
+msgid "%1 - books read %2"
+msgstr "%1 - livros lidos %2"
+
+msgid "Reading goal"
+msgstr "Meta de leitura"
+
+msgid "%1 - reading goal"
+msgstr "%1 - meta de leitura"
+
+msgid "book finished"
+msgstr "livro concluído"
+
+msgid "books finished"
+msgstr "livros concluídos"
+
+msgid "book goal"
+msgstr "meta de livro"
+
+msgid "books goal"
+msgstr "meta de livros"
+
+msgid "%1 - book finished %2"
+msgstr "%1 - livro concluído %2"
+
+msgid "%1 - books finished %2"
+msgstr "%1 - livros concluídos %2"
+
+msgid "No books finished in %1"
+msgstr "Nenhum livro concluído em %1"
+
+msgid "Mark book finished - %1"
+msgstr "Marcar livro como concluído - %1"
+
+msgid "No books read in this year"
+msgstr "Nenhum livro lido este ano"
+
+msgid "Reloading data..."
+msgstr "A recarregar dados..."
+
+msgid "Reading insights"
+msgstr "Reading Insights"
+
+msgid "Reading insights: all time statistics"
+msgstr "Reading Insights: estatísticas globais"
+
+msgid "Reading insights: current book progress"
+msgstr "Reading Insights: progresso do livro atual"
+
+msgid "Reading insights: book progress calendar"
+msgstr "Reading Insights: calendário de progresso do livro"
+
+msgid "All books read %1"
+msgstr "Todos os livros lidos %1"
+
+msgid "TOTAL READ"
+msgstr "TOTAL LIDO"
+
+msgid "LAST WEEK"
+msgstr "ÚLTIMA SEMANA"
+
+msgid "avg/day"
+msgstr "méd./dia"
+
+msgid "Today"
+msgstr "Hoje"
+
+msgid "Yesterday"
+msgstr "Ontem"
+
+msgid "Mon"
+msgstr "Seg"
+
+msgid "Tue"
+msgstr "Ter"
+
+msgid "Wed"
+msgstr "Qua"
+
+msgid "Thu"
+msgstr "Qui"
+
+msgid "Fri"
+msgstr "Sex"
+
+msgid "Sat"
+msgstr "Sáb"
+
+msgid "Sun"
+msgstr "Dom"
+
+msgid "read time avg/day"
+msgstr "tempo de leitura méd./dia"
+
+msgid "reading time"
+msgstr "tempo de leitura"
+
+msgid "No streak dates"
+msgstr "Sem datas de sequência"
+
+msgid "CalendarView not available"
+msgstr "CalendarView não disponível"
+
+msgid "Reading time over the last 8 weeks"
+msgstr "Tempo de leitura nas últimas 8 semanas"
+
+msgid "Pages read over the last 8 weeks"
+msgstr "Páginas lidas nas últimas 8 semanas"
+
+msgid "Average daily reading time, last 8 weeks"
+msgstr "Tempo médio de leitura diário, últimas 8 semanas"
+
+msgid "Average daily pages, last 8 weeks"
+msgstr "Média de páginas diárias, últimas 8 semanas"
+
+msgid "No reading data in the last 8 weeks"
+msgstr "Sem dados de leitura nas últimas 8 semanas"
+
+msgid "avg time/day"
+msgstr "tempo méd./dia"
+
+msgid "avg pages/day"
+msgstr "pág. méd./dia"
+
+msgid "page read today"
+msgstr "página lida hoje"
+
+msgid "pages read today"
+msgstr "páginas lidas hoje"
+
+msgid "book read in this streak"
+msgstr "livro lido nesta sequência"
+
+msgid "books read in this streak"
+msgstr "livros lidos nesta sequência"
+
+msgid "Show Reading insights"
+msgstr "Mostrar Reading Insights"
+
+msgid "Full-screen refresh on open/close"
+msgstr "Atualização de ecrã inteiro ao abrir/fechar"
+
+msgid "8-week chart order"
+msgstr "Ordem do gráfico de 8 semanas"
+
+msgid "Advanced settings"
+msgstr "Definições avançadas"
+
+msgid "Reading heatmap range"
+msgstr "Intervalo do mapa de calor de leitura"
+
+msgid "3 months"
+msgstr "3 meses"
+
+msgid "4 months"
+msgstr "4 meses"
+
+msgid "6 months"
+msgstr "6 meses"
+
+msgid "Time format"
+msgstr "Formato da hora"
+
+msgid "24-hour"
+msgstr "24 horas"
+
+msgid "12-hour (AM/PM)"
+msgstr "12 horas (AM/PM)"
+
+msgid "First day of week"
+msgstr "Primeiro dia da semana"
+
+msgid "Newest first"
+msgstr "Mais recentes primeiro"
+
+msgid "Oldest first"
+msgstr "Mais antigos primeiro"
+
+msgid "Newest first (descending)"
+msgstr "Mais recentes primeiro (descendente)"
+
+msgid "Oldest first (ascending)"
+msgstr "Mais antigos primeiro (ascendente)"
+
+msgid "Loading data…"
+msgstr "A carregar dados…"
+
+msgid "Book progress"
+msgstr "Progresso do livro"
+
+msgid "Show Book progress"
+msgstr "Mostrar progresso do livro"
+
+msgid "Show Book progress calendar"
+msgstr "Mostrar calendário de progresso do livro"
+
+msgid "Book progress calendar"
+msgstr "Calendário de progresso do livro"
+
+msgid "No reading data for this book yet."
+msgstr "Ainda não há dados de leitura para este livro."
+
+msgid "This chapter"
+msgstr "Este capítulo"
+
+msgid "Next chapter"
+msgstr "Próximo capítulo"
+
+msgid "This book"
+msgstr "Este livro"
+
+msgid "Pace"
+msgstr "Ritmo"
+
+msgid "Chapters"
+msgstr "Capítulos"
+
+msgid "today for all books"
+msgstr "hoje para todos os livros"
+
+msgid "to go"
+msgstr "restantes"
+
+msgid "to read"
+msgstr "para ler"
+
+msgid "read"
+msgstr "lido"
+
+msgid "read today"
+msgstr "lido hoje"
+
+msgid "read time"
+msgstr "tempo de leitura"
+
+msgid "per day"
+msgstr "por dia"
+
+msgid "minute"
+msgstr "minuto"
+
+msgid "minutes"
+msgstr "minutos"
+
+msgid "hour"
+msgstr "hora"
+
+msgid "hours"
+msgstr "horas"
+
+msgid "week reading"
+msgstr "semana de leitura"
+
+msgid "weeks reading"
+msgstr "semanas de leitura"
+
+msgid "month reading"
+msgstr "mês de leitura"
+
+msgid "months reading"
+msgstr "meses de leitura"
+
+msgid "day reading"
+msgstr "dia de leitura"
+
+msgid "days reading"
+msgstr "dias de leitura"
+
+msgid "week to go"
+msgstr "semana restante"
+
+msgid "weeks to go"
+msgstr "semanas restantes"
+
+msgid "month to go"
+msgstr "mês restante"
+
+msgid "months to go"
+msgstr "meses restantes"
+
+msgid "day to go"
+msgstr "dia restante"
+
+msgid "days to go"
+msgstr "dias restantes"
+
+msgid "page"
+msgstr "página"
+
+msgid "pages"
+msgstr "páginas"
+
+msgid "page left"
+msgstr "página restante"
+
+msgid "pages left"
+msgstr "páginas restantes"
+
+msgid "page per minute"
+msgstr "página por minuto"
+
+msgid "pages per minute"
+msgstr "páginas por minuto"
+
+msgid "less than"
+msgstr "menos de"
+
+msgid "read so far"
+msgstr "lido até agora"
+
+msgid "reading time left"
+msgstr "tempo de leitura restante"
+
+msgid "(%d day left)"
+msgstr "(falta %d dia)"
+
+msgid "(%d days left)"
+msgstr "(faltam %d dias)"
+
+msgid "day of reading left"
+msgstr "dia de leitura restante"
+
+msgid "days of reading left"
+msgstr "dias de leitura restantes"
+
+msgid "day since started"
+msgstr "dia desde o início"
+
+msgid "days since started"
+msgstr "dias desde o início"
+
+msgid "Colors"
+msgstr "Cores"
+
+msgid "Active column color"
+msgstr "Cor da coluna ativa"
+
+msgid "Inactive column color"
+msgstr "Cor da coluna inativa"
+
+msgid "Trend chart line color"
+msgstr "Cor da linha de tendência"
+
+msgid "Separator line color"
+msgstr "Cor da linha separadora"
+
+msgid "Label color"
+msgstr "Cor do rótulo"
+
+msgid "Value color"
+msgstr "Cor do valor"
+
+msgid "Section color"
+msgstr "Cor da secção"
+
+msgid "Chart label color"
+msgstr "Cor do rótulo do gráfico"
+
+msgid "Settings"
+msgstr "Definições"
+
+msgid "Reset all colors to default"
+msgstr "Repor todas as cores para a predefinição"
+
+msgid "Cancel"
+msgstr "Cancelar"
+
+msgid "Default"
+msgstr "Predefinição"
+
+msgid "Save"
+msgstr "Guardar"
+
+msgid "Pick with color wheel"
+msgstr "Escolher na roda de cores"
+
+msgid "Apply"
+msgstr "Aplicar"
+
+msgid "Brightness: %d%%"
+msgstr "Brilho: %d%%"
+
+msgid "Enter a hex color code (e.g. #1E90FF), the way KOReader expects it."
+msgstr ""
+"Introduza um código de cor hexadecimal (ex.: #1E90FF), no formato esperado "
+"pelo KOReader."
+
+msgid "Not a valid hex color code, e.g. #1E90FF."
+msgstr "Não é um código de cor hexadecimal válido (ex.: #1E90FF)."
+
+msgid "Reset all colors to their default values?"
+msgstr "Repor todas as cores para os seus valores predefinidos?"
+
+msgid "Reset"
+msgstr "Repor"
+
+msgid "Font"
+msgstr "Tipo de letra"
+
+msgid "Fonts"
+msgstr "Tipos de letra"
+
+msgid "Choose a font"
+msgstr "Escolher um tipo de letra"
+
+msgid "Section headers"
+msgstr "Cabeçalhos de secção"
+
+msgid "Values (big numbers)"
+msgstr "Valores (números grandes)"
+
+msgid "Labels"
+msgstr "Rótulos"
+
+msgid "Chart/axis labels"
+msgstr "Rótulos do gráfico/eixos"
+
+msgid "Chapter-bar arrows"
+msgstr "Setas da barra de capítulos"
+
+msgid "Font name"
+msgstr "Nome do tipo de letra"
+
+msgid ""
+"Enter a bundled font file name (e.g. NotoSans-Bold.ttf) or a KOReader font "
+"alias (e.g. tfont, cfont). If it can't be found, this role falls back to its "
+"default font."
+msgstr ""
+"Introduza o nome de um ficheiro de tipo de letra incluído (ex.: NotoSans-"
+"Bold.ttf) ou um alias do KOReader (ex.: tfont, cfont). Se não for encontrado,"
+" será utilizado o tipo de letra predefinido."
+
+msgid "Please enter a non-empty font name."
+msgstr "Por favor, introduza um nome de tipo de letra válido."
+
+msgid "Font size"
+msgstr "Tamanho do tipo de letra"
+
+msgid "Custom font name (type manually)"
+msgstr "Nome de tipo de letra personalizado (escrever manualmente)"
+
+msgid "Reset to default"
+msgstr "Repor predefinição"
+
+msgid "Reset all fonts to default"
+msgstr "Repor todos os tipos de letra para a predefinição"
+
+msgid "Reset all fonts to their default values?"
+msgstr "Repor todos os tipos de letra para os seus valores predefinidos?"
+
+msgid "Set"
+msgstr "Definir"
+
+msgid "Tomorrow"
+msgstr "Amanhã"
+
+msgid "Monday"
+msgstr "Segunda-feira"
+
+msgid "Tuesday"
+msgstr "Terça-feira"
+
+msgid "Wednesday"
+msgstr "Quarta-feira"
+
+msgid "Thursday"
+msgstr "Quinta-feira"
+
+msgid "Friday"
+msgstr "Sexta-feira"
+
+msgid "Saturday"
+msgstr "Sábado"
+
+msgid "Sunday"
+msgstr "Domingo"
+
+msgid "Started:"
+msgstr "Iniciado:"
+
+msgid "Expected finish:"
+msgstr "Conclusão prevista:"
+
+msgid "Use as sleep screen"
+msgstr "Usar como ecrã de suspensão"
+
+msgid "Reading insights sleep screen"
+msgstr "Ecrã de suspensão do Reading Insights"
+
+msgid "Sleep-screen indicator"
+msgstr "Indicador do ecrã de suspensão"
+
+msgid "Off"
+msgstr "Desativado"
+
+msgid "File manager only"
+msgstr "Apenas gestor de ficheiros"
+
+msgid "File manager + book"
+msgstr "Gestor de ficheiros + livro"
+
+msgid "Only when locking from the file manager"
+msgstr "Apenas ao bloquear a partir do gestor de ficheiros"
+
+msgid "File manager and book view"
+msgstr "Gestor de ficheiros e vista de livro"
+
+msgid "Transition"
+msgstr "Transição"
+
+msgid "Slight delay"
+msgstr "Ligeiro atraso"
+
+msgid "Instant"
+msgstr "Instantâneo"
+
+msgid "Slight delay (0.1s)"
+msgstr "Ligeiro atraso (0,1s)"
+
+msgid "sleeping…"
+msgstr "a suspender…"
+
+msgid "Indicator"
+msgstr "Indicador"
+
+msgid "\"(sleeping…)\" after the title"
+msgstr "\"(a suspender…)\" após o título"
+
+msgid "None"
+msgstr "Nenhum"
+
+msgid "%d p"
+msgstr "%d p"
+
+msgid "Updates"
+msgstr "Atualizações"
+
+msgid "Notify on wake when update available"
+msgstr "Notificar ao reativar se houver atualização disponível"
+
+msgid "Update available"
+msgstr "Atualização disponível"
+
+msgid "Installed version"
+msgstr "Versão instalada"
+
+msgid "Developer updates"
+msgstr "Atualizações de programador"
+
+msgid "Development branch"
+msgstr "Ramo de desenvolvimento"
+
+msgid "Branch name (leave empty for stable)"
+msgstr "Nome do ramo (deixar em branco para estável)"
+
+msgid "Check for updates"
+msgstr "Procurar atualizações"
+
+msgid "Install branch"
+msgstr "Instalar ramo"
+
+msgid "Reset to latest stable release"
+msgstr "Repor para a versão estável mais recente"
+
+msgid "Installed: v"
+msgstr "Instalada: v"
+
+msgid ""
+"This will clear the development branch setting and install the latest stable "
+"release of Reading insights, then restart KOReader. Continue?"
+msgstr ""
+"Isto irá limpar a definição de ramo de desenvolvimento e instalar a versão "
+"estável mais recente do Reading Insights, reiniciando depois o KOReader. "
+"Continuar?"
+
+msgid "Reading insights update available: v"
+msgstr "Atualização do Reading Insights disponível: v"
+
+msgid "Open the releases page in a browser?"
+msgstr "Abrir a página de versões num navegador?"
+
+msgid "Open"
+msgstr "Abrir"
+
+msgid "Checking for updates..."
+msgstr "A procurar atualizações..."
+
+msgid "Could not check for updates."
+msgstr "Não foi possível procurar atualizações."
+
+msgid "Reading insights is up to date."
+msgstr "O Reading Insights está atualizado."
+
+msgid "Version: "
+msgstr "Versão: "
+
+msgid "Update available!"
+msgstr "Atualização disponível!"
+
+msgid "Installed: "
+msgstr "Instalada: "
+
+msgid "Latest: "
+msgstr "Mais recente: "
+
+msgid "Close"
+msgstr "Fechar"
+
+msgid "Update and restart"
+msgstr "Atualizar e reiniciar"
+
+msgid "No download available for this release."
+msgstr "Nenhuma transferência disponível para esta versão."
+
+msgid "Downloading update..."
+msgstr "A transferir atualização..."
+
+msgid "Download failed."
+msgstr "Falha na transferência."
+
+msgid "Installation failed: "
+msgstr "Falha na instalação: "
+
+msgid "Reading insights updated to v"
+msgstr "Reading Insights atualizado para v"
+
+msgid "Restart KOReader now?"
+msgstr "Reiniciar o KOReader agora?"
+
+msgid "Restart"
+msgstr "Reiniciar"
+
+msgid "Could not install branch:"
+msgstr "Não foi possível instalar o ramo:"
+
+msgid "Downloading latest release..."
+msgstr "A transferir a versão mais recente..."
+
+msgid "Could not fetch latest release."
+msgstr "Não foi possível obter a versão mais recente."
+
+msgid "Latest release has no downloadable zip."
+msgstr "A versão mais recente não possui ficheiro zip para transferência."
+
+msgid "Reading heatmap"
+msgstr "Mapa de calor de leitura"
+
+msgid "Time of day heatmap"
+msgstr "Mapa de calor por hora do dia"
+
+msgid "Calendar heatmap"
+msgstr "Mapa de calor em calendário"
+
+msgid "Less"
+msgstr "Menos"
+
+msgid "More"
+msgstr "Mais"
+
+msgid "No reading (0%)"
+msgstr "Sem leitura (0%)"
+
+msgid "Low activity (25%)"
+msgstr "Atividade baixa (25%)"
+
+msgid "Medium activity (50%)"
+msgstr "Atividade média (50%)"
+
+msgid "High activity (75%)"
+msgstr "Atividade elevada (75%)"
+
+msgid "Peak activity (100%)"
+msgstr "Atividade máxima (100%)"
+
+msgid "Show long durations (24h+) as days"
+msgstr "Mostrar durações longas (24h+) em dias"
+
+msgid "Date format"
+msgstr "Formato da data"
+
+msgid "Book progress calendar cell content"
+msgstr "Conteúdo da célula do calendário de progresso do livro"
+
+msgid "Percent"
+msgstr "Percentagem"
+
+msgid "Pages"
+msgstr "Páginas"
+
+msgid "Time"
+msgstr "Tempo"
+
+msgid "day"
+msgstr "dia"
+
+msgid "days"
+msgstr "dias"
+
+msgid "No reading on this day."
+msgstr "Sem leitura neste dia."
+
+msgid "About"
+msgstr "Sobre"
+
+msgid "Reading insight"
+msgstr "Reading Insight"
+
+msgid ""
+"A full-screen overlay with a comprehensive overview of your reading history, "
+"powered by KOReader's statistics database."
+msgstr ""
+"Uma sobreposição em ecrã inteiro com uma visão abrangente do seu histórico "
+"de leitura, baseada na base de dados de estatísticas do KOReader."
+
+msgid "Most reading time in a day"
+msgstr "Maior tempo de leitura num dia"
+
+msgid "Most pages in a day"
+msgstr "Mais páginas num dia"
+
+msgid "Best daily streak"
+msgstr "Melhor sequência diária"
+
+msgid "Fastest book finished"
+msgstr "Livro concluído mais rapidamente"
+
+msgid "Last milestone"
+msgstr "Último marco"
+
+msgid "Next milestone"
+msgstr "Próximo marco"
+
+msgid "Records"
+msgstr "Recordes"
+
+msgid "%d hour left"
+msgstr "falta %d hora"
+
+msgid "%d hours left"
+msgstr "faltam %d horas"
+
+msgid "Reading insights: records"
+msgstr "Reading Insights: recordes"
+
+msgid "Show Records"
+msgstr "Mostrar recordes"
+
+msgid "Sub-values (date / book title)"
+msgstr "Subvalores (data / título do livro)"
+
+msgid "Reading goal section"
+msgstr "Secção de meta de leitura"
+
+msgid ""
+"Shows the number of books finished this year next to your yearly goal. Long "
+"press the goal value to change it."
+msgstr ""
+"Mostra o número de livros concluídos este ano ao lado da sua meta anual. "
+"Prima continuamente o valor da meta para o alterar."
+
+msgid "book to read"
+msgstr "livro para ler"
+
+msgid "books to read"
+msgstr "livros para ler"
+
+msgid "* = changed by you"
+msgstr "* = alterado por si"
+
+msgid "You changed 1 book. Go back?"
+msgstr "Alterou 1 livro. Voltar atrás?"
+
+msgid "You changed %d books. Go back?"
+msgstr "Alterou %d livros. Voltar atrás?"
+
+msgid "Keep editing"
+msgstr "Continuar a editar"
+
+msgid "Automatic"
+msgstr "Automático"
+
+msgid ""
+"Sizes the Reading insights bar charts so the page fits the screen without a "
+"scroll bar."
+msgstr ""
+"Ajusta o tamanho dos gráficos de barras do Reading Insights para que a "
+"página se adapte ao ecrã sem barra de deslocamento."
+
+msgid "Bar chart height"
+msgstr "Altura do gráfico de barras"
+
+msgid "Last week"
+msgstr "Última semana"
+
+msgid "Months"
+msgstr "Meses"
+
+msgid "Total read"
+msgstr "Total lido"
+
+msgid "Last read (newest first)"
+msgstr "Último lido (mais recentes primeiro)"
+
+msgid "Last read (oldest first)"
+msgstr "Último lido (mais antigos primeiro)"
+
+msgid "Title (A to Z)"
+msgstr "Título (A a Z)"
+
+msgid "Title (Z to A)"
+msgstr "Título (Z a A)"
+
+msgid "Books finished in %1"
+msgstr "Livros concluídos em %1"
+
+msgid "Mark books finished"
+msgstr "Marcar livros como concluídos"
+
+msgid "Add book"
+msgstr "Adicionar livro"
+
+msgid "Edit book"
+msgstr "Editar livro"
+
+msgid "Edit"
+msgstr "Editar"
+
+msgid "Delete"
+msgstr "Eliminar"
+
+msgid "Delete \"%1\"?"
+msgstr "Eliminar \"%1\"?"
+
+msgid "Title"
+msgstr "Título"
+
+msgid "Author"
+msgstr "Autor"
+
+msgid "Please enter a title"
+msgstr "Por favor, introduza um título"
+
+msgid "Date read (%1)"
+msgstr "Data de leitura (%1)"
+
+msgid "Please enter the date as %1"
+msgstr "Por favor, introduza a data como %1"
+
+msgid "Reload data"
+msgstr "Recarregar dados"
+
+msgid "Add books manually"
+msgstr "Adicionar livros manualmente"
+
+msgid "Add books manually - %1"
+msgstr "Adicionar livros manualmente - %1"
+
+msgid "Date & time"
+msgstr "Data e hora"
+
+msgid "Reading insight popup"
+msgstr "Janela do Reading Insight"
+
+msgid "Last week chapter bar order"
+msgstr "Ordem da barra de capítulos da última semana"
+
+msgid "Today on the left"
+msgstr "Hoje à esquerda"
+
+msgid "Today on the right"
+msgstr "Hoje à direita"
+
+msgid "Reading goal display"
+msgstr "Apresentação da meta de leitura"
+
+msgid "Goal total"
+msgstr "Total da meta"
+
+msgid "Remaining"
+msgstr "Restantes"
+
+msgid "book left"
+msgstr "livro restante"
+
+msgid "books left"
+msgstr "livros restantes"
