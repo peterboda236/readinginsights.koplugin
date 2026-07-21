@@ -7,7 +7,7 @@ current book, queried from KOReader's statistics plugin and SQLite database.
 This is the plugin's "current book progress" view; see main.lua for how it
 is wired up (Tools menu entry, gesture/dispatcher action, and the book-view-
 only restriction) and insights_view.lua for the all-time reading-history
-view. The per-book reading calendar that used to live here now has its own
+view. The Book progress calendar that used to live here now has its own
 file, book_calendar_view.lua; this popup opens it (tap the "Pace" title) via
 the injected BookCalendar module.
 
@@ -25,7 +25,8 @@ Sections shown:
   - This book                     progress percentage, pages read, time spent, time left
   - Chapter bar                   visual bar chart of all chapters (tappable, swipeable)
   - Pace                          today's reading time and pages-per-minute rate
-                                   (tap the title to open the reading calendar)
+                                   (tap the title to open the Book progress
+                                   calendar)
 
 Controls:
   - Tap anywhere              dismiss
@@ -116,9 +117,9 @@ local function formatEventDateTime(timestamp)
     end
 
     -- The date itself follows the configured date format (Settings ▸
-    -- Advanced settings ▸ "Date format"); only where the weekday goes
-    -- stays language-bound, since Hungarian wants it after the date and in
-    -- lower case ("2026.06.24. szerda").
+    -- Advanced settings ▸ Date & time ▸ "Date format"); only where the
+    -- weekday goes stays language-bound, since Hungarian wants it after
+    -- the date and in lower case ("2026.06.24. szerda").
     local date_str = Locale.formatDateFromTS(timestamp)
     if is_hu then
         return date_str .. " " .. WEEKDAY_NAMES_HU_LC[t.wday]
@@ -791,7 +792,7 @@ function ReadingStatsPopup:onSwipe(arg, ges_ev)
     return false
 end
 
--- Standalone opener: shows the per-book reading calendar directly from the
+-- Standalone opener: shows the Book progress calendar directly from the
 -- Tools menu or its gesture/dispatcher action, without going through "This
 -- book" first (unlike ReadingStatsPopup:openBookCalendar below, which is
 -- only reachable by tapping the progress row inside an already-open Book
@@ -799,7 +800,7 @@ end
 -- have already checked a document is open, but this also silently no-ops
 -- if there's no book_id (e.g. statistics plugin not tracking this book) or
 -- no page-count data yet, same as the tap-through path would.
--- Opens the per-book reading calendar (now in book_calendar_view.lua, via
+-- Opens the Book progress calendar (now in book_calendar_view.lua, via
 -- BookCalendar.show) on the month of this book's most recent recorded
 -- reading (falls back to today's month if the book has no reading yet).
 -- Closes this popup first (KOReader only shows one modal popup cleanly at a
@@ -835,9 +836,10 @@ function ReadingStatsPopup:openBookCalendar()
             UIManager:scheduleIn(0, reopen_popup)
         end
 
-        -- The per-book calendar now lives in book_calendar_view.lua; hand it
-        -- the data we already gathered plus an on_close that reopens us, so
-        -- the person lands back on "This book" instead of the reader screen.
+        -- The Book progress calendar now lives in book_calendar_view.lua;
+        -- hand it the data we already gathered plus an on_close that
+        -- reopens us, so the person lands back on "This book" instead of
+        -- the reader screen.
         BookCalendar.show{
             ui                = saved_ui,
             book_id           = saved_book_id,

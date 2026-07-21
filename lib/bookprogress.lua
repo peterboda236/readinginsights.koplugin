@@ -4,7 +4,7 @@ Reading Insights - shared per-book reading-position helpers.
 These read the current position / page counts of the open book straight
 from the live ReaderUI (honouring page maps and hidden flows), and were
 needed both by the compact book-stats overlay (book_stats_view.lua) and by
-the per-book reading calendar's standalone entry point
+the Book progress calendar's standalone entry point
 (book_calendar_view.lua, which needs the book's total page count to draw
 its cumulative-progress cells). Keeping them here avoids a second copy once
 the calendar moved into its own file.

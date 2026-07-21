@@ -207,8 +207,8 @@ msgstr "Leseeinblicke: Gesamtstatistik"
 msgid "Reading insights: current book progress"
 msgstr "Leseeinblicke: aktueller Buchfortschritt"
 
-msgid "Reading insights: current book calendar"
-msgstr "Leseeinblicke: aktueller Buchkalender"
+msgid "Reading insights: book progress calendar"
+msgstr "Leseeinblicke: Buchfortschrittskalender"
 
 msgid "All books read %1"
 msgstr "Alle gelesenen Bücher %1"
@@ -319,8 +319,8 @@ msgstr "4 Monate"
 msgid "6 months"
 msgstr "6 Monate"
 
-msgid "Heatmap hour format"
-msgstr "Stundenformat der Heatmap"
+msgid "Time format"
+msgstr "Zeitformat"
 
 msgid "24-hour"
 msgstr "24-Stunden"
@@ -328,8 +328,8 @@ msgstr "24-Stunden"
 msgid "12-hour (AM/PM)"
 msgstr "12-Stunden (AM/PM)"
 
-msgid "Week start day"
-msgstr "Wochenbeginn"
+msgid "First day of week"
+msgstr "Erster Tag der Woche"
 
 msgid "Newest first"
 msgstr "Neueste zuerst"
@@ -825,8 +825,8 @@ msgstr "Lange Zeitspannen (24 Std. oder mehr) als Tage anzeigen"
 msgid "Date format"
 msgstr "Datumsformat"
 
-msgid "Book calendar cell content"
-msgstr "Inhalt der Buchkalenderzellen"
+msgid "Book progress calendar cell content"
+msgstr "Inhalt der Buchfortschrittskalender-Zellen"
 
 msgid "Percent"
 msgstr "Prozent"
@@ -997,3 +997,33 @@ msgstr "Bücher manuell hinzufügen"
 
 msgid "Add books manually - %1"
 msgstr "Bücher manuell hinzufügen - %1"
+
+msgid "Date & time"
+msgstr "Datum & Uhrzeit"
+
+msgid "Reading insight popup"
+msgstr "Lese-Übersicht-Fenster"
+
+msgid "Last week chapter bar order"
+msgstr "Balkenreihenfolge der letzten Woche"
+
+msgid "Today on the left"
+msgstr "Heute links"
+
+msgid "Today on the right"
+msgstr "Heute rechts"
+
+msgid "Reading goal display"
+msgstr "Anzeige des Leseziels"
+
+msgid "Goal total"
+msgstr "Gesamtziel"
+
+msgid "Remaining"
+msgstr "Verbleibend"
+
+msgid "book left"
+msgstr "Buch übrig"
+
+msgid "books left"
+msgstr "Bücher übrig"

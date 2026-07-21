@@ -207,8 +207,8 @@ msgstr "Olvasási áttekintés: összesített statisztika"
 msgid "Reading insights: current book progress"
 msgstr "Olvasási áttekintés: aktuális könyv haladása"
 
-msgid "Reading insights: current book calendar"
-msgstr "Olvasási áttekintés: aktuális könyv naptára"
+msgid "Reading insights: book progress calendar"
+msgstr "Olvasási áttekintés: könyv haladás naptár"
 
 msgid "All books read %1"
 msgstr "Összesen: %1 könyv olvasva"
@@ -328,8 +328,8 @@ msgstr "4 hónap"
 msgid "6 months"
 msgstr "6 hónap"
 
-msgid "Heatmap hour format"
-msgstr "Heatmap óraformátuma"
+msgid "Time format"
+msgstr "Időformátum"
 
 msgid "24-hour"
 msgstr "24 órás"
@@ -337,8 +337,8 @@ msgstr "24 órás"
 msgid "12-hour (AM/PM)"
 msgstr "12 órás (AM/PM)"
 
-msgid "Week start day"
-msgstr "Hét kezdő napja"
+msgid "First day of week"
+msgstr "A hét első napja"
 
 msgid "Newest first"
 msgstr "Legújabb először"
@@ -840,8 +840,8 @@ msgstr "24 óra feletti időtartamok napokban"
 msgid "Date format"
 msgstr "Dátumformátum"
 
-msgid "Book calendar cell content"
-msgstr "Könyv naptár cella tartalma"
+msgid "Book progress calendar cell content"
+msgstr "Könyv haladás naptár cella tartalma"
 
 msgid "Percent"
 msgstr "Százalék"
@@ -1000,3 +1000,33 @@ msgstr "Könyvek kézi felvétele"
 
 msgid "Add books manually - %1"
 msgstr "Könyvek kézi felvétele - %1"
+
+msgid "Date & time"
+msgstr "Dátum és idő"
+
+msgid "Reading insight popup"
+msgstr "Olvasási áttekintés ablak"
+
+msgid "Last week chapter bar order"
+msgstr "Múlt heti oszlopok sorrendje"
+
+msgid "Today on the left"
+msgstr "Ma a bal oldalon"
+
+msgid "Today on the right"
+msgstr "Ma a jobb oldalon"
+
+msgid "Reading goal display"
+msgstr "Olvasási cél megjelenítése"
+
+msgid "Goal total"
+msgstr "Teljes cél"
+
+msgid "Remaining"
+msgstr "Hátralévő"
+
+msgid "book left"
+msgstr "könyv van hátra"
+
+msgid "books left"
+msgstr "könyv van hátra"

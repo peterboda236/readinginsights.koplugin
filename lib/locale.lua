@@ -143,11 +143,12 @@ local function formatCount(value)
     return tostring(value)
 end
 
--- Date display format (Settings ▸ Advanced settings ▸ "Date format").
+-- Date display format (Settings ▸ Advanced settings ▸ Date & time ▸ "Date
+-- format").
 -- Every numeric date this plugin prints goes through formatDate() /
 -- formatDateFromTS() below, so one setting covers the book lists, the
--- streak/records/stats popups and the book calendar's day detail, instead
--- of each of them guessing the pattern from the interface language.
+-- streak/records/stats popups and the Book progress calendar's day detail,
+-- instead of each of them guessing the pattern from the interface language.
 -- Places that don't print a numeric date - weekday names, month names, the
 -- 8-week chart's axis labels - are deliberately left alone.
 --

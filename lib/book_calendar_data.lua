@@ -1,5 +1,5 @@
 --[[
-Reading Insights - the data behind the per-book reading calendar.
+Reading Insights - the data behind the Book progress calendar.
 
 The queries the calendar popup fills its month grid from: per-day pages and
 time for one book in one month, the cumulative progress through the book as

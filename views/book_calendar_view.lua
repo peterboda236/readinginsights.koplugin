@@ -1,5 +1,5 @@
 --[[
-Reading Insights - per-book reading calendar (view module).
+Reading Insights - the Book progress calendar (view module).
 
 Extracted from what used to be stats_view.lua (now book_stats_view.lua):
 the month-grid calendar for the currently open book, colored like a heatmap
@@ -69,9 +69,10 @@ local MONTH_FULL_HU_LC = {
 }
 
 -- ---------------------------------------------------------------------
--- Book-calendar cell content setting (Settings > Advanced settings >
--- "Book calendar cell content"). Controls the small text line under each
--- day number - see buildBookCalendarCellText below:
+-- Book-calendar cell content setting (Settings > Advanced settings > Book
+-- progress calendar > "Book progress calendar cell content"). Controls the
+-- small text line under each day number - see buildBookCalendarCellText
+-- below:
 --   "percent" (default) - cumulative progress, e.g. "+13%"
 --   "pages"             - that day's own page count, e.g. "+101o"
 --   "time"              - that day's own time spent (honors the global
@@ -101,9 +102,9 @@ local function pageAbbrev(count)
     return N_("page", "pages", count):sub(1, 1)
 end
 
--- Small text line shown under the day number in the per-book calendar
--- (see buildBookCalendarGrid below). Honors the "Book calendar cell
--- content" setting (readCalendarCellModeSetting):
+-- Small text line shown under the day number in the Book progress calendar
+-- (see buildBookCalendarGrid below). Honors the "Book progress calendar
+-- cell content" setting (readCalendarCellModeSetting):
 --   "percent" (default) - cumulative "+13%" progress through the whole book
 --   "pages"             - that day's own page count, e.g. "+101o"
 --   "time"              - that day's own time spent, e.g. "+0:23" or
@@ -750,7 +751,7 @@ M.saveCalendarCellModeSetting  = saveCalendarCellModeSetting
 M.DEFAULT_CALENDAR_CELL_MODE   = DEFAULT_CALENDAR_CELL_MODE
 
 --[[
-Open the per-book reading calendar. Single funnel for both entry paths.
+Open the Book progress calendar. Single funnel for both entry paths.
 
 opts:
   ui                (required) the ReaderUI

@@ -290,14 +290,14 @@ function ReadingInsights:onDispatcherRegisterActions()
         title    = _("Reading insights: current book progress"),
         reader   = true,
     })
-    -- reader = true: opens the per-book reading calendar directly (see
+    -- reader = true: opens the Book progress calendar directly (see
     -- BookCalendar.show in book_calendar_view.lua), skipping the
     -- "This book" popup - lets a gesture/shortcut jump straight to the
     -- calendar instead of needing to tap through the progress row first.
     Dispatcher:registerAction("reading_calendar_popup", {
         category = "none",
         event    = "ShowBookCalendarPopup",
-        title    = _("Reading insights: current book calendar"),
+        title    = _("Reading insights: book progress calendar"),
         reader   = true,
     })
     -- general = true (not reader): records are personal, all-time data
@@ -752,7 +752,7 @@ function ReadingInsights:onShowReadingStatsPopup()
 end
 
 -- Book-view only, same restriction as onShowReadingStatsPopup above: opens
--- the per-book reading calendar directly, without going through "This
+-- the Book progress calendar directly, without going through "This
 -- book" first.
 function ReadingInsights:onShowBookCalendarPopup()
     if not self:_hasOpenDocument() then return true end

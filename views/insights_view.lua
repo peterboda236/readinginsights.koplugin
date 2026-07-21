@@ -106,7 +106,8 @@ local formatNumber = Locale.formatNumber
 local formatCount  = Locale.formatCount
 
 -- Format a YYYY-MM-DD string in the configured date format (Settings ▸
--- Advanced settings ▸ "Date format" - see Locale.formatDate).
+-- Advanced settings ▸ Date & time ▸ "Date format" - see
+-- Locale.formatDate).
 -- no_trailing_dot: the "2026.07.20." pattern only - omit the final dot
 -- (used for the first date in a range).
 local function formatDateForDisplay(date_str, no_trailing_dot)
@@ -551,7 +552,9 @@ end
 -- region dirty. All five come from the shared helper (see popuputil.lua).
 PopupUtil.makeDismissable(Trend.Popup, function(self) return self.box_content.dimen end)
 
--- Weekly bar chart: 7 bars, index 1 = today (leftmost), index 7 = 6 days ago.
+-- Weekly bar chart: 7 bars, index 1 = today, index 7 = 6 days ago. Which end
+-- of the row today is drawn at follows the "Last week chapter bar order"
+-- setting (leftmost by default); the data index stays the same either way.
 -- Labels: "Today", "Yesterday", then weekday abbreviations.
 local function buildWeeklyChart(popup_self, daily_data, layout, fonts, mode)
     if not daily_data or #daily_data == 0 then return nil end
@@ -588,7 +591,12 @@ local function buildWeeklyChart(popup_self, daily_data, layout, fonts, mode)
     local baseline_h      = Size.line.medium
     local total_bar_height = bar_height + label_height
 
-    for i = 1, num_bars do
+    -- pos = where the bar is drawn (1 = leftmost), i = which day it holds
+    -- (1 = today). They are the same unless today is drawn on the right.
+    local today_last = (VS.readWeeklyBarOrderSetting() == VS.WEEKLY_BAR_ORDER_TODAY_LAST)
+
+    for pos = 1, num_bars do
+        local i = today_last and (num_bars + 1 - pos) or pos
         local d = daily_data[i]
         local value = show_pages and (tonumber(d.pages) or 0) or (tonumber(d.seconds) or 0)
         local ratio = value / max_value
@@ -646,7 +654,7 @@ local function buildWeeklyChart(popup_self, daily_data, layout, fonts, mode)
             day_label_widget,
         })
 
-        if i < num_bars then
+        if pos < num_bars then
             table.insert(bars_row,       HorizontalSpan:new{ width = bar_gap })
             table.insert(day_labels_row, HorizontalSpan:new{ width = bar_gap })
         end
@@ -1047,9 +1055,19 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
         local left_unit  = N_("book finished", "books finished", finished_count)
         local left_line  = buildValueLine(fonts.value, fonts.label, layout.col_width, left_value, left_unit)
 
-        local right_value = formatCount(goal_value)
-        -- Reads as one sentence with the value above it: "30 books to read".
-        local right_unit  = N_("book to read", "books to read", goal_value)
+        -- Either the goal itself or what's still left of it after the
+        -- finished books on the left - see VS.Opt.readGoalDisplay(). Both
+        -- read as one sentence with the value above them: "30 books to
+        -- read" / "18 books left". An overshot goal shows 0, not a negative.
+        local right_value, right_unit
+        if VS.Opt.readGoalDisplay() == VS.Opt.GOAL_DISPLAY_REMAINING then
+            local remaining = math.max(0, goal_value - finished_count)
+            right_value = formatCount(remaining)
+            right_unit  = N_("book left", "books left", remaining)
+        else
+            right_value = formatCount(goal_value)
+            right_unit  = N_("book to read", "books to read", goal_value)
+        end
         local right_line  = buildValueLine(fonts.value, fonts.label, layout.col_width, right_value, right_unit)
 
         local left_cell = InputContainer:new{

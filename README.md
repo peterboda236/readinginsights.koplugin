@@ -22,7 +22,7 @@ statistics database.
 A full-screen scrollable overlay with a comprehensive overview of your reading history.
 
 **Highlights:**
-- **Last week** — 7-day average time and pages per day; tap either value to open its own 8-week trend popup (time trend or pages trend)
+- **Last week** — 7-day average time and pages per day; tap either value to open its own 8-week trend popup (time trend or pages trend). Its daily bar chart puts today on the left by default, and can be flipped to put it on the right (see **Settings** below)
 - **Streaks** — current and best daily & weekly reading streaks; tap any of
   the four to open a popup summarising that streak: its name and date range
   on one line, then reading time and pages side by side (total, and average
@@ -90,15 +90,18 @@ A full-screen scrollable overlay with a comprehensive overview of your reading h
     automatically; tick them in **Mark books finished** (or, if the book
     isn't in the statistics database at all, put it in **Add books
     manually**)
+  - The right cell can show what is **still left** of the goal instead of
+    the goal itself ("18" "books left") — *Settings → Advanced settings →
+    Reading insight popup → Reading goal display*
   - The whole section can be switched off under *Settings → Advanced
-    settings → Reading goal section* (on by default); when off, its data
-    isn't even queried when the popup opens
+    settings → Reading insight popup → Reading goal section* (on by
+    default); when off, its data isn't even queried when the popup opens
 - **Use as sleep screen** — show this same popup instead of KOReader's own lock screen when the device suspends, with no double flash (see **Sleep screen** below)
 - **Reading heatmap range** — how many months the calendar/time-of-day
     heatmap grids show at once: 3, 4, or 6
-  - **Heatmap hour format** — 24-hour or 12-hour (AM/PM) labels for the
+  - **Time format** — 24-hour or 12-hour (AM/PM) labels for the
     time-of-day heatmap's hour columns
-  - **Week start day** — Monday or Sunday, controls which day starts each
+  - **First day of week** — Monday or Sunday, controls which day starts each
     row in both heatmap grids
 
 **Book lists:** every book list has the same sort menu behind the icon at
@@ -179,7 +182,7 @@ A per-book overlay showing detailed progress and pace for the book you're curren
 **Controls:** tap to toggle between percentage/page view, tap the "This
 chapter"/"Next chapter" row to toggle between reading time and pages left,
 tap the "read today" / "avg time/day" row to toggle between time and page
-counts, tap the "Pace" title to open the reading calendar, long-press to
+counts, tap the "Pace" title to open the Book progress calendar, long-press to
 force-reload data.
 
 **Caching:** shares the same stale-while-revalidate approach as Reading insights — instant open with cached data, refreshed in the background.
@@ -193,7 +196,8 @@ Tap the "Pace" section title on the Book progress popup or use the "Show Book
   with no reading are left blank — no bar at all); also shows the starting date, 
   the stimated finish day and if the book is finished also showd on the calendar.
   What the small text under each day number shows is configurable
-  (*Settings → Advanced settings → Book calendar cell content*):
+  (*Settings → Advanced settings → Book progress calendar → Book progress
+  calendar cell content*):
   - **Percent** (default) — cumulative progress through the whole book as
     of that day, e.g. "+13%"
   - **Pages** — that day's own page count, e.g. "+101" + the localized
@@ -217,9 +221,9 @@ instead of a generic cover or logo.
   "Document cover", "Random image", "Leave screen as-is", etc.) — this is
   the same `screensaver_type` setting core uses for all of its own
   wallpaper choices, so it plays nicely with anything else that reads it.
-- **Sleep-screen indicator** (*Settings → Advanced settings*, top entry):
-  **None** (default) or **"(sleeping…)" after the title**, appended to the
-  popup's title while it's shown as the sleep screen.
+- **Sleep-screen indicator** (*Tools → Reading insights → Settings*, top
+  entry): **None** (default) or **"(sleeping…)" after the title**, appended
+  to the popup's title while it's shown as the sleep screen.
 - No double flash: while active, KOReader's own screensaver (including any
   "Sleeping" message overlay) is fully suppressed for that suspend/resume
   cycle and cleanly restored afterwards — so only this popup's own single
@@ -280,6 +284,9 @@ Once installed, future updates can be installed in-app — see
   **Settings** submenu and an **Updates** submenu (see
   [Updates](#updates) above).
   - **Settings** holds:
+    - **Sleep-screen indicator** — None (default) or "(sleeping…)" after
+      the title, appended while the popup is shown as the sleep screen
+      (see [Sleep screen](#-sleep-screen) above)
     - **Full-screen refresh on open/close** — toggle
     - **Colors** — pick your own hex color for every bar/line/label the
       three popups draw (active/inactive bars, the 8-week trend line,
@@ -300,10 +307,8 @@ Once installed, future updates can be installed in-app — see
       font file KOReader/you have installed, or type a custom font
       name/alias manually; each role can be reset to its bundled default
       individually or all at once.
-    - **Advanced settings** holds:
-      - **Sleep-screen indicator** — None (default) or "(sleeping…)" after
-        the title, appended while the popup is shown as the sleep screen
-        (see [Sleep screen](#-sleep-screen) above)
+    - **Advanced settings** holds two settings that apply everywhere,
+      followed by one group per area:
       - **Bar chart height** — **Automatic (Reading insights)** (on by default)
         sizes the two Reading insights charts while the popup is built so
         the page ends up one screen tall, using whatever vertical space the
@@ -314,34 +319,49 @@ Once installed, future updates can be installed in-app — see
         screen edge. Switch it off to go back to fixed, hand-set heights
         (Reading insights: Last week / Months — greyed out while automatic
         is on). Book progress: Chapters is always set by hand
-      - **Reading goal section** — show or hide the Reading goal section of
-        the insights popup (on by default)
-      - **Reading heatmap range** — how many months the calendar/time-of-
-        day heatmap grids show at once: 3, 4, or 6
-      - **Heatmap hour format** — 24-hour or 12-hour (AM/PM) labels for the
-        time-of-day heatmap's hour columns
-      - **Week start day** — Monday or Sunday, controls which day starts
-        each row in both heatmap grids
-      - **8-week chart order** — newest-first or oldest-first
-      - **Date format** — how every numeric date the plugin prints is
-        spelled out: `YYYY-MM-DD` (2026-07-20), `YYYY.MM.DD.`
-        (2026.07.20.), `DD/MM/YYYY` (20/07/2026) or `MM/DD/YYYY`
-        (07/20/2026). Covers the book lists, the streak/records/stats
-        popups, the book calendar's day detail, and the date field of the
-        manual book list (which is also read back in the chosen format —
-        entries are stored as `YYYY-MM-DD` either way, so changing the
-        setting never disturbs a date already saved). Dates that aren't
-        numeric — weekday names, month names, the 8-week chart's axis
-        labels — are unaffected. Defaults to `YYYY.MM.DD.` in Hungarian
-        and `DD/MM/YYYY` elsewhere, which is what the plugin did before
-        this setting existed
       - **Show long durations (24h+) as days** — off by default; when on,
         any duration of 24h or more (yearly/streak totals, weekly
         averages, all-time totals, book progress) is shown as a day count
         with one decimal place (e.g. "1.2 days") instead of clock time
-      - **Book calendar cell content** — Percent (default), Pages, or
-        Time; controls what the per-book reading calendar's day cells show
-        (see [Reading calendar](#-book-progress-stats) above)
+      - **Date & time** — how clock times and dates are spelled out
+        wherever the plugin prints one:
+        - **Time format** — 24-hour or 12-hour (AM/PM) labels for the
+          time-of-day heatmap's hour columns
+        - **First day of week** — Monday or Sunday, controls which day
+          starts each row in both heatmap grids
+        - **Date format** — how every numeric date the plugin prints is
+          spelled out: `YYYY-MM-DD` (2026-07-20), `YYYY.MM.DD.`
+          (2026.07.20.), `DD/MM/YYYY` (20/07/2026) or `MM/DD/YYYY`
+          (07/20/2026). Covers the book lists, the streak/records/stats
+          popups, the Book progress calendar's day detail, and the date
+          field of the manual book list (which is also read back in the
+          chosen format — entries are stored as `YYYY-MM-DD` either way, so
+          changing the setting never disturbs a date already saved). Dates
+          that aren't numeric — weekday names, month names, the 8-week
+          chart's axis labels — are unaffected. Defaults to `YYYY.MM.DD.`
+          in Hungarian and `DD/MM/YYYY` elsewhere, which is what the plugin
+          did before this setting existed
+      - **Reading insight popup** — what the insights popup itself shows:
+        - **Reading goal section** — show or hide the Reading goal section
+          (on by default)
+        - **Reading heatmap range** — how many months the calendar/time-of-
+          day heatmap grids show at once: 3, 4, or 6
+        - **8-week chart order** — newest-first or oldest-first
+        - **Last week chapter bar order** — which end of the "Last week"
+          bar chart today sits at: **Today on the left** (default, the week
+          running backwards from there) or **Today on the right**. Today's
+          bar keeps its highlight and its tap-to-open-the-Today-Timeline
+          either way
+        - **Reading goal display** — what the Reading goal section's
+          right-hand value counts: **Goal total** (default, the year's goal
+          itself — "30 books to read") or **Remaining** (what is still left
+          of it after the finished books on the left — "18 books left",
+          never going below 0). A long press on that cell edits the goal in
+          both cases
+      - **Book progress calendar**:
+        - **Book progress calendar cell content** — Percent (default),
+          Pages, or Time; controls what the calendar's day cells show
+          (see [Book progress calendar](#️-book-progress-calendar) above)
 - **Gestures/shortcuts:** all four actions below are registered with
   `Dispatcher`, so they can be assigned under *Settings → Taps and
   gestures*:
@@ -352,7 +372,7 @@ Once installed, future updates can be installed in-app — see
   - `reading_stats_popup` — book view only (reader action), matching the
     popup's requirement that a document be open.
   - `reading_calendar_popup` — book view only (reader action); opens the
-    per-book reading calendar directly, without going through "Show Book
+    Book progress calendar directly, without going through "Show Book
     progress" first.
 
 ## File layout
@@ -378,7 +398,7 @@ readinginsights.koplugin/
 ├── tests/               checks that run without KOReader (see tests/README.md)
 ├── lib/                 shared modules: data queries, settings, caching,
 │                        and the layout/menu building blocks
-│   ├── book_calendar_data.lua  the per-book calendar's queries (per-day
+│   ├── book_calendar_data.lua  the Book progress calendar's queries (per-day
 │   │                         pages/time for a month, cumulative progress,
 │   │                         which months have data)
 │   ├── book_stats_data.lua   the book progress overlay's query (days read,
@@ -433,7 +453,7 @@ readinginsights.koplugin/
 │                             for new releases/branches and installs them
 ├── views/               the user-facing popups
 │   ├── about.lua               plugin info + version/update status
-│   ├── book_calendar_view.lua  per-book reading calendar (opened from the
+│   ├── book_calendar_view.lua  the Book progress calendar (opened from the
 │   │                           book progress view)
 │   ├── book_stats_view.lua     compact "current book progress" overlay
 │   │                           (formerly stats_view.lua)
