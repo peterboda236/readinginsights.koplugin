@@ -1898,39 +1898,60 @@ function ReadingInsightsPopup:_fetchYearSpecific(conn)
 end
 
 -- Set self._yearly/_monthly for the current selected_year+mode ahead of a
--- _buildUI, so that first build already has the right data (and therefore
--- the auto-fit sizes the bar charts correctly on the first pass, with no
--- stale-then-real reflow). A completed year comes straight from its frozen
--- cache - fetched synchronously once if this is its very first view - so it
--- is always exact; the current year serves the last stale values and lets
--- the background _loadAndRebuild refresh them. reset_yearly is false on a
--- mode switch (same year, only the monthly chart changes) so the yearly
--- numbers on screen don't flicker.
+-- _buildUI, so that first build already has the right data - and therefore
+-- the bar-chart auto-fit sizes correctly on the first pass, with no
+-- stale-then-real reflow. reset_yearly is false on a mode switch (same year,
+-- only the monthly chart changes) so the mode-independent yearly numbers on
+-- screen don't flicker.
+--
+-- Fast path first: a past year from its frozen cache, the current year from
+-- its last stale values - both instant. Whatever the fast path can't supply
+-- (a year/mode not seen yet today) is then fetched synchronously, so the
+-- monthly chart is on the page for that very first build instead of appearing
+-- a beat later and reflowing the charts. That synchronous fill is the fix for
+-- "it still jumps once, only when not cached yet": the first switch into
+-- days- or books-per-month, or paging to a year not opened yet today.
 function ReadingInsightsPopup:_primeYearSpecific(reset_yearly)
     local year = self.selected_year
     local mode = self.mode or VS.INSIGHTS_MODE_HOURS
 
+    local fast_yearly, fast_monthly
     if isCompletedYear(year) then
-        local yearly  = Cache.getCompletedYearly(year)
-        local monthly = Cache.getCompletedMonthly(year, mode)
-        if yearly == nil or monthly == nil then
-            local got = Data.withBatchConnection(function(conn)
-                local y, m = self:_fetchYearSpecific(conn)
-                return { yearly = y, monthly = m }
-            end) or {}
-            yearly, monthly = got.yearly, got.monthly
-        end
-        -- Assign only what we actually have: if the one-off fetch failed
-        -- (e.g. a locked DB at cold start), keep whatever was already served
-        -- - a stale value beats nulling the section out into a reflow.
-        if reset_yearly and yearly ~= nil then self._yearly = yearly end
-        if monthly ~= nil then self._monthly = monthly end
+        fast_yearly  = Cache.getCompletedYearly(year)
+        fast_monthly = Cache.getCompletedMonthly(year, mode)
     else
-        if reset_yearly then
-            self._yearly = Cache.findStaleByPrefix(Cache._stale_yearly, year .. ":v3:")
-        end
-        self._monthly = Cache.findStaleByPrefix(Cache._stale_monthly,
+        fast_yearly  = Cache.findStaleByPrefix(Cache._stale_yearly, year .. ":v3:")
+        fast_monthly = Cache.findStaleByPrefix(Cache._stale_monthly,
             VS.monthKeyPrefixForMode(mode) .. year .. ":")
+    end
+
+    if reset_yearly then
+        -- Year changed (paging or a direct open): take the fast values, but
+        -- don't null out anything already served (e.g. init's stale) just
+        -- because the fast source has a gap - the sync fill below covers it.
+        self._yearly  = fast_yearly  or self._yearly
+        self._monthly = fast_monthly or self._monthly
+    else
+        -- Only the mode changed: replace the monthly chart outright (the
+        -- prior value is a *different* mode's chart, so it must not be kept);
+        -- yearly is mode-independent and stays as it is.
+        self._monthly = fast_monthly
+    end
+
+    -- Fetch any genuine gap synchronously. _fetchYearSpecific also freezes a
+    -- past year's result; for the current year it's a one-off bootstrap that
+    -- _loadAndRebuild refreshes right after. Only assign what actually came
+    -- back, so a failed one-off (e.g. a locked DB) keeps whatever was served
+    -- rather than nulling a section into a reflow.
+    local need_yearly  = (reset_yearly and self._yearly == nil)
+    local need_monthly = (self._monthly == nil)
+    if need_yearly or need_monthly then
+        local got = Data.withBatchConnection(function(conn)
+            local y, m = self:_fetchYearSpecific(conn)
+            return { yearly = y, monthly = m }
+        end) or {}
+        if need_yearly  and got.yearly  ~= nil then self._yearly  = got.yearly  end
+        if need_monthly and got.monthly ~= nil then self._monthly = got.monthly end
     end
 end
 
