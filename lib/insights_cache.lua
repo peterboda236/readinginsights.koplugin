@@ -32,6 +32,9 @@ alias would still point at the discarded table afterwards.
                                per-day "up to yesterday" base entries
   M.findStaleByPrefix/bestKnownFullResult
                                stale lookups for the prefix-keyed caches
+  M.getCompletedYearly/getCompletedMonthly/setCompletedYearData
+                               frozen year-specific data for past years,
+                               served without a DB hit (see below)
 ]]--
 
 local DataStorage = require("datastorage")
@@ -59,6 +62,11 @@ M._cache = {
     last8weeks        = nil,
     last8weeks_minute = nil,
     daily_data        = nil,
+    -- Time-of-day heatmap, keyed by "<start>..<end>" range, per-day like
+    -- daily_data above (see Data.getWeekdayHourReadingData). In-memory only;
+    -- the heatmap is opened on demand, so it's fine to rebuild after a
+    -- restart rather than persist it.
+    weekday_hour_data = nil,
 }
 
 M._yearly_cache  = {}
@@ -95,6 +103,56 @@ M._goal_finished_books   = {}
 
 M._goal_scan_watermark   = {}
 
+-- Completed-year cache: a *past* year (year < the current calendar year)
+-- can no longer change - its reading is history - barring the rare case of
+-- a session that crosses New Year's midnight and lands a few pages on Dec 31
+-- of the year just ended. So each past year's year-specific data - the
+-- yearly totals and the monthly chart, the two things that actually differ
+-- from one year's page to the next - is computed once, frozen here, and
+-- served forever without ever hitting the DB again. This is what keeps
+-- paging to an old year from doing the usual stale-then-real two-phase
+-- build (which reflowed the auto-sized bar charts): the first build already
+-- has the right data, so the height fit lands correctly the first time.
+--
+-- Only the title-bar "reload data" long press (M.clearAllCache) drops it;
+-- that is the deliberate escape hatch for the New-Year-boundary case. The
+-- global sections (streaks, all-time totals, last week, the reading-goal
+-- count) are NOT frozen here - they show the same live numbers on every
+-- year's page and keep refreshing as before.
+--
+-- yearly is mode-independent; monthly is sub-keyed by insights mode
+-- ("hours"/"days"/"books"), filled in lazily as the user switches modes.
+--   M._completed_year[year] = { yearly = {...}, monthly = { [mode] = {...} } }
+-- Mirrored to disk alongside the base caches (see M.saveDiskCache).
+M._completed_year = {}
+
+function M.getCompletedYearly(year)
+    if not M.ENABLE_CACHE then return nil end
+    local e = M._completed_year[year]
+    return e and e.yearly or nil
+end
+
+function M.getCompletedMonthly(year, mode)
+    if not M.ENABLE_CACHE then return nil end
+    local e = M._completed_year[year]
+    return e and e.monthly and e.monthly[mode] or nil
+end
+
+-- Store either/both of a completed year's frozen slices. yearly is written
+-- when non-nil; monthly is written under `mode` when both are given. Missing
+-- pieces are left as they were, so calling this once per mode fills the
+-- monthly sub-table up over time without disturbing the shared yearly.
+function M.setCompletedYearData(year, yearly, mode, monthly)
+    if not M.ENABLE_CACHE then return end
+    local e = M._completed_year[year]
+    if not e then
+        e = { yearly = nil, monthly = {} }
+        M._completed_year[year] = e
+    end
+    if yearly ~= nil then e.yearly = yearly end
+    if mode and monthly ~= nil then e.monthly[mode] = monthly end
+end
+
 -- "Up to yesterday" base aggregates (excludes today), kept separate from
 -- M._yearly_cache/M._monthly_cache so they never collide with the stale-prefix
 -- lookups those tables are searched with (e.g. "books:<year>:").
@@ -130,11 +188,15 @@ function M.clearAllCache()
     M._cache.last8weeks        = nil
     M._cache.last8weeks_minute = nil
     M._cache.daily_data        = nil
+    M._cache.weekday_hour_data = nil
     M._yearly_cache          = {}
     M._monthly_cache         = {}
     M._yearly_base_cache     = {}
     M._monthly_base_cache    = {}
     M._alltime_base_cache    = nil
+    -- Drop the frozen past-year slices too, so the current view refetches
+    -- them fresh - this is the New-Year-boundary escape hatch.
+    M._completed_year        = {}
     M._goal_cache            = {}
     -- Force a full re-scan of the finished-books lists on manual reload,
     -- rather than only looking for activity since the last watermark.
@@ -199,6 +261,7 @@ function M.loadDiskCache()
     local monthly_base  = settings:readSetting("monthly_base")
     local goal_finished_books = settings:readSetting("goal_finished_books")
     local goal_scan_watermark = settings:readSetting("goal_scan_watermark")
+    local completed_year      = settings:readSetting("completed_year")
 
     if type(stale_cache) == "table" then
         for k, v in pairs(stale_cache) do M._stale_cache[k] = v end
@@ -245,6 +308,17 @@ function M.loadDiskCache()
     if type(goal_scan_watermark) == "table" then
         for k, v in pairs(goal_scan_watermark) do M._goal_scan_watermark[k] = v end
     end
+    -- Each value is a { yearly, monthly } table; monthly is backfilled to an
+    -- empty table if a file written by an older version (or edited by hand)
+    -- is missing it, so getCompletedMonthly can index it without a nil check.
+    if type(completed_year) == "table" then
+        for k, v in pairs(completed_year) do
+            if type(v) == "table" then
+                if type(v.monthly) ~= "table" then v.monthly = {} end
+                M._completed_year[k] = v
+            end
+        end
+    end
 end
 
 -- Best-effort save; any failure (full disk, odd permissions, ...) is
@@ -282,6 +356,7 @@ function M.saveDiskCache()
     settings:saveSetting("monthly_base", M._monthly_base_cache)
     settings:saveSetting("goal_finished_books", M._goal_finished_books)
     settings:saveSetting("goal_scan_watermark", M._goal_scan_watermark)
+    settings:saveSetting("completed_year", M._completed_year)
     local base_flush_ok, base_flush_err = pcall(function() settings:flush() end)
     if not base_flush_ok then
         logger.warn("ReadingInsights: failed to flush base caches: " .. tostring(base_flush_err))

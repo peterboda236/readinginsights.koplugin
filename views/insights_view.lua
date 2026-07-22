@@ -807,6 +807,14 @@ local function showStreakDatePopup(dates, is_weekly, is_current)
     UIManager:show(Trend.Popup:new{ box_content = box })
 end
 
+-- A year strictly before the current calendar year: its reading is history
+-- and won't change, so its year-specific data can be frozen in the
+-- completed-year cache and served without ever re-querying (see
+-- Cache._completed_year and _fetchYearSpecific/_primeYearSpecific below).
+local function isCompletedYear(year)
+    return year ~= nil and year < tonumber(os.date("%Y"))
+end
+
 local function buildInsightsSections(popup_self, streaks, yearly_stats, year_range, monthly_data, all_time_stats, last_week_stats, last_week_daily, fonts, layout, goal_finished_count)
     local sections = VerticalGroup:new{ align = "left" }
 
@@ -1858,6 +1866,95 @@ function ReadingInsightsPopup:_buildUI()
     self[1] = VerticalGroup:new{ self.popup_frame }
 end
 
+-- The two year-specific slices (yearly totals + the monthly chart for the
+-- current mode), fetched the way the selected year wants them. A completed
+-- (past) year is read from the frozen completed-year cache and only queried
+-- the first time it's ever needed - then written back so it's never queried
+-- again; the current year always queries live. `conn` is the shared batch
+-- connection (may be nil, in which case each getter opens its own).
+function ReadingInsightsPopup:_fetchYearSpecific(conn)
+    local year = self.selected_year
+    local mode = self.mode or VS.INSIGHTS_MODE_HOURS
+    local function queryMonthly()
+        if mode == VS.INSIGHTS_MODE_HOURS then
+            return Data.getMonthlyReadingHours(year, conn)
+        elseif mode == VS.INSIGHTS_MODE_BOOKS then
+            return Data.getMonthlyBookCounts(year, conn)
+        end
+        return Data.getMonthlyReadingDays(year, conn)
+    end
+
+    if not isCompletedYear(year) then
+        return Data.getYearlyStats(year, conn), queryMonthly()
+    end
+
+    local yearly  = Cache.getCompletedYearly(year)
+    local monthly = Cache.getCompletedMonthly(year, mode)
+    if yearly == nil then yearly = Data.getYearlyStats(year, conn) end
+    if monthly == nil then monthly = queryMonthly() end
+    -- Freeze whatever we had to compute (a no-op re-store for cache hits).
+    Cache.setCompletedYearData(year, yearly, mode, monthly)
+    return yearly, monthly
+end
+
+-- Set self._yearly/_monthly for the current selected_year+mode ahead of a
+-- _buildUI, so that first build already has the right data - and therefore
+-- the bar-chart auto-fit sizes correctly on the first pass, with no
+-- stale-then-real reflow. reset_yearly is false on a mode switch (same year,
+-- only the monthly chart changes) so the mode-independent yearly numbers on
+-- screen don't flicker.
+--
+-- Fast path first: a past year from its frozen cache, the current year from
+-- its last stale values - both instant. Whatever the fast path can't supply
+-- (a year/mode not seen yet today) is then fetched synchronously, so the
+-- monthly chart is on the page for that very first build instead of appearing
+-- a beat later and reflowing the charts. That synchronous fill is the fix for
+-- "it still jumps once, only when not cached yet": the first switch into
+-- days- or books-per-month, or paging to a year not opened yet today.
+function ReadingInsightsPopup:_primeYearSpecific(reset_yearly)
+    local year = self.selected_year
+    local mode = self.mode or VS.INSIGHTS_MODE_HOURS
+
+    local fast_yearly, fast_monthly
+    if isCompletedYear(year) then
+        fast_yearly  = Cache.getCompletedYearly(year)
+        fast_monthly = Cache.getCompletedMonthly(year, mode)
+    else
+        fast_yearly  = Cache.findStaleByPrefix(Cache._stale_yearly, year .. ":v3:")
+        fast_monthly = Cache.findStaleByPrefix(Cache._stale_monthly,
+            VS.monthKeyPrefixForMode(mode) .. year .. ":")
+    end
+
+    if reset_yearly then
+        -- Year changed (paging or a direct open): take the fast values, but
+        -- don't null out anything already served (e.g. init's stale) just
+        -- because the fast source has a gap - the sync fill below covers it.
+        self._yearly  = fast_yearly  or self._yearly
+        self._monthly = fast_monthly or self._monthly
+    else
+        -- Only the mode changed: replace the monthly chart outright (the
+        -- prior value is a *different* mode's chart, so it must not be kept);
+        -- yearly is mode-independent and stays as it is.
+        self._monthly = fast_monthly
+    end
+
+    -- Fetch any genuine gap synchronously. _fetchYearSpecific also freezes a
+    -- past year's result; for the current year it's a one-off bootstrap that
+    -- _loadAndRebuild refreshes right after. Only assign what actually came
+    -- back, so a failed one-off (e.g. a locked DB) keeps whatever was served
+    -- rather than nulling a section into a reflow.
+    local need_yearly  = (reset_yearly and self._yearly == nil)
+    local need_monthly = (self._monthly == nil)
+    if need_yearly or need_monthly then
+        local got = Data.withBatchConnection(function(conn)
+            local y, m = self:_fetchYearSpecific(conn)
+            return { yearly = y, monthly = m }
+        end) or {}
+        if need_yearly  and got.yearly  ~= nil then self._yearly  = got.yearly  end
+        if need_monthly and got.monthly ~= nil then self._monthly = got.monthly end
+    end
+end
+
 function ReadingInsightsPopup:_loadAndRebuild()
     -- Re-fetch everything over one shared DB connection (seven open/close
     -- cycles become one). Each getter still manages its own cache and works
@@ -1865,19 +1962,14 @@ function ReadingInsightsPopup:_loadAndRebuild()
     -- connection is opened and closed by the data module (see
     -- Data.withBatchConnection), leaving this file with no DB knowledge.
     local batch = Data.withBatchConnection(function(conn)
-        local monthly
-        if self.mode == VS.INSIGHTS_MODE_HOURS then
-            monthly = Data.getMonthlyReadingHours(self.selected_year, conn)
-        elseif self.mode == VS.INSIGHTS_MODE_BOOKS then
-            monthly = Data.getMonthlyBookCounts(self.selected_year, conn)
-        else
-            monthly = Data.getMonthlyReadingDays(self.selected_year, conn)
-        end
+        -- Year-specific parts; a cache hit (no DB) for an already-frozen
+        -- past year, so paging back to it never re-queries.
+        local yearly, monthly = self:_fetchYearSpecific(conn)
         local last_week, last_week_daily = Data.getLastWeekAll(conn)
         return {
             streaks    = Data.calculateStreaks(conn),
             year_range = Data.getYearRange(conn),
-            yearly     = Data.getYearlyStats(self.selected_year, conn),
+            yearly     = yearly,
             all_time   = Data.getAllTimeStats(conn),
             -- Only worth querying when the section that displays it is on.
             goal_finished = VS.Opt.readShowReadingGoal()
@@ -2042,6 +2134,23 @@ function ReadingInsightsPopup:init()
     self.mode = VS.normalizeInsightsMode(self.mode or VS.readInsightsMode())
     self.weekly_chart_mode = VS.normalizeWeeklyChartMode(self.weekly_chart_mode or VS.readWeeklyChartMode())
 
+    -- selected_year needs a value before we can prime year-specific data or
+    -- run _loadAndRebuild.
+    if not self.selected_year then
+        self.selected_year = tonumber(os.date("%Y"))
+    end
+
+    -- Direct-open on a past year (a caller passing selected_year, rather than
+    -- the usual open-on-the-current-year then page): serve that year's
+    -- immutable year-specific data straight from the completed-year cache
+    -- before the first build - fetched synchronously once if it isn't frozen
+    -- yet - exactly as _goToYear does, so the bar-chart auto-fit lands right
+    -- the first time instead of reflowing when the async refresh arrives. The
+    -- current year keeps the stale-then-refresh path handled above.
+    if isCompletedYear(self.selected_year) then
+        self:_primeYearSpecific(true)
+    end
+
     -- True only on a genuine cold start (e.g. right after a KOReader restart):
     -- no fresh cache and no stale fallback for any of the core stats. In that
     -- case _buildUI() shows a "Loading data..." placeholder instead of a
@@ -2049,11 +2158,6 @@ function ReadingInsightsPopup:init()
     -- brings in real data.
     self._initial_loading = not (self._streaks or self._yearly or self._monthly
         or self._all_time or self._last_week or self._goal_finished)
-
-    -- selected_year needs an initial value before _loadAndRebuild runs.
-    if not self.selected_year then
-        self.selected_year = tonumber(os.date("%Y"))
-    end
 
     self.dimen = Geom:new{ w = screen_w, h = screen_h }
 
@@ -2200,8 +2304,11 @@ function ReadingInsightsPopup:cycleInsightsMode()
     VS.saveInsightsMode(new_mode)
     self.mode = new_mode
 
-    local month_key_fb = VS.monthKeyPrefixForMode(new_mode) .. (self.selected_year or tonumber(os.date("%Y"))) .. ":"
-    self._monthly = Cache.findStaleByPrefix(Cache._stale_monthly, month_key_fb)
+    -- Only the monthly chart changes with the mode; a past year serves it
+    -- from the frozen cache, the current year from stale + background
+    -- refresh. reset_yearly = false so the (mode-independent) yearly numbers
+    -- on screen don't flicker.
+    self:_primeYearSpecific(false)
 
     self:_buildUI()
     UIManager:setDirty(self, function()
@@ -2248,12 +2355,11 @@ function ReadingInsightsPopup:_goToYear(delta)
     self.selected_year = new_year
     self._monthly = nil
     self._yearly  = nil
-    -- Serve stale data for the target year immediately.
-    local year_key_any = self.selected_year .. ":v3:"
-    local mode_fb       = self.mode or VS.INSIGHTS_MODE_HOURS
-    local month_key_fb  = VS.monthKeyPrefixForMode(mode_fb) .. self.selected_year .. ":"
-    self._yearly  = Cache.findStaleByPrefix(Cache._stale_yearly, year_key_any)
-    self._monthly = Cache.findStaleByPrefix(Cache._stale_monthly, month_key_fb)
+    -- Serve the target year's year-specific data before building: a past
+    -- year exactly, from its frozen cache (so the auto-fit is right on the
+    -- first pass, no reflow); the current year from stale, refreshed by the
+    -- background _loadAndRebuild below.
+    self:_primeYearSpecific(true)
 
     self:_buildUI()
     UIManager:setDirty(self, function()
