@@ -714,6 +714,22 @@ end
 function M.getWeekdayHourReadingData(start_t, end_t, shared_conn)
     local start_str = os.date("%Y-%m-%d", start_t)
     local end_str   = os.date("%Y-%m-%d", end_t)
+    local today     = Cache.todayDateStr()
+    local cache_key = start_str .. ".." .. end_str
+
+    -- Cached per range, per day - the same on-demand policy as
+    -- getDailyReadingData above (the calendar heatmap's data): the
+    -- time-of-day heatmap is only built when the heatmap popup is opened and
+    -- swiped between periods, so without this every swipe re-scans page_stat
+    -- for the whole window. A period ending before today can't change; the
+    -- one ending today only grows by the current session, which is fine to
+    -- pick up on the next open (a few minutes stale at worst), and the
+    -- title-bar "reload data" long press drops it either way.
+    if Cache.ENABLE_CACHE and Cache._cache.weekday_hour_data
+       and Cache._cache.weekday_hour_data[cache_key]
+       and Cache._cache.weekday_hour_data[cache_key].date == today then
+        return Cache._cache.weekday_hour_data[cache_key].data
+    end
 
     local data = {}
     for wd = 1, 7 do
@@ -721,7 +737,13 @@ function M.getWeekdayHourReadingData(start_t, end_t, shared_conn)
         for h = 0, 23 do data[wd][h] = 0 end
     end
 
-    return StatsDb.withShared(shared_conn, data, function(conn)
+    -- Whether the query actually ran (vs. a transient DB failure that leaves
+    -- `data` looking exactly like an empty range). Only a real run is cached,
+    -- so a failure can't pin an all-zero heatmap for the rest of the day -
+    -- the same trap RecordsData's cache fell into (see StatsDb.withStatement).
+    local ran = false
+
+    data = StatsDb.withShared(shared_conn, data, function(conn)
         local sql = string.format([[
             SELECT dow, hour, SUM(dur) AS duration
             FROM (
@@ -737,7 +759,7 @@ function M.getWeekdayHourReadingData(start_t, end_t, shared_conn)
             GROUP BY dow, hour
         ]], start_str, end_str)
 
-        StatsDb.withStatement(conn, sql, function(stmt)
+        local _, did_run = StatsDb.withStatement(conn, sql, function(stmt)
             for row in stmt:rows() do
                 local dow_sun0 = tonumber(row[1]) or 0  -- 0=Sun..6=Sat
                 local wd = ((dow_sun0 + 6) % 7) + 1     -- 1=Mon..7=Sun
@@ -745,8 +767,15 @@ function M.getWeekdayHourReadingData(start_t, end_t, shared_conn)
                 data[wd][hour] = tonumber(row[3]) or 0
             end
         end)
+        ran = did_run and true or false
         return data
     end)
+
+    if Cache.ENABLE_CACHE and ran then
+        Cache._cache.weekday_hour_data = Cache._cache.weekday_hour_data or {}
+        Cache._cache.weekday_hour_data[cache_key] = { date = today, data = data }
+    end
+    return data
 end
 
 -- Returns { min_year, max_year, min_month } from the DB, cached per day.
