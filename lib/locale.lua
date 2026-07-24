@@ -8,9 +8,12 @@ Why not KOReader's own gettext .po loader?
 Because these plugin translations need to work as plain "msgid"/"msgstr"
 overrides that are looked up before falling back to KOReader's own gettext
 (so we don't have to touch KOReader's shipped translations to add strings
-this plugin needs). The loader here is intentionally tiny: it only
-understands one "msgid" line followed by one "msgstr" line, which is all
-these .po files use.
+this plugin needs). The loader here is intentionally tiny: one "msgid"
+paired with one "msgstr", each of which may be wrapped across several
+quoted continuation lines the way translation tools emit long strings.
+It does not handle gettext plural forms (msgid_plural / msgstr[0]); this
+plugin's plurals are stored as two independent msgid entries instead (see
+N_ below), so a flat msgid->msgstr map is all the .po files need.
 
 Exposes:
   _(msg)                       translate a string
@@ -32,28 +35,91 @@ local PluginUtil =
 local PLUGIN_DIR = PluginUtil.dir
 
 local function unescapePO(s)
-    return (s:gsub("\\n", "\n"):gsub('\\"', '"'):gsub("\\\\", "\\"))
+    return (s:gsub("\\n", "\n"):gsub("\\t", "\t"):gsub('\\"', '"'):gsub("\\\\", "\\"))
 end
 
 local function loadPOFile(path)
     local map = {}
     local f = io.open(path, "r")
     if not f then return map end
-    local pending_key = nil
-    for line in f:lines() do
-        local msgid = line:match('^msgid%s+"(.*)"%s*$')
-        local msgstr = line:match('^msgstr%s+"(.*)"%s*$')
+
+    -- A .po entry can spell its msgid or msgstr across several quoted lines
+    -- (Loco and other tools wrap long strings that way, and the file header
+    -- always does), so an entry isn't committed the moment its msgstr is
+    -- seen: continuation lines - a bare "..." on their own line - are folded
+    -- into whichever of key/value is currently open, and the pair is stored
+    -- only once the entry ends: at a blank line, a comment, the next msgid,
+    -- or end of file. The empty-msgid header entry (key == "") is dropped.
+    local key, value = nil, nil
+    local in_key, in_value = false, false
+
+    local function commit()
+        if key and value and key ~= "" then
+            map[key] = value
+        end
+        key, value, in_key, in_value = nil, nil, false, false
+    end
+
+    for raw in f:lines() do
+        local line = raw:match("^%s*(.-)%s*$")
+        local msgid = line:match('^msgid%s+"(.*)"$')
+        local msgstr = line:match('^msgstr%s+"(.*)"$')
+        local cont = line:match('^"(.*)"$')
         if msgid ~= nil then
-            pending_key = unescapePO(msgid)
-        elseif msgstr ~= nil and pending_key ~= nil then
-            if pending_key ~= "" then
-                map[pending_key] = unescapePO(msgstr)
+            commit()
+            key, in_key, in_value = unescapePO(msgid), true, false
+        elseif msgstr ~= nil then
+            value, in_value, in_key = unescapePO(msgstr), true, false
+        elseif cont ~= nil then
+            local piece = unescapePO(cont)
+            if in_value then
+                value = (value or "") .. piece
+            elseif in_key then
+                key = (key or "") .. piece
             end
-            pending_key = nil
+        elseif line == "" or line:match("^#") then
+            commit()
         end
     end
+    commit()
     f:close()
     return map
+end
+
+-- Finds a .po whose language matches `base` but whose region differs, so a
+-- language KOReader reports with a region we don't ship a file for still
+-- lands on a same-language translation instead of dropping to English:
+-- pt_BR borrows pt_PT, a future zh_TW borrows zh_CN, and so on. Pure guess
+-- work from the code alone can't do this (there's no pt.po to fall back to),
+-- so we actually look at what locale/ contains. Returns the base name (no
+-- ".po", no dir) of the first match, or nil - including whenever lfs isn't
+-- available (e.g. the test harness), where the caller's other candidates
+-- still cover every language that ships an exact or base-code file.
+--
+-- When several regions of the same language exist (pt_BR.po + pt_PT.po, and
+-- the reader is some third pt_XX), the pick is made deterministic by sorting
+-- and taking the first, so the borrowed translation is at least stable and
+-- predictable rather than dependent on the order lfs.dir() happens to return.
+local function findSiblingLocale(base)
+    if not base or base == "" then return nil end
+    local ok_lfs, lfs = pcall(require, "libs/libkoreader-lfs")
+    if not ok_lfs then ok_lfs, lfs = pcall(require, "lfs") end
+    if not ok_lfs then return nil end
+    local matches = {}
+    -- lfs.dir()'s error only surfaces once its iterator is called, so the
+    -- whole loop runs inside pcall (see lib/fonts.lua for the same guard).
+    pcall(function()
+        for entry in lfs.dir(PLUGIN_DIR .. "locale") do
+            local name = entry:match("^(.+)%.po$")
+            -- Same base language ("pt" of "pt_BR"/"pt_PT"), any region.
+            if name and name:match("^[a-z]+") == base then
+                matches[#matches + 1] = name
+            end
+        end
+    end)
+    if #matches == 0 then return nil end
+    table.sort(matches)
+    return matches[1]
 end
 
 local _locale_cache = {}
@@ -63,11 +129,37 @@ local function getLocaleMap()
         lang = G_reader_settings:readSetting("language") or "en"
     end
     local lang_base = lang:match("^([a-z]+)") or lang
-    if _locale_cache[lang_base] ~= nil then
-        return _locale_cache[lang_base]
+    -- Cache by the full language code, so "pt_PT" and a hypothetical "pt_BR"
+    -- don't share one entry just because their base ("pt") matches.
+    if _locale_cache[lang] ~= nil then
+        return _locale_cache[lang]
     end
-    local map = loadPOFile(PLUGIN_DIR .. "locale/" .. lang_base .. ".po")
-    _locale_cache[lang_base] = map
+    -- KOReader stores the language as e.g. "pt_PT" (sometimes "pt-PT"); a
+    -- region-specific .po like locale/pt_PT.po must win over the base
+    -- locale/pt.po, so try the full code first and only fall back to the
+    -- base when there's no region file. Two-letter codes ("hu", "de", "en")
+    -- have full == base, so the first load already finds them.
+    -- Try, in order: the full region code (pt_PT.po, en_GB.po, zh_CN.po),
+    -- the bare base code (en.po for en_GB, zh.po for zh_CN), then any
+    -- same-language sibling on disk (pt_PT.po for pt_BR). The first file
+    -- that actually loads wins; an empty result just means _() falls
+    -- through to KOReader's own gettext. Two-letter codes ("hu", "de",
+    -- "en") have full == base, so the first load already finds them.
+    local full = lang:gsub("-", "_")
+    local candidates = { full }
+    if full ~= lang_base then
+        candidates[#candidates + 1] = lang_base
+    end
+    local sibling = findSiblingLocale(lang_base)
+    if sibling then
+        candidates[#candidates + 1] = sibling
+    end
+    local map = {}
+    for i = 1, #candidates do
+        map = loadPOFile(PLUGIN_DIR .. "locale/" .. candidates[i] .. ".po")
+        if next(map) ~= nil then break end
+    end
+    _locale_cache[lang] = map
     return map
 end
 

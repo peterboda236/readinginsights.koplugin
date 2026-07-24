@@ -199,16 +199,16 @@ msgid "Reloading data..."
 msgstr "Adatok újraolvasása..."
 
 msgid "Reading insights"
-msgstr "Olvasási áttekintés"
+msgstr "Reading insights"
 
 msgid "Reading insights: all time statistics"
-msgstr "Olvasási áttekintés: összesített statisztika"
+msgstr "Reading insights: összesített statisztika"
 
 msgid "Reading insights: current book progress"
-msgstr "Olvasási áttekintés: aktuális könyv haladása"
+msgstr "Reading insights: aktuális könyv haladása"
 
 msgid "Reading insights: book progress calendar"
-msgstr "Olvasási áttekintés: könyv haladás naptár"
+msgstr "Reading insights: könyv haladás naptár"
 
 msgid "All books read %1"
 msgstr "Összesen: %1 könyv olvasva"
@@ -305,7 +305,7 @@ msgid "books read in this streak"
 msgstr "könyv olvasva ez alatt"
 
 msgid "Show Reading insights"
-msgstr "Olvasási áttekintés megnyitása"
+msgstr "Reading insights megnyitása"
 
 msgid "Full-screen refresh on open/close"
 msgstr "Teljes képernyő frissítés megnyitáskor/bezáráskor"
@@ -652,7 +652,7 @@ msgid "Use as sleep screen"
 msgstr "Használat alvó képernyőként"
 
 msgid "Reading insights sleep screen"
-msgstr "Olvasási áttekintés alvó képernyő"
+msgstr "Reading insights alvó képernyő"
 
 msgid "Sleep-screen indicator"
 msgstr "Alvó képernyő jelzés"
@@ -865,7 +865,7 @@ msgid "About"
 msgstr "Névjegy"
 
 msgid "Reading insight"
-msgstr "Olvasási áttekintés"
+msgstr "Reading insights"
 
 msgid "A full-screen overlay with a comprehensive overview of your reading history, powered by KOReader's statistics database."
 msgstr "Egy teljes képernyős áttekintés az olvasási előzményeidről, a KOReader statisztikai adatbázisára építve."
@@ -898,7 +898,7 @@ msgid "%d hours left"
 msgstr "%d óra van hátra"
 
 msgid "Reading insights: records"
-msgstr "Olvasási áttekintés: rekordok"
+msgstr "Reading insights: rekordok"
 
 msgid "Show Records"
 msgstr "Rekordok megjelenítése"
@@ -937,7 +937,7 @@ msgid "Automatic"
 msgstr "Automatikus"
 
 msgid "Sizes the Reading insights bar charts so the page fits the screen without a scroll bar."
-msgstr "Az Olvasási áttekintés oszlopdiagramjait úgy méretezi, hogy az oldal görgetősáv nélkül elférjen a képernyőn."
+msgstr "A Reading insights oszlopdiagramjait úgy méretezi, hogy az oldal görgetősáv nélkül elférjen a képernyőn."
 
 
 msgid "Last read (newest first)"
@@ -1005,7 +1005,7 @@ msgid "Date & time"
 msgstr "Dátum és idő"
 
 msgid "Reading insight popup"
-msgstr "Olvasási áttekintés ablak"
+msgstr "Reading insights ablak"
 
 msgid "Last week chapter bar order"
 msgstr "Múlt heti oszlopok sorrendje"
