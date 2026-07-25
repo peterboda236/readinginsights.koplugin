@@ -4,193 +4,143 @@ msgstr ""
 
 msgid "Jan"
 msgstr "1月"
-
 msgid "Feb"
 msgstr "2月"
-
 msgid "Mar"
 msgstr "3月"
-
 msgid "Apr"
 msgstr "4月"
-
 msgid "May"
 msgstr "5月"
-
 msgid "Jun"
 msgstr "6月"
-
 msgid "Jul"
 msgstr "7月"
-
 msgid "Aug"
 msgstr "8月"
-
 msgid "Sep"
 msgstr "9月"
-
 msgid "Oct"
 msgstr "10月"
-
 msgid "Nov"
 msgstr "11月"
-
 msgid "Dec"
 msgstr "12月"
 
 msgid "January"
 msgstr "一月"
-
 msgid "February"
 msgstr "二月"
-
 msgid "March"
 msgstr "三月"
-
 msgid "April"
 msgstr "四月"
-
 msgid "May "
 msgstr "五月"
-
 msgid "June"
 msgstr "六月"
-
 msgid "July"
 msgstr "七月"
-
 msgid "August"
 msgstr "八月"
-
 msgid "September"
 msgstr "九月"
-
 msgid "October"
 msgstr "十月"
-
 msgid "November"
 msgstr "十一月"
-
 msgid "December"
 msgstr "十二月"
 
 msgid "second read"
-msgstr "阅读1秒"
-
+msgstr "阅读秒"
 msgid "seconds read"
-msgstr "阅读%s秒"
-
+msgstr "阅读秒"
 msgid "minute read"
-msgstr "阅读1分钟"
-
+msgstr "阅读分钟"
 msgid "minutes read"
-msgstr "阅读%s分钟"
-
+msgstr "阅读分钟"
 msgid "hour read"
-msgstr "阅读1小时"
-
+msgstr "阅读小时"
 msgid "hours read"
-msgstr "阅读%s小时"
-
+msgstr "阅读小时"
 msgid "day read"
-msgstr "阅读1天"
-
+msgstr "阅读天数"
 msgid "days read"
-msgstr "阅读%s天"
-
+msgstr "阅读天数"
 msgid "book read"
-msgstr "读完1本书"
-
+msgstr "已读完书籍"
 msgid "books read"
-msgstr "读完%s本书"
+msgstr "已读完书籍"
 
 msgid "day/book avg"
-msgstr "平均每本书1天"
-
+msgstr "单书平均天数"
 msgid "days/book avg"
-msgstr "平均每本书%s天"
-
+msgstr "单书平均天数"
 msgid "of days read"
-msgstr "阅读天数"
-
+msgstr "阅读天数占比"
 msgid "page read"
-msgstr "阅读1页"
-
+msgstr "阅读页数"
 msgid "pages read"
-msgstr "阅读%s页"
+msgstr "阅读页数"
 
 msgid "week"
 msgstr "周"
-
 msgid "weeks"
 msgstr "周"
 
 msgid "No streak"
 msgstr "暂无连续阅读记录"
-
 msgid "Current streak"
 msgstr "当前连续阅读"
-
 msgid "Best streak"
 msgstr "最长连续阅读"
 
 msgid "Days read per month"
 msgstr "每月阅读天数"
-
 msgid "Time read per month"
 msgstr "每月阅读时长"
-
 msgid "Books read per month"
 msgstr "每月完成书籍"
 
 msgid "Unknown"
 msgstr "未知"
-
 msgid "No books read"
 msgstr "暂无阅读书籍"
 
 msgid "No books read in %1"
-msgstr "%1 没有阅读书籍"
-
+msgstr "%1 无阅读书籍"
 msgid "No books read in "
-msgstr "暂无书籍阅读记录："
+msgstr "暂无阅读记录："
 
 msgid "%1 - book read %2"
-msgstr "%1 — 完成书籍：%2本"
-
+msgstr "%1 — 已读完：%2本"
 msgid "%1 - books read %2"
-msgstr "%1 — 完成书籍：%2本"
+msgstr "%1 — 已读完：%2本"
 
 msgid "Reading goal"
 msgstr "阅读目标"
-
 msgid "%1 - reading goal"
 msgstr "%1 — 阅读目标"
 
 msgid "book finished"
-msgstr "完成1本书"
-
+msgstr "已读完书籍"
 msgid "books finished"
-msgstr "完成%s本书"
-
+msgstr "已读完书籍"
 msgid "book goal"
-msgstr "目标1本书"
-
+msgstr "目标书籍"
 msgid "books goal"
-msgstr "目标%s本书"
+msgstr "目标书籍"
 
 msgid "%1 - book finished %2"
 msgstr "%1 — 已完成：%2本"
-
 msgid "%1 - books finished %2"
 msgstr "%1 — 已完成：%2本"
 
 msgid "No books finished in %1"
-msgstr "%1 没有完成书籍"
-
+msgstr "%1 没有完成任何书籍"
 msgid "Mark book finished - %1"
 msgstr "标记本书已读完 — %1"
-
 msgid "No books read in this year"
 msgstr "今年暂无阅读记录"
 
@@ -199,822 +149,588 @@ msgstr "正在重新加载数据……"
 
 msgid "Reading insights"
 msgstr "阅读统计"
-
 msgid "Reading insights: all time statistics"
-msgstr "阅读统计：全部统计数据"
-
+msgstr "阅读统计：全部历史数据"
 msgid "Reading insights: current book progress"
 msgstr "阅读统计：本书阅读进度"
-
 msgid "Reading insights: book progress calendar"
 msgstr "阅读统计：阅读进度日历"
 
 msgid "All books read %1"
-msgstr "累计阅读书籍：%1本"
-
+msgstr "累计读完书籍：%1本"
 msgid "TOTAL READ"
 msgstr "总阅读时长"
-
 msgid "LAST WEEK"
 msgstr "上周"
-
 msgid "avg/day"
 msgstr "日均"
 
 msgid "Today"
 msgstr "今天"
-
 msgid "Yesterday"
 msgstr "昨天"
-
 msgid "Mon"
 msgstr "周一"
-
 msgid "Tue"
 msgstr "周二"
-
 msgid "Wed"
 msgstr "周三"
-
 msgid "Thu"
 msgstr "周四"
-
 msgid "Fri"
 msgstr "周五"
-
 msgid "Sat"
 msgstr "周六"
-
 msgid "Sun"
 msgstr "周日"
 
 msgid "read time avg/day"
 msgstr "日均阅读时长"
-
 msgid "reading time"
 msgstr "阅读时长"
-
 msgid "No streak dates"
 msgstr "无连续阅读日期"
-
 msgid "CalendarView not available"
-msgstr "日历视图不可用"
+msgstr "日历视图无法使用"
 
 msgid "Reading time over the last 8 weeks"
 msgstr "近8周阅读时长"
-
 msgid "Pages read over the last 8 weeks"
 msgstr "近8周阅读页数"
-
 msgid "Average daily reading time, last 8 weeks"
 msgstr "近8周日均阅读时长"
-
 msgid "Average daily pages, last 8 weeks"
 msgstr "近8周日均阅读页数"
-
 msgid "No reading data in the last 8 weeks"
-msgstr "近8周没有阅读数据"
+msgstr "近8周无阅读数据"
 
 msgid "avg time/day"
 msgstr "日均时长"
-
 msgid "avg pages/day"
 msgstr "日均页数"
-
 msgid "page read today"
-msgstr "今日阅读1页"
-
+msgstr "今日阅读页数"
 msgid "pages read today"
-msgstr "今日阅读%s页"
-
+msgstr "今日阅读页数"
 msgid "book read in this streak"
-msgstr "连续周期读完1本书"
-
+msgstr "本轮连续阅读完成书籍"
 msgid "books read in this streak"
-msgstr "连续周期读完%s本书"
+msgstr "本轮连续阅读完成书籍"
 
 msgid "Show Reading insights"
 msgstr "打开阅读统计"
-
 msgid "Full-screen refresh on open/close"
-msgstr "打开/关闭时全屏刷新"
-
+msgstr "开启/关闭界面时全屏刷新"
 msgid "8-week chart order"
-msgstr "8周图表排序"
-
+msgstr "8周图表排序方式"
 msgid "Advanced settings"
 msgstr "高级设置"
-
 msgid "Reading heatmap range"
-msgstr "阅读热力图范围"
+msgstr "阅读热力图时间范围"
 
 msgid "3 months"
 msgstr "3个月"
-
 msgid "4 months"
 msgstr "4个月"
-
 msgid "6 months"
 msgstr "6个月"
 
 msgid "Time format"
 msgstr "时间格式"
-
 msgid "24-hour"
 msgstr "24小时制"
-
 msgid "12-hour (AM/PM)"
-msgstr "12小时制(上午/下午)"
-
+msgstr "12小时制（上午/下午）"
 msgid "First day of week"
 msgstr "每周起始日"
 
 msgid "Newest first"
-msgstr "最新在前"
-
+msgstr "新记录优先"
 msgid "Oldest first"
-msgstr "最早在前"
-
+msgstr "旧记录优先"
 msgid "Newest first (descending)"
-msgstr "最新优先（降序）"
-
+msgstr "新记录优先（降序）"
 msgid "Oldest first (ascending)"
-msgstr "最早优先（升序）"
+msgstr "旧记录优先（升序）"
 
 msgid "Loading data…"
 msgstr "正在加载数据……"
-
 msgid "Book progress"
 msgstr "书籍进度"
-
 msgid "Show Book progress"
 msgstr "显示本书进度"
-
 msgid "Show Book progress calendar"
 msgstr "显示阅读进度日历"
-
 msgid "Book progress calendar"
 msgstr "阅读进度日历"
-
 msgid "No reading data for this book yet."
-msgstr "本书暂无阅读数据。"
+msgstr "本书暂时没有阅读数据。"
 
 msgid "This chapter"
 msgstr "本章"
-
 msgid "Next chapter"
 msgstr "下一章"
-
 msgid "This book"
 msgstr "本书"
-
 msgid "Pace"
 msgstr "阅读速度"
-
 msgid "Chapters"
 msgstr "章节"
-
 msgid "today for all books"
 msgstr "今日全部书籍"
 
 msgid "to go"
 msgstr "剩余"
-
 msgid "to read"
 msgstr "待读"
-
 msgid "read"
 msgstr "已读"
-
 msgid "read today"
 msgstr "今日已读"
-
 msgid "read time"
 msgstr "阅读时长"
-
 msgid "per day"
 msgstr "每日"
 
 msgid "minute"
 msgstr "分钟"
-
 msgid "minutes"
 msgstr "分钟"
-
 msgid "hour"
 msgstr "小时"
-
 msgid "hours"
 msgstr "小时"
 
 msgid "week reading"
-msgstr "阅读1周"
-
+msgstr "阅读周数"
 msgid "weeks reading"
-msgstr "阅读%s周"
-
+msgstr "阅读周数"
 msgid "month reading"
-msgstr "阅读1个月"
-
+msgstr "阅读月数"
 msgid "months reading"
-msgstr "阅读%s个月"
-
+msgstr "阅读月数"
 msgid "day reading"
-msgstr "阅读1天"
-
+msgstr "阅读天数"
 msgid "days reading"
-msgstr "阅读%s天"
+msgstr "阅读天数"
 
 msgid "week to go"
-msgstr "还剩1周"
-
+msgstr "剩余周数"
 msgid "weeks to go"
-msgstr "还剩%s周"
-
+msgstr "剩余周数"
 msgid "month to go"
-msgstr "还剩1个月"
-
+msgstr "剩余月数"
 msgid "months to go"
-msgstr "还剩%s个月"
-
+msgstr "剩余月数"
 msgid "day to go"
-msgstr "还剩1天"
-
+msgstr "剩余天数"
 msgid "days to go"
-msgstr "还剩%s天"
+msgstr "剩余天数"
 
 msgid "page"
 msgstr "页"
-
 msgid "pages"
 msgstr "页"
-
 msgid "page left"
-msgstr "剩余1页"
-
+msgstr "剩余页数"
 msgid "pages left"
-msgstr "剩余%s页"
-
+msgstr "剩余页数"
 msgid "page per minute"
-msgstr "每分钟1页"
-
+msgstr "每分钟页数"
 msgid "pages per minute"
-msgstr "每分钟%s页"
+msgstr "每分钟页数"
 
 msgid "less than"
 msgstr "少于"
-
 msgid "read so far"
 msgstr "至今已读"
-
 msgid "reading time left"
-msgstr "预估剩余阅读时间"
+msgstr "预估剩余阅读时长"
 
 msgid "(%d day left)"
 msgstr "（剩余%d天）"
-
 msgid "(%d days left)"
 msgstr "（剩余%d天）"
-
 msgid "day of reading left"
-msgstr "预估还需阅读1天"
-
+msgstr "预估剩余阅读天数"
 msgid "days of reading left"
-msgstr "预估还需阅读%d天"
-
+msgstr "预估剩余阅读天数"
 msgid "day since started"
-msgstr "已阅读1天"
-
+msgstr "已阅读天数"
 msgid "days since started"
-msgstr "已阅读%d天"
+msgstr "已阅读天数"
 
 msgid "Colors"
 msgstr "颜色设置"
-
 msgid "Active column color"
 msgstr "激活柱状颜色"
-
 msgid "Inactive column color"
-msgstr "非激活柱状颜色"
-
+msgstr "未激活柱状颜色"
 msgid "Trend chart line color"
 msgstr "趋势图线条颜色"
-
 msgid "Separator line color"
 msgstr "分隔线颜色"
-
 msgid "Label color"
 msgstr "标签文字颜色"
-
 msgid "Value color"
 msgstr "数值文字颜色"
-
 msgid "Section color"
 msgstr "分区标题颜色"
-
 msgid "Chart label color"
 msgstr "图表标签颜色"
 
 msgid "Settings"
 msgstr "设置"
-
 msgid "Reset all colors to default"
-msgstr "恢复全部颜色默认值"
-
+msgstr "全部颜色恢复默认"
 msgid "Cancel"
 msgstr "取消"
-
 msgid "Default"
 msgstr "默认"
-
 msgid "Save"
 msgstr "保存"
-
 msgid "Pick with color wheel"
-msgstr "色盘选取颜色"
-
+msgstr "调色盘选取颜色"
 msgid "Apply"
 msgstr "应用"
-
 msgid "Brightness: %d%%"
 msgstr "亮度：%d%%"
 
 msgid "Enter a hex color code (e.g. #1E90FF), the way KOReader expects it."
-msgstr "输入十六进制颜色代码（例 #1E90FF），兼容KOReader格式。"
-
+msgstr "输入十六进制颜色代码（例如 #1E90FF），兼容KOReader格式。"
 msgid "Not a valid hex color code, e.g. #1E90FF."
 msgstr "无效颜色代码，请输入类似 #1E90FF 的格式。"
-
 msgid "Reset all colors to their default values?"
-msgstr "确定将所有颜色恢复默认吗？"
-
+msgstr "确定将所有颜色恢复默认值吗？"
 msgid "Reset"
 msgstr "重置"
 
 msgid "Font"
 msgstr "字体"
-
 msgid "Fonts"
 msgstr "字体设置"
-
 msgid "Choose a font"
 msgstr "选择字体"
-
 msgid "Section headers"
 msgstr "分区标题"
-
 msgid "Values (big numbers)"
 msgstr "数值（大号数字）"
-
 msgid "Labels"
 msgstr "标签文本"
-
 msgid "Chart/axis labels"
 msgstr "图表坐标轴标签"
-
 msgid "Chapter-bar arrows"
 msgstr "章节条箭头"
-
 msgid "Font name"
 msgstr "字体名称"
 
 msgid "Enter a bundled font file name (e.g. NotoSans-Bold.ttf) or a KOReader font alias (e.g. tfont, cfont). If it can't be found, this role falls back to its default font."
-msgstr "输入内置字体文件名（例 NotoSans-Bold.ttf）或KOReader字体别名（tfont/cfont），找不到时自动使用默认字体。"
-
+msgstr "输入内置字体文件名（如 NotoSans-Bold.ttf）或KOReader字体别名（tfont/cfont），找不到字体时自动使用默认字体。"
 msgid "Please enter a non-empty font name."
 msgstr "字体名称不能为空。"
-
 msgid "Font size"
 msgstr "字号"
-
 msgid "Custom font name (type manually)"
 msgstr "自定义字体名称（手动输入）"
-
 msgid "Reset to default"
 msgstr "恢复默认"
-
 msgid "Reset all fonts to default"
 msgstr "全部字体恢复默认"
-
 msgid "Reset all fonts to their default values?"
-msgstr "确定所有字体恢复默认设置吗？"
-
+msgstr "确定将所有字体恢复默认设置吗？"
 msgid "Set"
-msgstr "设定"
+msgstr "确定"
 
 msgid "Tomorrow"
 msgstr "明天"
-
 msgid "Monday"
 msgstr "星期一"
-
 msgid "Tuesday"
 msgstr "星期二"
-
 msgid "Wednesday"
 msgstr "星期三"
-
 msgid "Thursday"
 msgstr "星期四"
-
 msgid "Friday"
 msgstr "星期五"
-
 msgid "Saturday"
 msgstr "星期六"
-
 msgid "Sunday"
 msgstr "星期日"
 
 msgid "Started:"
 msgstr "开始阅读："
-
 msgid "Expected finish:"
 msgstr "预计读完："
-
 msgid "Use as sleep screen"
 msgstr "用作休眠屏保"
-
 msgid "Reading insights sleep screen"
 msgstr "阅读统计休眠屏保"
-
 msgid "Sleep-screen indicator"
-msgstr "休眠标识显示"
-
+msgstr "休眠标识"
 msgid "Off"
 msgstr "关闭"
-
 msgid "File manager only"
-msgstr "仅文件管理器"
-
+msgstr "仅文件管理器界面"
 msgid "File manager + book"
-msgstr "文件管理器 + 阅读页面"
-
+msgstr "文件管理器 + 阅读界面"
 msgid "Only when locking from the file manager"
-msgstr "仅在文件管理器锁屏时启用"
-
+msgstr "仅文件管理器锁屏时启用"
 msgid "File manager and book view"
-msgstr "文件管理器与阅读页面"
+msgstr "文件管理器与阅读界面"
 
 msgid "Transition"
 msgstr "过渡效果"
-
 msgid "Slight delay"
 msgstr "轻微延迟"
-
 msgid "Instant"
 msgstr "立即切换"
-
 msgid "Slight delay (0.1s)"
 msgstr "轻微延迟（0.1秒）"
-
 msgid "sleeping…"
 msgstr "休眠中……"
-
 msgid "Indicator"
 msgstr "标识样式"
-
 msgid "\"(sleeping…)\" after the title"
-msgstr "标题后方显示「(休眠中…)」"
-
+msgstr "标题末尾显示「(休眠中…)」"
 msgid "None"
 msgstr "无"
 
 msgid "%d p"
 msgstr "%d页"
-
 msgid "Updates"
 msgstr "更新"
-
 msgid "Notify on wake when update available"
-msgstr "唤醒时如有更新弹出提示"
-
+msgstr "唤醒时如有新版本弹出提示"
 msgid "Update available"
 msgstr "发现新版本"
-
 msgid "Installed version"
 msgstr "已安装版本"
-
 msgid "Developer updates"
 msgstr "开发版更新"
-
 msgid "Development branch"
 msgstr "开发分支"
-
 msgid "Branch name (leave empty for stable)"
 msgstr "分支名称（留空使用稳定版）"
-
 msgid "Check for updates"
 msgstr "检查更新"
-
 msgid "Install branch"
 msgstr "安装指定分支"
-
 msgid "Reset to latest stable release"
 msgstr "切换至最新稳定版"
-
 msgid "Installed: v"
 msgstr "已安装版本 v"
 
 msgid "This will clear the development branch setting and install the latest stable release of Reading insights, then restart KOReader. Continue?"
-msgstr "将会清除开发分支设置，安装阅读统计最新稳定版，随后重启KOReader，继续？"
-
+msgstr "操作会清除开发分支设置，安装阅读统计最新稳定版，随后重启KOReader，是否继续？"
 msgid "Reading insights update available: v"
 msgstr "阅读统计新版本可用：v"
-
 msgid "Open the releases page in a browser?"
 msgstr "浏览器打开发布页面？"
-
 msgid "Open"
 msgstr "打开"
-
 msgid "Checking for updates..."
 msgstr "正在检查更新……"
-
 msgid "Could not check for updates."
 msgstr "无法检查更新。"
-
 msgid "Reading insights is up to date."
 msgstr "阅读统计已是最新版本。"
-
 msgid "Version: "
 msgstr "版本："
-
 msgid "Update available!"
 msgstr "发现新版本！"
-
 msgid "Installed: "
 msgstr "已安装："
-
 msgid "Latest: "
 msgstr "最新版："
-
 msgid "Close"
 msgstr "关闭"
-
 msgid "Update and restart"
 msgstr "更新并重启"
-
 msgid "No download available for this release."
 msgstr "该版本无可用安装包。"
-
 msgid "Downloading update..."
 msgstr "正在下载更新……"
-
 msgid "Download failed."
 msgstr "下载失败。"
-
 msgid "Installation failed: "
 msgstr "安装失败："
-
 msgid "Reading insights updated to v"
 msgstr "阅读统计已升级至 v"
-
 msgid "Restart KOReader now?"
 msgstr "立即重启KOReader？"
-
 msgid "Restart"
 msgstr "重启"
-
 msgid "Could not install branch:"
 msgstr "分支安装失败："
-
 msgid "Downloading latest release..."
 msgstr "正在下载最新版本……"
-
 msgid "Could not fetch latest release."
 msgstr "无法获取最新版本信息。"
-
 msgid "Latest release has no downloadable zip."
 msgstr "最新版本没有可用压缩包。"
 
 msgid "Reading heatmap"
 msgstr "阅读热力图"
-
 msgid "Time of day heatmap"
 msgstr "时段热力图"
-
 msgid "Calendar heatmap"
 msgstr "日历热力图"
-
 msgid "Less"
 msgstr "较少"
-
 msgid "More"
 msgstr "较多"
-
 msgid "No reading (0%)"
 msgstr "无阅读（0%）"
-
 msgid "Low activity (25%)"
 msgstr "低活跃度（25%）"
-
 msgid "Medium activity (50%)"
 msgstr "中等活跃度（50%）"
-
 msgid "High activity (75%)"
 msgstr "高活跃度（75%）"
-
 msgid "Peak activity (100%)"
 msgstr "峰值活跃度（100%）"
 
 msgid "Show long durations (24h+) as days"
-msgstr "超过24小时时长以「天」显示"
-
+msgstr "时长超过24小时以「天」显示"
 msgid "Date format"
 msgstr "日期格式"
-
 msgid "Book progress calendar cell content"
-msgstr "进度日历单元格内容"
-
+msgstr "进度日历单元格显示内容"
 msgid "Percent"
 msgstr "百分比"
-
 msgid "Pages"
 msgstr "页数"
-
 msgid "Time"
 msgstr "时长"
-
 msgid "day"
 msgstr "天"
-
 msgid "days"
 msgstr "天"
-
 msgid "No reading on this day."
 msgstr "当日无阅读记录。"
 
 msgid "About"
 msgstr "关于"
-
 msgid "Reading insight"
 msgstr "阅读统计"
-
 msgid "A full-screen overlay with a comprehensive overview of your reading history, powered by KOReader's statistics database."
-msgstr "全屏工具，汇总展示你的全部阅读历史，基于KOReader统计数据库运行。"
+msgstr "全屏工具，汇总展示你的全部阅读历史，基于KOReader统计数据库驱动。"
 
 msgid "Most reading time in a day"
 msgstr "单日最长阅读时长"
-
 msgid "Most pages in a day"
 msgstr "单日最高阅读页数"
-
 msgid "Best daily streak"
 msgstr "最长连续阅读天数"
-
 msgid "Fastest book finished"
 msgstr "最快读完的书籍"
-
 msgid "Last milestone"
 msgstr "上一个里程碑"
-
 msgid "Next milestone"
 msgstr "下一个里程碑"
-
 msgid "Records"
 msgstr "阅读记录"
 
 msgid "%d hour left"
 msgstr "剩余%d小时"
-
 msgid "%d hours left"
 msgstr "剩余%d小时"
-
 msgid "Reading insights: records"
 msgstr "阅读统计：阅读记录"
-
 msgid "Show Records"
 msgstr "查看阅读记录"
-
 msgid "Sub-values (date / book title)"
 msgstr "附属信息（日期/书名）"
 
 msgid "Reading goal section"
 msgstr "阅读目标板块"
-
 msgid "Shows the number of books finished this year next to your yearly goal. Long press the goal value to change it."
 msgstr "展示本年度完成书籍数量与年度目标，长按目标数值进行修改。"
-
 msgid "book to read"
-msgstr "待读1本书"
-
+msgstr "待读书籍"
 msgid "books to read"
-msgstr "待读%s本书"
-
+msgstr "待读书籍"
 msgid "* = changed by you"
 msgstr "* = 已手动修改"
-
 msgid "You changed 1 book. Go back?"
 msgstr "你修改了1本书信息，确定返回？"
-
 msgid "You changed %d books. Go back?"
 msgstr "你修改了%d本书信息，确定返回？"
-
 msgid "Keep editing"
 msgstr "继续编辑"
 
 msgid "Automatic"
 msgstr "自动适配"
-
 msgid "Sizes the Reading insights bar charts so the page fits the screen without a scroll bar."
-msgstr "自动调整柱状图高度，适配屏幕避免滚动条。"
-
+msgstr "自动调整柱状图高度，适配屏幕，避免出现滚动条。"
 msgid "Bar chart height"
 msgstr "柱状图高度"
-
 msgid "Last week"
 msgstr "上周"
-
 msgid "Months"
 msgstr "月份"
-
 msgid "Total read"
 msgstr "累计阅读"
 
 msgid "Last read (newest first)"
 msgstr "最近阅读（新→旧）"
-
 msgid "Last read (oldest first)"
 msgstr "最近阅读（旧→新）"
-
 msgid "Title (A to Z)"
 msgstr "书名（A→Z升序）"
-
 msgid "Title (Z to A)"
 msgstr "书名（Z→A降序）"
-
 msgid "Books finished in %1"
 msgstr "%1完成书籍"
-
 msgid "Mark books finished"
 msgstr "标记已读完书籍"
 
 msgid "Add book"
 msgstr "添加书籍"
-
 msgid "Edit book"
 msgstr "编辑书籍"
-
 msgid "Edit"
 msgstr "编辑"
-
 msgid "Delete"
 msgstr "删除"
-
 msgid "Delete \"%1\"?"
 msgstr "确定删除「%1」？"
-
 msgid "Title"
 msgstr "书名"
-
 msgid "Author"
 msgstr "作者"
-
 msgid "Please enter a title"
 msgstr "请输入书名"
 
 msgid "Date read (%1)"
 msgstr "阅读日期（%1）"
-
 msgid "Please enter the date as %1"
-msgstr "请按 %1 格式输入日期"
-
+msgstr "请按照 %1 格式填写日期"
 msgid "Reload data"
 msgstr "重新加载数据"
-
 msgid "Add books manually"
 msgstr "手动添加书籍"
-
 msgid "Add books manually - %1"
 msgstr "手动添加书籍 — %1"
-
 msgid "Date & time"
 msgstr "日期与时间"
-
 msgid "Reading insight popup"
 msgstr "阅读统计弹窗"
 
 msgid "Last week chapter bar order"
-msgstr "上周章节条顺序"
-
+msgstr "上周章节条排列顺序"
 msgid "Today on the left"
 msgstr "今日在左侧"
-
 msgid "Today on the right"
 msgstr "今日在右侧"
-
 msgid "Reading goal display"
-msgstr "阅读目标显示方式"
-
+msgstr "阅读目标展示方式"
 msgid "Goal total"
 msgstr "目标总数"
-
 msgid "Remaining"
 msgstr "剩余数量"
-
 msgid "book left"
-msgstr "剩余1本"
-
+msgstr "剩余书籍"
 msgid "books left"
-msgstr "剩余%s本"
+msgstr "剩余书籍"
