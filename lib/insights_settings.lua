@@ -162,6 +162,16 @@ M.Opt = {
     GOAL_DISPLAY_KEY       = "reading_insights_goal_display",
     GOAL_DISPLAY_TOTAL     = "total",
     GOAL_DISPLAY_REMAINING = "remaining",
+
+    -- How often the achievements re-evaluate in the background (Settings >
+    -- Advanced settings > Reading insight popup > "Achievement refresh").
+    -- "daily" (default): at most once per calendar day; "every_open": on
+    -- every insights popup open. Either way the heavy re-scan only actually
+    -- runs when the reading data changed since the last evaluation; a
+    -- title-bar force-reload (popup or achievements list) always re-scans now.
+    ACH_REFRESH_KEY   = "reading_insights_ach_refresh",
+    ACH_REFRESH_DAILY = "daily",
+    ACH_REFRESH_EVERY = "every_open",
 }
 
 -- Reading heatmap period length (Prefs ▸ Advanced settings ▸ how many
@@ -379,7 +389,12 @@ function M.Opt.monthlyBarHeight()
 end
 
 function M.Opt.readShowReadingGoal()
-    return M.readBoolSetting(M.Opt.SHOW_GOAL_KEY, M.Opt.SHOW_GOAL_DEFAULT)
+    -- The reading-goal section is always shown now: the old show/hide toggle
+    -- (and its Settings entry) were removed when the goal + achievements
+    -- became a core part of the popup. Returning true unconditionally means a
+    -- previously-saved "false" can't leave it hidden with no way to bring it
+    -- back.
+    return true
 end
 
 function M.Opt.saveShowReadingGoal(value)
@@ -394,6 +409,16 @@ end
 
 function M.Opt.saveGoalDisplay(value)
     Prefs.save(M.Opt.GOAL_DISPLAY_KEY, value)
+end
+
+function M.Opt.readAchievementRefresh()
+    local v = Prefs.read(M.Opt.ACH_REFRESH_KEY, nil)
+    if v == M.Opt.ACH_REFRESH_EVERY then return M.Opt.ACH_REFRESH_EVERY end
+    return M.Opt.ACH_REFRESH_DAILY
+end
+
+function M.Opt.saveAchievementRefresh(value)
+    Prefs.save(M.Opt.ACH_REFRESH_KEY, value)
 end
 
 return M

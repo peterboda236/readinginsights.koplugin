@@ -233,11 +233,26 @@ local BookList = loadModule("views/booklist_view.lua", {
     ListWidget = ListWidget, Manual = ManualBooks,
 })
 
+-- Records data (the queries + their cache) is loaded before the insights
+-- view now, because the achievements module reads from it. The Records
+-- popup that draws it is still wired up further below.
+local RecordsData = loadModule("lib/records_data.lua", { StatsDb = StatsDb })
+
+-- Global, all-time reading achievements: the data/persistence (lib) and the
+-- list popup (view). Achievements evaluates from RecordsData + InsightsData;
+-- the view only needs the data module and Locale. Both are handed to the
+-- insights view so its reading-goal section can show the earned count and
+-- open the list.
+local Achievements = loadModule("lib/achievements.lua",
+    { StatsDb = StatsDb, RecordsData = RecordsData, Data = InsightsData, Locale = Locale })
+local AchievementsView = loadModule("views/achievements_view.lua",
+    { Achievements = Achievements, Locale = Locale, ListWidget = ListWidget })
+
 local Insights = loadModule("views/insights_view.lua", {
     Locale = Locale, Colors = Colors, Fonts = Fonts,
     PopupUtil = PopupUtil, VS = ViewSettings, Cache = InsightsCache, UI = UI,
     Trend = Trend, Heatmap = Heatmap, BookList = BookList, Data = InsightsData,
-    Manual = ManualBooks,
+    Manual = ManualBooks, Achievements = Achievements, AchievementsView = AchievementsView,
 })
 local BookCalendar = loadModule("views/book_calendar_view.lua", {
     Locale = Locale, Colors = Colors, Fonts = Fonts, Prefs = Prefs,
@@ -249,9 +264,8 @@ local StatsPopup = loadModule("views/book_stats_view.lua", {
     ChapterInfo = ChapterInfo, ChapterBar = ChapterBar, UI = UI,
     BookStatsData = BookStatsData,
 })
--- Records: the queries and their cache (lib/records_data.lua) are separate
--- from the popup that draws them.
-local RecordsData = loadModule("lib/records_data.lua", { StatsDb = StatsDb })
+-- Records: the queries and their cache (lib/records_data.lua, loaded above
+-- with the achievements wiring) are separate from the popup that draws them.
 local Records = loadModule("views/records_view.lua", {
     Locale = Locale, Colors = Colors, Fonts = Fonts, PopupUtil = PopupUtil,
     RecordsData = RecordsData,
@@ -308,6 +322,14 @@ function ReadingInsights:onDispatcherRegisterActions()
         category = "none",
         event    = "ShowReadingRecordsPopup",
         title    = _("Reading insights: records"),
+        general  = true,
+    })
+    -- general = true: achievements are global, all-time data, so this is
+    -- assignable everywhere, same as the records action above.
+    Dispatcher:registerAction("reading_achievements_popup", {
+        category = "none",
+        event    = "ShowReadingAchievements",
+        title    = _("Reading insights: achievements"),
         general  = true,
     })
 end
@@ -739,6 +761,15 @@ end
 function ReadingInsights:onShowReadingRecordsPopup()
     local popup = Records.Popup:new{ ui = self.ui }
     UIManager:show(popup)
+    return true
+end
+
+-- General, like the Records popup above: achievements are global, all-time
+-- data not tied to any open book, so this opens in both Reader view and the
+-- File manager. Opens the same list the reading-goal section's "N earned"
+-- cell does (views/achievements_view.lua).
+function ReadingInsights:onShowReadingAchievements()
+    AchievementsView.show()
     return true
 end
 
