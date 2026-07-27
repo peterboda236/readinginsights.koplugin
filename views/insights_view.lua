@@ -2331,35 +2331,51 @@ end
 -- the popup is rebuilt in place so the new value shows without a full
 -- close/reopen.
 function ReadingInsightsPopup:editReadingGoal(year)
-    local SpinWidget = require("ui/widget/spinwidget")
+    local InputDialog = require("ui/widget/inputdialog")
     local popup_self = self
-    local widget
-    widget = SpinWidget:new{
-        -- ReadingInsightsPopup itself is modal = true (see its class
-        -- definition above). UIManager stacks a *non*-modal widget shown
-        -- while a modal one is already on top *underneath* that modal
-        -- widget, not above it (see UIManager:show()'s window-stack
-        -- ordering) - so without this, the goal-edit dialog would be
-        -- pushed behind the popup and effectively invisible/untappable,
-        -- rather than appearing on top of it as intended.
-        modal           = true,
-        title_text      = buildGoalEditTitle(year),
-        value           = VS.readReadingGoal(year),
-        value_min       = 1,
-        value_max       = 999,
-        value_step      = 1,
-        value_hold_step = 5,
-        default_value   = VS.DEFAULT_READING_GOAL,
-        ok_text         = _("Save"),
-        callback        = function(spin)
-            VS.saveReadingGoal(year, spin.value)
-            popup_self:_buildUI()
-            UIManager:setDirty(popup_self, function()
-                return "ui", popup_self.popup_frame.dimen
-            end)
-        end,
+    local dialog
+    dialog = InputDialog:new{
+        -- ReadingInsightsPopup is modal, and UIManager stacks a *non*-modal
+        -- window shown over it *underneath* it. A SpinWidget's own inline
+        -- number entry is non-modal, so it landed behind this popup - you
+        -- couldn't see what you typed (only the committed value on Enter),
+        -- and the keyboard covered it. A modal InputDialog instead sits on
+        -- top of the popup and lifts itself above the keyboard like every
+        -- other text field (same pattern as the manual-books add dialog).
+        modal      = true,
+        title      = buildGoalEditTitle(year),
+        input      = tostring(VS.readReadingGoal(year)),
+        input_type = "number",
+        input_hint = "1 - 999",
+        buttons = {
+            {
+                {
+                    text = _("Cancel"),
+                    id   = "close",
+                    callback = function() UIManager:close(dialog) end,
+                },
+                {
+                    text = _("Save"),
+                    is_enter_default = true,
+                    callback = function()
+                        local n = tonumber(dialog:getInputText())
+                        if n then
+                            n = math.floor(n)
+                            if n < 1 then n = 1 elseif n > 999 then n = 999 end
+                            VS.saveReadingGoal(year, n)
+                        end
+                        UIManager:close(dialog)
+                        popup_self:_buildUI()
+                        UIManager:setDirty(popup_self, function()
+                            return "ui", popup_self.popup_frame.dimen
+                        end)
+                    end,
+                },
+            },
+        },
     }
-    UIManager:show(widget)
+    UIManager:show(dialog)
+    dialog:onShowKeyboard()
 end
 
 -- Cycles the insights mode (hours -> days -> books -> hours) and reloads
