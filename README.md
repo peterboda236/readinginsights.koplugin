@@ -160,11 +160,10 @@ is tied to a specific open book.
 
 ### 🏅 Achievements
 
-Global, all-time reading achievements — milestones you unlock as you read,
-each with its own icon. There are dozens of them across several themes
-(books finished, total reading time, pages, daily/weekly streaks, single-day
-and single-session feats, time of day, reading pace and variety). A few
-examples:
+Global, all-time reading achievements — over 80 milestones you unlock as you
+read, each with its own icon, across several themes (books finished, total
+reading time, pages, daily/weekly streaks, single-day and single-session
+feats, time of day, reading pace and variety). A few examples:
 
 - **First book** — finish your first book
 - **100 hours** — read for 100 hours in total
@@ -173,23 +172,31 @@ examples:
 - **Well-read** — finish books by 5 different authors
 
 **Where:** the Reading goal section of the Reading insights popup shows an
-**"N earned"** cell next to the finished/goal figure — tap it to open the
-full list, or use *Tools → Reading insights → Show achievements*. The list
-header shows your progress (e.g. **"37/63 (53%)"**); earned achievements sit
-at the top with their unlock date, still-locked ones below, greyed out. Tap
-any row for its one-line description.
+**"earned / total"** cell next to the finished/goal figure (e.g. **"42/82"**
+over "earned") — tap it to open the full list, or use *Tools → Reading
+insights → Show achievements*.
+
+**The list:** its header shows your progress, e.g. **"Achievements 42/82
+(51%)"**. Earned achievements sit at the top with their unlock date on the
+right; still-locked ones follow, greyed out and in normal weight. Tap any row
+for its one-line description. The title-bar's left (☰) menu holds the sort
+orders — by unlock time (newest/oldest first) or by name — plus a filter to
+**show all**, **only earned**, or **only locked** (still-to-do) achievements.
 
 **"New" badge:** achievements earned since you last opened the list are
-marked with a **★** — both next to the "N earned" count in the popup and on
-the new rows in the list. Opening the list clears the mark.
+marked with a **★** — both next to the count in the popup and on the new rows
+in the list. Opening the list clears the mark.
 
 **Persistence & updating:** unlocked achievements are stored in their own
 file next to KOReader's settings, so the count opens instantly without
 re-querying. They re-evaluate automatically in the background, but only when
 your reading data has actually changed since the last check (a tiny
-fingerprint query decides), and immediately on a title-bar force-reload — so
-they stay current without slowing the popup down. Once unlocked, an
-achievement is never lost, even if the underlying number later drops.
+fingerprint query decides). How often that background check runs is set by
+*Settings → Advanced settings → Reading insight popup → Achievement refresh*
+(**Once a day** by default, or **Every open**); **long-pressing the
+achievements list's title bar** — or a title-bar force-reload of the insights
+popup — re-scans everything immediately. Once unlocked, an achievement is
+never lost, even if the underlying number later drops.
 
 Available everywhere (book view and file manager).
 
@@ -306,6 +313,18 @@ Anything not on that list is left alone.
 
 Once installed, future updates can be installed in-app — see
 [Updates](#updates) above.
+
+## Uninstalling
+
+Delete the plugin from KOReader's *Plugin management*. If you tick **"Also
+delete plugin settings"**, the plugin cleans up after itself: it removes its
+own store/cache files next to KOReader's settings (the finished-books list,
+the insights and Records caches, and the achievements file) and every
+`G_reader_settings` key it ever wrote (fonts, colors, per-year reading goals
+and overrides, and the rest), and — if the sleep screen was set to Reading
+insights — resets that back so it doesn't point at a plugin that's gone.
+Leaving the box unticked keeps all of it, so a later reinstall picks up right
+where you left off.
 
 ## Where it shows up
 

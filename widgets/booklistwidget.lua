@@ -260,7 +260,10 @@ function BookListItem:init()
         -- (and whether they have a checkbox at all).
         check_w = CheckMark:new{ checked = true }:getSize().w
     else
-        check_w = Size.padding.large
+        -- No checkbox column: a left margin matching the KeyValuePage book
+        -- lists (the read-only lists), so the icon/text starts at the same
+        -- inset as e.g. the "books read" list.
+        check_w = Size.padding.default
     end
 
     local value_widget, value_w
@@ -271,29 +274,53 @@ function BookListItem:init()
         value_w = 0
     end
 
-    local text_w = self.width - check_w - value_w - 2 * Size.padding.default
+    -- Optional fixed-width icon column (the achievements list). Different
+    -- glyphs have different widths, so putting "<icon>  <text>" in one string
+    -- makes the text start at a different x on every row (a ragged left
+    -- edge). Instead the glyph goes in its own fixed-width column - the
+    -- font's line height, identical for every row - with the text starting
+    -- right after it, so every row lines up.
+    local icon_container, icon_col_w
+    if self.item.icon and self.item.icon ~= "" then
+        local iw = TextWidget:new{ text = self.item.icon, face = face, fgcolor = fgcolor, bold = self.item.bold }
+        local col_w = iw:getSize().h
+        icon_col_w = col_w + Size.padding.small
+        -- Left-aligned inside the fixed column (not centered), so the glyph
+        -- hugs the left edge and there's no extra centering gap before it;
+        -- the text after the column still starts at the same x on every row.
+        icon_container = HorizontalGroup:new{
+            LeftContainer:new{ dimen = Geom:new{ w = col_w, h = self.height }, iw },
+            HorizontalSpan:new{ width = Size.padding.small },
+        }
+    end
 
-    local row = HorizontalGroup:new{
-        align = "center",
-        show_check
-            and CenterContainer:new{
-                dimen = Geom:new{ w = check_w, h = self.height },
-                checkmark,
-            }
-            or HorizontalSpan:new{ width = check_w },
-        LeftContainer:new{
-            dimen = Geom:new{ w = text_w, h = self.height },
-            TextWidget:new{
-                text      = self.item.text,
-                max_width = text_w,
-                face      = face,
-                fgcolor   = fgcolor,
-                -- Per-row bold (earned achievements); nil/false = normal
-                -- weight, exactly as the book lists render.
-                bold      = self.item.bold,
-            },
+    -- Matching right inset (padding.default), so the value column (e.g. the
+    -- achievement dates) sits the same distance from the right edge as the
+    -- KeyValuePage book lists' values do - symmetric with the left inset.
+    local text_w = self.width - check_w - (icon_col_w or 0) - value_w - Size.padding.default
+
+    local row = HorizontalGroup:new{ align = "center" }
+    table.insert(row, show_check
+        and CenterContainer:new{
+            dimen = Geom:new{ w = check_w, h = self.height },
+            checkmark,
+        }
+        or HorizontalSpan:new{ width = check_w })
+    if icon_container then
+        table.insert(row, icon_container)
+    end
+    table.insert(row, LeftContainer:new{
+        dimen = Geom:new{ w = text_w, h = self.height },
+        TextWidget:new{
+            text      = self.item.text,
+            max_width = text_w,
+            face      = face,
+            fgcolor   = fgcolor,
+            -- Per-row bold (earned achievements); nil/false = normal
+            -- weight, exactly as the book lists render.
+            bold      = self.item.bold,
         },
-    }
+    })
     if value_widget then
         table.insert(row, RightContainer:new{
             dimen = Geom:new{ w = value_w, h = self.height },

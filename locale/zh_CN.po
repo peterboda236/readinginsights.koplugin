@@ -1202,9 +1202,6 @@ msgstr "铁般专注"
 msgid "Sprint"
 msgstr "冲刺"
 
-msgid "Double feature"
-msgstr "一日双书"
-
 msgid "Big month"
 msgstr "丰收月"
 
@@ -1258,9 +1255,6 @@ msgstr "不间断阅读 3 小时"
 
 msgid "Read 100 pages in one session"
 msgstr "一次阅读 100 页"
-
-msgid "Finish 2 books in one day"
-msgstr "一天读完 2 本书"
 
 msgid "Read 5000 pages in one calendar month"
 msgstr "一个日历月内阅读 5000 页"

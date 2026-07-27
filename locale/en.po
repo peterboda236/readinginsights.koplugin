@@ -1496,9 +1496,6 @@ msgstr "Iron focus"
 msgid "Sprint"
 msgstr "Sprint"
 
-msgid "Double feature"
-msgstr "Double feature"
-
 msgid "Big month"
 msgstr "Big month"
 
@@ -1552,9 +1549,6 @@ msgstr "Read for 3 hours without a break"
 
 msgid "Read 100 pages in one session"
 msgstr "Read 100 pages in one session"
-
-msgid "Finish 2 books in one day"
-msgstr "Finish 2 books in one day"
 
 msgid "Read 5000 pages in one calendar month"
 msgstr "Read 5000 pages in one calendar month"

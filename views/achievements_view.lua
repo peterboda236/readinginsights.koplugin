@@ -66,7 +66,10 @@ function M.show(on_close)
                 local value = earned and Locale.formatDateFromTS(it.earned_ts) or ""
                 if it.is_new then value = "★ " .. value end
                 item_table[#item_table + 1] = {
-                    text = def.icon .. "  " .. title,
+                    -- Icon in its own fixed-width column (see BookListItem),
+                    -- so the title starts at the same x on every row.
+                    icon = def.icon,
+                    text = title,
                     -- Earned in bold, locked greyed and normal weight.
                     bold = earned,
                     dim  = not earned,

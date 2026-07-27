@@ -311,9 +311,6 @@ M.CATALOGUE = {
     { id = "session_pages_100", icon = "◅", title = _("Sprint"),
       desc = _("Read 100 pages in one session"),
       check = function(m) return m.max_session_pages >= 100 end },
-    { id = "double_feature", icon = "⊛", title = _("Double feature"),
-      desc = _("Finish 2 books in one day"),
-      check = function(m) return m.finished_max_day >= 2 end },
     { id = "pages_month_5000", icon = "◧", title = _("Big month"),
       desc = _("Read 5000 pages in one calendar month"),
       check = function(m) return m.pages_max_month >= 5000 end },
@@ -575,7 +572,6 @@ function M.computeMetrics()
         span_years           = 0,
         history_span_days    = 0,
         max_session_pages    = 0,
-        finished_max_day     = 0,
         pages_max_month      = 0,
         max_week_hours       = 0,
         had_comeback         = false,
@@ -587,7 +583,6 @@ function M.computeMetrics()
     -- évenkénti/havi maximumhoz és a könyv-ID-khez.
     local finished_ids = {}          -- id_book -> befejezés_ts
     local finished_by_month = {}     -- "YYYY-MM" -> darab
-    local finished_by_day = {}       -- "YYYY-MM-DD" -> darab
     local range = Data.getYearRange()
     if range and range.min_year and range.max_year then
         m.span_years = range.max_year - range.min_year + 1
@@ -600,17 +595,12 @@ function M.computeMetrics()
                 if b.last_read and b.last_read > 0 then
                     local mk = os.date("%Y-%m", b.last_read)
                     finished_by_month[mk] = (finished_by_month[mk] or 0) + 1
-                    local dk = os.date("%Y-%m-%d", b.last_read)
-                    finished_by_day[dk] = (finished_by_day[dk] or 0) + 1
                 end
             end
         end
     end
     for _k, c in pairs(finished_by_month) do
         if c > m.finished_max_month then m.finished_max_month = c end
-    end
-    for _k, c in pairs(finished_by_day) do
-        if c > m.finished_max_day then m.finished_max_day = c end
     end
 
     StatsDb.withDb(nil, function(conn)
