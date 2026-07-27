@@ -575,6 +575,10 @@ function M.showManualBooks(insights_popup, year)
         item_table       = buildItems(),
         sort_setting_key = SORT_KEY_MANUAL,
         show_ok_cancel   = false,
+        -- No per-row checkboxes here, so drop the blank checkbox column that
+        -- otherwise leaves an empty gap on the left (same as the achievements
+        -- list).
+        no_checkbox      = true,
         close_callback   = function()
             refreshGoalSection(insights_popup, year)
         end,

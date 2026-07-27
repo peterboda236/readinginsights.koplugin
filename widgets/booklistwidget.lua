@@ -45,6 +45,8 @@ plus three fields this widget reads:
   widget:updateItems(item_table)   re-sort, re-page and redraw in place
 ]]--
 
+local Blitbuffer     = require("ffi/blitbuffer")
+local Screen          = require("device").screen
 local ButtonDialog    = require("ui/widget/buttondialog")
 local CenterContainer = require("ui/widget/container/centercontainer")
 local CheckMark       = require("ui/widget/checkmark")
@@ -79,7 +81,11 @@ M.DEFAULT_SORT = "recent_desc"
 -- The four orders offered by the title bar's sort menu, in menu order.
 M.SORT_MODES = { "recent_desc", "recent_asc", "title_asc", "title_desc" }
 
-local function sortLabel(mode)
+-- `labels` (optional) overrides the wording per mode, so a list that sorts
+-- something other than books (the achievements list, by unlock time / name)
+-- can relabel the same four orders without a second menu.
+local function sortLabel(mode, labels)
+    if labels and labels[mode] then return labels[mode] end
     if mode == "recent_desc" then return _("Last read (newest first)") end
     if mode == "recent_asc"  then return _("Last read (oldest first)") end
     if mode == "title_asc"   then return _("Title (A to Z)") end
@@ -165,7 +171,7 @@ function M.showSortMenu(opts)
         table.insert(buttons, {{
             -- U+2713 CHECK MARK in front of the order currently in use.
             text  = (opts.current == this_mode and "\xe2\x9c\x93 " or "    ")
-                .. sortLabel(this_mode),
+                .. sortLabel(this_mode, opts.labels),
             align = "left",
             callback = function()
                 UIManager:close(dialog)
@@ -218,6 +224,7 @@ local BookListItem = InputContainer:extend{
     height      = nil,
     face        = nil,
     show_parent = nil,
+    no_checkbox = nil,
 }
 
 function BookListItem:init()
@@ -230,41 +237,90 @@ function BookListItem:init()
     }
 
     local face = self.face or Font:getFace("smallinfofont")
+    -- Greyed rows (e.g. a not-yet-earned achievement in the achievements
+    -- list). nil fgcolor renders as the default black, so a row without
+    -- item.dim looks exactly as before.
+    local fgcolor = self.item.dim
+        and (Blitbuffer.COLOR_DARK_GRAY or Blitbuffer.COLOR_GRAY)
+        or nil
 
-    local checkable = self.item.checked_func ~= nil
-    local checkmark = CheckMark:new{
-        checkable = checkable,
-        checked   = checkable and self.item.checked_func() or self.item.checked,
-    }
-    -- Sized against a ticked box, so rows line up whether ticked or not
-    -- (and whether they have a checkbox at all).
-    local check_w = CheckMark:new{ checked = true }:getSize().w
+    -- Lists that never tick anything (the achievements list) pass
+    -- no_checkbox so their rows aren't indented by a whole (blank) checkbox
+    -- column - they sit close to the left edge like the KeyValuePage book
+    -- lists, with just a small margin instead.
+    local show_check = not self.no_checkbox
+    local checkmark, check_w
+    if show_check then
+        local checkable = self.item.checked_func ~= nil
+        checkmark = CheckMark:new{
+            checkable = checkable,
+            checked   = checkable and self.item.checked_func() or self.item.checked,
+        }
+        -- Sized against a ticked box, so rows line up whether ticked or not
+        -- (and whether they have a checkbox at all).
+        check_w = CheckMark:new{ checked = true }:getSize().w
+    else
+        -- No checkbox column: a left margin matching the KeyValuePage book
+        -- lists (the read-only lists), so the icon/text starts at the same
+        -- inset as e.g. the "books read" list.
+        check_w = Size.padding.default
+    end
 
     local value_widget, value_w
     if self.item.mandatory and self.item.mandatory ~= "" then
-        value_widget = TextWidget:new{ text = self.item.mandatory, face = face }
+        value_widget = TextWidget:new{ text = self.item.mandatory, face = face, fgcolor = fgcolor }
         value_w = value_widget:getSize().w + Size.padding.large
     else
         value_w = 0
     end
 
-    local text_w = self.width - check_w - value_w - 2 * Size.padding.default
+    -- Optional fixed-width icon column (the achievements list). Different
+    -- glyphs have different widths, so putting "<icon>  <text>" in one string
+    -- makes the text start at a different x on every row (a ragged left
+    -- edge). Instead the glyph goes in its own fixed-width column - the
+    -- font's line height, identical for every row - with the text starting
+    -- right after it, so every row lines up.
+    local icon_container, icon_col_w
+    if self.item.icon and self.item.icon ~= "" then
+        local iw = TextWidget:new{ text = self.item.icon, face = face, fgcolor = fgcolor, bold = self.item.bold }
+        local col_w = iw:getSize().h
+        icon_col_w = col_w + Size.padding.small
+        -- Left-aligned inside the fixed column (not centered), so the glyph
+        -- hugs the left edge and there's no extra centering gap before it;
+        -- the text after the column still starts at the same x on every row.
+        icon_container = HorizontalGroup:new{
+            LeftContainer:new{ dimen = Geom:new{ w = col_w, h = self.height }, iw },
+            HorizontalSpan:new{ width = Size.padding.small },
+        }
+    end
 
-    local row = HorizontalGroup:new{
-        align = "center",
-        CenterContainer:new{
+    -- Matching right inset (padding.default), so the value column (e.g. the
+    -- achievement dates) sits the same distance from the right edge as the
+    -- KeyValuePage book lists' values do - symmetric with the left inset.
+    local text_w = self.width - check_w - (icon_col_w or 0) - value_w - Size.padding.default
+
+    local row = HorizontalGroup:new{ align = "center" }
+    table.insert(row, show_check
+        and CenterContainer:new{
             dimen = Geom:new{ w = check_w, h = self.height },
             checkmark,
+        }
+        or HorizontalSpan:new{ width = check_w })
+    if icon_container then
+        table.insert(row, icon_container)
+    end
+    table.insert(row, LeftContainer:new{
+        dimen = Geom:new{ w = text_w, h = self.height },
+        TextWidget:new{
+            text      = self.item.text,
+            max_width = text_w,
+            face      = face,
+            fgcolor   = fgcolor,
+            -- Per-row bold (earned achievements); nil/false = normal
+            -- weight, exactly as the book lists render.
+            bold      = self.item.bold,
         },
-        LeftContainer:new{
-            dimen = Geom:new{ w = text_w, h = self.height },
-            TextWidget:new{
-                text      = self.item.text,
-                max_width = text_w,
-                face      = face,
-            },
-        },
-    }
+    })
     if value_widget then
         table.insert(row, RightContainer:new{
             dimen = Geom:new{ w = value_w, h = self.height },
@@ -314,6 +370,16 @@ local BookListWidget = SortWidget:extend{
     -- Settings key the chosen order is remembered under; nil = don't
     -- remember (the list opens in DEFAULT_SORT every time).
     sort_setting_key  = nil,
+    -- Optional per-mode label override for the sort menu (see sortLabel),
+    -- so a list sorting something other than books can relabel the four
+    -- orders. nil = the default "Last read / Title" wording.
+    sort_labels       = nil,
+    -- Drop the (blank) checkbox column so rows sit close to the left edge,
+    -- for read-only lists that never tick anything (the achievements list).
+    no_checkbox       = nil,
+    -- Optional: called when the title bar is long-pressed (the achievements
+    -- list uses it to force a full re-scan). nil = no title-bar hold.
+    title_hold_callback = nil,
     -- Called after the widget is closed, whichever way it was closed. The
     -- two edit buttons get their own callback first (see onClose/onReturn).
     close_callback    = nil,
@@ -350,6 +416,27 @@ function BookListWidget:init()
             table.remove(footer_row)
         end
     end
+
+    -- Long-press on the title bar -> title_hold_callback (the achievements
+    -- list's "re-scan everything"). Scoped to just the title-bar band at the
+    -- top, so it doesn't steal holds meant for the rows below it.
+    if self.title_hold_callback and self.title_bar then
+        local th = self.title_bar:getSize().h or 0
+        if th > 0 then
+            self.ges_events = self.ges_events or {}
+            self.ges_events.TitleHold = {
+                GestureRange:new{
+                    ges   = "hold",
+                    range = Geom:new{ x = 0, y = 0, w = Screen:getWidth(), h = th },
+                },
+            }
+        end
+    end
+end
+
+function BookListWidget:onTitleHold()
+    if self.title_hold_callback then self.title_hold_callback() end
+    return true
 end
 
 -- Sorts item_table in place, keeping pinned items (the "add a book" row) at
@@ -392,6 +479,7 @@ end
 function BookListWidget:onShowWidgetMenu()
     M.showSortMenu{
         current       = self.sort_mode,
+        labels        = self.sort_labels,
         anchor_widget = self.title_bar and self.title_bar.left_button,
         extra_buttons = self.extra_menu_buttons,
         callback      = function(mode) self:setSortMode(mode) end,
@@ -445,6 +533,7 @@ function BookListWidget:_populateItems()
             item        = self.item_table[idx],
             index       = idx,
             show_parent = self,
+            no_checkbox = self.no_checkbox,
         }
         table.insert(self.layout, #self.layout, { row })
         table.insert(self.main_content, row)

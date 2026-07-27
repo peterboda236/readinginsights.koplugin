@@ -1027,3 +1027,558 @@ msgstr "book left"
 
 msgid "books left"
 msgstr "books left"
+
+msgid "night"
+msgstr "night"
+
+msgid "morning"
+msgstr "morning"
+
+msgid "late morning"
+msgstr "late morning"
+
+msgid "afternoon"
+msgstr "afternoon"
+
+msgid "evening"
+msgstr "evening"
+
+msgid "You read most in the %1, around %2"
+msgstr "You read most in the %1, around %2"
+
+msgid "Achievements"
+msgstr "Achievements"
+
+msgid "Show achievements"
+msgstr "Show achievements"
+
+msgid "Reading insights: achievements"
+msgstr "Reading insights: achievements"
+
+msgid "earned"
+msgstr "earned"
+
+msgid "Locked"
+msgstr "Locked"
+
+msgid "Set reading goal"
+msgstr "Set reading goal"
+
+msgid "First book"
+msgstr "First book"
+
+msgid "Finish your first book"
+msgstr "Finish your first book"
+
+msgid "Bookworm"
+msgstr "Bookworm"
+
+msgid "Finish 10 books"
+msgstr "Finish 10 books"
+
+msgid "Bibliophile"
+msgstr "Bibliophile"
+
+msgid "Finish 50 books"
+msgstr "Finish 50 books"
+
+msgid "100 hours"
+msgstr "100 hours"
+
+msgid "Read for 100 hours in total"
+msgstr "Read for 100 hours in total"
+
+msgid "1000 hours"
+msgstr "1000 hours"
+
+msgid "Read for 1000 hours in total"
+msgstr "Read for 1000 hours in total"
+
+msgid "Weekly streak"
+msgstr "Weekly streak"
+
+msgid "Read on 7 days in a row"
+msgstr "Read on 7 days in a row"
+
+msgid "Monthly streak"
+msgstr "Monthly streak"
+
+msgid "Read on 30 days in a row"
+msgstr "Read on 30 days in a row"
+
+msgid "Marathon"
+msgstr "Marathon"
+
+msgid "Read for 3 hours in a single day"
+msgstr "Read for 3 hours in a single day"
+
+msgid "Page turner"
+msgstr "Page turner"
+
+msgid "Read 300 pages in a single day"
+msgstr "Read 300 pages in a single day"
+
+msgid "Night owl"
+msgstr "Night owl"
+
+msgid "Read between midnight and 4 a.m."
+msgstr "Read between midnight and 4 a.m."
+
+msgid "Earned (newest first)"
+msgstr "Earned (newest first)"
+
+msgid "Earned (oldest first)"
+msgstr "Earned (oldest first)"
+
+msgid "Name (A to Z)"
+msgstr "Name (A to Z)"
+
+msgid "Name (Z to A)"
+msgstr "Name (Z to A)"
+
+msgid "Five books"
+msgstr "Five books"
+
+msgid "Collector"
+msgstr "Collector"
+
+msgid "Century of books"
+msgstr "Century of books"
+
+msgid "Library"
+msgstr "Library"
+
+msgid "Prolific month"
+msgstr "Prolific month"
+
+msgid "Ten a year"
+msgstr "Ten a year"
+
+msgid "Fifty a year"
+msgstr "Fifty a year"
+
+msgid "In one sitting"
+msgstr "In one sitting"
+
+msgid "Brick"
+msgstr "Brick"
+
+msgid "Tome"
+msgstr "Tome"
+
+msgid "First hour"
+msgstr "First hour"
+
+msgid "Five hours"
+msgstr "Five hours"
+
+msgid "Ten hours"
+msgstr "Ten hours"
+
+msgid "Twenty-five hours"
+msgstr "Twenty-five hours"
+
+msgid "Fifty hours"
+msgstr "Fifty hours"
+
+msgid "250 hours"
+msgstr "250 hours"
+
+msgid "500 hours"
+msgstr "500 hours"
+
+msgid "2500 hours"
+msgstr "2500 hours"
+
+msgid "5000 hours"
+msgstr "5000 hours"
+
+msgid "10000 hours"
+msgstr "10000 hours"
+
+msgid "Intense month"
+msgstr "Intense month"
+
+msgid "100 hours in a year"
+msgstr "100 hours in a year"
+
+msgid "500 hours in a year"
+msgstr "500 hours in a year"
+
+msgid "1000 pages"
+msgstr "1000 pages"
+
+msgid "10000 pages"
+msgstr "10000 pages"
+
+msgid "50000 pages"
+msgstr "50000 pages"
+
+msgid "100000 pages"
+msgstr "100000 pages"
+
+msgid "Devourer"
+msgstr "Devourer"
+
+msgid "Unstoppable"
+msgstr "Unstoppable"
+
+msgid "Getting into it"
+msgstr "Getting into it"
+
+msgid "Two weeks"
+msgstr "Two weeks"
+
+msgid "Hundred-day streak"
+msgstr "Hundred-day streak"
+
+msgid "A full year"
+msgstr "A full year"
+
+msgid "Monthly rhythm"
+msgstr "Monthly rhythm"
+
+msgid "Quarter"
+msgstr "Quarter"
+
+msgid "Perfect month"
+msgstr "Perfect month"
+
+msgid "Weekend warrior"
+msgstr "Weekend warrior"
+
+msgid "Absorbed"
+msgstr "Absorbed"
+
+msgid "Marathon day"
+msgstr "Marathon day"
+
+msgid "One sitting"
+msgstr "One sitting"
+
+msgid "Deep session"
+msgstr "Deep session"
+
+msgid "Past midnight"
+msgstr "Past midnight"
+
+msgid "Early bird"
+msgstr "Early bird"
+
+msgid "Lunch break"
+msgstr "Lunch break"
+
+msgid "Around the clock"
+msgstr "Around the clock"
+
+msgid "Full week"
+msgstr "Full week"
+
+msgid "New Year's Eve reader"
+msgstr "New Year's Eve reader"
+
+msgid "New Year's resolution"
+msgstr "New Year's resolution"
+
+msgid "Speed reader"
+msgstr "Speed reader"
+
+msgid "Devoted"
+msgstr "Devoted"
+
+msgid "Well-read"
+msgstr "Well-read"
+
+msgid "Literary"
+msgstr "Literary"
+
+msgid "Explorer"
+msgstr "Explorer"
+
+msgid "Finish 5 books"
+msgstr "Finish 5 books"
+
+msgid "Finish 25 books"
+msgstr "Finish 25 books"
+
+msgid "Finish 100 books"
+msgstr "Finish 100 books"
+
+msgid "Finish 250 books"
+msgstr "Finish 250 books"
+
+msgid "Finish 3 books in one calendar month"
+msgstr "Finish 3 books in one calendar month"
+
+msgid "Finish 10 books in one year"
+msgstr "Finish 10 books in one year"
+
+msgid "Finish 50 books in one year"
+msgstr "Finish 50 books in one year"
+
+msgid "Finish a book on the day you started it"
+msgstr "Finish a book on the day you started it"
+
+msgid "Finish a book of 500+ pages"
+msgstr "Finish a book of 500+ pages"
+
+msgid "Finish a book of 1000+ pages"
+msgstr "Finish a book of 1000+ pages"
+
+msgid "Read for 1 hour in total"
+msgstr "Read for 1 hour in total"
+
+msgid "Read for 5 hours in total"
+msgstr "Read for 5 hours in total"
+
+msgid "Read for 10 hours in total"
+msgstr "Read for 10 hours in total"
+
+msgid "Read for 25 hours in total"
+msgstr "Read for 25 hours in total"
+
+msgid "Read for 50 hours in total"
+msgstr "Read for 50 hours in total"
+
+msgid "Read for 250 hours in total"
+msgstr "Read for 250 hours in total"
+
+msgid "Read for 500 hours in total"
+msgstr "Read for 500 hours in total"
+
+msgid "Read for 2500 hours in total"
+msgstr "Read for 2500 hours in total"
+
+msgid "Read for 5000 hours in total"
+msgstr "Read for 5000 hours in total"
+
+msgid "Read for 10000 hours in total"
+msgstr "Read for 10000 hours in total"
+
+msgid "Read for 50 hours in one calendar month"
+msgstr "Read for 50 hours in one calendar month"
+
+msgid "Read for 100 hours in one year"
+msgstr "Read for 100 hours in one year"
+
+msgid "Read for 500 hours in one year"
+msgstr "Read for 500 hours in one year"
+
+msgid "Read 1000 pages in total"
+msgstr "Read 1000 pages in total"
+
+msgid "Read 10000 pages in total"
+msgstr "Read 10000 pages in total"
+
+msgid "Read 50000 pages in total"
+msgstr "Read 50000 pages in total"
+
+msgid "Read 100000 pages in total"
+msgstr "Read 100000 pages in total"
+
+msgid "Read 500 pages in a single day"
+msgstr "Read 500 pages in a single day"
+
+msgid "Read 1000 pages in a single day"
+msgstr "Read 1000 pages in a single day"
+
+msgid "Read on 3 days in a row"
+msgstr "Read on 3 days in a row"
+
+msgid "Read on 14 days in a row"
+msgstr "Read on 14 days in a row"
+
+msgid "Read on 100 days in a row"
+msgstr "Read on 100 days in a row"
+
+msgid "Read on 365 days in a row"
+msgstr "Read on 365 days in a row"
+
+msgid "A 4-week reading streak"
+msgstr "A 4-week reading streak"
+
+msgid "A 12-week reading streak"
+msgstr "A 12-week reading streak"
+
+msgid "Read on every day of a calendar month"
+msgstr "Read on every day of a calendar month"
+
+msgid "Read on both weekend days, 4 weekends in a row"
+msgstr "Read on both weekend days, 4 weekends in a row"
+
+msgid "Read for 5 hours in a single day"
+msgstr "Read for 5 hours in a single day"
+
+msgid "Read for 6 hours in a single day"
+msgstr "Read for 6 hours in a single day"
+
+msgid "Read for 1 hour without a break"
+msgstr "Read for 1 hour without a break"
+
+msgid "Read for 2 hours without a break"
+msgstr "Read for 2 hours without a break"
+
+msgid "Read on both sides of midnight in one session"
+msgstr "Read on both sides of midnight in one session"
+
+msgid "Read between 5 and 7 a.m."
+msgstr "Read between 5 and 7 a.m."
+
+msgid "Read between noon and 1 p.m."
+msgstr "Read between noon and 1 p.m."
+
+msgid "Read in every hour of the day at some point"
+msgstr "Read in every hour of the day at some point"
+
+msgid "Read on every day of the week at some point"
+msgstr "Read on every day of the week at some point"
+
+msgid "Read on 31 December"
+msgstr "Read on 31 December"
+
+msgid "Read on 1 January"
+msgstr "Read on 1 January"
+
+msgid "Average over 60 pages per hour in a book"
+msgstr "Average over 60 pages per hour in a book"
+
+msgid "Spend over 20 hours on a single book"
+msgstr "Spend over 20 hours on a single book"
+
+msgid "Finish books by 5 different authors"
+msgstr "Finish books by 5 different authors"
+
+msgid "Finish books by 25 different authors"
+msgstr "Finish books by 25 different authors"
+
+msgid "Open 50 different books"
+msgstr "Open 50 different books"
+
+msgid "Grand library"
+msgstr "Grand library"
+
+msgid "Adventurer"
+msgstr "Adventurer"
+
+msgid "Cartographer"
+msgstr "Cartographer"
+
+msgid "Well-versed"
+msgstr "Well-versed"
+
+msgid "100 reading days"
+msgstr "100 reading days"
+
+msgid "365 reading days"
+msgstr "365 reading days"
+
+msgid "1000 reading days"
+msgstr "1000 reading days"
+
+msgid "Every month"
+msgstr "Every month"
+
+msgid "Four seasons"
+msgstr "Four seasons"
+
+msgid "Complete week"
+msgstr "Complete week"
+
+msgid "Veteran"
+msgstr "Veteran"
+
+msgid "Reading anniversary"
+msgstr "Reading anniversary"
+
+msgid "Iron focus"
+msgstr "Iron focus"
+
+msgid "Sprint"
+msgstr "Sprint"
+
+msgid "Big month"
+msgstr "Big month"
+
+msgid "Big week"
+msgstr "Big week"
+
+msgid "Comeback"
+msgstr "Comeback"
+
+msgid "Author loyalty"
+msgstr "Author loyalty"
+
+msgid "Finish 500 books"
+msgstr "Finish 500 books"
+
+msgid "Open 100 different books"
+msgstr "Open 100 different books"
+
+msgid "Open 250 different books"
+msgstr "Open 250 different books"
+
+msgid "Finish books by 50 different authors"
+msgstr "Finish books by 50 different authors"
+
+msgid "Read on 100 different days"
+msgstr "Read on 100 different days"
+
+msgid "Read on 365 different days"
+msgstr "Read on 365 different days"
+
+msgid "Read on 1000 different days"
+msgstr "Read on 1000 different days"
+
+msgid "Read in every month of one year"
+msgstr "Read in every month of one year"
+
+msgid "Read in all four seasons"
+msgstr "Read in all four seasons"
+
+msgid "Read every day of one calendar week (Mon-Sun)"
+msgstr "Read every day of one calendar week (Mon-Sun)"
+
+msgid "Your reading history spans 5 calendar years"
+msgstr "Your reading history spans 5 calendar years"
+
+msgid "One year since your first reading"
+msgstr "One year since your first reading"
+
+msgid "Read for 3 hours without a break"
+msgstr "Read for 3 hours without a break"
+
+msgid "Read 100 pages in one session"
+msgstr "Read 100 pages in one session"
+
+msgid "Read 5000 pages in one calendar month"
+msgstr "Read 5000 pages in one calendar month"
+
+msgid "Read 20 hours in one week"
+msgstr "Read 20 hours in one week"
+
+msgid "Read again after a 30-day break"
+msgstr "Read again after a 30-day break"
+
+msgid "Finish 5 books by the same author"
+msgstr "Finish 5 books by the same author"
+
+msgid "Achievement refresh"
+msgstr "Achievement refresh"
+
+msgid "Once a day"
+msgstr "Once a day"
+
+msgid "Every open"
+msgstr "Every open"
+
+msgid "Reloading achievements..."
+msgstr "Reloading achievements..."
+
+msgid "Show all"
+msgstr "Show all"
+
+msgid "Show earned only"
+msgstr "Show earned only"
+
+msgid "Show locked only"
+msgstr "Show locked only"

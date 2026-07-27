@@ -233,11 +233,26 @@ local BookList = loadModule("views/booklist_view.lua", {
     ListWidget = ListWidget, Manual = ManualBooks,
 })
 
+-- Records data (the queries + their cache) is loaded before the insights
+-- view now, because the achievements module reads from it. The Records
+-- popup that draws it is still wired up further below.
+local RecordsData = loadModule("lib/records_data.lua", { StatsDb = StatsDb })
+
+-- Global, all-time reading achievements: the data/persistence (lib) and the
+-- list popup (view). Achievements evaluates from RecordsData + InsightsData;
+-- the view only needs the data module and Locale. Both are handed to the
+-- insights view so its reading-goal section can show the earned count and
+-- open the list.
+local Achievements = loadModule("lib/achievements.lua",
+    { StatsDb = StatsDb, RecordsData = RecordsData, Data = InsightsData, Locale = Locale })
+local AchievementsView = loadModule("views/achievements_view.lua",
+    { Achievements = Achievements, Locale = Locale, ListWidget = ListWidget })
+
 local Insights = loadModule("views/insights_view.lua", {
     Locale = Locale, Colors = Colors, Fonts = Fonts,
     PopupUtil = PopupUtil, VS = ViewSettings, Cache = InsightsCache, UI = UI,
     Trend = Trend, Heatmap = Heatmap, BookList = BookList, Data = InsightsData,
-    Manual = ManualBooks,
+    Manual = ManualBooks, Achievements = Achievements, AchievementsView = AchievementsView,
 })
 local BookCalendar = loadModule("views/book_calendar_view.lua", {
     Locale = Locale, Colors = Colors, Fonts = Fonts, Prefs = Prefs,
@@ -249,9 +264,8 @@ local StatsPopup = loadModule("views/book_stats_view.lua", {
     ChapterInfo = ChapterInfo, ChapterBar = ChapterBar, UI = UI,
     BookStatsData = BookStatsData,
 })
--- Records: the queries and their cache (lib/records_data.lua) are separate
--- from the popup that draws them.
-local RecordsData = loadModule("lib/records_data.lua", { StatsDb = StatsDb })
+-- Records: the queries and their cache (lib/records_data.lua, loaded above
+-- with the achievements wiring) are separate from the popup that draws them.
 local Records = loadModule("views/records_view.lua", {
     Locale = Locale, Colors = Colors, Fonts = Fonts, PopupUtil = PopupUtil,
     RecordsData = RecordsData,
@@ -308,6 +322,14 @@ function ReadingInsights:onDispatcherRegisterActions()
         category = "none",
         event    = "ShowReadingRecordsPopup",
         title    = _("Reading insights: records"),
+        general  = true,
+    })
+    -- general = true: achievements are global, all-time data, so this is
+    -- assignable everywhere, same as the records action above.
+    Dispatcher:registerAction("reading_achievements_popup", {
+        category = "none",
+        event    = "ShowReadingAchievements",
+        title    = _("Reading insights: achievements"),
         general  = true,
     })
 end
@@ -733,12 +755,77 @@ function ReadingInsights:onShowReadingInsightsPopup()
     return true
 end
 
+-- KOReader's PluginLoader calls this when the user ticks "Also delete plugin
+-- settings" while removing this plugin from Plugin management. By the time we
+-- run, the koplugin folder is already purged; what remains is everything we
+-- wrote into koreader/settings/, which we own and clear here.
+function ReadingInsights:deletePluginSettings()
+    -- Our standalone store/cache files, plus the ".old" backups LuaSettings
+    -- writes next to them on flush.
+    --   reading_insights_manual_books.lua  - the hand-kept finished-books list
+    --   reading_insights_cache.lua         - the insights popup's disk cache
+    --   reading_insights_achievements.lua  - unlocked achievements + fingerprint
+    --   readinginsights_records_cache.lua  - the Records popup's cache
+    local DataStorage = require("datastorage")
+    local settings_dir = DataStorage:getSettingsDir()
+    for _idx, name in ipairs({
+        "reading_insights_manual_books.lua",
+        "reading_insights_cache.lua",
+        "reading_insights_achievements.lua",
+        "readinginsights_records_cache.lua",
+    }) do
+        os.remove(settings_dir .. "/" .. name)
+        os.remove(settings_dir .. "/" .. name .. ".old")
+    end
+
+    -- The updater's download scratch folder (created in updater.lua when
+    -- fetching a release/branch zip). A directory, so os.remove won't do -
+    -- purge it and its contents.
+    pcall(require("ffi/util").purgeDir, settings_dir .. "/readinginsights_cache")
+
+    -- Every G_reader_settings key we ever wrote. They all start with one of
+    -- our two historical prefixes ("reading_insights..." and the older
+    -- "readinginsights_..." for the updater/screensaver keys). Sweeping by
+    -- prefix also clears the per-year keys (reading goals, finished-book
+    -- overrides) whose exact names aren't known up front. Keys are collected
+    -- first, then deleted, so we never mutate the table while iterating it.
+    if G_reader_settings and G_reader_settings.delSetting then
+        local to_delete = {}
+        for key in pairs(G_reader_settings.data or {}) do
+            if type(key) == "string"
+               and (key:find("^reading_insights") or key:find("^readinginsights")) then
+                to_delete[#to_delete + 1] = key
+            end
+        end
+        for _idx, key in ipairs(to_delete) do
+            G_reader_settings:delSetting(key)
+        end
+
+        -- If this plugin is the current sleep-screen wallpaper, that is core's
+        -- own "screensaver_type" setting (value "readinginsights"), not one of
+        -- our prefixed keys - reset it so it doesn't point at a plugin that no
+        -- longer exists.
+        if G_reader_settings:readSetting("screensaver_type") == SCREENSAVER_TYPE_VALUE then
+            G_reader_settings:saveSetting("screensaver_type", "disable")
+        end
+    end
+end
+
 -- General, like onShowReadingInsightsPopup above: works in both Reader
 -- view and the File manager, since none of the Records data is tied to a
 -- specific open book.
 function ReadingInsights:onShowReadingRecordsPopup()
     local popup = Records.Popup:new{ ui = self.ui }
     UIManager:show(popup)
+    return true
+end
+
+-- General, like the Records popup above: achievements are global, all-time
+-- data not tied to any open book, so this opens in both Reader view and the
+-- File manager. Opens the same list the reading-goal section's "N earned"
+-- cell does (views/achievements_view.lua).
+function ReadingInsights:onShowReadingAchievements()
+    AchievementsView.show()
     return true
 end
 

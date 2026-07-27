@@ -49,6 +49,13 @@ function M.build(self, deps)
                 self:onShowReadingRecordsPopup()
             end,
         },
+        {
+            text = _("Show achievements"),
+            keep_menu_open = false,
+            callback = function()
+                self:onShowReadingAchievements()
+            end,
+        },
     }
 
     local has_open_document = self:_hasOpenDocument()
@@ -369,20 +376,6 @@ function M.build(self, deps)
     -- "Date & time" group.
     local insights_popup_sub_item_table = {}
 
-    -- Shows/hides the whole "Reading goal" section of the insights popup
-    -- (finished-book count vs. this year's target). On by default; when
-    -- off, its data isn't even queried on open.
-    table.insert(insights_popup_sub_item_table, {
-        text = _("Reading goal section"),
-        help_text = _("Shows the number of books finished this year next to your yearly goal. Long press the goal value to change it."),
-        keep_menu_open = true,
-        checked_func = function() return deps.ViewSettings.Opt.readShowReadingGoal() end,
-        callback = function(touchmenu_instance)
-            deps.ViewSettings.Opt.saveShowReadingGoal(not deps.ViewSettings.Opt.readShowReadingGoal())
-            if touchmenu_instance then touchmenu_instance:updateItems() end
-        end,
-    })
-
     table.insert(insights_popup_sub_item_table, {
         text_func = function()
             local months = deps.ViewSettings.readHeatmapMonthsSetting()
@@ -487,35 +480,33 @@ function M.build(self, deps)
         })
     end
 
-    -- What the Reading goal section's right-hand value counts: the year's
-    -- goal itself, or how much of it is still left. Either way a long press
-    -- on that cell edits the goal.
+    -- How often achievements re-evaluate in the background: once a day
+    -- (default) or on every popup open. Either way the heavy re-scan only
+    -- runs when the reading data actually changed since the last check.
     do
-        local Opt       = deps.ViewSettings.Opt
-        local TOTAL     = Opt.GOAL_DISPLAY_TOTAL
-        local REMAINING = Opt.GOAL_DISPLAY_REMAINING
-        local function displayEntry(value, text)
+        local Opt   = deps.ViewSettings.Opt
+        local DAILY = Opt.ACH_REFRESH_DAILY
+        local EVERY = Opt.ACH_REFRESH_EVERY
+        local function refreshEntry(value, text)
             return {
                 text = text,
                 keep_menu_open = true,
                 radio = true,
-                checked_func = function() return Opt.readGoalDisplay() == value end,
-                callback = function() Opt.saveGoalDisplay(value) end,
+                checked_func = function() return Opt.readAchievementRefresh() == value end,
+                callback = function() Opt.saveAchievementRefresh(value) end,
             }
         end
         table.insert(insights_popup_sub_item_table, {
             text_func = function()
-                local mode = Opt.readGoalDisplay() == REMAINING
-                    and _("Remaining")
-                    or  _("Goal total")
-                return _("Reading goal display") .. ": " .. mode
+                local mode = Opt.readAchievementRefresh() == EVERY
+                    and _("Every open")
+                    or  _("Once a day")
+                return _("Achievement refresh") .. ": " .. mode
             end,
-            -- Greyed out while the section it configures is switched off.
-            enabled_func = function() return Opt.readShowReadingGoal() end,
             keep_menu_open = true,
             sub_item_table = {
-                displayEntry(TOTAL,     _("Goal total")),
-                displayEntry(REMAINING, _("Remaining")),
+                refreshEntry(DAILY, _("Once a day")),
+                refreshEntry(EVERY, _("Every open")),
             },
         })
     end

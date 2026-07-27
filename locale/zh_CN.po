@@ -734,3 +734,557 @@ msgid "book left"
 msgstr "剩余书籍"
 msgid "books left"
 msgstr "剩余书籍"
+msgid "night"
+msgstr "夜晚"
+
+msgid "morning"
+msgstr "早晨"
+
+msgid "late morning"
+msgstr "上午"
+
+msgid "afternoon"
+msgstr "下午"
+
+msgid "evening"
+msgstr "傍晚"
+
+msgid "You read most in the %1, around %2"
+msgstr "你在%1阅读最多，大约%2"
+
+msgid "Achievements"
+msgstr "成就"
+
+msgid "Show achievements"
+msgstr "查看成就"
+
+msgid "Reading insights: achievements"
+msgstr "Reading insights：成就"
+
+msgid "earned"
+msgstr "已获得"
+
+msgid "Locked"
+msgstr "未解锁"
+
+msgid "Set reading goal"
+msgstr "设置阅读目标"
+
+msgid "First book"
+msgstr "第一本书"
+
+msgid "Finish your first book"
+msgstr "读完第一本书"
+
+msgid "Bookworm"
+msgstr "书虫"
+
+msgid "Finish 10 books"
+msgstr "读完 10 本书"
+
+msgid "Bibliophile"
+msgstr "藏书家"
+
+msgid "Finish 50 books"
+msgstr "读完 50 本书"
+
+msgid "100 hours"
+msgstr "100 小时"
+
+msgid "Read for 100 hours in total"
+msgstr "累计阅读 100 小时"
+
+msgid "1000 hours"
+msgstr "1000 小时"
+
+msgid "Read for 1000 hours in total"
+msgstr "累计阅读 1000 小时"
+
+msgid "Weekly streak"
+msgstr "每周连续"
+
+msgid "Read on 7 days in a row"
+msgstr "连续阅读 7 天"
+
+msgid "Monthly streak"
+msgstr "每月连续"
+
+msgid "Read on 30 days in a row"
+msgstr "连续阅读 30 天"
+
+msgid "Marathon"
+msgstr "马拉松"
+
+msgid "Read for 3 hours in a single day"
+msgstr "单日阅读 3 小时"
+
+msgid "Page turner"
+msgstr "翻页达人"
+
+msgid "Read 300 pages in a single day"
+msgstr "单日阅读 300 页"
+
+msgid "Night owl"
+msgstr "夜猫子"
+
+msgid "Read between midnight and 4 a.m."
+msgstr "在午夜至凌晨 4 点之间阅读"
+
+msgid "Earned (newest first)"
+msgstr "获得时间（最新在前）"
+
+msgid "Earned (oldest first)"
+msgstr "获得时间（最早在前）"
+
+msgid "Name (A to Z)"
+msgstr "名称（A 到 Z）"
+
+msgid "Name (Z to A)"
+msgstr "名称（Z 到 A）"
+
+msgid "Five books"
+msgstr "五本书"
+
+msgid "Collector"
+msgstr "收藏家"
+
+msgid "Century of books"
+msgstr "百本书"
+
+msgid "Library"
+msgstr "图书馆"
+
+msgid "Prolific month"
+msgstr "高产月"
+
+msgid "Ten a year"
+msgstr "一年十本"
+
+msgid "Fifty a year"
+msgstr "一年五十本"
+
+msgid "In one sitting"
+msgstr "一口气读完"
+
+msgid "Brick"
+msgstr "砖头书"
+
+msgid "Tome"
+msgstr "巨著"
+
+msgid "First hour"
+msgstr "第一小时"
+
+msgid "Five hours"
+msgstr "五小时"
+
+msgid "Ten hours"
+msgstr "十小时"
+
+msgid "Twenty-five hours"
+msgstr "二十五小时"
+
+msgid "Fifty hours"
+msgstr "五十小时"
+
+msgid "250 hours"
+msgstr "250 小时"
+
+msgid "500 hours"
+msgstr "500 小时"
+
+msgid "2500 hours"
+msgstr "2500 小时"
+
+msgid "5000 hours"
+msgstr "5000 小时"
+
+msgid "10000 hours"
+msgstr "10000 小时"
+
+msgid "Intense month"
+msgstr "密集月"
+
+msgid "100 hours in a year"
+msgstr "一年 100 小时"
+
+msgid "500 hours in a year"
+msgstr "一年 500 小时"
+
+msgid "1000 pages"
+msgstr "1000 页"
+
+msgid "10000 pages"
+msgstr "10000 页"
+
+msgid "50000 pages"
+msgstr "50000 页"
+
+msgid "100000 pages"
+msgstr "100000 页"
+
+msgid "Devourer"
+msgstr "吞书者"
+
+msgid "Unstoppable"
+msgstr "势不可挡"
+
+msgid "Getting into it"
+msgstr "渐入佳境"
+
+msgid "Two weeks"
+msgstr "两周"
+
+msgid "Hundred-day streak"
+msgstr "百日连续"
+
+msgid "A full year"
+msgstr "整整一年"
+
+msgid "Monthly rhythm"
+msgstr "每月节奏"
+
+msgid "Quarter"
+msgstr "一个季度"
+
+msgid "Perfect month"
+msgstr "完美月"
+
+msgid "Weekend warrior"
+msgstr "周末战士"
+
+msgid "Absorbed"
+msgstr "沉浸其中"
+
+msgid "Marathon day"
+msgstr "马拉松日"
+
+msgid "One sitting"
+msgstr "一次坐读"
+
+msgid "Deep session"
+msgstr "深度阅读"
+
+msgid "Past midnight"
+msgstr "过了午夜"
+
+msgid "Early bird"
+msgstr "早起鸟"
+
+msgid "Lunch break"
+msgstr "午休阅读"
+
+msgid "Around the clock"
+msgstr "全天候"
+
+msgid "Full week"
+msgstr "整周"
+
+msgid "New Year's Eve reader"
+msgstr "除夕读者"
+
+msgid "New Year's resolution"
+msgstr "新年决心"
+
+msgid "Speed reader"
+msgstr "速读者"
+
+msgid "Devoted"
+msgstr "专一"
+
+msgid "Well-read"
+msgstr "博览群书"
+
+msgid "Literary"
+msgstr "文学家"
+
+msgid "Explorer"
+msgstr "探索者"
+
+msgid "Finish 5 books"
+msgstr "读完 5 本书"
+
+msgid "Finish 25 books"
+msgstr "读完 25 本书"
+
+msgid "Finish 100 books"
+msgstr "读完 100 本书"
+
+msgid "Finish 250 books"
+msgstr "读完 250 本书"
+
+msgid "Finish 3 books in one calendar month"
+msgstr "一个日历月内读完 3 本书"
+
+msgid "Finish 10 books in one year"
+msgstr "一年内读完 10 本书"
+
+msgid "Finish 50 books in one year"
+msgstr "一年内读完 50 本书"
+
+msgid "Finish a book on the day you started it"
+msgstr "在开始阅读的当天读完一本书"
+
+msgid "Finish a book of 500+ pages"
+msgstr "读完一本 500 页以上的书"
+
+msgid "Finish a book of 1000+ pages"
+msgstr "读完一本 1000 页以上的书"
+
+msgid "Read for 1 hour in total"
+msgstr "累计阅读 1 小时"
+
+msgid "Read for 5 hours in total"
+msgstr "累计阅读 5 小时"
+
+msgid "Read for 10 hours in total"
+msgstr "累计阅读 10 小时"
+
+msgid "Read for 25 hours in total"
+msgstr "累计阅读 25 小时"
+
+msgid "Read for 50 hours in total"
+msgstr "累计阅读 50 小时"
+
+msgid "Read for 250 hours in total"
+msgstr "累计阅读 250 小时"
+
+msgid "Read for 500 hours in total"
+msgstr "累计阅读 500 小时"
+
+msgid "Read for 2500 hours in total"
+msgstr "累计阅读 2500 小时"
+
+msgid "Read for 5000 hours in total"
+msgstr "累计阅读 5000 小时"
+
+msgid "Read for 10000 hours in total"
+msgstr "累计阅读 10000 小时"
+
+msgid "Read for 50 hours in one calendar month"
+msgstr "一个日历月内阅读 50 小时"
+
+msgid "Read for 100 hours in one year"
+msgstr "一年内阅读 100 小时"
+
+msgid "Read for 500 hours in one year"
+msgstr "一年内阅读 500 小时"
+
+msgid "Read 1000 pages in total"
+msgstr "累计阅读 1000 页"
+
+msgid "Read 10000 pages in total"
+msgstr "累计阅读 10000 页"
+
+msgid "Read 50000 pages in total"
+msgstr "累计阅读 50000 页"
+
+msgid "Read 100000 pages in total"
+msgstr "累计阅读 100000 页"
+
+msgid "Read 500 pages in a single day"
+msgstr "单日阅读 500 页"
+
+msgid "Read 1000 pages in a single day"
+msgstr "单日阅读 1000 页"
+
+msgid "Read on 3 days in a row"
+msgstr "连续阅读 3 天"
+
+msgid "Read on 14 days in a row"
+msgstr "连续阅读 14 天"
+
+msgid "Read on 100 days in a row"
+msgstr "连续阅读 100 天"
+
+msgid "Read on 365 days in a row"
+msgstr "连续阅读 365 天"
+
+msgid "A 4-week reading streak"
+msgstr "4 周连续阅读"
+
+msgid "A 12-week reading streak"
+msgstr "12 周连续阅读"
+
+msgid "Read on every day of a calendar month"
+msgstr "在一个日历月的每一天阅读"
+
+msgid "Read on both weekend days, 4 weekends in a row"
+msgstr "连续 4 个周末的周六和周日都阅读"
+
+msgid "Read for 5 hours in a single day"
+msgstr "单日阅读 5 小时"
+
+msgid "Read for 6 hours in a single day"
+msgstr "单日阅读 6 小时"
+
+msgid "Read for 1 hour without a break"
+msgstr "不间断阅读 1 小时"
+
+msgid "Read for 2 hours without a break"
+msgstr "不间断阅读 2 小时"
+
+msgid "Read on both sides of midnight in one session"
+msgstr "一次阅读跨越午夜前后"
+
+msgid "Read between 5 and 7 a.m."
+msgstr "在早上 5 点到 7 点之间阅读"
+
+msgid "Read between noon and 1 p.m."
+msgstr "在中午到 13 点之间阅读"
+
+msgid "Read in every hour of the day at some point"
+msgstr "在一天的每个小时都阅读过"
+
+msgid "Read on every day of the week at some point"
+msgstr "在一周的每一天都阅读过"
+
+msgid "Read on 31 December"
+msgstr "在 12 月 31 日阅读"
+
+msgid "Read on 1 January"
+msgstr "在 1 月 1 日阅读"
+
+msgid "Average over 60 pages per hour in a book"
+msgstr "一本书中平均每小时超过 60 页"
+
+msgid "Spend over 20 hours on a single book"
+msgstr "在一本书上花费超过 20 小时"
+
+msgid "Finish books by 5 different authors"
+msgstr "读完 5 位不同作者的书"
+
+msgid "Finish books by 25 different authors"
+msgstr "读完 25 位不同作者的书"
+
+msgid "Open 50 different books"
+msgstr "打开 50 本不同的书"
+
+msgid "Grand library"
+msgstr "大图书馆"
+
+msgid "Adventurer"
+msgstr "冒险家"
+
+msgid "Cartographer"
+msgstr "制图师"
+
+msgid "Well-versed"
+msgstr "学识渊博"
+
+msgid "100 reading days"
+msgstr "100 阅读日"
+
+msgid "365 reading days"
+msgstr "365 阅读日"
+
+msgid "1000 reading days"
+msgstr "1000 阅读日"
+
+msgid "Every month"
+msgstr "每个月"
+
+msgid "Four seasons"
+msgstr "四季"
+
+msgid "Complete week"
+msgstr "完整一周"
+
+msgid "Veteran"
+msgstr "老兵"
+
+msgid "Reading anniversary"
+msgstr "阅读周年"
+
+msgid "Iron focus"
+msgstr "铁般专注"
+
+msgid "Sprint"
+msgstr "冲刺"
+
+msgid "Big month"
+msgstr "丰收月"
+
+msgid "Big week"
+msgstr "丰收周"
+
+msgid "Comeback"
+msgstr "回归"
+
+msgid "Author loyalty"
+msgstr "作者忠诚"
+
+msgid "Finish 500 books"
+msgstr "读完 500 本书"
+
+msgid "Open 100 different books"
+msgstr "打开 100 本不同的书"
+
+msgid "Open 250 different books"
+msgstr "打开 250 本不同的书"
+
+msgid "Finish books by 50 different authors"
+msgstr "读完 50 位不同作者的书"
+
+msgid "Read on 100 different days"
+msgstr "在 100 个不同的日子阅读"
+
+msgid "Read on 365 different days"
+msgstr "在 365 个不同的日子阅读"
+
+msgid "Read on 1000 different days"
+msgstr "在 1000 个不同的日子阅读"
+
+msgid "Read in every month of one year"
+msgstr "在一年的每个月都阅读"
+
+msgid "Read in all four seasons"
+msgstr "在四个季节都阅读"
+
+msgid "Read every day of one calendar week (Mon-Sun)"
+msgstr "在一个日历周的每天阅读（周一至周日）"
+
+msgid "Your reading history spans 5 calendar years"
+msgstr "你的阅读历史跨越 5 个年份"
+
+msgid "One year since your first reading"
+msgstr "距首次阅读已一年"
+
+msgid "Read for 3 hours without a break"
+msgstr "不间断阅读 3 小时"
+
+msgid "Read 100 pages in one session"
+msgstr "一次阅读 100 页"
+
+msgid "Read 5000 pages in one calendar month"
+msgstr "一个日历月内阅读 5000 页"
+
+msgid "Read 20 hours in one week"
+msgstr "一周内阅读 20 小时"
+
+msgid "Read again after a 30-day break"
+msgstr "30 天中断后重新阅读"
+
+msgid "Finish 5 books by the same author"
+msgstr "读完同一作者的 5 本书"
+
+msgid "Achievement refresh"
+msgstr "成就刷新"
+
+msgid "Once a day"
+msgstr "每天一次"
+
+msgid "Every open"
+msgstr "每次打开"
+
+msgid "Reloading achievements..."
+msgstr "正在重新加载成就..."
+
+msgid "Show all"
+msgstr "显示全部"
+
+msgid "Show earned only"
+msgstr "仅显示已获得"
+
+msgid "Show locked only"
+msgstr "仅显示未解锁"

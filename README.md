@@ -1,18 +1,21 @@
 ### 📊 Reading insights plugin
 
-<img width="255" height="340" alt="FileManager_2026-07-18_205310" src="https://github.com/user-attachments/assets/2686e3ea-66cb-4d34-8af4-77fe147c47a3" />
+<img width="255" height="340" alt="FileManager_2026-07-27_074128" src="https://github.com/user-attachments/assets/c12e7ab1-e3a9-4611-be17-0539527b6efc" />
 <img width="255" height="340" alt="FileManager_2026-07-17_152344" src="https://github.com/user-attachments/assets/4a3d2fb9-cc51-4342-a952-36f23bb1925c" />
 <img width="255" height="340" alt="Reader_Az Elso Torveny vilaga 1  - Hidegen talalva - Abercrombie, Joe #p(878) epub_p1117_2026-07-06_084654" src="https://github.com/user-attachments/assets/555ab8c6-d9ce-4ebc-a6ac-cfdf097ec51d" />
 <br/><br/>
 <img width="255" height="340" alt="Reader_Eddie Flynn 3  - Esku alatt - Cavanagh, Steve #p(421) epub_p696_2026-07-17_152405" src="https://github.com/user-attachments/assets/371b3119-119a-4ccb-9660-a63879996c48" />
 <img width="255" height="340" alt="FileManager_2026-07-17_152315" src="https://github.com/user-attachments/assets/ea6711c7-7c18-4bb5-a15c-871cc0b74888" />
-<img width="255" height="340" alt="FileManager_2026-07-17_152332" src="https://github.com/user-attachments/assets/21b311a8-bb10-4ffe-b7f0-3e91b19bb281" />
+<img width="255" height="340" alt="FileManager_2026-07-27_074133" src="https://github.com/user-attachments/assets/de2d7a78-a657-40cf-8628-f0787a827147" />
+
 
 More screenshots
 
 <img width="192" height="256" alt="reading-insights-v2-0-0-new-book-progress-popup-colors-v0-zoh19sw42rbh1" src="https://github.com/user-attachments/assets/52f851b7-8955-4739-b3a7-96ff8c2cbfe6" />
 <img width="192" height="256" alt="FileManager_2026-07-18_211837" src="https://github.com/user-attachments/assets/e4e5d617-98c6-40bc-8844-f23fa5837e95" />
 <img width="192" height="256" alt="FileManager_2026-07-02_083320" src="https://github.com/user-attachments/assets/8193ba8b-7f7e-4b35-9efb-81d0d4a1df8e" />
+<img width="192" height="256"![Uploading FileManager_2026-07-27_074133.png…]()
+ alt="FileManager_2026-07-17_152332" src="https://github.com/user-attachments/assets/21b311a8-bb10-4ffe-b7f0-3e91b19bb281" />
 <br/><br/>
 This plugin bundles reading-stats popups, powered by KOReader's
 statistics database.
@@ -41,22 +44,24 @@ A full-screen scrollable overlay with a comprehensive overview of your reading h
   older/newer periods as far back as there's data (the popup's own header
   shows the year, or a year range on its own line if the period spans a
   Dec/Jan boundary)
-- **Reading goal** — this year's finished-book count next to a target you
-  set for that year, shown as two side-by-side cells, each with a large
-  number followed by its label, each reading as one phrase (e.g. "12"
-  "books finished" next to "30" "books to read" — singular "1 book to read"
-  when the target is set to 1);
-  swipes left/right on the popup (see **Controls** below) move the goal
-  section to that year too, same as the rest of the popup
-  - **Tap** the left cell (the finished-book count) to see the books that
-    make up it, most recently finished first (or in any other order, from
-    the sort menu at the top left). This list shows the **date**
-    each book was finished on the right, rather than the reading time the
-    other book lists show — it is ordered by that date, and books you added
-    yourself have no measured time at all. Those hand-added entries are
-    shown as a bare title with a leading `*` on their date
-  - **Long-press** the left cell to choose between the two ways of
-    correcting that count:
+- **Reading goal** — two side-by-side cells. The left cell shows this year's
+  finished-book count over the target you set for it, as one figure —
+  e.g. "18/30" over "books finished". The right cell shows how many
+  (global, all-time) **achievements** you've earned — e.g. "10" over
+  "earned" — with a **★** next to the number when you've unlocked some since
+  you last opened the achievements list (see [Achievements](#-achievements)).
+  Swipes left/right on the popup (see **Controls** below) move the left
+  cell's year along with the rest of the popup; the achievements count is
+  all-time, so it doesn't change with the year
+  - **Tap** the left cell to see the books that make up the finished count,
+    most recently finished first (or in any other order, from the sort menu
+    at the top left). This list shows the **date** each book was finished on
+    the right, rather than the reading time the other book lists show — it
+    is ordered by that date, and books you added yourself have no measured
+    time at all. Those hand-added entries are shown as a bare title with a
+    leading `*` on their date
+  - **Tap** the right cell to open the **achievements** list
+  - **Long-press** the left cell for the three ways of adjusting the goal:
     - **Mark books finished** — a checklist of every book with activity
       that year: checkbox and title on the left, the date of that book's
       last reading entry on the right. Tap a row to toggle whether it
@@ -79,8 +84,8 @@ A full-screen scrollable overlay with a comprehensive overview of your reading h
       from, are kept in their own file (`reading_insights_manual_books.lua`,
       next to KOReader's settings) and count towards that year's reading
       goal
-  - **Long-press** the right cell (the goal number) to open a number
-    picker and set/change that year's target (1–999, defaults to 12)
+    - **Set reading goal** — a number picker to set/change that year's
+      target (1–999, defaults to 12)
   - A book counts as finished when its **last** reading entry reached at
     least 99% of the book, and it counts for the year that last entry
     falls in — so a book read across New Year counts once, in the year you
@@ -90,12 +95,6 @@ A full-screen scrollable overlay with a comprehensive overview of your reading h
     automatically; tick them in **Mark books finished** (or, if the book
     isn't in the statistics database at all, put it in **Add books
     manually**)
-  - The right cell can show what is **still left** of the goal instead of
-    the goal itself ("18" "books left") — *Settings → Advanced settings →
-    Reading insight popup → Reading goal display*
-  - The whole section can be switched off under *Settings → Advanced
-    settings → Reading insight popup → Reading goal section* (on by
-    default); when off, its data isn't even queried when the popup opens
 - **Use as sleep screen** — show this same popup instead of KOReader's own lock screen when the device suspends, with no double flash (see **Sleep screen** below)
 - **Reading heatmap range** — how many months the calendar/time-of-day
     heatmap grids show at once: 3, 4, or 6
@@ -161,6 +160,48 @@ manual delete), it falls back to a full recompute.
 
 Available everywhere (book view and file manager), since none of this data
 is tied to a specific open book.
+
+### 🏅 Achievements
+
+Global, all-time reading achievements — over 80 milestones you unlock as you
+read, each with its own icon, across several themes (books finished, total
+reading time, pages, daily/weekly streaks, single-day and single-session
+feats, time of day, reading pace and variety). A few examples:
+
+- **First book** — finish your first book
+- **100 hours** — read for 100 hours in total
+- **Weekly streak** — read on 7 days in a row
+- **Night owl** — read between midnight and 4 a.m.
+- **Well-read** — finish books by 5 different authors
+
+**Where:** the Reading goal section of the Reading insights popup shows an
+**"earned / total"** cell next to the finished/goal figure (e.g. **"42/82"**
+over "earned") — tap it to open the full list, or use *Tools → Reading
+insights → Show achievements*.
+
+**The list:** its header shows your progress, e.g. **"Achievements 42/82
+(51%)"**. Earned achievements sit at the top with their unlock date on the
+right; still-locked ones follow, greyed out and in normal weight. Tap any row
+for its one-line description. The title-bar's left (☰) menu holds the sort
+orders — by unlock time (newest/oldest first) or by name — plus a filter to
+**show all**, **only earned**, or **only locked** (still-to-do) achievements.
+
+**"New" badge:** achievements earned since you last opened the list are
+marked with a **★** — both next to the count in the popup and on the new rows
+in the list. Opening the list clears the mark.
+
+**Persistence & updating:** unlocked achievements are stored in their own
+file next to KOReader's settings, so the count opens instantly without
+re-querying. They re-evaluate automatically in the background, but only when
+your reading data has actually changed since the last check (a tiny
+fingerprint query decides). How often that background check runs is set by
+*Settings → Advanced settings → Reading insight popup → Achievement refresh*
+(**Once a day** by default, or **Every open**); **long-pressing the
+achievements list's title bar** — or a title-bar force-reload of the insights
+popup — re-scans everything immediately. Once unlocked, an achievement is
+never lost, even if the underlying number later drops.
+
+Available everywhere (book view and file manager).
 
 ### 📖 Book progress stats
 
@@ -276,12 +317,24 @@ Anything not on that list is left alone.
 Once installed, future updates can be installed in-app — see
 [Updates](#updates) above.
 
+## Uninstalling
+
+Delete the plugin from KOReader's *Plugin management*. If you tick **"Also
+delete plugin settings"**, the plugin cleans up after itself: it removes its
+own store/cache files next to KOReader's settings (the finished-books list,
+the insights and Records caches, and the achievements file) and every
+`G_reader_settings` key it ever wrote (fonts, colors, per-year reading goals
+and overrides, and the rest), and — if the sleep screen was set to Reading
+insights — resets that back so it doesn't point at a plugin that's gone.
+Leaving the box unticked keeps all of it, so a later reinstall picks up right
+where you left off.
+
 ## Where it shows up
 
 - **Menu:** *Tools → Reading insights* — a submenu with "Show Reading
-  insights", "Show Records", "Show Book progress" and "Show Book progress
-  calendar" (the latter two book view only), and, below a separator, a
-  **Settings** submenu and an **Updates** submenu (see
+  insights", "Show Records", "Show achievements", "Show Book progress" and
+  "Show Book progress calendar" (the latter two book view only), and, below a
+  separator, a **Settings** submenu and an **Updates** submenu (see
   [Updates](#updates) above).
   - **Settings** holds:
     - **Sleep-screen indicator** — None (default) or "(sleeping…)" after
@@ -342,8 +395,6 @@ Once installed, future updates can be installed in-app — see
           in Hungarian and `DD/MM/YYYY` elsewhere, which is what the plugin
           did before this setting existed
       - **Reading insight popup** — what the insights popup itself shows:
-        - **Reading goal section** — show or hide the Reading goal section
-          (on by default)
         - **Reading heatmap range** — how many months the calendar/time-of-
           day heatmap grids show at once: 3, 4, or 6
         - **8-week chart order** — newest-first or oldest-first
@@ -352,12 +403,12 @@ Once installed, future updates can be installed in-app — see
           running backwards from there) or **Today on the right**. Today's
           bar keeps its highlight and its tap-to-open-the-Today-Timeline
           either way
-        - **Reading goal display** — what the Reading goal section's
-          right-hand value counts: **Goal total** (default, the year's goal
-          itself — "30 books to read") or **Remaining** (what is still left
-          of it after the finished books on the left — "18 books left",
-          never going below 0). A long press on that cell edits the goal in
-          both cases
+        - **Achievement refresh** — how often achievements re-evaluate in
+          the background: **Once a day** (default) or **Every open**. Either
+          way the heavy re-scan only actually runs when your reading data has
+          changed since the last check; long-pressing the achievements list's
+          title bar always re-scans immediately (as does a title-bar
+          force-reload of the insights popup)
       - **Book progress calendar**:
         - **Book progress calendar cell content** — Percent (default),
           Pages, or Time; controls what the calendar's day cells show

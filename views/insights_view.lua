@@ -69,10 +69,10 @@ local T = require("ffi/util").template
 -- loadModule() call for this file).
 -- Shared modules, passed in as one named table by main.lua (see there).
 local deps = ...
-local Locale, Colors, Fonts, PopupUtil, VS, Cache, UI, Trend, Heatmap, BookList, Data, Manual =
+local Locale, Colors, Fonts, PopupUtil, VS, Cache, UI, Trend, Heatmap, BookList, Data, Manual, Achievements, AchievementsView =
     deps.Locale, deps.Colors, deps.Fonts, deps.PopupUtil,
     deps.VS, deps.Cache, deps.UI, deps.Trend, deps.Heatmap, deps.BookList,
-    deps.Data, deps.Manual
+    deps.Data, deps.Manual, deps.Achievements, deps.AchievementsView
 
 -- true: today's bar in the weekly chart is black. false: all bars gray.
 local WEEKLY_CHART_HIGHLIGHT_TODAY = true
@@ -1059,24 +1059,31 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
         local finished_count = goal_finished_count or 0
         local goal_value     = VS.readReadingGoal(goal_year)
 
-        local left_value = formatCount(finished_count)
+        -- Left cell: finished-vs-goal in one figure, e.g. "18/30" over
+        -- "books finished". This subsumes the old separate goal cell (the
+        -- "/30" is the target); the yearly goal is now set from the
+        -- long-press menu instead (see showFinishedBooksMenu).
+        local left_value = formatCount(finished_count) .. "/" .. formatCount(goal_value)
         local left_unit  = N_("book finished", "books finished", finished_count)
         local left_line  = buildValueLine(fonts.value, fonts.label, layout.col_width, left_value, left_unit)
 
-        -- Either the goal itself or what's still left of it after the
-        -- finished books on the left - see VS.Opt.readGoalDisplay(). Both
-        -- read as one sentence with the value above them: "30 books to
-        -- read" / "18 books left". An overshot goal shows 0, not a negative.
-        local right_value, right_unit
-        if VS.Opt.readGoalDisplay() == VS.Opt.GOAL_DISPLAY_REMAINING then
-            local remaining = math.max(0, goal_value - finished_count)
-            right_value = formatCount(remaining)
-            right_unit  = N_("book left", "books left", remaining)
-        else
-            right_value = formatCount(goal_value)
-            right_unit  = N_("book to read", "books to read", goal_value)
-        end
-        local right_line  = buildValueLine(fonts.value, fonts.label, layout.col_width, right_value, right_unit)
+        -- Right cell: how many (global, all-time) achievements are earned,
+        -- e.g. "10" over "earned". Tapping it opens the achievements list.
+        -- The count is read straight from the persisted file each build
+        -- (cheap). Re-evaluation happens in the background (see
+        -- _loadAndRebuild -> Achievements.refreshIfChanged) only when the
+        -- reading data has actually changed, and immediately on a full reload.
+        local earned_count = Achievements and Achievements.earnedCount() or 0
+        local ach_total    = Achievements and Achievements.totalCount() or 0
+        -- A trailing star when there are achievements earned since the list
+        -- was last opened (see Achievements.newCount) - the "you have new
+        -- achievements" badge; tapping the cell opens the list and clears it.
+        local has_new      = Achievements and Achievements.newCount() > 0
+        -- Earned out of total, e.g. "42/83", with the new-badge star.
+        local right_value  = formatCount(earned_count) .. "/" .. formatCount(ach_total)
+                             .. (has_new and " ★" or "")
+        local right_unit   = _("earned")
+        local right_line   = buildValueLine(fonts.value, fonts.label, layout.col_width, right_value, right_unit)
 
         local left_cell = InputContainer:new{
             dimen = Geom:new{ x = 0, y = 0, w = layout.col_width, h = left_line:getSize().h },
@@ -1090,17 +1097,34 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
             return true
         end
         -- Also long-pressable (see ReadingInsightsPopup:onHold): opens the
-        -- finished-books checklist to manually correct which books count.
+        -- finished-books menu (mark finished / add manually / set goal).
         popup_self._goal_finished_cell_widget = left_cell
 
-        -- No tap handler: the goal value is edited via long press (see
-        -- ReadingInsightsPopup:onHold), which needs this widget's laid-out
-        -- dimen to know where the goal cell ended up on screen.
         local right_cell = InputContainer:new{
             dimen = Geom:new{ x = 0, y = 0, w = layout.col_width, h = right_line:getSize().h },
             right_line,
         }
-        popup_self._goal_cell_widget = right_cell
+        right_cell.ges_events = {
+            Tap = { GestureRange:new{ ges = "tap", range = right_cell.dimen } },
+        }
+        function right_cell:onTap()
+            if AchievementsView then
+                -- Refresh this cell when the list closes, so the "new" star
+                -- badge clears immediately (the list marked everything seen).
+                AchievementsView.show(function()
+                    if popup_self._closed then return end
+                    popup_self:_buildUI()
+                    UIManager:setDirty(popup_self, function()
+                        return "ui", popup_self.popup_frame.dimen
+                    end)
+                end)
+            end
+            return true
+        end
+        -- The goal value no longer lives here, so there's no long-press goal
+        -- edit off this cell anymore; make sure a stale reference from a
+        -- previous build can't still be tap-tested by onHold.
+        popup_self._goal_cell_widget = nil
 
         local goal_data_row = UI.buildTwoColRow(left_cell, right_cell, layout)
         local goal_row = VerticalGroup:new{
@@ -1112,7 +1136,31 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
             },
         }
 
-        local goal_header = UI.buildSectionHeader(fonts.section, buildGoalYearLabel(goal_year), layout.full_width)
+        -- Two-column header, so each cell gets its own title above it:
+        -- "Reading goal" over the finished/goal figure on the left,
+        -- "Achievements" over the earned count on the right. Padded with the
+        -- same padding_h and laid out with the same col_width as the data row
+        -- below, so each title sits directly over its column; the vertical
+        -- separator is hidden here (only the data row draws it).
+        local goal_title_w = TextWidget:new{
+            text = buildGoalYearLabel(goal_year), face = fonts.section, fgcolor = Colors.section(),
+        }
+        local ach_title_w = TextWidget:new{
+            text = _("Achievements"), face = fonts.section, fgcolor = Colors.section(),
+        }
+        -- Same small top/bottom padding buildSectionHeader wraps its single
+        -- title in, so this two-column header lines up vertically with every
+        -- other section header (without it the reading-goal section looked
+        -- tighter than the streak/monthly/last-week ones above it).
+        local goal_header = FrameContainer:new{
+            background     = Blitbuffer.COLOR_WHITE,
+            bordersize     = 0,
+            padding_top    = Size.padding.small,
+            padding_bottom = Size.padding.small,
+            padding_left   = 0,
+            padding_right  = 0,
+            UI.padded(layout.padding_h, UI.buildTwoColRow(goal_title_w, ach_title_w, layout, true)),
+        }
 
         UI.addSectionWithRow(sections, goal_header, goal_row, layout, { pad_row = false })
     end -- if VS.Opt.readShowReadingGoal()
@@ -1644,6 +1692,16 @@ function ReadingInsightsPopup:showFinishedBooksMenu(year)
                     self:showManualBooksList(year)
                 end,
             }},
+            -- The yearly goal used to be edited by long-pressing the goal
+            -- value cell; that cell was merged into the "N/M books finished"
+            -- figure, so goal editing moved here.
+            {{
+                text = _("Set reading goal"),
+                callback = function()
+                    UIManager:close(dialog)
+                    self:editReadingGoal(year)
+                end,
+            }},
         },
     }
     UIManager:show(dialog)
@@ -1981,6 +2039,16 @@ function ReadingInsightsPopup:_loadAndRebuild()
         }
     end) or {}
 
+    -- Re-evaluate achievements in the background, but only when the reading
+    -- data has actually changed since the last evaluation (a single
+    -- fingerprint query decides - see Achievements.refreshIfChanged); a
+    -- newly-earned achievement then bumps the "N earned" cell below via
+    -- new_ach_count in the change check.
+    if Achievements then
+        pcall(Achievements.refreshIfChanged, VS.Opt.readAchievementRefresh())
+    end
+    local new_ach_count = Achievements and Achievements.earnedCount() or 0
+
     local new_streaks         = batch.streaks
     local new_year_range      = batch.year_range
     local new_yearly          = batch.yearly
@@ -1998,6 +2066,7 @@ function ReadingInsightsPopup:_loadAndRebuild()
     -- be all-zero (e.g. a brand new, still-empty statistics.sqlite3).
     local was_initial_loading = self._initial_loading
     if not was_initial_loading and
+       new_ach_count == self._ach_count                        and
        valuesEqual(new_streaks,         self._streaks)         and
        valuesEqual(new_year_range,      self._year_range)      and
        valuesEqual(new_yearly,          self._yearly)          and
@@ -2016,6 +2085,7 @@ function ReadingInsightsPopup:_loadAndRebuild()
         self._last_week       = new_last_week
         self._last_week_daily = new_last_week_daily
         self._monthly         = new_monthly
+        self._ach_count       = new_ach_count
         Cache.saveDiskCache()
         return
     end
@@ -2028,6 +2098,7 @@ function ReadingInsightsPopup:_loadAndRebuild()
     self._last_week        = new_last_week
     self._last_week_daily = new_last_week_daily
     self._monthly         = new_monthly
+    self._ach_count       = new_ach_count
     self._initial_loading = false
 
     self:_buildUI()
@@ -2209,6 +2280,11 @@ function ReadingInsightsPopup:onHold(arg, ges_ev)
         UIManager:scheduleIn(0.5, function()
             UIManager:close(msg)
             Cache.clearAllCache()
+            -- A full reload is the one place achievements are re-evaluated
+            -- against the (now uncached) database - see lib/achievements.lua.
+            -- Newly earned ones get persisted; the rebuilt goal section then
+            -- reads the updated count from the file.
+            if Achievements then pcall(Achievements.recompute) end
             self._streaks         = nil
             self._yearly          = nil
             self._monthly         = nil
@@ -2255,35 +2331,51 @@ end
 -- the popup is rebuilt in place so the new value shows without a full
 -- close/reopen.
 function ReadingInsightsPopup:editReadingGoal(year)
-    local SpinWidget = require("ui/widget/spinwidget")
+    local InputDialog = require("ui/widget/inputdialog")
     local popup_self = self
-    local widget
-    widget = SpinWidget:new{
-        -- ReadingInsightsPopup itself is modal = true (see its class
-        -- definition above). UIManager stacks a *non*-modal widget shown
-        -- while a modal one is already on top *underneath* that modal
-        -- widget, not above it (see UIManager:show()'s window-stack
-        -- ordering) - so without this, the goal-edit dialog would be
-        -- pushed behind the popup and effectively invisible/untappable,
-        -- rather than appearing on top of it as intended.
-        modal           = true,
-        title_text      = buildGoalEditTitle(year),
-        value           = VS.readReadingGoal(year),
-        value_min       = 1,
-        value_max       = 999,
-        value_step      = 1,
-        value_hold_step = 5,
-        default_value   = VS.DEFAULT_READING_GOAL,
-        ok_text         = _("Save"),
-        callback        = function(spin)
-            VS.saveReadingGoal(year, spin.value)
-            popup_self:_buildUI()
-            UIManager:setDirty(popup_self, function()
-                return "ui", popup_self.popup_frame.dimen
-            end)
-        end,
+    local dialog
+    dialog = InputDialog:new{
+        -- ReadingInsightsPopup is modal, and UIManager stacks a *non*-modal
+        -- window shown over it *underneath* it. A SpinWidget's own inline
+        -- number entry is non-modal, so it landed behind this popup - you
+        -- couldn't see what you typed (only the committed value on Enter),
+        -- and the keyboard covered it. A modal InputDialog instead sits on
+        -- top of the popup and lifts itself above the keyboard like every
+        -- other text field (same pattern as the manual-books add dialog).
+        modal      = true,
+        title      = buildGoalEditTitle(year),
+        input      = tostring(VS.readReadingGoal(year)),
+        input_type = "number",
+        input_hint = "1 - 999",
+        buttons = {
+            {
+                {
+                    text = _("Cancel"),
+                    id   = "close",
+                    callback = function() UIManager:close(dialog) end,
+                },
+                {
+                    text = _("Save"),
+                    is_enter_default = true,
+                    callback = function()
+                        local n = tonumber(dialog:getInputText())
+                        if n then
+                            n = math.floor(n)
+                            if n < 1 then n = 1 elseif n > 999 then n = 999 end
+                            VS.saveReadingGoal(year, n)
+                        end
+                        UIManager:close(dialog)
+                        popup_self:_buildUI()
+                        UIManager:setDirty(popup_self, function()
+                            return "ui", popup_self.popup_frame.dimen
+                        end)
+                    end,
+                },
+            },
+        },
     }
-    UIManager:show(widget)
+    UIManager:show(dialog)
+    dialog:onShowKeyboard()
 end
 
 -- Cycles the insights mode (hours -> days -> books -> hours) and reloads
