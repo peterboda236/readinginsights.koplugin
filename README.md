@@ -1,18 +1,21 @@
 ### 📊 Reading insights plugin
 
-<img width="255" height="340" alt="FileManager_2026-07-18_205310" src="https://github.com/user-attachments/assets/2686e3ea-66cb-4d34-8af4-77fe147c47a3" />
+<img width="255" height="340" alt="FileManager_2026-07-27_074128" src="https://github.com/user-attachments/assets/c12e7ab1-e3a9-4611-be17-0539527b6efc" />
 <img width="255" height="340" alt="FileManager_2026-07-17_152344" src="https://github.com/user-attachments/assets/4a3d2fb9-cc51-4342-a952-36f23bb1925c" />
 <img width="255" height="340" alt="Reader_Az Elso Torveny vilaga 1  - Hidegen talalva - Abercrombie, Joe #p(878) epub_p1117_2026-07-06_084654" src="https://github.com/user-attachments/assets/555ab8c6-d9ce-4ebc-a6ac-cfdf097ec51d" />
 <br/><br/>
 <img width="255" height="340" alt="Reader_Eddie Flynn 3  - Esku alatt - Cavanagh, Steve #p(421) epub_p696_2026-07-17_152405" src="https://github.com/user-attachments/assets/371b3119-119a-4ccb-9660-a63879996c48" />
 <img width="255" height="340" alt="FileManager_2026-07-17_152315" src="https://github.com/user-attachments/assets/ea6711c7-7c18-4bb5-a15c-871cc0b74888" />
-<img width="255" height="340" alt="FileManager_2026-07-17_152332" src="https://github.com/user-attachments/assets/21b311a8-bb10-4ffe-b7f0-3e91b19bb281" />
+<img width="255" height="340" alt="FileManager_2026-07-27_074133" src="https://github.com/user-attachments/assets/de2d7a78-a657-40cf-8628-f0787a827147" />
+
 
 More screenshots
 
 <img width="192" height="256" alt="reading-insights-v2-0-0-new-book-progress-popup-colors-v0-zoh19sw42rbh1" src="https://github.com/user-attachments/assets/52f851b7-8955-4739-b3a7-96ff8c2cbfe6" />
 <img width="192" height="256" alt="FileManager_2026-07-18_211837" src="https://github.com/user-attachments/assets/e4e5d617-98c6-40bc-8844-f23fa5837e95" />
 <img width="192" height="256" alt="FileManager_2026-07-02_083320" src="https://github.com/user-attachments/assets/8193ba8b-7f7e-4b35-9efb-81d0d4a1df8e" />
+<img width="192" height="256"![Uploading FileManager_2026-07-27_074133.png…]()
+ alt="FileManager_2026-07-17_152332" src="https://github.com/user-attachments/assets/21b311a8-bb10-4ffe-b7f0-3e91b19bb281" />
 <br/><br/>
 This plugin bundles reading-stats popups, powered by KOReader's
 statistics database.
