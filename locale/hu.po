@@ -1566,13 +1566,13 @@ msgid "Finish 5 books by the same author"
 msgstr "Fejezz be 5 könyvet ugyanattól a szerzőtől"
 
 msgid "Achievement refresh"
-msgstr "Teljes�tm�nyek friss�t�se"
+msgstr "Teljesítmények frissítése"
 
 msgid "Once a day"
 msgstr "Naponta egyszer"
 
 msgid "Every open"
-msgstr "Minden megnyit�skor"
+msgstr "Minden megnyitáskor"
 
 msgid "Reloading achievements..."
 msgstr "Teljesítmények újratöltése..."
