@@ -152,6 +152,16 @@ M.Opt = {
     SHOW_GOAL_KEY     = "reading_insights_show_reading_goal",
     SHOW_GOAL_DEFAULT = true,
 
+    -- What the reading-goal section shows (Settings > Advanced settings >
+    -- Reading insight popup > "Reading goal section"):
+    --   "both"      (default) finished/target figure + achievements count
+    --   "goal_only" the old two-cell view: finished count | yearly target
+    --   "off"       the whole section is hidden (and not queried)
+    GOAL_MODE_KEY  = "reading_insights_goal_section_mode",
+    GOAL_MODE_BOTH = "both",
+    GOAL_MODE_GOAL = "goal_only",
+    GOAL_MODE_OFF  = "off",
+
     -- What the right-hand cell of the "Reading goal" section counts
     -- (Settings > Advanced settings > Reading insight popup > "Reading goal
     -- display"). "total" (default) shows the year's goal itself - "30 books
@@ -388,13 +398,23 @@ function M.Opt.monthlyBarHeight()
     return M.readMonthlyBarHeightSetting()
 end
 
+-- Which layout the reading-goal section uses (or "off"). Invalid/unset ->
+-- the default "both".
+function M.Opt.readGoalSectionMode()
+    local v = Prefs.read(M.Opt.GOAL_MODE_KEY, nil)
+    if v == M.Opt.GOAL_MODE_GOAL or v == M.Opt.GOAL_MODE_OFF then return v end
+    return M.Opt.GOAL_MODE_BOTH
+end
+
+function M.Opt.saveGoalSectionMode(value)
+    Prefs.save(M.Opt.GOAL_MODE_KEY, value)
+end
+
+-- Whether the reading-goal section is drawn at all. Kept as its own function
+-- because several call sites (the section build, the finished-book query in
+-- _loadAndRebuild) gate on it; it's just "mode isn't off" now.
 function M.Opt.readShowReadingGoal()
-    -- The reading-goal section is always shown now: the old show/hide toggle
-    -- (and its Settings entry) were removed when the goal + achievements
-    -- became a core part of the popup. Returning true unconditionally means a
-    -- previously-saved "false" can't leave it hidden with no way to bring it
-    -- back.
-    return true
+    return M.Opt.readGoalSectionMode() ~= M.Opt.GOAL_MODE_OFF
 end
 
 function M.Opt.saveShowReadingGoal(value)

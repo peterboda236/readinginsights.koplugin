@@ -148,7 +148,7 @@ msgid "Reloading data..."
 msgstr "正在重新加载数据……"
 
 msgid "Reading insights"
-msgstr "阅读统计"
+msgstr "阅读洞察"
 msgid "Reading insights: all time statistics"
 msgstr "阅读统计：全部历史数据"
 msgid "Reading insights: current book progress"
@@ -1288,3 +1288,12 @@ msgstr "仅显示已获得"
 
 msgid "Show locked only"
 msgstr "仅显示未解锁"
+
+msgid "Shows the reading goal and achievements section of the Reading insights popup."
+msgstr "显示 Reading insights 弹窗的阅读目标与成就部分。"
+
+msgid "Reading goal & achievements"
+msgstr "阅读目标与成就"
+
+msgid "Reading goal only"
+msgstr "仅阅读目标"

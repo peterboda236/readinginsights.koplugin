@@ -1582,3 +1582,12 @@ msgstr "Show earned only"
 
 msgid "Show locked only"
 msgstr "Show locked only"
+
+msgid "Shows the reading goal and achievements section of the Reading insights popup."
+msgstr "Shows the reading goal and achievements section of the Reading insights popup."
+
+msgid "Reading goal & achievements"
+msgstr "Reading goal & achievements"
+
+msgid "Reading goal only"
+msgstr "Reading goal only"

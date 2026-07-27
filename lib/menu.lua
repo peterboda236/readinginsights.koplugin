@@ -376,6 +376,41 @@ function M.build(self, deps)
     -- "Date & time" group.
     local insights_popup_sub_item_table = {}
 
+    -- What the reading-goal section shows: the goal + achievements, the goal
+    -- only (old two-cell view), or nothing. When off it isn't drawn or
+    -- queried; achievements stay reachable via "Show achievements".
+    do
+        local Opt  = deps.ViewSettings.Opt
+        local BOTH = Opt.GOAL_MODE_BOTH
+        local GOAL = Opt.GOAL_MODE_GOAL
+        local OFF  = Opt.GOAL_MODE_OFF
+        local function modeEntry(value, text)
+            return {
+                text = text,
+                keep_menu_open = true,
+                radio = true,
+                checked_func = function() return Opt.readGoalSectionMode() == value end,
+                callback = function() Opt.saveGoalSectionMode(value) end,
+            }
+        end
+        table.insert(insights_popup_sub_item_table, {
+            text_func = function()
+                local m = Opt.readGoalSectionMode()
+                local label = (m == GOAL and _("Reading goal only"))
+                    or (m == OFF and _("Off"))
+                    or _("Reading goal & achievements")
+                return _("Reading goal section") .. ": " .. label
+            end,
+            keep_menu_open = true,
+            separator = true,
+            sub_item_table = {
+                modeEntry(BOTH, _("Reading goal & achievements")),
+                modeEntry(GOAL, _("Reading goal only")),
+                modeEntry(OFF,  _("Off")),
+            },
+        })
+    end
+
     table.insert(insights_popup_sub_item_table, {
         text_func = function()
             local months = deps.ViewSettings.readHeatmapMonthsSetting()
