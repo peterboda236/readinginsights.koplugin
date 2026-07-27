@@ -1582,3 +1582,12 @@ msgstr "Mostrar só as obtidas"
 
 msgid "Show locked only"
 msgstr "Mostrar só as bloqueadas"
+
+msgid "Shows the reading goal and achievements section of the Reading insights popup."
+msgstr "Mostra a secção de meta de leitura e conquistas da janela Reading insights."
+
+msgid "Reading goal & achievements"
+msgstr "Meta de leitura e conquistas"
+
+msgid "Reading goal only"
+msgstr "Apenas meta de leitura"

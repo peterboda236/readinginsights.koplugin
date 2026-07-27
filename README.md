@@ -61,6 +61,9 @@ A full-screen scrollable overlay with a comprehensive overview of your reading h
     time at all. Those hand-added entries are shown as a bare title with a
     leading `*` on their date
   - **Tap** the right cell to open the **achievements** list
+  - The **Reading goal** and **Achievements** labels above the two cells are
+    live too: tapping or long-pressing a label does the same as
+    tapping/long-pressing the cell beneath it
   - **Long-press** the left cell for the three ways of adjusting the goal:
     - **Mark books finished** — a checklist of every book with activity
       that year: checkbox and title on the left, the date of that book's
@@ -84,8 +87,9 @@ A full-screen scrollable overlay with a comprehensive overview of your reading h
       from, are kept in their own file (`reading_insights_manual_books.lua`,
       next to KOReader's settings) and count towards that year's reading
       goal
-    - **Set reading goal** — a number picker to set/change that year's
-      target (1–999, defaults to 12)
+    - **Set reading goal** — an input field to set/change that year's target
+      (1–999, defaults to 12); it opens over the popup and lifts above the
+      keyboard so you can see what you type
   - A book counts as finished when its **last** reading entry reached at
     least 99% of the book, and it counts for the year that last entry
     falls in — so a book read across New Year counts once, in the year you
@@ -95,6 +99,13 @@ A full-screen scrollable overlay with a comprehensive overview of your reading h
     automatically; tick them in **Mark books finished** (or, if the book
     isn't in the statistics database at all, put it in **Add books
     manually**)
+  - What this section shows is configurable — *Settings → Advanced settings →
+    Reading insight popup → Reading goal section*: **Reading goal &
+    achievements** (default, the two cells above), **Reading goal only** (the
+    older two-cell view — finished-book count next to the year's target, no
+    achievements cell), or **Off** (the whole section hidden and not even
+    queried; achievements stay reachable from *Tools → Reading insights → Show
+    achievements*)
 - **Use as sleep screen** — show this same popup instead of KOReader's own lock screen when the device suspends, with no double flash (see **Sleep screen** below)
 - **Reading heatmap range** — how many months the calendar/time-of-day
     heatmap grids show at once: 3, 4, or 6
@@ -395,6 +406,9 @@ where you left off.
           in Hungarian and `DD/MM/YYYY` elsewhere, which is what the plugin
           did before this setting existed
       - **Reading insight popup** — what the insights popup itself shows:
+        - **Reading goal section** — **Reading goal & achievements**
+          (default), **Reading goal only** (the older two-cell view), or
+          **Off** (hidden). See [Reading goal](#reading-insights-full-screen-history) above
         - **Reading heatmap range** — how many months the calendar/time-of-
           day heatmap grids show at once: 3, 4, or 6
         - **8-week chart order** — newest-first or oldest-first
@@ -445,7 +459,7 @@ readinginsights.koplugin/
 │                        over to lib/menu.lua
 ├── pluginutil.lua       shared plugin-dir + module loader (the bootstrap
 │                        anchor; replaces the old per-file pluginDir copies)
-├── locale/              one .po file per language (en.po, hu.po, de.po)
+├── locale/              one .po file per language (en, hu, de, pt_PT, zh_CN)
 ├── tests/               checks that run without KOReader (see tests/README.md)
 ├── lib/                 shared modules: data queries, settings, caching,
 │                        and the layout/menu building blocks
@@ -622,10 +636,11 @@ zip -r readinginsights.koplugin.zip readinginsights.koplugin -x '*/tests/*' -x '
 
 ## Translations
 
-`locale/en.po`, `locale/hu.po` and `locale/de.po` hold the UI strings for
-every popup (month names, "Total read", streak labels, records labels,
-chapter/pace labels, menu entries, etc.) as plain `msgid`/`msgstr` pairs,
-e.g.:
+`locale/en.po`, `locale/hu.po`, `locale/de.po`, `locale/pt_PT.po` and
+`locale/zh_CN.po` (English, Hungarian, German, Portuguese and Simplified
+Chinese) hold the UI strings for every popup (month names, "Total read",
+streak labels, records labels, achievement names/descriptions, chapter/pace
+labels, menu entries, etc.) as plain `msgid`/`msgstr` pairs, e.g.:
 
 ```
 msgid "Current streak"

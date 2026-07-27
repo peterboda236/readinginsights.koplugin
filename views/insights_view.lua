@@ -1048,121 +1048,140 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
         UI.addSectionWithRow(sections, tappable_chart_header, chart, layout, { add_divider = true, no_bottom_line = false })
     end
 
-    -- Stale widget references from a previous build must be dropped even
-    -- when the section is off, or onHold would still test taps against the
-    -- coordinates the goal cells occupied back when it was on.
-    popup_self._goal_cell_widget          = nil
-    popup_self._goal_finished_cell_widget = nil
+    -- Long-press targets for the reading-goal section (its headers and
+    -- cells). Reset every build so onHold never tests a hold against the
+    -- coordinates a previous build's widgets occupied. Each entry is
+    -- { w = widget, fn = function }.
+    popup_self._goal_hold_targets = {}
 
     if VS.Opt.readShowReadingGoal() then
+        local mode           = VS.Opt.readGoalSectionMode()
         local goal_year      = popup_self.selected_year
         local finished_count = goal_finished_count or 0
         local goal_value     = VS.readReadingGoal(goal_year)
 
-        -- Left cell: finished-vs-goal in one figure, e.g. "18/30" over
-        -- "books finished". This subsumes the old separate goal cell (the
-        -- "/30" is the target); the yearly goal is now set from the
-        -- long-press menu instead (see showFinishedBooksMenu).
-        local left_value = formatCount(finished_count) .. "/" .. formatCount(goal_value)
-        local left_unit  = N_("book finished", "books finished", finished_count)
-        local left_line  = buildValueLine(fonts.value, fonts.label, layout.col_width, left_value, left_unit)
-
-        -- Right cell: how many (global, all-time) achievements are earned,
-        -- e.g. "10" over "earned". Tapping it opens the achievements list.
-        -- The count is read straight from the persisted file each build
-        -- (cheap). Re-evaluation happens in the background (see
-        -- _loadAndRebuild -> Achievements.refreshIfChanged) only when the
-        -- reading data has actually changed, and immediately on a full reload.
-        local earned_count = Achievements and Achievements.earnedCount() or 0
-        local ach_total    = Achievements and Achievements.totalCount() or 0
-        -- A trailing star when there are achievements earned since the list
-        -- was last opened (see Achievements.newCount) - the "you have new
-        -- achievements" badge; tapping the cell opens the list and clears it.
-        local has_new      = Achievements and Achievements.newCount() > 0
-        -- Earned out of total, e.g. "42/83", with the new-badge star.
-        local right_value  = formatCount(earned_count) .. "/" .. formatCount(ach_total)
-                             .. (has_new and " ★" or "")
-        local right_unit   = _("earned")
-        local right_line   = buildValueLine(fonts.value, fonts.label, layout.col_width, right_value, right_unit)
-
-        local left_cell = InputContainer:new{
-            dimen = Geom:new{ x = 0, y = 0, w = layout.col_width, h = left_line:getSize().h },
-            left_line,
-        }
-        left_cell.ges_events = {
-            Tap = { GestureRange:new{ ges = "tap", range = left_cell.dimen } },
-        }
-        function left_cell:onTap()
-            popup_self:showFinishedBooksForYear(goal_year)
-            return true
+        local function addHold(widget, fn)
+            table.insert(popup_self._goal_hold_targets, { w = widget, fn = fn })
         end
-        -- Also long-pressable (see ReadingInsightsPopup:onHold): opens the
-        -- finished-books menu (mark finished / add manually / set goal).
-        popup_self._goal_finished_cell_widget = left_cell
 
-        local right_cell = InputContainer:new{
-            dimen = Geom:new{ x = 0, y = 0, w = layout.col_width, h = right_line:getSize().h },
-            right_line,
-        }
-        right_cell.ges_events = {
-            Tap = { GestureRange:new{ ges = "tap", range = right_cell.dimen } },
-        }
-        function right_cell:onTap()
-            if AchievementsView then
-                -- Refresh this cell when the list closes, so the "new" star
-                -- badge clears immediately (the list marked everything seen).
-                AchievementsView.show(function()
-                    if popup_self._closed then return end
-                    popup_self:_buildUI()
-                    UIManager:setDirty(popup_self, function()
-                        return "ui", popup_self.popup_frame.dimen
-                    end)
+        -- Actions shared by the cells and their header labels, so a tap/hold
+        -- on the "Reading goal"/"Achievements" title behaves like the cell
+        -- under it.
+        local function openFinished()     popup_self:showFinishedBooksForYear(goal_year) end
+        local function openFinishedMenu() popup_self:showFinishedBooksMenu(goal_year) end
+        local function editGoal()         popup_self:editReadingGoal(goal_year) end
+        local function openAchievements()
+            if not AchievementsView then return end
+            -- Refresh the cell when the list closes, so the "new" star badge
+            -- clears at once (opening the list marks everything seen).
+            AchievementsView.show(function()
+                if popup_self._closed then return end
+                popup_self:_buildUI()
+                UIManager:setDirty(popup_self, function()
+                    return "ui", popup_self.popup_frame.dimen
                 end)
-            end
-            return true
+            end)
         end
-        -- The goal value no longer lives here, so there's no long-press goal
-        -- edit off this cell anymore; make sure a stale reference from a
-        -- previous build can't still be tap-tested by onHold.
-        popup_self._goal_cell_widget = nil
 
-        local goal_data_row = UI.buildTwoColRow(left_cell, right_cell, layout)
-        local goal_row = VerticalGroup:new{
-            align = "left",
-            FrameContainer:new{
-                bordersize = 0,
-                padding    = 0,
-                UI.padded(layout.padding_h, goal_data_row),
-            },
-        }
+        -- A value/label data cell (col_width wide) with a tap action.
+        local function dataCell(line, on_tap)
+            local cell = InputContainer:new{
+                dimen = Geom:new{ x = 0, y = 0, w = layout.col_width, h = line:getSize().h },
+                line,
+            }
+            cell.ges_events = { Tap = { GestureRange:new{ ges = "tap", range = cell.dimen } } }
+            cell.onTap = function() on_tap(); return true end
+            return cell
+        end
 
-        -- Two-column header, so each cell gets its own title above it:
-        -- "Reading goal" over the finished/goal figure on the left,
-        -- "Achievements" over the earned count on the right. Padded with the
-        -- same padding_h and laid out with the same col_width as the data row
-        -- below, so each title sits directly over its column; the vertical
-        -- separator is hidden here (only the data row draws it).
-        local goal_title_w = TextWidget:new{
-            text = buildGoalYearLabel(goal_year), face = fonts.section, fgcolor = Colors.section(),
-        }
-        local ach_title_w = TextWidget:new{
-            text = _("Achievements"), face = fonts.section, fgcolor = Colors.section(),
-        }
-        -- Same small top/bottom padding buildSectionHeader wraps its single
-        -- title in, so this two-column header lines up vertically with every
-        -- other section header (without it the reading-goal section looked
-        -- tighter than the streak/monthly/last-week ones above it).
-        local goal_header = FrameContainer:new{
-            background     = Blitbuffer.COLOR_WHITE,
-            bordersize     = 0,
-            padding_top    = Size.padding.small,
-            padding_bottom = Size.padding.small,
-            padding_left   = 0,
-            padding_right  = 0,
-            UI.padded(layout.padding_h, UI.buildTwoColRow(goal_title_w, ach_title_w, layout, true)),
-        }
+        -- An interactive section-title cell, so the header label is tappable
+        -- like the cell below it. `width` defaults to one column.
+        local function headerCell(text, on_tap, width)
+            local tw = TextWidget:new{ text = text, face = fonts.section, fgcolor = Colors.section() }
+            local cell = InputContainer:new{
+                dimen = Geom:new{ x = 0, y = 0, w = width or layout.col_width, h = tw:getSize().h },
+                tw,
+            }
+            if on_tap then
+                cell.ges_events = { Tap = { GestureRange:new{ ges = "tap", range = cell.dimen } } }
+                cell.onTap = function() on_tap(); return true end
+            end
+            return cell
+        end
 
-        UI.addSectionWithRow(sections, goal_header, goal_row, layout, { pad_row = false })
+        -- The same small top/bottom padding buildSectionHeader wraps its
+        -- title in, so a custom header lines up vertically with every other
+        -- section header.
+        local function paddedHeader(inner)
+            return FrameContainer:new{
+                background     = Blitbuffer.COLOR_WHITE,
+                bordersize     = 0,
+                padding_top    = Size.padding.small,
+                padding_bottom = Size.padding.small,
+                padding_left   = 0,
+                padding_right  = 0,
+                UI.padded(layout.padding_h, inner),
+            }
+        end
+
+        local function wrapRow(row)
+            return VerticalGroup:new{
+                align = "left",
+                FrameContainer:new{ bordersize = 0, padding = 0, UI.padded(layout.padding_h, row) },
+            }
+        end
+
+        if mode == VS.Opt.GOAL_MODE_GOAL then
+            -- Old two-cell view: finished-book count | this year's target.
+            local left_line = buildValueLine(fonts.value, fonts.label, layout.col_width,
+                formatCount(finished_count), N_("book finished", "books finished", finished_count))
+            local right_line = buildValueLine(fonts.value, fonts.label, layout.col_width,
+                formatCount(goal_value), N_("book to read", "books to read", goal_value))
+
+            local left_cell  = dataCell(left_line, openFinished)
+            addHold(left_cell, openFinishedMenu)
+            local right_cell = dataCell(right_line, editGoal)
+            addHold(right_cell, editGoal)
+
+            -- Single "Reading goal" header spanning the row, tap/hold behaving
+            -- like the finished-book (left) cell.
+            local header = headerCell(buildGoalYearLabel(goal_year), openFinished, layout.content_width)
+            addHold(header, openFinishedMenu)
+
+            UI.addSectionWithRow(sections, paddedHeader(header),
+                wrapRow(UI.buildTwoColRow(left_cell, right_cell, layout)),
+                layout, { pad_row = false })
+        else
+            -- Combined view: "finished/target" figure + achievements count.
+            local left_value = formatCount(finished_count) .. "/" .. formatCount(goal_value)
+            local left_line  = buildValueLine(fonts.value, fonts.label, layout.col_width,
+                left_value, N_("book finished", "books finished", finished_count))
+
+            local earned_count = Achievements and Achievements.earnedCount() or 0
+            local ach_total    = Achievements and Achievements.totalCount() or 0
+            -- Trailing star = achievements earned since the list was last
+            -- opened (see Achievements.newCount); tapping opens & clears it.
+            local has_new      = Achievements and Achievements.newCount() > 0
+            local right_value  = formatCount(earned_count) .. "/" .. formatCount(ach_total)
+                                 .. (has_new and " ★" or "")
+            local right_line   = buildValueLine(fonts.value, fonts.label, layout.col_width,
+                right_value, _("earned"))
+
+            local left_cell  = dataCell(left_line, openFinished)
+            addHold(left_cell, openFinishedMenu)
+            local right_cell = dataCell(right_line, openAchievements)
+
+            -- Two-column header: "Reading goal" (behaves like the left cell)
+            -- and "Achievements" (opens the list, like the right cell).
+            local goal_title = headerCell(buildGoalYearLabel(goal_year), openFinished)
+            addHold(goal_title, openFinishedMenu)
+            local ach_title  = headerCell(_("Achievements"), openAchievements)
+
+            UI.addSectionWithRow(sections,
+                paddedHeader(UI.buildTwoColRow(goal_title, ach_title, layout, true)),
+                wrapRow(UI.buildTwoColRow(left_cell, right_cell, layout)),
+                layout, { pad_row = false })
+        end
     end -- if VS.Opt.readShowReadingGoal()
 
     do
@@ -2305,20 +2324,13 @@ function ReadingInsightsPopup:onHold(arg, ges_ev)
         end
     end
 
-    if self._goal_cell_widget then
-        local d = self._goal_cell_widget.dimen
+    -- Reading-goal section: a hold on any of its headers/cells runs that
+    -- widget's registered action (see buildInsightsSections' addHold).
+    for _idx, t in ipairs(self._goal_hold_targets or {}) do
+        local d = t.w and t.w.dimen
         if d and pos.x >= d.x and pos.x <= d.x + d.w
               and pos.y >= d.y and pos.y <= d.y + d.h then
-            self:editReadingGoal(self.selected_year)
-            return true
-        end
-    end
-
-    if self._goal_finished_cell_widget then
-        local d = self._goal_finished_cell_widget.dimen
-        if d and pos.x >= d.x and pos.x <= d.x + d.w
-              and pos.y >= d.y and pos.y <= d.y + d.h then
-            self:showFinishedBooksMenu(self.selected_year)
+            t.fn()
             return true
         end
     end

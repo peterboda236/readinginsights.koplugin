@@ -1582,3 +1582,12 @@ msgstr "Nur erreichte anzeigen"
 
 msgid "Show locked only"
 msgstr "Nur gesperrte anzeigen"
+
+msgid "Shows the reading goal and achievements section of the Reading insights popup."
+msgstr "Zeigt den Leseziel- und Erfolge-Abschnitt des Reading-insights-Popups."
+
+msgid "Reading goal & achievements"
+msgstr "Leseziel & Erfolge"
+
+msgid "Reading goal only"
+msgstr "Nur Leseziel"

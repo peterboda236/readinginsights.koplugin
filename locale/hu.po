@@ -1585,3 +1585,12 @@ msgstr "Csak a megszerzettek"
 
 msgid "Show locked only"
 msgstr "Csak a hátralévők"
+
+msgid "Shows the reading goal and achievements section of the Reading insights popup."
+msgstr "A Reading insights popup olvasási cél és teljesítmények szekcióját mutatja."
+
+msgid "Reading goal & achievements"
+msgstr "Olvasási cél és teljesítmények"
+
+msgid "Reading goal only"
+msgstr "Csak olvasási cél"
