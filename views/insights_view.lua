@@ -685,7 +685,15 @@ local function showStreakDatePopup(dates, is_weekly, is_current)
         local sun_to
         if mon_to then
             sun_to = os.date("%Y-%m-%d", os.time({ year = tonumber(mon_to:sub(1,4)),
-                month = tonumber(mon_to:sub(6,7)), day = tonumber(mon_to:sub(9,10)) }) + 6 * 86400)
+                month = tonumber(mon_to:sub(6,7)), day = tonumber(mon_to:sub(9,10)),
+                hour = 12 }) + 6 * 86400)
+            -- The most recent week of a running streak is only partly over, so
+            -- its Sunday is still in the future. Clamp the period to today so
+            -- the totals cover the days actually read and the per-day averages
+            -- divide by the days elapsed so far, not by a full seven-day week.
+            -- (ISO date strings compare correctly as plain strings.)
+            local today_str = os.date("%Y-%m-%d")
+            if sun_to > today_str then sun_to = today_str end
         end
         range_start = mon_from
         range_end   = sun_to or mon_to
@@ -2058,14 +2066,13 @@ function ReadingInsightsPopup:_loadAndRebuild()
         }
     end) or {}
 
-    -- Re-evaluate achievements in the background, but only when the reading
-    -- data has actually changed since the last evaluation (a single
-    -- fingerprint query decides - see Achievements.refreshIfChanged); a
-    -- newly-earned achievement then bumps the "N earned" cell below via
-    -- new_ach_count in the change check.
-    if Achievements then
-        pcall(Achievements.refreshIfChanged, VS.Opt.readAchievementRefresh())
-    end
+    -- Achievements are re-evaluated *after* this rebuild has painted, not
+    -- here, so the day's fresh reading numbers appear first and aren't held
+    -- back by the (occasionally expensive) achievement recompute - see
+    -- _scheduleAchievementsRefresh(), scheduled at the end of this function.
+    -- For now we reuse whatever count is already known, so the goal/
+    -- achievements cell keeps its current value until that deferred pass
+    -- (a beat later) updates it if anything was unlocked.
     local new_ach_count = Achievements and Achievements.earnedCount() or 0
 
     local new_streaks         = batch.streaks
@@ -2106,6 +2113,7 @@ function ReadingInsightsPopup:_loadAndRebuild()
         self._monthly         = new_monthly
         self._ach_count       = new_ach_count
         Cache.saveDiskCache()
+        self:_scheduleAchievementsRefresh()
         return
     end
 
@@ -2125,6 +2133,37 @@ function ReadingInsightsPopup:_loadAndRebuild()
         return "ui", self.popup_frame.dimen
     end)
     Cache.saveDiskCache()
+    self:_scheduleAchievementsRefresh()
+end
+
+-- Deferred, one-shot achievement re-evaluation. Scheduled at the end of
+-- _loadAndRebuild(), i.e. only once the reading data has been loaded and
+-- painted, so opening the popup shows the day's fresh numbers straight away
+-- and the (sometimes costly) achievement recompute runs a beat later. If it
+-- unlocks anything, the goal/achievements cell is repainted then; otherwise
+-- nothing visible changes. refreshIfChanged() is cheap when nothing changed -
+-- one fingerprint query, or nothing at all more than once a day - so it is
+-- fine to schedule this on every rebuild; the flag only stops overlapping
+-- passes from stacking up, and the pass never reschedules itself, so it can't
+-- loop.
+function ReadingInsightsPopup:_scheduleAchievementsRefresh()
+    if not Achievements then return end
+    if self._ach_refresh_scheduled then return end
+    self._ach_refresh_scheduled = true
+    UIManager:scheduleIn(0.1, function()
+        self._ach_refresh_scheduled = false
+        if self._closed then return end
+        local before = self._ach_count or 0
+        pcall(Achievements.refreshIfChanged, VS.Opt.readAchievementRefresh())
+        local after = Achievements and Achievements.earnedCount() or 0
+        if after == before then return end
+        self._ach_count = after
+        if self._closed then return end
+        self:_buildUI()
+        UIManager:setDirty(self, function()
+            return "ui", self.popup_frame.dimen
+        end)
+    end)
 end
 
 -- init() shows cached/stale data immediately, then _loadAndRebuild() refreshes in the background.

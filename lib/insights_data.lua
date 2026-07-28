@@ -211,17 +211,33 @@ local function parseWeekYear(week_str)
     return year, week
 end
 
--- Convert "YYYY-WW" to the Monday date of that ISO week as "YYYY-MM-DD".
+-- Convert a "YYYY-WW" week string to the Monday date of that week, as
+-- "YYYY-MM-DD".
+--
+-- The week numbering here MUST match the one the streak data is grouped by,
+-- which is SQLite's strftime('%W'): week 01 begins on the first Monday of the
+-- year, and the days before that first Monday are week 00. This is NOT ISO
+-- 8601 week numbering. An earlier version computed the Monday with the ISO
+-- "Jan 4 is in week 1" rule; that disagrees with %W in every year whose Jan 1
+-- is not a Monday (i.e. most years) and shifted the whole range back by a
+-- week, so the weekly-streak popup left out the current week entirely - its
+-- date range ended on the previous week's Sunday.
 function M.weekStrToMondayDate(week_str)
     if not week_str then return nil end
     local year, week = parseWeekYear(week_str)
     if not year or not week then return nil end
-    -- Jan 4 is always in week 1; find Monday of week 1, then offset.
-    local jan4 = os.time({ year = year, month = 1, day = 4 })
-    local dow4 = tonumber(os.date("%w", jan4))  -- 0=Sun
-    if dow4 == 0 then dow4 = 7 end
-    local week1_mon = jan4 - (dow4 - 1) * 86400
-    local target_mon = week1_mon + (week - 1) * 7 * 86400
+    -- Noon (not midnight) so a DST rollover can't push os.date() onto the
+    -- previous calendar day when it formats the result.
+    local jan1 = os.time({ year = year, month = 1, day = 1, hour = 12 })
+    local wday = tonumber(os.date("%w", jan1))  -- 0=Sun .. 6=Sat
+    if wday == 0 then wday = 7 end              -- treat Sunday as 7 (Mon..Sun = 1..7)
+    -- Days from Jan 1 to the first Monday (the start of %W week 01). Mon->0,
+    -- Tue->6, ... Sun->1. For week 00 the (week - 1) term below is -1, which
+    -- lands on the Monday just before that first Monday - exactly the block
+    -- %W labels the pre-first-Monday days with.
+    local days_to_first_monday = (8 - wday) % 7
+    local first_monday = jan1 + days_to_first_monday * 86400
+    local target_mon = first_monday + (week - 1) * 7 * 86400
     return os.date("%Y-%m-%d", target_mon)
 end
 

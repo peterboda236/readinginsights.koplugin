@@ -236,7 +236,14 @@ local function fullQueryBestStreak(conn)
     for i = 2, #dates do
         if dateDiffDays(dates[i-1], dates[i]) == 1 then
             cur_len = cur_len + 1
-            if cur_len > best_len then
+            -- ">=" (not ">") so that when the current, still-running streak
+            -- ties the longest one on record, the record advances to it - its
+            -- length is unchanged, but its shown date range moves to the
+            -- ongoing streak (ending today) instead of freezing on an older,
+            -- equally-long one. dates is ASC, so a later equal run overwrites
+            -- an earlier one, which also matches how the insights popup picks
+            -- the streak to show (most recent wins on a tie).
+            if cur_len >= best_len then
                 best_len   = cur_len
                 best_start = cur_start
                 best_end   = dates[i]
