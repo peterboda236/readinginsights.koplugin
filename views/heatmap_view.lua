@@ -687,39 +687,28 @@ function M.buildHeatmapBoxContent(popup_self, periods_back)
     local older_available = periods_back < M.heatmapMaxPeriodsBack(year_range.min_year, year_range.min_month)
     local newer_available = periods_back > 0
 
-    -- Small helper: a centered section header (same font/color as every
-    -- other section header in this file) above one of the two grids.
-    local function sectionTitle(text)
-        local w = TextWidget:new{ text = text, face = fonts.section, fgcolor = Colors.section() }
-        return CenterContainer:new{
-            dimen = Geom:new{ w = content_width, h = w:getSize().h }, w,
+    -- Left-align a grid (or the legend) flush with the box's left content
+    -- edge. Both heatmaps and the legend go through this, so they share one
+    -- left margin and their weekday-label gutters stack into a single column,
+    -- instead of each grid being centered on its own width (which left their
+    -- left edges out of line with each other).
+    local function leftAlign(widget)
+        if not widget then return nil end
+        return LeftContainer:new{
+            dimen = Geom:new{ w = content_width, h = widget:getSize().h },
+            widget,
         }
     end
 
-    -- Blank row between the two grids, the height of a (blank) section
-    -- header - no visible line, just the same cushion of space that used
-    -- to sit around the separator line, so removing the line doesn't
-    -- also shrink the gap between the two heatmaps.
-    local function sectionSeparator()
-        local sample = TextWidget:new{ text = "", face = fonts.section }
-        local row_h = sample:getSize().h
-        sample:free()
-        return VerticalSpan:new{ height = row_h }
-    end
-
-    -- Each grid ends up centered (as a block) within content_width rather
-    -- than flush against the box's left edge. Wrapping it in a same-width
-    -- (the grid's own width) left-aligned box before handing it to the
-    -- outer, center-aligned VerticalGroup below keeps its internal
-    -- column/row labels lined up with themselves - it doesn't need to
-    -- match the *other* grid's width, since the two are visually
-    -- independent sections (the legend below is pinned to the
-    -- time-of-day grid specifically - see day_part_left_offset below).
-    local function matchOwnWidth(widget)
-        if not widget then return nil end
+    -- A small, muted, left-aligned caption naming the grid that follows.
+    -- Lighter than the old centered section titles, because the single
+    -- period header above now carries both the ‹ / › paging and the date
+    -- range for the two grids together.
+    local function caption(text)
+        local w = TextWidget:new{ text = text, face = fonts.label, fgcolor = Colors.label() }
         return LeftContainer:new{
-            dimen = Geom:new{ w = widget:getSize().w, h = widget:getSize().h },
-            widget,
+            dimen = Geom:new{ w = content_width, h = w:getSize().h },
+            w,
         }
     end
 
@@ -732,41 +721,49 @@ function M.buildHeatmapBoxContent(popup_self, periods_back)
     local day_part_widget, day_part_left_offset =
         M.buildDayPartHeatmapWidget(weekday_hour_map, fonts, content_width)
 
-    -- The shared legend/caption is pinned to the time-of-day grid
-    -- specifically (not centered on its own): wrapping it in a box the
-    -- same width as day_part_widget, with its own left_offset spacer
-    -- (weekday-label column + gap, same as M.buildDayPartHeatmapWidget's
-    -- own internal grid), means it gets centered as a block by the same
-    -- amount as that grid below - so the legend's first swatch starts
-    -- exactly under the grid's first hour column.
+    -- One shared legend for both grids, aligned flush-left like them: its
+    -- built-in left_offset (the weekday-label gutter + gap) pushes the first
+    -- swatch under the grids' first data column, so the whole legend lines up
+    -- with the columns above it.
     local legend_row = M.buildHeatmapLegendWidget(fonts, day_part_left_offset)
     local legend_widget = LeftContainer:new{
-        dimen = Geom:new{ w = day_part_widget:getSize().w, h = legend_row:getSize().h },
+        dimen = Geom:new{ w = content_width, h = legend_row:getSize().h },
         legend_row,
     }
 
-    -- Calendar heatmap header: same title as before, now with ‹ / ›
-    -- paging arrows at the edges (shown only when there's an older/newer
-    -- half-year to page to - see older_available/newer_available above),
-    -- styled like BookCalendarPopup's own month header (see
-    -- M.buildHeatmapSectionHeader). cal_left_frame/cal_right_frame are nil
-    -- when the corresponding arrow is hidden; M.Popup uses their
-    -- presence (not .dimen) to decide whether to register a tap zone.
+    -- One shared header for both grids: the period's date range as the
+    -- title, with the ‹ / › paging arrows at the edges (shown only when
+    -- there's an older/newer period to page to). The arrows page the whole
+    -- popup - both grids move together - so a single header reads clearer
+    -- than the old per-grid titles, where only the calendar one had arrows.
+    -- Range is "Mon – Mon YYYY", or spelled out per year across a Dec/Jan
+    -- boundary. cal_left_frame/cal_right_frame are nil when an arrow is
+    -- hidden; M.Popup uses their presence (not .dimen) to place tap zones.
+    local st, et = os.date("*t", start_t), os.date("*t", end_t)
+    local period_title
+    if st.year == et.year then
+        period_title = string.format("%s \xE2\x80\x93 %s %d",
+            MONTH_NAMES_SHORT[st.month], MONTH_NAMES_SHORT[et.month], et.year)
+    else
+        period_title = string.format("%s %d \xE2\x80\x93 %s %d",
+            MONTH_NAMES_SHORT[st.month], st.year, MONTH_NAMES_SHORT[et.month], et.year)
+    end
+
     local calendar_header, cal_left_frame, cal_right_frame, cal_left_w, cal_right_w, cal_header_h =
-        M.buildHeatmapSectionHeader(_("Calendar heatmap"), content_width, fonts.section, older_available, newer_available)
+        M.buildHeatmapSectionHeader(period_title, content_width, fonts.section, older_available, newer_available)
 
     local content = VerticalGroup:new{
         align = "center",
         calendar_header,
         VerticalSpan:new{ height = Size.padding.large + Size.padding.default },
-        matchOwnWidth(calendar_widget),
+        caption(_("Calendar heatmap")),
+        VerticalSpan:new{ height = Size.padding.small },
+        leftAlign(calendar_widget),
         VerticalSpan:new{ height = 2 * Size.padding.large },
-        sectionSeparator(),
-        VerticalSpan:new{ width = Size.padding.large * 2 },
-        sectionTitle(_("Time of day heatmap")),
+        caption(_("Time of day heatmap")),
+        VerticalSpan:new{ height = Size.padding.small },
+        leftAlign(day_part_widget),
         VerticalSpan:new{ height = Size.padding.large + Size.padding.default },
-        matchOwnWidth(day_part_widget),
-        VerticalSpan:new{ height = 2 * Size.padding.large },
         legend_widget,
     }
 
