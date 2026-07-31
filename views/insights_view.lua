@@ -229,18 +229,21 @@ local function tappableCell(widget, col_width, callback)
     return cell
 end
 
-local function buildYearHeader(font_section, layout, year_range, selected_year)
+local function buildYearHeader(font_section, font_label, layout, year_range, selected_year)
     local prev_available = selected_year > year_range.min_year
     local next_available = selected_year < year_range.max_year
 
     local inner_pad = Size.padding.default
     local gap       = Size.padding.small
 
-    local sample_arrow = TextWidget:new{ text = "\xe2\x80\xb9", face = font_section }
+    -- The previous/next year on either side use the plain "label" face
+    -- (like the "pages read" text below), so only the centre year - in the
+    -- bold "section" face - stands out as the selected one.
+    local sample_arrow = TextWidget:new{ text = "\xe2\x80\xb9", face = font_label }
     local arrow_w = sample_arrow:getSize().w
     sample_arrow:free()
 
-    local sample_yr = TextWidget:new{ text = tostring(selected_year - 1), face = font_section }
+    local sample_yr = TextWidget:new{ text = tostring(selected_year - 1), face = font_label }
     local yr_side_w = sample_yr:getSize().w
     sample_yr:free()
 
@@ -263,13 +266,13 @@ local function buildYearHeader(font_section, layout, year_range, selected_year)
 
         local arrow_tw = TextWidget:new{
             text    = arrow_glyph,
-            face    = font_section,
-            fgcolor = Colors.section(),
+            face    = font_label,
+            fgcolor = Colors.label(),
         }
         local yr_tw = TextWidget:new{
             text    = tostring(yr),
-            face    = font_section,
-            fgcolor = Colors.section(),
+            face    = font_label,
+            fgcolor = Colors.label(),
         }
 
         local parts
@@ -1026,7 +1029,7 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
         streak_combined_header,
         streak_rows, layout, { pad_row = false })
 
-    local year_header = buildYearHeader(fonts.section, layout, year_range, popup_self.selected_year)
+    local year_header = buildYearHeader(fonts.section, fonts.label, layout, year_range, popup_self.selected_year)
     local yearly_row  = buildYearlyRow(popup_self, yearly_stats, fonts, layout)
 
     local chart = buildMonthlyChart(popup_self, monthly_data, layout, fonts)
