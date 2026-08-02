@@ -1189,7 +1189,7 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
             local ach_title  = headerCell(_("Achievements"), openAchievements)
 
             UI.addSectionWithRow(sections,
-                paddedHeader(UI.buildTwoColRow(goal_title, ach_title, layout, true)),
+                paddedHeader(UI.buildTwoColRow(goal_title, ach_title, layout)),
                 wrapRow(UI.buildTwoColRow(left_cell, right_cell, layout)),
                 layout, { pad_row = false })
         end
