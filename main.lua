@@ -825,6 +825,14 @@ end
 -- File manager. Opens the same list the reading-goal section's "N earned"
 -- cell does (views/achievements_view.lua).
 function ReadingInsights:onShowReadingAchievements()
+    -- Opened straight from the menu (not via the insights popup, which runs
+    -- its own background refresh). Do a cheap fingerprint check first so any
+    -- newly earned achievements show up in the list right away. In "daily"
+    -- mode this is a no-op once per calendar day; in "every_open" it runs one
+    -- fingerprint query and only recomputes when the reading data changed.
+    if Achievements then
+        pcall(Achievements.refreshIfChanged, ViewSettings.Opt.readAchievementRefresh())
+    end
     AchievementsView.show()
     return true
 end
