@@ -1297,3 +1297,6 @@ msgstr "阅读目标与成就"
 
 msgid "Reading goal only"
 msgstr "仅阅读目标"
+
+msgid "Reading time by time of day"
+msgstr "各时段阅读时长"

@@ -38,6 +38,7 @@ contribution graph does.
 
 local Blitbuffer = require("ffi/blitbuffer")
 local CenterContainer = require("ui/widget/container/centercontainer")
+local BottomContainer = require("ui/widget/container/bottomcontainer")
 local FrameContainer = require("ui/widget/container/framecontainer")
 local Geom = require("ui/geometry")
 local HorizontalGroup = require("ui/widget/horizontalgroup")
@@ -557,6 +558,146 @@ function M.buildDayPartHeatmapWidget(weekday_hour_map, fonts, max_width)
     return widget, wd_label_w + gap
 end
 
+-- The four day-parts the bar chart below buckets the 24 hours into, each a
+-- six-hour span. Names are translatable; the hour-range subtitle honours
+-- the "Time format" setting (24-hour vs 12-hour AM/PM) via daypartRangeLabel.
+local DAYPARTS = {
+    { name = function() return _("Night") end,     h_start = 0,  h_end = 6  },
+    { name = function() return _("Morning") end,   h_start = 6,  h_end = 12 },
+    { name = function() return _("Afternoon") end, h_start = 12, h_end = 18 },
+    { name = function() return _("Evening") end,   h_start = 18, h_end = 24 },
+}
+
+-- Hour-range subtitle for a day-part bucket, e.g. "18–24" (24-hour) or
+-- "6PM–12AM" (12-hour). Reuses formatHeatmapHourLabel for the 12-hour
+-- spelling; in 24-hour mode the closing midnight is shown as "24" (not
+-- "00") so a span like 18–24 reads as running to the end of the day.
+local function daypartRangeLabel(h_start, h_end)
+    local en_dash = "\xE2\x80\x93"
+    if VS.readHeatmapHourFormatSetting() == "12" then
+        local function lbl12(h)
+            local hh  = h % 24
+            local h12 = hh % 12
+            if h12 == 0 then h12 = 12 end
+            return tostring(h12) .. (hh < 12 and "AM" or "PM")
+        end
+        return lbl12(h_start) .. en_dash .. lbl12(h_end)
+    end
+    return string.format("%02d", h_start) .. en_dash .. string.format("%02d", h_end)
+end
+
+-- Builds the "time of day" bar chart: one bar per day-part (Night / Morning
+-- / Afternoon / Evening), each the total reading time in that six-hour band
+-- summed across every weekday in the period. Unlike the weekday x hour grid
+-- it replaces, there are only four bars, so each one can carry its exact
+-- reading time as a label on top (the grid has no room for numbers) and a
+-- name + hour-range label underneath. Same signature and return shape as
+-- M.buildDayPartHeatmapWidget (widget + left offset) so the caller and the
+-- shared legend can treat the two interchangeably.
+function M.buildDayPartChartWidget(weekday_hour_map, fonts, max_width)
+    local gap        = Screen:scaleBySize(2)
+    local num_bars   = #DAYPARTS
+    local wd_label_w = getWeekdayLabelWidth(fonts)
+
+    -- Total reading seconds per day-part, and the busiest one (the bar that
+    -- reaches full height; the rest scale against it).
+    local totals, max_secs = {}, 0
+    for i, dp in ipairs(DAYPARTS) do
+        local secs = 0
+        for wd = 1, 7 do
+            local row = weekday_hour_map[wd]
+            if row then
+                for h = dp.h_start, dp.h_end - 1 do
+                    secs = secs + (row[h] or 0)
+                end
+            end
+        end
+        totals[i] = secs
+        if secs > max_secs then max_secs = secs end
+    end
+
+    local col_gap  = Screen:scaleBySize(8)
+    local col_w    = math.floor((max_width - (num_bars - 1) * col_gap) / num_bars)
+    -- Bars fill their whole column, so the four of them span the content
+    -- width edge to edge instead of thin fixed-width bars floating centered
+    -- with large empty gaps around them.
+    local bar_w    = col_w
+    -- Full-height bar reuses the insight view's own chart bar height
+    -- (VS.Opt.weeklyBarHeight): in auto mode that's the value its auto-fit
+    -- loop computes to fit the screen, so this chart's bars match the
+    -- weekly/monthly charts and scale with the same setting instead of a
+    -- hard-coded height.
+    local chart_h  = Screen:scaleBySize(VS.Opt.weeklyBarHeight())
+    local min_bar  = Screen:scaleBySize(2)
+
+    -- Sample heights so every column reserves the same vertical space and
+    -- the bars share one baseline regardless of their individual heights.
+    local sample_val = TextWidget:new{ text = "0:00", face = fonts.small }
+    local val_h = sample_val:getSize().h
+    sample_val:free()
+    local sample_lbl = TextWidget:new{ text = "00", face = fonts.small }
+    local lbl_h = sample_lbl:getSize().h
+    sample_lbl:free()
+
+    local bars_row = HorizontalGroup:new{ align = "bottom" }
+    local labels_row = HorizontalGroup:new{ align = "top" }
+    for i, dp in ipairs(DAYPARTS) do
+        local secs = totals[i]
+        local bar_h = 0
+        if secs > 0 and max_secs > 0 then
+            bar_h = math.floor(chart_h * secs / max_secs + 0.5)
+            if bar_h < min_bar then bar_h = min_bar end
+        end
+        local is_peak  = (secs == max_secs and max_secs > 0)
+        local bar_color = is_peak and Colors.activeBar() or Colors.inactiveBar()
+        local value_text = secs > 0 and Locale.formatDuration(secs, true) or "\xE2\x80\x94"
+
+        -- Value label sitting directly on top of the bar. The pair is
+        -- bottom-anchored inside a fixed-height cell with a BottomContainer
+        -- rather than pushed down with a leading VerticalSpan: a VerticalSpan
+        -- nested this deep renders with zero height on-device (same gotcha
+        -- called out in M.buildRangeHeatmapWidget), which would let the bars
+        -- float centered instead of growing up from a shared baseline.
+        local bar_group = VerticalGroup:new{
+            align = "center",
+            TextWidget:new{ text = value_text, face = fonts.small, fgcolor = Colors.value() },
+            Colors.newBar(bar_w, bar_h, bar_color),
+        }
+        table.insert(bars_row, BottomContainer:new{
+            dimen = Geom:new{ w = col_w, h = chart_h + val_h },
+            bar_group,
+        })
+
+        -- x-axis: day-part name over its hour range, both centered under the bar.
+        local axis = VerticalGroup:new{
+            align = "center",
+            TextWidget:new{ text = dp.name(), face = fonts.small, fgcolor = Colors.small() },
+            VerticalSpan:new{ height = Size.padding.small },
+            TextWidget:new{ text = daypartRangeLabel(dp.h_start, dp.h_end), face = fonts.small, fgcolor = Colors.label() },
+        }
+        table.insert(labels_row, CenterContainer:new{
+            dimen = Geom:new{ w = col_w, h = 2 * lbl_h + Size.padding.small },
+            axis,
+        })
+
+        if i < num_bars then
+            table.insert(bars_row, HorizontalSpan:new{ width = col_gap })
+            table.insert(labels_row, HorizontalSpan:new{ width = col_gap })
+        end
+    end
+
+    local widget = VerticalGroup:new{
+        align = "left",
+        bars_row,
+        VerticalSpan:new{ height = Size.padding.default },
+        labels_row,
+    }
+
+    -- Return the same left offset the grid builders report, so the shared
+    -- legend below still lines up under the calendar heatmap's first column.
+    return widget, wd_label_w + gap
+end
+
 -- Color legend for the reading heatmap: a "Less" label, the same five
 -- shades used by the grid squares above (see M.heatmapLevelColor /
 -- Colors.heatmap0..100), and a "More" label - so it's clear at a glance
@@ -718,8 +859,18 @@ function M.buildHeatmapBoxContent(popup_self, periods_back)
     -- stay within one year.
     local calendar_widget = M.buildRangeHeatmapWidget(daily_map, start_t, end_t, fonts, content_width)
 
-    local day_part_widget, day_part_left_offset =
-        M.buildDayPartHeatmapWidget(weekday_hour_map, fonts, content_width)
+    -- Time-of-day section: the new day-part bar chart (default) or the older
+    -- weekday x hour-of-day heatmap grid, per Settings ▸ ... ▸ "Time of day
+    -- view". The calendar heatmap above is unaffected either way.
+    local timeofday_is_chart = VS.readTimeOfDayViewSetting() == "chart"
+    local day_part_widget, day_part_left_offset
+    if timeofday_is_chart then
+        day_part_widget, day_part_left_offset =
+            M.buildDayPartChartWidget(weekday_hour_map, fonts, content_width)
+    else
+        day_part_widget, day_part_left_offset =
+            M.buildDayPartHeatmapWidget(weekday_hour_map, fonts, content_width)
+    end
 
     -- One shared legend for both grids, aligned flush-left like them: its
     -- built-in left_offset (the weekday-label gutter + gap) pushes the first
@@ -759,13 +910,28 @@ function M.buildHeatmapBoxContent(popup_self, periods_back)
         caption(_("Calendar heatmap")),
         VerticalSpan:new{ height = Size.padding.small },
         leftAlign(calendar_widget),
-        VerticalSpan:new{ height = 2 * Size.padding.large },
-        caption(_("Time of day heatmap")),
-        VerticalSpan:new{ height = Size.padding.small },
-        leftAlign(day_part_widget),
-        VerticalSpan:new{ height = Size.padding.large + Size.padding.default },
-        legend_widget,
     }
+
+    if timeofday_is_chart then
+        -- The bar chart has no colour scale, so the "Less .. More" legend
+        -- belongs with the calendar heatmap: it sits directly under the
+        -- calendar grid, and the day-part chart follows below on its own.
+        table.insert(content, VerticalSpan:new{ height = Size.padding.large + Size.padding.default })
+        table.insert(content, legend_widget)
+        table.insert(content, VerticalSpan:new{ height = 2 * Size.padding.large })
+        table.insert(content, caption(_("Reading time by time of day")))
+        table.insert(content, VerticalSpan:new{ height = Size.padding.small })
+        table.insert(content, leftAlign(day_part_widget))
+    else
+        -- Both grids share the same colour scale, so a single legend at the
+        -- very bottom sits under both of them.
+        table.insert(content, VerticalSpan:new{ height = 2 * Size.padding.large })
+        table.insert(content, caption(_("Time of day heatmap")))
+        table.insert(content, VerticalSpan:new{ height = Size.padding.small })
+        table.insert(content, leftAlign(day_part_widget))
+        table.insert(content, VerticalSpan:new{ height = Size.padding.large + Size.padding.default })
+        table.insert(content, legend_widget)
+    end
 
     local box = FrameContainer:new{
         background     = Blitbuffer.COLOR_WHITE,

@@ -1591,3 +1591,6 @@ msgstr "Reading goal & achievements"
 
 msgid "Reading goal only"
 msgstr "Reading goal only"
+
+msgid "Reading time by time of day"
+msgstr "Reading time by time of day"

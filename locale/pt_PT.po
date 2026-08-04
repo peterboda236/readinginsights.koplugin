@@ -1591,3 +1591,6 @@ msgstr "Meta de leitura e conquistas"
 
 msgid "Reading goal only"
 msgstr "Apenas meta de leitura"
+
+msgid "Reading time by time of day"
+msgstr "Tempo de leitura por período do dia"

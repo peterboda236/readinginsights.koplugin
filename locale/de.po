@@ -1591,3 +1591,6 @@ msgstr "Leseziel & Erfolge"
 
 msgid "Reading goal only"
 msgstr "Nur Leseziel"
+
+msgid "Reading time by time of day"
+msgstr "Lesezeit nach Tageszeit"

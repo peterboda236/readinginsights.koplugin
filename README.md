@@ -37,10 +37,23 @@ A full-screen scrollable overlay with a comprehensive overview of your reading h
   a GitHub-style **calendar heatmap** covering the most recent period (3,
   4, or 6 months — configurable, see **Settings** below), with 5 shades
   from no reading to that period's busiest day, month-start labels along
-  the top, and Mon/Wed/Fri labels down the left side; and a **time of day
-  heatmap** below it, showing the same period's reading activity broken
-  down by weekday and hour (shaded the same way, hour labels honouring the
-  24-hour/12-hour setting). Swipeable left/right to page through
+  the top, and Mon/Wed/Fri labels down the left side; and a **reading time
+  by time of day** section below it, showing how the same period's reading
+  time splits across the day. This section has two styles, chosen in
+  *Settings* (see **Time of day view** below):
+    - a **bar chart** (the default) with one bar per six-hour day-part
+      (Night / Morning / Afternoon / Evening), each labelled with its exact
+      total reading time on top and its hour range underneath (the range
+      honours the 24-hour/12-hour setting); the bars grow from a shared
+      baseline and use the same auto-fitted height as the weekly/monthly
+      charts, and
+    - the original **time of day heatmap**, breaking the same period down by
+      weekday and hour (shaded like the calendar grid, hour labels honouring
+      the 24-hour/12-hour setting).
+
+  The colour-scale legend sits under whichever grid uses it — under both
+  grids in heatmap style, or under the calendar heatmap alone when the
+  bar chart is shown. Swipeable left/right to page through
   older/newer periods as far back as there's data (the popup's own header
   shows the year, or a year range on its own line if the period spans a
   Dec/Jan boundary)
@@ -109,8 +122,12 @@ A full-screen scrollable overlay with a comprehensive overview of your reading h
 - **Use as sleep screen** — show this same popup instead of KOReader's own lock screen when the device suspends, with no double flash (see **Sleep screen** below)
 - **Reading heatmap range** — how many months the calendar/time-of-day
     heatmap grids show at once: 3, 4, or 6
+  - **Time of day view** — how the reading-heatmap popup shows the day's
+    reading: as a **Chart** (the default — the day-part bar chart) or as a
+    **Heatmap** (the weekday × hour grid). Only the time-of-day section
+    changes; the calendar heatmap above it is unaffected
   - **Time format** — 24-hour or 12-hour (AM/PM) labels for the
-    time-of-day heatmap's hour columns
+    time-of-day heatmap's hour columns and the bar chart's hour ranges
   - **First day of week** — Monday or Sunday, controls which day starts each
     row in both heatmap grids
 
@@ -411,6 +428,9 @@ where you left off.
           **Off** (hidden). See [Reading goal](#reading-insights-full-screen-history) above
         - **Reading heatmap range** — how many months the calendar/time-of-
           day heatmap grids show at once: 3, 4, or 6
+        - **Time of day view** — **Chart** (default, the day-part bar chart)
+          or **Heatmap** (the weekday × hour grid) for the reading-heatmap
+          popup's time-of-day section
         - **8-week chart order** — newest-first or oldest-first
         - **Last week chapter bar order** — which end of the "Last week"
           bar chart today sits at: **Today on the left** (default, the week
@@ -529,9 +549,10 @@ readinginsights.koplugin/
 │   │                           correcting that count by hand and the list
 │   │                           of books added manually (both drawn with
 │   │                           widgets/booklistwidget.lua)
-│   ├── heatmap_view.lua        both reading heatmaps (calendar-style range,
-│   │                           and weekday x hour-of-day) plus their
-│   │                           full-screen popup
+│   ├── heatmap_view.lua        the reading heatmaps (calendar-style range,
+│   │                           and weekday x hour-of-day) and the day-part
+│   │                           bar chart that can replace the latter, plus
+│   │                           their full-screen popup
 │   ├── insights_view.lua       full-screen "Reading insights" popup: the page
 │   │                           itself (its figures come from
 │   │                           lib/insights_data.lua)
