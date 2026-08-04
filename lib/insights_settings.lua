@@ -226,6 +226,27 @@ function M.saveHeatmapHourFormatSetting(value)
     Prefs.save(M.SETTINGS_KEY_HEATMAP_HOUR_FORMAT, value)
 end
 
+-- Time-of-day view style on the reading-heatmap page: the new day-part bar
+-- chart ("chart", the default) or the older weekday x hour-of-day grid
+-- ("heatmap"). Only the time-of-day section is swapped; the calendar
+-- heatmap above it is unaffected. Read by M.buildHeatmapBoxContent every
+-- time the heatmap page is (re)built.
+M.SETTINGS_KEY_TIMEOFDAY_VIEW = "reading_insights_timeofday_view"
+
+M.DEFAULT_TIMEOFDAY_VIEW      = "chart"
+
+M.VALID_TIMEOFDAY_VIEW        = { ["chart"] = true, ["heatmap"] = true }
+
+function M.readTimeOfDayViewSetting()
+    local v = Prefs.read(M.SETTINGS_KEY_TIMEOFDAY_VIEW, nil)
+    if not M.VALID_TIMEOFDAY_VIEW[v] then return M.DEFAULT_TIMEOFDAY_VIEW end
+    return v
+end
+
+function M.saveTimeOfDayViewSetting(value)
+    Prefs.save(M.SETTINGS_KEY_TIMEOFDAY_VIEW, value)
+end
+
 -- Per-year reading goal ("2026 reading goal" section, shown above "Total
 -- read"). One integer target per calendar year, keyed by year so switching
 -- years (swipe/arrow, same navigation as the rest of the popup) shows and

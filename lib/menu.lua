@@ -448,6 +448,36 @@ function M.build(self, deps)
 
     table.insert(insights_popup_sub_item_table, {
         text_func = function()
+            local style = deps.ViewSettings.readTimeOfDayViewSetting() == "heatmap"
+                and _("Heatmap")
+                or  _("Chart")
+            return _("Time of day view") .. ": " .. style
+        end,
+        keep_menu_open = true,
+        sub_item_table = {
+            {
+                text = _("Chart"),
+                keep_menu_open = true,
+                radio = true,
+                checked_func = function()
+                    return deps.ViewSettings.readTimeOfDayViewSetting() == "chart"
+                end,
+                callback = function() deps.ViewSettings.saveTimeOfDayViewSetting("chart") end,
+            },
+            {
+                text = _("Heatmap"),
+                keep_menu_open = true,
+                radio = true,
+                checked_func = function()
+                    return deps.ViewSettings.readTimeOfDayViewSetting() == "heatmap"
+                end,
+                callback = function() deps.ViewSettings.saveTimeOfDayViewSetting("heatmap") end,
+            },
+        },
+    })
+
+    table.insert(insights_popup_sub_item_table, {
+        text_func = function()
             local order = deps.ViewSettings.readAscendingSetting()
                 and _("Oldest first")
                 or  _("Newest first")

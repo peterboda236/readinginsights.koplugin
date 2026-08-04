@@ -1594,3 +1594,30 @@ msgstr "Olvasási cél és teljesítmények"
 
 msgid "Reading goal only"
 msgstr "Csak olvasási cél"
+
+msgid "Time of day"
+msgstr "Napszak"
+
+msgid "Time of day view"
+msgstr "Napszak nézet"
+
+msgid "Chart"
+msgstr "Diagram"
+
+msgid "Heatmap"
+msgstr "Hőtérkép"
+
+msgid "Night"
+msgstr "Éjszaka"
+
+msgid "Morning"
+msgstr "Reggel"
+
+msgid "Afternoon"
+msgstr "Délután"
+
+msgid "Evening"
+msgstr "Este"
+
+msgid "Reading time by time of day"
+msgstr "Olvasási idő napszakonként"
