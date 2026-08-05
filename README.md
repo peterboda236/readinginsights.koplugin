@@ -205,7 +205,7 @@ feats, time of day, reading pace and variety). A few examples:
 **Where:** the Reading goal section of the Reading insights popup shows an
 **"earned / total"** cell next to the finished/goal figure (e.g. **"42/82"**
 over "earned") — tap it to open the full list, or use *Tools → Reading
-insights → Show achievements*.
+insights → Show Achievements*.
 
 **The list:** its header shows your progress, e.g. **"Achievements 42/82
 (51%)"**. Earned achievements sit at the top with their unlock date on the
@@ -360,7 +360,7 @@ where you left off.
 ## Where it shows up
 
 - **Menu:** *Tools → Reading insights* — a submenu with "Show Reading
-  insights", "Show Records", "Show achievements", "Show Book progress" and
+  insights", "Show Records", "Show Achievements", "Show Book progress" and
   "Show Book progress calendar" (the latter two book view only), and, below a
   separator, a **Settings** submenu and an **Updates** submenu (see
   [Updates](#updates) above).

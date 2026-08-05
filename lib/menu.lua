@@ -50,7 +50,7 @@ function M.build(self, deps)
             end,
         },
         {
-            text = _("Show achievements"),
+            text = _("Show Achievements"),
             keep_menu_open = false,
             callback = function()
                 self:onShowReadingAchievements()
@@ -378,7 +378,7 @@ function M.build(self, deps)
 
     -- What the reading-goal section shows: the goal + achievements, the goal
     -- only (old two-cell view), or nothing. When off it isn't drawn or
-    -- queried; achievements stay reachable via "Show achievements".
+    -- queried; achievements stay reachable via "Show Achievements".
     do
         local Opt  = deps.ViewSettings.Opt
         local BOTH = Opt.GOAL_MODE_BOTH

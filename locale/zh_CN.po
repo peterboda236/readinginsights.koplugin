@@ -755,7 +755,7 @@ msgstr "你在%1阅读最多，大约%2"
 msgid "Achievements"
 msgstr "成就"
 
-msgid "Show achievements"
+msgid "Show Achievements"
 msgstr "查看成就"
 
 msgid "Reading insights: achievements"

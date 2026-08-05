@@ -1049,7 +1049,7 @@ msgstr "Die meiste Lesezeit: %1, gegen %2"
 msgid "Achievements"
 msgstr "Erfolge"
 
-msgid "Show achievements"
+msgid "Show Achievements"
 msgstr "Erfolge anzeigen"
 
 msgid "Reading insights: achievements"

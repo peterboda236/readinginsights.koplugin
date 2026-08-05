@@ -1049,7 +1049,7 @@ msgstr "Mais leitura: %1, por volta das %2"
 msgid "Achievements"
 msgstr "Conquistas"
 
-msgid "Show achievements"
+msgid "Show Achievements"
 msgstr "Mostrar conquistas"
 
 msgid "Reading insights: achievements"

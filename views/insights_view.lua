@@ -2154,7 +2154,7 @@ function ReadingInsightsPopup:_scheduleAchievementsRefresh()
     -- Only worth doing when the popup actually shows the achievements count,
     -- i.e. the goal section is in "both" mode. In "goal_only"/"off" the count
     -- isn't drawn, so skip even the cheap fingerprint query here - the list
-    -- (reachable via "Show achievements") recomputes on its own force-reload,
+    -- (reachable via "Show Achievements") recomputes on its own force-reload,
     -- and a full popup title-bar reload still re-scans regardless (see the
     -- Achievements.recompute call in the reload path).
     if VS.Opt.readGoalSectionMode() ~= VS.Opt.GOAL_MODE_BOTH then return end

@@ -1049,8 +1049,8 @@ msgstr "You read most in the %1, around %2"
 msgid "Achievements"
 msgstr "Achievements"
 
-msgid "Show achievements"
-msgstr "Show achievements"
+msgid "Show Achievements"
+msgstr "Show Achievements"
 
 msgid "Reading insights: achievements"
 msgstr "Reading insights: achievements"

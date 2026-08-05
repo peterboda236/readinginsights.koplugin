@@ -1045,7 +1045,7 @@ msgstr "Legtöbbet %1 %2 közt olvasol"
 msgid "Achievements"
 msgstr "Teljesítmények"
 
-msgid "Show achievements"
+msgid "Show Achievements"
 msgstr "Teljesítmények megnyitása"
 
 msgid "Reading insights: achievements"
