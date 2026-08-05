@@ -637,7 +637,7 @@ msgid "Use as sleep screen"
 msgstr "Als Schlafbildschirm verwenden"
 
 msgid "Reading insights sleep screen"
-msgstr "Lesestatistik-Ruhebildschirm"
+msgstr "Leseeinblicke-Ruhebildschirm"
 
 msgid "Sleep-screen indicator"
 msgstr "Ruhebildschirm-Anzeige"
@@ -718,10 +718,10 @@ msgid "Installed: v"
 msgstr "Installiert: v"
 
 msgid "This will clear the development branch setting and install the latest stable release of Reading insights, then restart KOReader. Continue?"
-msgstr "Dadurch wird die Einstellung für den Entwicklungszweig gelöscht, die neueste stabile Version von Reading Insights installiert und KOReader neu gestartet. Fortfahren?"
+msgstr "Dadurch wird die Einstellung für den Entwicklungszweig gelöscht, die neueste stabile Version von Leseeinblicke installiert und KOReader neu gestartet. Fortfahren?"
 
 msgid "Reading insights update available: v"
-msgstr "Reading-Insights-Update verfügbar: v"
+msgstr "Leseeinblicke-Update verfügbar: v"
 
 msgid "Open the releases page in a browser?"
 msgstr "Die Veröffentlichungsseite im Browser öffnen?"
@@ -736,7 +736,7 @@ msgid "Could not check for updates."
 msgstr "Nach Updates konnte nicht gesucht werden."
 
 msgid "Reading insights is up to date."
-msgstr "Reading Insights ist auf dem neuesten Stand."
+msgstr "Leseeinblicke ist auf dem neuesten Stand."
 
 msgid "Version: "
 msgstr "Version: "
@@ -769,7 +769,7 @@ msgid "Installation failed: "
 msgstr "Installation fehlgeschlagen: "
 
 msgid "Reading insights updated to v"
-msgstr "Reading Insights wurde auf Version v aktualisiert"
+msgstr "Leseeinblicke wurde aktualisiert auf v"
 
 msgid "Restart KOReader now?"
 msgstr "KOReader jetzt neu starten?"
@@ -883,7 +883,7 @@ msgid "%d hours left"
 msgstr "noch %d Stunden"
 
 msgid "Reading insights: records"
-msgstr "Leseeinblick: Rekorde"
+msgstr "Leseeinblicke: Rekorde"
 
 msgid "Show Records"
 msgstr "Rekorde anzeigen"
@@ -922,7 +922,7 @@ msgid "Automatic"
 msgstr "Automatisch"
 
 msgid "Sizes the Reading insights bar charts so the page fits the screen without a scroll bar."
-msgstr "Passt die Balkendiagramme der Lesestatistik so an, dass die Seite ohne Bildlaufleiste auf den Bildschirm passt."
+msgstr "Passt die Balkendiagramme der Leseeinblicke so an, dass die Seite ohne Bildlaufleiste auf den Bildschirm passt."
 
 msgid "Bar chart height"
 msgstr "Balkendiagrammhöhe"
@@ -1053,7 +1053,7 @@ msgid "Show achievements"
 msgstr "Erfolge anzeigen"
 
 msgid "Reading insights: achievements"
-msgstr "Reading insights: Erfolge"
+msgstr "Leseeinblicke: Erfolge"
 
 msgid "earned"
 msgstr "erreicht"
@@ -1584,7 +1584,7 @@ msgid "Show locked only"
 msgstr "Nur gesperrte anzeigen"
 
 msgid "Shows the reading goal and achievements section of the Reading insights popup."
-msgstr "Zeigt den Leseziel- und Erfolge-Abschnitt des Reading-insights-Popups."
+msgstr "Zeigt den Leseziel- und Erfolge-Abschnitt des Leseeinblicke-Popups."
 
 msgid "Reading goal & achievements"
 msgstr "Leseziel & Erfolge"
