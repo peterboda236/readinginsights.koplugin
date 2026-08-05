@@ -60,9 +60,16 @@ local Screen = Device.screen
 -- the view: the view opens M.Popup, so a require back into the view
 -- would be circular.
 local deps = ...
-local Colors, Fonts, Locale, VS, UI, Data =
-    deps.Colors, deps.Fonts, deps.Locale, deps.VS, deps.UI, deps.Data
+local Colors, Fonts, Locale, VS, UI, Data, Cache =
+    deps.Colors, deps.Fonts, deps.Locale, deps.VS, deps.UI, deps.Data, deps.Cache
 local _ = Locale._
+
+-- How long the popup waits, once it knows there is genuinely new reading
+-- to show, before re-running the calendar/day-part queries and repainting -
+-- see M.Popup:_scheduleRevalidate. Long enough that a burst of page turns
+-- right as the popup opens only triggers one refresh instead of several;
+-- short enough it's not noticeable as a deliberate delay.
+local REVALIDATE_DELAY_S = 0.88
 
 local M = {}
 
@@ -811,10 +818,63 @@ function M.buildHeatmapSectionHeader(title_str, content_width, section_font, pre
     return header_row, left_frame, right_frame, left_widget:getSize().w, right_widget:getSize().w, header_row:getSize().h
 end
 
-function M.buildHeatmapBoxContent(popup_self, periods_back)
-    local start_t, end_t = M.getHeatmapPeriodRange(periods_back)
+-- Stale-while-revalidate front end for the two queries M.buildHeatmapBoxContent
+-- needs (the calendar map and the day-part matrix): unless `force_fresh` is
+-- set, or nothing has ever been fetched for this exact period, this hands
+-- back the last-known values straight from Cache._stale_daily_map /
+-- _stale_weekday_hour_map with no DB access at all - what lets the popup
+-- (re)open instantly. `force_fresh` is set only by M.Popup's background
+-- revalidation, once M.Popup:_scheduleRevalidate has already confirmed via
+-- Data.getMaxStartTime that there is new reading to show; that path runs
+-- the real queries (themselves still cached per-day, see
+-- Data.getDailyReadingData/getWeekdayHourReadingData) and refreshes both the
+-- stale mirrors and the watermark those queries are gated on.
+local function getHeatmapData(popup_self, start_t, end_t, force_fresh)
+    local key = os.date("%Y-%m-%d", start_t) .. ".." .. os.date("%Y-%m-%d", end_t)
+
+    if not force_fresh and Cache.ENABLE_CACHE then
+        local stale_daily = Cache._stale_daily_map[key]
+        local stale_hour  = Cache._stale_weekday_hour_map[key]
+        if stale_daily and stale_hour then
+            return stale_daily, stale_hour
+        end
+    end
+
+    -- Data.getDailyReadingData/getWeekdayHourReadingData only re-query the DB
+    -- once per calendar day each (see their own comments in
+    -- insights_data.lua) - the right default for plain repeat opens, but not
+    -- for a forced revalidation that exists specifically because new reading
+    -- was just detected. Their per-key entries are dropped here so the calls
+    -- below actually hit the DB instead of handing back the same
+    -- already-known numbers.
+    if force_fresh and Cache.ENABLE_CACHE then
+        if Cache._cache.daily_data then
+            local year_start = tonumber(os.date("%Y", start_t))
+            local year_end   = tonumber(os.date("%Y", end_t))
+            for year = year_start, year_end do
+                Cache._cache.daily_data[tostring(year)] = nil
+            end
+        end
+        if Cache._cache.weekday_hour_data then
+            Cache._cache.weekday_hour_data[key] = nil
+        end
+    end
+
     local daily_map        = popup_self:getDailyReadingDataForRange(start_t, end_t)
     local weekday_hour_map = Data.getWeekdayHourReadingData(start_t, end_t)
+
+    if Cache.ENABLE_CACHE then
+        Cache._stale_daily_map[key]        = daily_map
+        Cache._stale_weekday_hour_map[key] = weekday_hour_map
+        Cache._heatmap_watermark = Data.getMaxStartTime()
+    end
+
+    return daily_map, weekday_hour_map
+end
+
+function M.buildHeatmapBoxContent(popup_self, periods_back, force_fresh)
+    local start_t, end_t = M.getHeatmapPeriodRange(periods_back)
+    local daily_map, weekday_hour_map = getHeatmapData(popup_self, start_t, end_t, force_fresh)
 
     local fonts = getCachedFonts()
     local inner_padding = Size.padding.large
@@ -974,11 +1034,12 @@ function M.Popup:init()
     end
 
     self:_rebuild()
+    self:_scheduleRevalidate()
 end
 
-function M.Popup:_rebuild()
+function M.Popup:_rebuild(force_fresh)
     local box, older_available, newer_available, left_frame, right_frame, left_w, right_w, header_h =
-        M.buildHeatmapBoxContent(self.popup_self, self.periods_back)
+        M.buildHeatmapBoxContent(self.popup_self, self.periods_back, force_fresh)
     self.box_content      = box
     self._older_available = older_available
     self._newer_available = newer_available
@@ -1045,6 +1106,51 @@ function M.Popup:_centeredRect(widget)
     return Geom:new{ x = x, y = y, w = w, h = h }
 end
 
+-- Smart-invalidation half of the heatmap's stale-while-revalidate: only the
+-- most recent period (periods_back == 0) can ever have new reading in it -
+-- every older half-year is history - so that's the only case this does
+-- anything. A single cheap Data.getMaxStartTime() read decides it: unmoved
+-- since the last real fetch (M._heatmap_watermark, set in getHeatmapData
+-- above) means nothing was read since, so the popup is left exactly as it
+-- opened (the "no re-query at all" branch of the smart-invalidation ask);
+-- moved on means a real refresh is worth doing, so one is scheduled after
+-- REVALIDATE_DELAY_S and its result repaints the popup in place.
+function M.Popup:_scheduleRevalidate()
+    if self.periods_back ~= 0 or not Cache.ENABLE_CACHE then return end
+    UIManager:scheduleIn(0, function()
+        if self._closed or self.periods_back ~= 0 then return end
+        local watermark = Data.getMaxStartTime()
+        if not watermark or watermark <= (Cache._heatmap_watermark or 0) then
+            return
+        end
+        UIManager:scheduleIn(REVALIDATE_DELAY_S, function()
+            if self._closed or self.periods_back ~= 0 then return end
+            self:_refreshInPlace()
+        end)
+    end)
+end
+
+-- Re-runs _rebuild with force_fresh so it re-queries the DB (rather than
+-- serving the stale mirrors), then repaints exactly the screen area the box
+-- occupies - both its old position/size and its new one, in case the fresh
+-- data changed its height - the same union-of-rects approach _goToPeriod
+-- uses when paging changes the box size.
+function M.Popup:_refreshInPlace()
+    local old_rect = self:_centeredRect(self.box_content)
+    self:_rebuild(true)
+    local new_rect = self:_centeredRect(self.box_content)
+
+    local x1 = math.min(old_rect.x, new_rect.x)
+    local y1 = math.min(old_rect.y, new_rect.y)
+    local x2 = math.max(old_rect.x + old_rect.w, new_rect.x + new_rect.w)
+    local y2 = math.max(old_rect.y + old_rect.h, new_rect.y + new_rect.h)
+    local refresh_region = Geom:new{ x = x1, y = y1, w = x2 - x1, h = y2 - y1 }
+
+    UIManager:setDirty("all", function()
+        return "ui", refresh_region
+    end)
+end
+
 function M.Popup:onShow()
     UIManager:setDirty(self, function()
         return "ui", self:_centeredRect(self.box_content)
@@ -1053,6 +1159,11 @@ function M.Popup:onShow()
 end
 
 function M.Popup:onCloseWidget()
+    -- Guards the scheduled callbacks _scheduleRevalidate sets up: without
+    -- this, a background refresh that was still pending when the user
+    -- closed the popup would fire afterwards and touch a box_content/dimen
+    -- that's no longer being shown.
+    self._closed = true
     UIManager:setDirty(nil, function()
         return "ui", self:_centeredRect(self.box_content)
     end)
@@ -1090,6 +1201,7 @@ function M.Popup:_goToPeriod(delta)
     UIManager:setDirty("all", function()
         return "ui", refresh_region
     end)
+    self:_scheduleRevalidate()
     return true
 end
 
