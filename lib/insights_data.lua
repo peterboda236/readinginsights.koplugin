@@ -28,6 +28,9 @@ rest, and stale copies as a fallback when the DB can't be read at all.
   Data.getDailyReadingData(year, conn)     per-day totals, for the heatmap
   Data.getWeekdayHourReadingData(from, to, conn)
                                            weekday x hour totals
+  Data.getMaxStartTime(conn)               cheap "anything new since X" probe,
+                                           for the heatmap popup's smart
+                                           background-refresh gate
   Data.getYearRange(conn)                  first and last year with data
   Data.getFinishedBookCountForYear(year, conn)
                                            the reading goal's count
@@ -792,6 +795,26 @@ function M.getWeekdayHourReadingData(start_t, end_t, shared_conn)
         Cache._cache.weekday_hour_data[cache_key] = { date = today, data = data }
     end
     return data
+end
+
+-- Cheap "did anything change since we last looked" probe: a single
+-- MAX(start_time) read, which SQLite answers off page_stat's own rowid
+-- order without the group/aggregate work the calendar and day-part queries
+-- above do. Used to gate the reading heatmap popup's background refresh -
+-- see Heatmap.Popup in views/heatmap_view.lua - so a popup reopened (or
+-- left open) with no new reading since never re-runs those heavier queries.
+-- Returns the epoch-seconds timestamp of the most recent page_stat row, or
+-- 0 if the table is empty or the query can't be read right now.
+function M.getMaxStartTime(shared_conn)
+    local max_t = 0
+    StatsDb.withShared(shared_conn, nil, function(conn)
+        StatsDb.withStatement(conn, "SELECT MAX(start_time) FROM page_stat", function(stmt)
+            for row in stmt:rows() do
+                max_t = tonumber(row[1]) or 0
+            end
+        end)
+    end)
+    return max_t
 end
 
 -- Returns { min_year, max_year, min_month } from the DB, cached per day.

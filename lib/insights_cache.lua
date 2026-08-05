@@ -172,6 +172,29 @@ M._stale_yearly  = {}
 
 M._stale_monthly = {}
 
+-- Reading heatmap stale-while-revalidate mirrors: M._cache.daily_data and
+-- M._cache.weekday_hour_data above only serve a value once it was computed
+-- "today" (see their own comments in insights_data.lua) - fine for repeat
+-- opens on the same day, but the first open of a new day still blocks on a
+-- real query. These two hold the most recently computed value per key with
+-- no date check at all, so the heatmap popup (M.Popup in
+-- views/heatmap_view.lua) can always paint instantly from the last-known
+-- numbers, then decide - via M._heatmap_watermark below - whether a
+-- background re-query is even worth running. In-memory only, same as the
+-- caches they mirror: fine to start empty after a restart, since the
+-- heatmap is opened on demand rather than on every popup build.
+M._stale_daily_map        = {}
+
+M._stale_weekday_hour_map = {}
+
+-- The page_stat MAX(start_time) as of the last time the heatmap data above
+-- was actually fetched from the DB. The heatmap popup compares a fresh,
+-- cheap MAX(start_time) read against this on open/background-check; if it
+-- hasn't moved, nothing has been read since, so the popup skips its
+-- background refresh entirely instead of re-running the calendar/day-part
+-- queries for nothing. 0 until the first real fetch.
+M._heatmap_watermark = 0
+
 function M.clearAllCache()
     M._cache.streaks                 = nil
     M._cache.streaks_date            = nil
@@ -207,6 +230,9 @@ function M.clearAllCache()
     M._stale_yearly          = {}
     M._stale_monthly         = {}
     M._stale_goal_cache      = {}
+    M._stale_daily_map        = {}
+    M._stale_weekday_hour_map = {}
+    M._heatmap_watermark      = 0
 end
 
 -- Drops the per-minute cached reading-goal count for one year, so the next

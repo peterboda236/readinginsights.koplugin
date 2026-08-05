@@ -225,7 +225,7 @@ local Trend = loadModule("views/trend_view.lua",
     { Colors = Colors, Locale = Locale, VS = ViewSettings })
 local Heatmap = loadModule("views/heatmap_view.lua", {
     Colors = Colors, Fonts = Fonts, Locale = Locale, VS = ViewSettings, UI = UI,
-    Data = InsightsData,
+    Data = InsightsData, Cache = InsightsCache,
 })
 local BookList = loadModule("views/booklist_view.lua", {
     Colors = Colors, Locale = Locale, VS = ViewSettings, UI = UI,
