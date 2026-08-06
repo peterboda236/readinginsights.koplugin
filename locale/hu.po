@@ -285,7 +285,6 @@ msgstr "Elmúlt 8 hét átlagos napi oldalszáma"
 msgid "No reading data in the last 8 weeks"
 msgstr "Nincs olvasási adat az elmúlt 8 héten"
 
-
 msgid "avg time/day"
 msgstr "átlag idő/nap"
 
@@ -926,7 +925,6 @@ msgstr "1 könyvet módosítottál. Visszalépsz?"
 
 msgid "You changed %d books. Go back?"
 msgstr "%d könyvet módosítottál. Visszalépsz?"
-
 
 msgid "Keep editing"
 msgstr "Folytatom a szerkesztést"

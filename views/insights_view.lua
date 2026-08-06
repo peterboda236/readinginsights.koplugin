@@ -229,7 +229,7 @@ local function tappableCell(widget, col_width, callback)
     return cell
 end
 
-local function buildYearHeader(font_section, font_label, layout, year_range, selected_year)
+local function buildYearHeader(popup_self, font_section, font_label, layout, year_range, selected_year)
     local prev_available = selected_year > year_range.min_year
     local next_available = selected_year < year_range.max_year
 
@@ -255,11 +255,12 @@ local function buildYearHeader(font_section, font_label, layout, year_range, sel
         fgcolor = Colors.section(),
     }
     -- Year navigation is done via swipe on the whole popup (see
-    -- onSwipe/_goToYear); the reading heatmap now opens from the
-    -- "Total read" header instead of from tapping the year (see
-    -- showReadingHeatmap and buildInsightsSections).
+    -- onSwipe/_goToYear) and by tapping the previous/next year slot on either
+    -- side of the centre year (the InputContainer wrappers below). The reading
+    -- heatmap opens from the "Total read" header instead of from tapping the
+    -- year (see showReadingHeatmap and buildInsightsSections).
 
-    local function makeSlot(yr, arrow_glyph, left, visible)
+    local function makeSlot(yr, arrow_glyph, left, visible, on_tap)
         if not visible then
             return HorizontalSpan:new{ width = slot_w }, slot_w
         end
@@ -293,11 +294,26 @@ local function buildYearHeader(font_section, font_label, layout, year_range, sel
                 arrow_tw,
             }
         end
-        return parts, slot_w
+
+        -- Tapping the slot navigates to that year, same as the swipe.
+        local tappable = InputContainer:new{
+            dimen = Geom:new{ x = 0, y = 0, w = parts:getSize().w, h = parts:getSize().h },
+            parts,
+        }
+        tappable.ges_events = {
+            Tap = { GestureRange:new{ ges = "tap", range = tappable.dimen } },
+        }
+        function tappable:onTap()
+            on_tap()
+            return true
+        end
+        return tappable, slot_w
     end
 
-    local left_slot,  left_w  = makeSlot(selected_year - 1, "\xe2\x80\xb9", true,  prev_available)
-    local right_slot, right_w = makeSlot(selected_year + 1, "\xe2\x80\xba", false, next_available)
+    local left_slot,  left_w  = makeSlot(selected_year - 1, "\xe2\x80\xb9", true,  prev_available,
+        function() popup_self:onGoToPrevYear() end)
+    local right_slot, right_w = makeSlot(selected_year + 1, "\xe2\x80\xba", false, next_available,
+        function() popup_self:onGoToNextYear() end)
 
     local year_w    = year_label:getSize().w
     local remaining = layout.content_width - left_w - right_w - year_w
@@ -1029,7 +1045,7 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
         streak_combined_header,
         streak_rows, layout, { pad_row = false })
 
-    local year_header = buildYearHeader(fonts.section, fonts.label, layout, year_range, popup_self.selected_year)
+    local year_header = buildYearHeader(popup_self, fonts.section, fonts.label, layout, year_range, popup_self.selected_year)
     local yearly_row  = buildYearlyRow(popup_self, yearly_stats, fonts, layout)
 
     local chart = buildMonthlyChart(popup_self, monthly_data, layout, fonts)

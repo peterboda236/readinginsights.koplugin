@@ -213,7 +213,6 @@ check("manual mode still uses the two separate settings",
       ViewSettings.Opt.weeklyBarHeight() == ViewSettings.readWeeklyBarHeightSetting())
 ViewSettings.Opt.saveBarHeightAuto(true)
 
-
 -- The streak popup builds its two columns by asking uikit for a layout of a
 -- width it derived from the columns themselves; that round-trip has to give
 -- the column width back unchanged, or the popup would drift wider or

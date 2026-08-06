@@ -276,7 +276,6 @@ msgstr "Durchschnittlich gelesene Seiten pro Tag der letzten 8 Wochen"
 msgid "No reading data in the last 8 weeks"
 msgstr "Keine Lesedaten in den letzten 8 Wochen"
 
-
 msgid "avg time/day"
 msgstr "Ø Zeit/Tag"
 
@@ -891,8 +890,6 @@ msgstr "Rekorde anzeigen"
 msgid "Sub-values (date / book title)"
 msgstr "Unterwerte (Datum / Buchtitel)"
 
-
-
 msgid "Reading goal section"
 msgstr "Bereich „Leseziel“"
 
@@ -913,7 +910,6 @@ msgstr "Du hast 1 Buch geändert. Zurück?"
 
 msgid "You changed %d books. Go back?"
 msgstr "Du hast %d Bücher geändert. Zurück?"
-
 
 msgid "Keep editing"
 msgstr "Weiter bearbeiten"
@@ -936,7 +932,6 @@ msgstr "Monate"
 msgid "Total read"
 msgstr "Insgesamt gelesen"
 
-
 msgid "Last read (newest first)"
 msgstr "Zuletzt gelesen (neueste zuerst)"
 
@@ -954,8 +949,6 @@ msgstr "Beendete Bücher %1"
 
 msgid "Mark books finished"
 msgstr "Bücher als beendet markieren"
-
-
 
 msgid "Add book"
 msgstr "Buch hinzufügen"
@@ -980,8 +973,6 @@ msgstr "Autor"
 
 msgid "Please enter a title"
 msgstr "Bitte einen Titel eingeben"
-
-
 
 msgid "Date read (%1)"
 msgstr "Lesedatum (%1)"
