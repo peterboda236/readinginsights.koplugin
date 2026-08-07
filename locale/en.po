@@ -1585,3 +1585,18 @@ msgstr "Reading goal only"
 
 msgid "Reading time by time of day"
 msgstr "Reading time by time of day"
+
+msgid "Book progress popup"
+msgstr "Book progress popup"
+
+msgid "Chapter bar"
+msgstr "Chapter bar"
+
+msgid "Show the chapter bar chart in the \"This book\" section."
+msgstr "Show the chapter bar chart in the \"This book\" section."
+
+msgid "Started / expected finish row"
+msgstr "Started / expected finish row"
+
+msgid "Show the \"started …\" and \"expected finish\" date row in the \"Pace\" section."
+msgstr "Show the \"started …\" and \"expected finish\" date row in the \"Pace\" section."

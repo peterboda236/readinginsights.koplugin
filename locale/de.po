@@ -1585,3 +1585,18 @@ msgstr "Nur Leseziel"
 
 msgid "Reading time by time of day"
 msgstr "Lesezeit nach Tageszeit"
+
+msgid "Book progress popup"
+msgstr "Buchfortschritt-Fenster"
+
+msgid "Chapter bar"
+msgstr "Kapitelbalken"
+
+msgid "Show the chapter bar chart in the \"This book\" section."
+msgstr "Das Kapitelbalken-Diagramm im Abschnitt „Dieses Buch“ anzeigen."
+
+msgid "Started / expected finish row"
+msgstr "Zeile „Begonnen / voraussichtliches Ende“"
+
+msgid "Show the \"started …\" and \"expected finish\" date row in the \"Pace\" section."
+msgstr "Die Datumszeile „begonnen …“ und „voraussichtliches Ende“ im Abschnitt „Lesetempo“ anzeigen."

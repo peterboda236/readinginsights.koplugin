@@ -135,7 +135,7 @@ local StatsPopup = load("views/book_stats_view.lua", {
     Locale = Locale, Colors = Colors, Fonts = Fonts, Prefs = Prefs,
     BookProgress = BookProgress, BookCalendar = BookCalendar,
     ChapterInfo = ChapterInfo, ChapterBar = ChapterBar, UI = UI,
-    BookStatsData = BookStatsData,
+    BookStatsData = BookStatsData, VS = ViewSettings,
 })
 local RecordsData = load("lib/records_data.lua", { StatsDb = StatsDb })
 local Records = load("views/records_view.lua", {

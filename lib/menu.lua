@@ -628,6 +628,38 @@ function M.build(self, deps)
         sub_item_table = insights_popup_sub_item_table,
     })
 
+    -- "Book progress popup": what the Book progress popup itself shows.
+    -- Two on/off toggles for optional rows, both on by default (see
+    -- deps.ViewSettings.Opt.readShowChapterBar / readShowPaceDates and the
+    -- gates in book_stats_view.lua).
+    local book_progress_sub_item_table = {}
+
+    table.insert(book_progress_sub_item_table, {
+        text = _("Chapter bar"),
+        help_text = _("Show the chapter bar chart in the \"This book\" section."),
+        keep_menu_open = true,
+        checked_func = function() return deps.ViewSettings.Opt.readShowChapterBar() end,
+        callback = function()
+            deps.ViewSettings.Opt.saveShowChapterBar(not deps.ViewSettings.Opt.readShowChapterBar())
+        end,
+    })
+
+    table.insert(book_progress_sub_item_table, {
+        text = _("Started / expected finish row"),
+        help_text = _("Show the \"started …\" and \"expected finish\" date row in the \"Pace\" section."),
+        keep_menu_open = true,
+        checked_func = function() return deps.ViewSettings.Opt.readShowPaceDates() end,
+        callback = function()
+            deps.ViewSettings.Opt.saveShowPaceDates(not deps.ViewSettings.Opt.readShowPaceDates())
+        end,
+    })
+
+    table.insert(advanced_settings_sub_item_table, {
+        text = _("Book progress popup"),
+        keep_menu_open = true,
+        sub_item_table = book_progress_sub_item_table,
+    })
+
     local book_calendar_sub_item_table = {}
 
     -- What the Book progress calendar's day cells show: cumulative

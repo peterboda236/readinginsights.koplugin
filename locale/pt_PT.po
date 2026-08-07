@@ -1585,3 +1585,18 @@ msgstr "Apenas meta de leitura"
 
 msgid "Reading time by time of day"
 msgstr "Tempo de leitura por período do dia"
+
+msgid "Book progress popup"
+msgstr "Janela de progresso do livro"
+
+msgid "Chapter bar"
+msgstr "Barra de capítulos"
+
+msgid "Show the chapter bar chart in the \"This book\" section."
+msgstr "Mostrar o gráfico de barras de capítulos na secção \"Este livro\"."
+
+msgid "Started / expected finish row"
+msgstr "Linha \"iniciado / conclusão prevista\""
+
+msgid "Show the \"started …\" and \"expected finish\" date row in the \"Pace\" section."
+msgstr "Mostrar a linha de datas \"iniciado …\" e \"conclusão prevista\" na secção \"Ritmo\"."

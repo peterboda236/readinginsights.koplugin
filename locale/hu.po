@@ -1612,3 +1612,18 @@ msgstr "Este"
 
 msgid "Reading time by time of day"
 msgstr "Olvasási idő napszakonként"
+
+msgid "Book progress popup"
+msgstr "Könyv haladás ablak"
+
+msgid "Chapter bar"
+msgstr "Fejezetsáv"
+
+msgid "Show the chapter bar chart in the \"This book\" section."
+msgstr "A fejezetsáv megjelenítése a „Könyv” szakaszban."
+
+msgid "Started / expected finish row"
+msgstr "„Kezdve / várható befejezés” sor"
+
+msgid "Show the \"started …\" and \"expected finish\" date row in the \"Pace\" section."
+msgstr "A „kezdve…” és „várható befejezés” dátumsor megjelenítése a „Haladás” szakaszban."

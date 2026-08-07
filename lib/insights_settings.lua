@@ -182,6 +182,16 @@ M.Opt = {
     ACH_REFRESH_KEY   = "reading_insights_ach_refresh",
     ACH_REFRESH_DAILY = "daily",
     ACH_REFRESH_EVERY = "every_open",
+
+    -- Book progress popup: whether the chapter bar (the visual bar chart of
+    -- all chapters, in the "This book" section) is shown. On by default.
+    SHOW_CHAPTER_BAR_KEY     = "reading_insights_book_show_chapter_bar",
+    SHOW_CHAPTER_BAR_DEFAULT = true,
+
+    -- Book progress popup: whether the "started … / expected finish" date
+    -- row at the bottom of the "Pace" section is shown. On by default.
+    SHOW_PACE_DATES_KEY      = "reading_insights_book_show_pace_dates",
+    SHOW_PACE_DATES_DEFAULT  = true,
 }
 
 -- Reading heatmap period length (Prefs ▸ Advanced settings ▸ how many
@@ -450,6 +460,22 @@ end
 
 function M.Opt.saveGoalDisplay(value)
     Prefs.save(M.Opt.GOAL_DISPLAY_KEY, value)
+end
+
+function M.Opt.readShowChapterBar()
+    return M.readBoolSetting(M.Opt.SHOW_CHAPTER_BAR_KEY, M.Opt.SHOW_CHAPTER_BAR_DEFAULT)
+end
+
+function M.Opt.saveShowChapterBar(value)
+    M.saveBoolSetting(M.Opt.SHOW_CHAPTER_BAR_KEY, value)
+end
+
+function M.Opt.readShowPaceDates()
+    return M.readBoolSetting(M.Opt.SHOW_PACE_DATES_KEY, M.Opt.SHOW_PACE_DATES_DEFAULT)
+end
+
+function M.Opt.saveShowPaceDates(value)
+    M.saveBoolSetting(M.Opt.SHOW_PACE_DATES_KEY, value)
 end
 
 function M.Opt.readAchievementRefresh()

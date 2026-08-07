@@ -1300,3 +1300,18 @@ msgstr "仅阅读目标"
 
 msgid "Reading time by time of day"
 msgstr "各时段阅读时长"
+
+msgid "Book progress popup"
+msgstr "书籍进度弹窗"
+
+msgid "Chapter bar"
+msgstr "章节条"
+
+msgid "Show the chapter bar chart in the \"This book\" section."
+msgstr "在“本书”区域显示章节条形图。"
+
+msgid "Started / expected finish row"
+msgstr "“开始 / 预计完成”行"
+
+msgid "Show the \"started …\" and \"expected finish\" date row in the \"Pace\" section."
+msgstr "在“阅读速度”区域显示“开始…”和“预计完成”日期行。"

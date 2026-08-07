@@ -57,10 +57,10 @@ local Screen = Device.screen
 -- header comment above).
 -- Shared modules, passed in as one named table by main.lua (see there).
 local deps = ...
-local Locale, Colors, Fonts, Prefs, BookProgress, BookCalendar, ChapterInfo, ChapterBar, UI, BookStatsData =
+local Locale, Colors, Fonts, Prefs, BookProgress, BookCalendar, ChapterInfo, ChapterBar, UI, BookStatsData, VS =
     deps.Locale, deps.Colors, deps.Fonts, deps.Prefs, deps.BookProgress,
     deps.BookCalendar, deps.ChapterInfo, deps.ChapterBar, deps.UI,
-    deps.BookStatsData
+    deps.BookStatsData, deps.VS
 local _            = Locale._
 local N_           = Locale.N_
 local getLangBase  = Locale.getLangBase
@@ -377,7 +377,7 @@ local function buildSections(stats, fonts, layout, popup)
         { no_bottom_line = true }
     )
 
-    if chapter_bar then
+    if chapter_bar and VS.Opt.readShowChapterBar() then
         if popup then
             popup._chapter_bar = chapter_bar
             popup._chapter_bar_prev_arrow = chapter_can_go_left  and chapter_left_arrow  or nil
@@ -403,7 +403,7 @@ local function buildSections(stats, fonts, layout, popup)
     -- The right cell (and the separator to its left) only appears once
     -- there's enough page_stat data to estimate a finish date; the left
     -- cell alone still appears as soon as the book has been opened at all.
-    if stats.started_days_ago or stats.finish_days_left then
+    if (stats.started_days_ago or stats.finish_days_left) and VS.Opt.readShowPaceDates() then
         local started_widget = stats.started_days_ago
             and valueLine(stats.started_days_ago, "")
             or nil

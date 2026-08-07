@@ -262,7 +262,7 @@ local StatsPopup = loadModule("views/book_stats_view.lua", {
     Locale = Locale, Colors = Colors, Fonts = Fonts, Prefs = Prefs,
     BookProgress = BookProgress, BookCalendar = BookCalendar,
     ChapterInfo = ChapterInfo, ChapterBar = ChapterBar, UI = UI,
-    BookStatsData = BookStatsData,
+    BookStatsData = BookStatsData, VS = ViewSettings,
 })
 -- Records: the queries and their cache (lib/records_data.lua, loaded above
 -- with the achievements wiring) are separate from the popup that draws them.
