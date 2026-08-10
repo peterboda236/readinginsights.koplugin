@@ -1595,6 +1595,15 @@ msgstr "Chapter bar"
 msgid "Show the chapter bar chart in the \"This book\" section."
 msgstr "Show the chapter bar chart in the \"This book\" section."
 
+msgid "Chapters per page"
+msgstr "Chapters per page"
+
+msgid "How many chapters the chapter bar shows at once before paging with the arrows."
+msgstr "How many chapters the chapter bar shows at once before paging with the arrows."
+
+msgid "Custom value"
+msgstr "Custom value"
+
 msgid "Started / expected finish row"
 msgstr "Started / expected finish row"
 

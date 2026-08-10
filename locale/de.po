@@ -1595,6 +1595,15 @@ msgstr "Kapitelbalken"
 msgid "Show the chapter bar chart in the \"This book\" section."
 msgstr "Das Kapitelbalken-Diagramm im Abschnitt „Dieses Buch“ anzeigen."
 
+msgid "Chapters per page"
+msgstr "Kapitel pro Seite"
+
+msgid "How many chapters the chapter bar shows at once before paging with the arrows."
+msgstr "Wie viele Kapitel der Kapitelbalken auf einmal anzeigt, bevor mit den Pfeilen geblättert wird."
+
+msgid "Custom value"
+msgstr "Eigener Wert"
+
 msgid "Started / expected finish row"
 msgstr "Zeile „Begonnen / voraussichtliches Ende“"
 

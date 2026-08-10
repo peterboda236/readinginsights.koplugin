@@ -1622,6 +1622,15 @@ msgstr "Fejezetsáv"
 msgid "Show the chapter bar chart in the \"This book\" section."
 msgstr "A fejezetsáv megjelenítése a „Könyv” szakaszban."
 
+msgid "Chapters per page"
+msgstr "Fejezetek oldalanként"
+
+msgid "How many chapters the chapter bar shows at once before paging with the arrows."
+msgstr "Hány fejezetet mutat egyszerre a fejezetsáv, mielőtt a nyilakkal lapozni kell."
+
+msgid "Custom value"
+msgstr "Egyéni érték"
+
 msgid "Started / expected finish row"
 msgstr "„Kezdve / várható befejezés” sor"
 

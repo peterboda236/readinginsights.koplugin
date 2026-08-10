@@ -1310,6 +1310,15 @@ msgstr "章节条"
 msgid "Show the chapter bar chart in the \"This book\" section."
 msgstr "在“本书”区域显示章节条形图。"
 
+msgid "Chapters per page"
+msgstr "每页章节数"
+
+msgid "How many chapters the chapter bar shows at once before paging with the arrows."
+msgstr "章节条一次显示多少章节，之后需用箭头翻页。"
+
+msgid "Custom value"
+msgstr "自定义值"
+
 msgid "Started / expected finish row"
 msgstr "“开始 / 预计完成”行"
 

@@ -644,6 +644,59 @@ function M.build(self, deps)
         end,
     })
 
+    -- Chapters per page: how many chapter columns the chapter bar shows at
+    -- once before the arrows/swipe page to the next batch (ChapterBar.PAGE_SIZE
+    -- was hardcoded to 25). Four preset radio choices plus a "Custom value…"
+    -- entry that opens a SpinWidget for anything in between; the header shows
+    -- whichever value is in force.
+    do
+        local presets = { 10, 25, 35, 50 }
+        local function presetEntry(n)
+            return {
+                text = tostring(n),
+                keep_menu_open = true,
+                radio = true,
+                checked_func = function() return deps.ChapterBar.readPageSizeSetting() == n end,
+                callback = function() deps.ChapterBar.savePageSizeSetting(n) end,
+            }
+        end
+        local page_size_sub_item_table = {}
+        for _idx, n in ipairs(presets) do
+            table.insert(page_size_sub_item_table, presetEntry(n))
+        end
+        table.insert(page_size_sub_item_table, {
+            text_func = function()
+                return _("Custom value") .. ": " .. tostring(deps.ChapterBar.readPageSizeSetting())
+            end,
+            keep_menu_open = true,
+            callback = function(touchmenu_instance)
+                local SpinWidget = require("ui/widget/spinwidget")
+                UIManager:show(SpinWidget:new{
+                    title_text    = _("Chapters per page"),
+                    value         = deps.ChapterBar.readPageSizeSetting(),
+                    value_min     = deps.ChapterBar.MIN_PAGE_SIZE,
+                    value_max     = deps.ChapterBar.MAX_PAGE_SIZE,
+                    value_step    = 1,
+                    value_hold_step = 5,
+                    default_value = deps.ChapterBar.DEFAULT_PAGE_SIZE,
+                    ok_text       = _("Set"),
+                    callback      = function(spin)
+                        deps.ChapterBar.savePageSizeSetting(spin.value)
+                        if touchmenu_instance then touchmenu_instance:updateItems() end
+                    end,
+                })
+            end,
+        })
+        table.insert(book_progress_sub_item_table, {
+            text_func = function()
+                return _("Chapters per page") .. ": " .. tostring(deps.ChapterBar.readPageSizeSetting())
+            end,
+            help_text = _("How many chapters the chapter bar shows at once before paging with the arrows."),
+            keep_menu_open = true,
+            sub_item_table = page_size_sub_item_table,
+        })
+    end
+
     table.insert(book_progress_sub_item_table, {
         text = _("Started / expected finish row"),
         help_text = _("Show the \"started …\" and \"expected finish\" date row in the \"Pace\" section."),

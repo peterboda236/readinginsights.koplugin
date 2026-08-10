@@ -36,5 +36,5 @@ return {
     -- Bumped by the in-app updater (updater.lua) as new versions are
     -- installed. Keep in sync with the GitHub release tag (without the
     -- leading "v") each time a new release is cut.
-    version = "5.1.4",
+    version = "5.1.5",
 }

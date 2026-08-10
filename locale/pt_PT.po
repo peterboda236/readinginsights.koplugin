@@ -1595,6 +1595,15 @@ msgstr "Barra de capítulos"
 msgid "Show the chapter bar chart in the \"This book\" section."
 msgstr "Mostrar o gráfico de barras de capítulos na secção \"Este livro\"."
 
+msgid "Chapters per page"
+msgstr "Capítulos por página"
+
+msgid "How many chapters the chapter bar shows at once before paging with the arrows."
+msgstr "Quantos capítulos a barra de capítulos mostra de uma vez antes de paginar com as setas."
+
+msgid "Custom value"
+msgstr "Valor personalizado"
+
 msgid "Started / expected finish row"
 msgstr "Linha \"iniciado / conclusão prevista\""
 

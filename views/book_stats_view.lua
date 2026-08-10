@@ -339,11 +339,11 @@ local function buildSections(stats, fonts, layout, popup)
     UI.addSectionWithRow(sections, chapter_headers, chapter_values, layout, { no_bottom_line = true })
 
     local chapter_on_prev = popup and function()
-        popup.chapter_bar_offset = math.max(1, (popup.chapter_bar_offset or 1) - ChapterBar.PAGE_SIZE)
+        popup.chapter_bar_offset = math.max(1, (popup.chapter_bar_offset or 1) - ChapterBar.readPageSizeSetting())
         popup:_rebuildUI()
     end or nil
     local chapter_on_next = popup and function()
-        popup.chapter_bar_offset = math.max(1, (popup.chapter_bar_offset or 1) + ChapterBar.PAGE_SIZE)
+        popup.chapter_bar_offset = math.max(1, (popup.chapter_bar_offset or 1) + ChapterBar.readPageSizeSetting())
         popup:_rebuildUI()
     end or nil
 
@@ -380,8 +380,15 @@ local function buildSections(stats, fonts, layout, popup)
     if chapter_bar and VS.Opt.readShowChapterBar() then
         if popup then
             popup._chapter_bar = chapter_bar
-            popup._chapter_bar_prev_arrow = chapter_can_go_left  and chapter_left_arrow  or nil
-            popup._chapter_bar_next_arrow = chapter_can_go_right and chapter_right_arrow or nil
+            -- Store the arrow widgets unconditionally (not just when they can
+            -- page) so onTapClose can still recognise a tap on a greyed-out
+            -- arrow and swallow it - tapping a dead-end arrow does nothing
+            -- rather than falling through and closing the popup. The
+            -- can_prev/can_next flags say whether the tap should actually page.
+            popup._chapter_bar_prev_arrow = chapter_left_arrow
+            popup._chapter_bar_next_arrow = chapter_right_arrow
+            popup._chapter_bar_can_prev   = chapter_can_go_left
+            popup._chapter_bar_can_next   = chapter_can_go_right
             popup._chapter_bar_on_prev    = chapter_on_prev
             popup._chapter_bar_on_next    = chapter_on_next
         end
@@ -488,8 +495,9 @@ function ReadingStatsPopup:init()
     if not self.chapter_bar_offset and self._stats.chapter_info then
         local info = self._stats.chapter_info
         -- Start on the page that contains the current chapter.
-        -- Pages are 1, 1+PAGE_SIZE, 1+2*PAGE_SIZE, …
-        local page_start = math.floor((info.current - 1) / ChapterBar.PAGE_SIZE) * ChapterBar.PAGE_SIZE + 1
+        -- Pages are 1, 1+page_size, 1+2*page_size, …
+        local page_size = ChapterBar.readPageSizeSetting()
+        local page_start = math.floor((info.current - 1) / page_size) * page_size + 1
         self.chapter_bar_offset = math.max(1, page_start)
     end
     self:_buildUI()
@@ -880,13 +888,16 @@ function ReadingStatsPopup:onTapClose(arg, ges_ev)
             return true
         end
 
+        -- A tap on either arrow is always swallowed (returns true, keeps the
+        -- popup open); it only pages when that arrow is active. So tapping a
+        -- greyed-out dead-end arrow does nothing at all, instead of closing.
         if self._chapter_bar_prev_arrow and hitTestPadded(self._chapter_bar_prev_arrow, x, y, Screen:scaleBySize(14)) then
-            self._chapter_bar_on_prev()
+            if self._chapter_bar_can_prev then self._chapter_bar_on_prev() end
             return true
         end
 
         if self._chapter_bar_next_arrow and hitTestPadded(self._chapter_bar_next_arrow, x, y, Screen:scaleBySize(14)) then
-            self._chapter_bar_on_next()
+            if self._chapter_bar_can_next then self._chapter_bar_on_next() end
             return true
         end
 
