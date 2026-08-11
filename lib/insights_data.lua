@@ -214,6 +214,31 @@ local function parseWeekYear(week_str)
     return year, week
 end
 
+-- Are two "YYYY-WW" week labels (strftime('%Y-%W')) adjacent calendar weeks?
+-- `prev_week` is the newer label, `curr_week` the older one (streaks iterate
+-- newest-first). %W numbers weeks 00-53, week 01 starting on the year's first
+-- Monday and the days before it being week 00.
+function M.isConsecutiveWeek(prev_week, curr_week)
+    local prev_year, prev_wk = parseWeekYear(prev_week)
+    local curr_year, curr_wk = parseWeekYear(curr_week)
+    if not prev_year or not curr_year then return false end
+    if prev_year == curr_year and prev_wk == curr_wk + 1 then return true end
+    if prev_year == curr_year + 1 and curr_wk >= 52 then
+        -- Old year's last week (52/53) connecting to the new year. Normally
+        -- the new year opens with week 00 (the days before its first Monday).
+        -- But when Jan 1 is itself a Monday there are no such days, so the
+        -- year starts at week 01 and 52/53 connects straight to it. Gate the
+        -- week-01 case on Jan 1 actually being a Monday, otherwise a genuinely
+        -- skipped week 00 would be papered over as a continuous streak.
+        if prev_wk == 0 then return true end
+        if prev_wk == 1 then
+            local jan1 = os.time({ year = prev_year, month = 1, day = 1, hour = 12 })
+            if tonumber(os.date("%w", jan1)) == 1 then return true end
+        end
+    end
+    return false
+end
+
 -- Convert a "YYYY-WW" week string to the Monday date of that week, as
 -- "YYYY-MM-DD".
 --
@@ -354,18 +379,9 @@ function M.calculateStreaks(shared_conn)
             return first_week == current_week or first_week == last_week
         end
 
-        local function isConsecutiveWeek(prev_week, curr_week)
-            local prev_year, prev_wk = parseWeekYear(prev_week)
-            local curr_year, curr_wk = parseWeekYear(curr_week)
-            if not prev_year or not curr_year then return false end
-            if prev_year == curr_year and prev_wk == curr_wk + 1 then return true end
-            if prev_year == curr_year + 1 and prev_wk == 0 and curr_wk >= 52 then return true end
-            return false
-        end
-
         streaks.current_weeks, streaks.best_weeks,
         streaks.current_weeks_dates, streaks.best_weeks_dates =
-            M.computeStreaksWithDates(weeks, isConsecutiveWeek, isCurrentWeekStart)
+            M.computeStreaksWithDates(weeks, M.isConsecutiveWeek, isCurrentWeekStart)
 
         -- Check whether today already has confirmed reading activity in the DB.
         -- If yes, the streak result is stable for the rest of the day.
