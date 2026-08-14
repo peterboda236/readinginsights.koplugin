@@ -111,7 +111,7 @@ local ViewSettings  = load("lib/insights_settings.lua", { Prefs = Prefs })
 local InsightsCache = load("lib/insights_cache.lua")
 local ChapterBar = load("widgets/chapterbarwidget.lua", { Colors = Colors, Fonts = Fonts, UI = UI })
 local InsightsData = load("lib/insights_data.lua",
-    { Locale = Locale, StatsDb = StatsDb, Cache = InsightsCache, VS = ViewSettings })
+    { Locale = Locale, StatsDb = StatsDb, Cache = InsightsCache, VS = ViewSettings, Prefs = Prefs })
 local Trend   = load("views/trend_view.lua",   { Colors = Colors, Locale = Locale, VS = ViewSettings })
 local Heatmap = load("views/heatmap_view.lua", { Colors = Colors, Fonts = Fonts,
     Locale = Locale, VS = ViewSettings, UI = UI, Data = InsightsData })
@@ -126,6 +126,7 @@ local Insights = load("views/insights_view.lua", {
     Locale = Locale, Colors = Colors, Fonts = Fonts,
     PopupUtil = PopupUtil, VS = ViewSettings, Cache = InsightsCache, UI = UI,
     Trend = Trend, Heatmap = Heatmap, BookList = BookList, Data = InsightsData,
+    Prefs = Prefs,
 })
 local BookCalendar = load("views/book_calendar_view.lua", {
     Locale = Locale, Colors = Colors, Fonts = Fonts, Prefs = Prefs,

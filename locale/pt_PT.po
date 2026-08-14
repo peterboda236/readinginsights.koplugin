@@ -105,6 +105,12 @@ msgstr "livro lido"
 msgid "books read"
 msgstr "livros lidos"
 
+msgid "book"
+msgstr "livro"
+
+msgid "books"
+msgstr "livros"
+
 msgid "day/book avg"
 msgstr "méd. dias/livro"
 
@@ -288,12 +294,6 @@ msgstr "página lida hoje"
 msgid "pages read today"
 msgstr "páginas lidas hoje"
 
-msgid "book read in this streak"
-msgstr "livro lido nesta sequência"
-
-msgid "books read in this streak"
-msgstr "livros lidos nesta sequência"
-
 msgid "Show Reading insights"
 msgstr "Mostrar Reading Insights"
 
@@ -308,6 +308,12 @@ msgstr "Definições avançadas"
 
 msgid "Reading heatmap range"
 msgstr "Intervalo do mapa de calor de leitura"
+
+msgid "Streak popup reading time"
+msgstr "Tempo de leitura na janela de sequência"
+
+msgid "Show the total reading time and per-day averages at the bottom of the streak popup."
+msgstr "Mostrar o tempo total de leitura e as médias diárias no fundo da janela de sequência."
 
 msgid "3 months"
 msgstr "3 meses"
@@ -817,6 +823,15 @@ msgstr "Atividade elevada (75%)"
 
 msgid "Peak activity (100%)"
 msgstr "Atividade máxima (100%)"
+
+msgid "Reading streak calendar"
+msgstr "Calendário da sequência de leitura"
+
+msgid "Daily streak day"
+msgstr "Dia da sequência diária"
+
+msgid "Weekly streak gap day"
+msgstr "Dia sem leitura da sequência semanal"
 
 msgid "Show long durations (24h+) as days"
 msgstr "Mostrar durações longas (24h+) em dias"

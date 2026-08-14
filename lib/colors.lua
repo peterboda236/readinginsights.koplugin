@@ -145,11 +145,21 @@ local KEY_ORDER = {
 -- other colors (there are 5 of them, one per activity level).
 local HEATMAP_KEY_ORDER = { "heatmap_0", "heatmap_25", "heatmap_50", "heatmap_75", "heatmap_100" }
 
--- Every color key that exists, flat + heatmap combined - used wherever the
--- code needs to touch *all* colors (e.g. "reset all colors to default").
+-- The streak-calendar cell colors, grouped together under their own "Reading
+-- streak calendar" submenu (the calendar drawn in the streak-date popup - see
+-- insights_view.lua's showStreakDatePopup): the read-day fill and the
+-- weekly-streak gap-day fill. Non-streak days are always white, and the day
+-- number is drawn black or white automatically for contrast, so neither is a
+-- setting.
+local STREAK_KEY_ORDER = { "streak_read", "streak_gap" }
+
+-- Every color key that exists, flat + heatmap + streak combined - used
+-- wherever the code needs to touch *all* colors (e.g. "reset all colors
+-- to default").
 local ALL_KEY_ORDER = {}
 for _, key in ipairs(KEY_ORDER) do table.insert(ALL_KEY_ORDER, key) end
 for _, key in ipairs(HEATMAP_KEY_ORDER) do table.insert(ALL_KEY_ORDER, key) end
+for _, key in ipairs(STREAK_KEY_ORDER) do table.insert(ALL_KEY_ORDER, key) end
 
 -- These match what was previously hard-coded directly in the two view
 -- files (Blitbuffer.COLOR_BLACK = "#000000", Blitbuffer.COLOR_GRAY = "#AAAAAA"),
@@ -172,6 +182,13 @@ local DEFAULTS = {
     heatmap_50   = "#808080",
     heatmap_75   = "#404040",
     heatmap_100  = "#000000",
+    -- Streak-calendar cells (see showStreakDatePopup in insights_view.lua).
+    -- streak_read: a day that is part of the daily streak (was read) - dark
+    --   gray, so a run of read days reads as a dark block.
+    -- streak_gap:  a day inside a week that has reading but was not itself read
+    --   (the weekly streak is secured for that week) - light gray.
+    streak_read  = "#555555",
+    streak_gap   = "#CCCCCC",
 }
 
 local SETTINGS_PREFIX = "reading_insights_color_"
@@ -294,6 +311,8 @@ function M.heatmap25()   return M.getColor("heatmap_25")   end
 function M.heatmap50()   return M.getColor("heatmap_50")   end
 function M.heatmap75()   return M.getColor("heatmap_75")   end
 function M.heatmap100()  return M.getColor("heatmap_100")  end
+function M.streakRead()  return M.getColor("streak_read")  end
+function M.streakGap()   return M.getColor("streak_gap")   end
 
 -- Menu ---------------------------------------------------------------
 
@@ -312,6 +331,8 @@ local function labelFor(key)
         heatmap_50   = _("Medium activity (50%)"),
         heatmap_75   = _("High activity (75%)"),
         heatmap_100  = _("Peak activity (100%)"),
+        streak_read  = _("Daily streak day"),
+        streak_gap   = _("Weekly streak gap day"),
     }
     return labels[key] or key
 end
@@ -427,6 +448,16 @@ function M.buildMenu(on_change)
         text = _("Reading heatmap"),
         keep_menu_open = true,
         sub_item_table = heatmap_sub_item_table,
+    })
+
+    local streak_sub_item_table = {}
+    for _, key in ipairs(STREAK_KEY_ORDER) do
+        table.insert(streak_sub_item_table, colorItem(key, on_change))
+    end
+    table.insert(sub_item_table, {
+        text = _("Reading streak calendar"),
+        keep_menu_open = true,
+        sub_item_table = streak_sub_item_table,
     })
 
     table.insert(sub_item_table, {

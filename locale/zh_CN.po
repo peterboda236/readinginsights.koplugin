@@ -73,6 +73,12 @@ msgstr "已读完书籍"
 msgid "books read"
 msgstr "已读完书籍"
 
+msgid "book"
+msgstr "本书"
+
+msgid "books"
+msgstr "本书"
+
 msgid "day/book avg"
 msgstr "单书平均天数"
 msgid "days/book avg"
@@ -212,10 +218,6 @@ msgid "page read today"
 msgstr "今日阅读页数"
 msgid "pages read today"
 msgstr "今日阅读页数"
-msgid "book read in this streak"
-msgstr "本轮连续阅读完成书籍"
-msgid "books read in this streak"
-msgstr "本轮连续阅读完成书籍"
 
 msgid "Show Reading insights"
 msgstr "打开阅读统计"
@@ -227,6 +229,12 @@ msgid "Advanced settings"
 msgstr "高级设置"
 msgid "Reading heatmap range"
 msgstr "阅读热力图时间范围"
+
+msgid "Streak popup reading time"
+msgstr "连续记录弹窗中的阅读时间"
+
+msgid "Show the total reading time and per-day averages at the bottom of the streak popup."
+msgstr "在连续记录弹窗底部显示总阅读时间和每日平均值。"
 
 msgid "3 months"
 msgstr "3个月"
@@ -590,6 +598,15 @@ msgid "High activity (75%)"
 msgstr "高活跃度（75%）"
 msgid "Peak activity (100%)"
 msgstr "峰值活跃度（100%）"
+
+msgid "Reading streak calendar"
+msgstr "阅读连续记录日历"
+
+msgid "Daily streak day"
+msgstr "每日连续记录日"
+
+msgid "Weekly streak gap day"
+msgstr "每周连续记录缺读日"
 
 msgid "Show long durations (24h+) as days"
 msgstr "时长超过24小时以「天」显示"

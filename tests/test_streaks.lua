@@ -1,18 +1,23 @@
 --[[
 Reading Insights - weekly-streak week adjacency (lib/insights_data).
 
-The weekly streak groups reading by SQLite's strftime('%Y-%W'): week 01
-starts on the year's first Monday, and the days before it are week 00.
-M.isConsecutiveWeek decides whether two such labels are neighbouring weeks,
-and the New-Year boundary is the part with teeth - especially the years
-whose Jan 1 is itself a Monday, where there is no week 00 at all and 52/53
-connects straight to week 01.
+The weekly streak now groups reading by the date each week STARTS on, matching
+the shared week-start setting (Monday or Sunday) - see M.weekStartDate and
+M.isConsecutiveWeekDate. Two week-start dates are consecutive when they are
+exactly 7 days apart, which crosses month and year boundaries for free.
+
+M.isConsecutiveWeek (SQLite strftime('%Y-%W'), Monday-based) is kept for
+reference and still exercised below, since the New-Year boundary is the part
+with teeth there - especially years whose Jan 1 is itself a Monday, where there
+is no week 00 at all and 52/53 connects straight to week 01.
 
 Run from the plugin root: lua5.1 tests/test_streaks.lua
 ]]--
 
 package.preload["optmath"] = function() return { round = function(x) return x end } end
 
+-- Loaded without Prefs on purpose: weekStartDate/isConsecutiveWeekDate are pure
+-- date math and take the week-start as an argument, so no setting is needed.
 local Data = assert(loadfile("lib/insights_data.lua"))({
     Locale  = { _ = function(s) return s end },
     StatsDb = {},
@@ -71,5 +76,35 @@ check("Wed boundary, no week 00: broken", best_gap, 1)
 local _, best_full = Data.computeStreaksWithDates(
     { "2025-01", "2025-00", "2024-52" }, consec, never_current)
 check("Wed boundary, week 00 present: whole", best_full, 3)
+
+--------------------------------------------------------------------------
+-- Setting-based weekly streak: week-start dates + 7-day adjacency.
+--------------------------------------------------------------------------
+
+-- 2026-08-14 is a Friday (%w = 5). Monday-start week begins Mon 08-10,
+-- Sunday-start week begins Sun 08-09.
+check("weekStartDate Monday",  Data.weekStartDate("2026-08-14", 1), "2026-08-10")
+check("weekStartDate Sunday",  Data.weekStartDate("2026-08-14", 0), "2026-08-09")
+-- A day that already is the week start maps to itself.
+check("weekStartDate on Monday", Data.weekStartDate("2026-08-10", 1), "2026-08-10")
+check("weekStartDate on Sunday", Data.weekStartDate("2026-08-09", 0), "2026-08-09")
+
+local wconsec = Data.isConsecutiveWeekDate
+check("7 days apart adjacent",   wconsec("2026-08-10", "2026-08-03"), true)
+check("14 days apart is a gap",  wconsec("2026-08-10", "2026-07-27"), false)
+check("same week not adjacent",  wconsec("2026-08-10", "2026-08-10"), false)
+-- Across a month boundary and a year boundary, 7 days still counts.
+check("across month boundary",   wconsec("2026-08-03", "2026-07-27"), true)
+check("across year boundary",    wconsec("2026-01-05", "2025-12-29"), true)
+check("nil date not adjacent",   wconsec(nil, "2026-08-03"), false)
+
+-- End to end: three week-start dates a week apart are one run of 3.
+local _, best_weeks = Data.computeStreaksWithDates(
+    { "2026-08-10", "2026-08-03", "2026-07-27" }, wconsec, never_current)
+check("three weeks in a row: run of 3", best_weeks, 3)
+-- A fortnight gap breaks it.
+local _, best_weeks_gap = Data.computeStreaksWithDates(
+    { "2026-08-10", "2026-07-27" }, wconsec, never_current)
+check("two weeks 14 days apart: run of 1", best_weeks_gap, 1)
 
 print(string.format("\nALL %d STREAK ASSERTIONS PASSED", pass))

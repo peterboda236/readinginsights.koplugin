@@ -27,9 +27,25 @@ A full-screen scrollable overlay with a comprehensive overview of your reading h
 **Highlights:**
 - **Last week** — 7-day average time and pages per day; tap either value to open its own 8-week trend popup (time trend or pages trend). Its daily bar chart puts today on the left by default, and can be flipped to put it on the right (see **Settings** below)
 - **Streaks** — current and best daily & weekly reading streaks; tap any of
-  the four to open a popup summarising that streak: its name and date range
-  on one line, then reading time and pages side by side (total, and average
-  per day), with the number of books read during it below
+  the four to open a popup summarising that streak. At the top is a **calendar**
+  of the streak's span with the days you actually read marked (a fixed six-week
+  month you page one at a time with the ‹ / › arrows, a swipe, or the Left/Right
+  keys; today's date is shown in bold, and the days spilling in from the
+  previous/next month are shown in gray). Below it come the streak's name and
+  date range, then the days/weeks-in-a-row pair (the same figures the page
+  itself shows) with the book count beside it, split into three equal columns.
+  The total reading time / pages and the per-day averages can be shown below
+  that too, but are **off by default** (turn them on under *Settings ▸ Advanced
+  settings ▸ Reading insight popup ▸ Streak popup reading time*). On the
+  calendar, read days use the
+  daily-streak color (dark gray by default); once a week has any reading its
+  remaining days use the gap color (light gray) to show the weekly streak is
+  secured for that week; every other day stays white. Consecutive days within a
+  week sit flush so a run of reading reads as one solid strip, and the day
+  number is drawn black or white automatically for contrast. The two fill
+  colors — daily-streak day and weekly-streak gap day — are configurable under
+  **Colors ▸ Reading streak calendar**. Both the weekly streak value and the
+  calendar's weeks follow the **week start day** setting (Monday or Sunday)
 - **Yearly view** — hours or days read + pages, navigable by year
 - **Monthly chart** — bar chart of reading activity per month (tappable to see books)
 - **All-time totals** — cumulative hours and pages across all years; tap
@@ -260,10 +276,12 @@ force-reload data.
 
 Tap the "Pace" section title on the Book progress popup or use the "Show Book
   progress calendar menu entry/gesture — see [Where it shows
-  up](#where-it-shows-up) below) to open a month grid for this book,
-  colored like a heatmap and showing a bottom progress bar per day (days
-  with no reading are left blank — no bar at all); also shows the starting date, 
-  the stimated finish day and if the book is finished also showd on the calendar.
+  up](#where-it-shows-up) below) to open a fixed six-week month grid for this
+  book, colored like a heatmap and showing a bottom progress bar per day (days
+  with no reading are left blank — no bar at all); the day cells sit flush with
+  no borders, and days spilling in from the previous/next month are shown in
+  gray. It also shows the starting date,
+  the estimated finish day and, if the book is finished, that too on the calendar.
   What the small text under each day number shows is configurable
   (*Settings → Advanced settings → Book progress calendar → Book progress
   calendar cell content*):
@@ -372,9 +390,12 @@ where you left off.
     - **Colors** — pick your own hex color for every bar/line/label the
       three popups draw (active/inactive bars, the 8-week trend line,
       section/column separator lines, the label/value/section/
-      chart-label text colors, and the 5 year-heatmap shades - defaulting
-      to 0/25/50/75/100% black); each one can be reset back to its
-      default individually or all at once. Each color can be set either by
+      chart-label text colors, the 5 year-heatmap shades - defaulting
+      to 0/25/50/75/100% black - and, under **Reading streak calendar**,
+      the streak calendar's daily-streak day and weekly-streak gap day
+      fills); each one can
+      be reset back to its default individually or all at once. Each color
+      can be set either by
       typing a hex code directly, or by tapping **Pick with color wheel**
       to open a touch color wheel (hue/saturation dial plus a brightness
       slider) that opens pre-set to the color's current value and shows a

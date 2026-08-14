@@ -215,7 +215,7 @@ local ChapterBar = loadModule("widgets/chapterbarwidget.lua",
 -- Kept apart from the popup that draws them (see lib/insights_data.lua).
 local InsightsData = loadModule("lib/insights_data.lua",
     { Locale = Locale, StatsDb = StatsDb, Cache = InsightsCache, VS = ViewSettings,
-      Manual = ManualBooks })
+      Manual = ManualBooks, Prefs = Prefs })
 
 -- The three popups the insights view opens: its 8-week trend chart, the
 -- reading heatmaps, and the book lists. Loaded before the view because it
@@ -253,6 +253,7 @@ local Insights = loadModule("views/insights_view.lua", {
     PopupUtil = PopupUtil, VS = ViewSettings, Cache = InsightsCache, UI = UI,
     Trend = Trend, Heatmap = Heatmap, BookList = BookList, Data = InsightsData,
     Manual = ManualBooks, Achievements = Achievements, AchievementsView = AchievementsView,
+    Prefs = Prefs,
 })
 local BookCalendar = loadModule("views/book_calendar_view.lua", {
     Locale = Locale, Colors = Colors, Fonts = Fonts, Prefs = Prefs,

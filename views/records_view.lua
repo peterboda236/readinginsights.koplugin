@@ -252,7 +252,7 @@ function RecordsPopup:_buildUI()
     local last_ms_date     = d.last_ms_date
 
     local outer_padding = Size.padding.large
-    local max_w = math.floor(screen_w * 0.92)
+    local max_w = math.floor(screen_w * 0.94)
     local min_w = math.min(Screen:scaleBySize(280), max_w)
 
     -- Collect row data first (without building widgets yet) so we can
@@ -312,7 +312,7 @@ function RecordsPopup:_buildUI()
     -- Measure fixed table columns (icon / label / value) across all rows,
     -- then size the card to fit the widest combination (title, or icon +
     -- label column + gap + value column), clamped between a sane minimum
-    -- and 92% of the screen width.
+    -- and 94% of the screen width.
     local title_w = TextWidget:new{
         text    = _("Records"),
         face    = fonts.value,

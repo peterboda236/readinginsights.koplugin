@@ -1,40 +1,40 @@
 --[[
-Reading Insights - reading achievements (globális, minden évre közös).
+Reading Insights - reading achievements (global, shared across all years).
 
-A megszerzett achievementek listája a reading goal szekció mellett jelenik
-meg egy "N earned" cellában, és egy külön listapopupban (megszerzettek felül,
-megszerzés ideje szerint csökkenő sorrendben; a hátralévők alul, szürkén).
+The list of earned achievements shows up next to the reading goal section in
+an "N earned" cell, and in a separate list popup (earned ones on top, sorted
+by earn time descending; the remaining locked ones below, in gray).
 
-Perzisztálás: a megszerzett achievementek a manual_books.lua mintájára a
-KOReader settings mappájában, saját fájlban élnek
-(reading_insights_achievements.lua), { [id] = megszerzés_unix_ideje } alakban.
-Egy egyszer megszerzett achievement onnantól a fájlból jön - a normál
-popup-nyitás csak a darabszámot olvassa ki (olcsó, csak fájl). A tényleges
-kiértékelés (a DB-lekérdezésekkel) csak akkor fut, amikor a teljes adat
-újratöltődik: a title-bar hosszú nyomására (Cache.clearAllCache útvonal),
-illetve egyszeri bootstrapként, ha a fájl még soha nem készült el.
+Persistence: earned achievements live in their own file in the KOReader
+settings folder, mirroring manual_books.lua's approach
+(reading_insights_achievements.lua), shaped as { [id] = earned_unix_time }.
+Once earned, an achievement is read from that file from then on - a normal
+popup open only reads the count (cheap, file-only). The actual evaluation
+(with the DB queries) only runs when the full data is reloaded: on a long
+press of the title bar (the Cache.clearAllCache path), or as a one-time
+bootstrap if the file has never been created yet.
 
-Az achievementek soha nem "veszíthetők el": ha egy mögöttes szám később
-csökken (törölt könyv, egy másik eszközről bemásolt/összefésült DB), a már
-megszerzett achievement megmarad.
+Achievements can never be "un-earned": if an underlying number later drops
+(a deleted book, a DB copied/merged in from another device), an already
+earned achievement stays earned.
 
-  Achievements.CATALOGUE          a definíciók (sorrend = zárolt megjelenési sorrend)
-  Achievements.getEarned()        { [id] = ts } a fájlból
-  Achievements.earnedCount()      hány katalógusbeli achievement van megszerezve
-  Achievements.list()             a listapopup sorai: megszerzettek (ts szerint
-                                  csökkenő) elöl, zároltak hátul
-  Achievements.recompute()        friss kiértékelés a DB-ből + perzisztálás;
-                                  visszaadja az aktuális darabszámot
-  Achievements.refreshIfChanged() olcsó, feltételes kiértékelés: csak akkor
-                                  fut teljes recompute, ha változott az adat
-                                  az utolsó kiértékelés óta (nyitásonként
-                                  egy pehelysúlyú ujjlenyomat-lekérdezés)
+  Achievements.CATALOGUE          the definitions (order = locked display order)
+  Achievements.getEarned()        { [id] = ts } from the file
+  Achievements.earnedCount()      how many catalogue achievements are earned
+  Achievements.list()             the list popup's rows: earned ones (sorted
+                                  by ts descending) first, locked ones after
+  Achievements.recompute()        fresh evaluation from the DB + persistence;
+                                  returns the current count
+  Achievements.refreshIfChanged() cheap, conditional evaluation: only runs a
+                                  full recompute if the data has changed
+                                  since the last evaluation (one lightweight
+                                  fingerprint query per open)
 ]]--
 
 local DataStorage = require("datastorage")
 local LuaSettings = require("luasettings")
 
--- Megosztott modulok, a main.lua adja át egy named table-ként (lásd ott).
+-- Shared modules, passed in as one named table by main.lua (see there).
 local deps = ...
 local StatsDb, RecordsData, Data, Locale =
     deps.StatsDb, deps.RecordsData, deps.Data, deps.Locale
@@ -44,22 +44,23 @@ local M = {}
 
 local STORE_PATH = DataStorage:getSettingsDir() .. "/reading_insights_achievements.lua"
 
--- Az achievement-katalógus. Minden bejegyzés:
---   id     stabil kulcs, ez kerül a fájlba - egyszer kiadva SOHA ne
---          nevezd/számozd át, különben a réginek megszerzett bejegyzés
---          "elárvul" és a felhasználó látszólag elveszti
---   icon   a sor elején megjelenő jel. Szándékosan sima BMP Unicode
---          szimbólum (geometriai alakzat / kártyaszín / csillag / nyíl),
---          nem emoji: a színes emojik e-inken nem, vagy dobozként
---          renderelődnek, ezek viszont a NotoSans/NotoSansSymbols készletből
---          jól kijönnek. Minden achievementnek saját, egyedi jele van.
---   title  rövid név (fordítható)
---   desc   egysoros leírás a feltételről (fordítható)
---   check  function(metrics) -> boolean, a M.computeMetrics() adta táblán
--- A sorrend itt a ZÁROLT megjelenési sorrend; a megszerzetteket a lista a
--- megszerzés ideje szerint rendezi újra.
+-- The achievement catalogue. Every entry:
+--   id     stable key, this is what goes into the file - once shipped,
+--          NEVER rename/renumber it, or the previously earned entry becomes
+--          "orphaned" and the user appears to lose it
+--   icon   the glyph shown at the start of the row. Deliberately a plain
+--          BMP Unicode symbol (geometric shape / card suit / star / arrow),
+--          not an emoji: colored emoji either don't render on e-ink or show
+--          up as boxes, whereas these come through fine from the
+--          NotoSans/NotoSansSymbols font set. Every achievement has its own
+--          unique glyph.
+--   title  short name (translatable)
+--   desc   one-line description of the condition (translatable)
+--   check  function(metrics) -> boolean, given the table from M.computeMetrics()
+-- The order here is the LOCKED display order; the list re-sorts earned ones
+-- by earn time.
 M.CATALOGUE = {
-    -- Befejezett könyvek (darab, összesen) -------------------------------
+    -- Finished books (count, total) --------------------------------------
     { id = "first_book",     icon = "★", title = _("First book"),
       desc = _("Finish your first book"),
       check = function(m) return m.finished_books >= 1 end },
@@ -81,7 +82,7 @@ M.CATALOGUE = {
     { id = "books_250",      icon = "✭", title = _("Library"),
       desc = _("Finish 250 books"),
       check = function(m) return m.finished_books >= 250 end },
-    -- Befejezett könyvek (időszaki / egyéb) ------------------------------
+    -- Finished books (time-bound / other) --------------------------------
     { id = "finished_month_3", icon = "✮", title = _("Prolific month"),
       desc = _("Finish 3 books in one calendar month"),
       check = function(m) return m.finished_max_month >= 3 end },
@@ -101,7 +102,7 @@ M.CATALOGUE = {
       desc = _("Finish a book of 1000+ pages"),
       check = function(m) return m.finished_book_max_pages >= 1000 end },
 
-    -- Olvasási idő (összesen) - a Records milestone-létrája ---------------
+    -- Reading time (total) - the Records milestone ladder -----------------
     { id = "hours_1",     icon = "○", title = _("First hour"),
       desc = _("Read for 1 hour in total"),
       check = function(m) return m.total_hours >= 1 end },
@@ -138,7 +139,7 @@ M.CATALOGUE = {
     { id = "hours_10000", icon = "◈", title = _("10000 hours"),
       desc = _("Read for 10000 hours in total"),
       check = function(m) return m.total_hours >= 10000 end },
-    -- Olvasási idő (időszaki) --------------------------------------------
+    -- Reading time (time-bound) -------------------------------------------
     { id = "hours_month_50", icon = "◇", title = _("Intense month"),
       desc = _("Read for 50 hours in one calendar month"),
       check = function(m) return m.hours_max_month >= 50 end },
@@ -149,7 +150,7 @@ M.CATALOGUE = {
       desc = _("Read for 500 hours in one year"),
       check = function(m) return m.hours_max_year >= 500 end },
 
-    -- Oldalak (összesen) -------------------------------------------------
+    -- Pages (total) --------------------------------------------------------
     { id = "pages_total_1000",   icon = "▤", title = _("1000 pages"),
       desc = _("Read 1000 pages in total"),
       check = function(m) return m.total_pages >= 1000 end },
@@ -162,7 +163,7 @@ M.CATALOGUE = {
     { id = "pages_total_100000", icon = "▧", title = _("100000 pages"),
       desc = _("Read 100000 pages in total"),
       check = function(m) return m.total_pages >= 100000 end },
-    -- Oldalak (egy nap) --------------------------------------------------
+    -- Pages (single day) ----------------------------------------------------
     { id = "pages_300",  icon = "△", title = _("Page turner"),
       desc = _("Read 300 pages in a single day"),
       check = function(m) return m.max_day_pages >= 300 end },
@@ -173,7 +174,7 @@ M.CATALOGUE = {
       desc = _("Read 1000 pages in a single day"),
       check = function(m) return m.max_day_pages >= 1000 end },
 
-    -- Napi sorozatok -----------------------------------------------------
+    -- Daily streaks ---------------------------------------------------------
     { id = "streak_3",   icon = "▷", title = _("Getting into it"),
       desc = _("Read on 3 days in a row"),
       check = function(m) return m.best_streak_days >= 3 end },
@@ -192,7 +193,7 @@ M.CATALOGUE = {
     { id = "streak_365", icon = "➜", title = _("A full year"),
       desc = _("Read on 365 days in a row"),
       check = function(m) return m.best_streak_days >= 365 end },
-    -- Heti sorozatok / kitartás ------------------------------------------
+    -- Weekly streaks / persistence -------------------------------------------
     { id = "weekly_4",   icon = "♪", title = _("Monthly rhythm"),
       desc = _("A 4-week reading streak"),
       check = function(m) return m.best_weekly_streak >= 4 end },
@@ -206,7 +207,7 @@ M.CATALOGUE = {
       desc = _("Read on both weekend days, 4 weekends in a row"),
       check = function(m) return m.weekend_warrior end },
 
-    -- Egy nap / egy ülés -------------------------------------------------
+    -- Single day / single session --------------------------------------------
     { id = "marathon_3h", icon = "♦", title = _("Marathon"),
       desc = _("Read for 3 hours in a single day"),
       check = function(m) return m.max_day_secs >= 3 * 3600 end },
@@ -226,7 +227,7 @@ M.CATALOGUE = {
       desc = _("Read on both sides of midnight in one session"),
       check = function(m) return m.midnight_crossing end },
 
-    -- Napszak / naptár ---------------------------------------------------
+    -- Time of day / calendar --------------------------------------------------
     { id = "night_owl",   icon = "☾", title = _("Night owl"),
       desc = _("Read between midnight and 4 a.m."),
       check = function(m) return m.night_owl end },
@@ -249,7 +250,7 @@ M.CATALOGUE = {
       desc = _("Read on 1 January"),
       check = function(m) return m.read_jan1 end },
 
-    -- Tempó / mélység ----------------------------------------------------
+    -- Pace / depth ------------------------------------------------------------
     { id = "fast_reader",  icon = "➣", title = _("Speed reader"),
       desc = _("Average over 60 pages per hour in a book"),
       check = function(m) return m.max_book_pace_pph >= 60 end },
@@ -257,7 +258,7 @@ M.CATALOGUE = {
       desc = _("Spend over 20 hours on a single book"),
       check = function(m) return m.max_book_secs >= 20 * 3600 end },
 
-    -- Változatosság ------------------------------------------------------
+    -- Variety -------------------------------------------------------------------
     { id = "authors_5",   icon = "♥", title = _("Well-read"),
       desc = _("Finish books by 5 different authors"),
       check = function(m) return m.distinct_finished_authors >= 5 end },
@@ -268,7 +269,7 @@ M.CATALOGUE = {
       desc = _("Open 50 different books"),
       check = function(m) return m.distinct_books >= 50 end },
 
-    -- Bővített szintek / új témák (+20) -----------------------------------
+    -- Extended tiers / new themes (+20) ---------------------------------------
     { id = "books_500", icon = "✦", title = _("Grand library"),
       desc = _("Finish 500 books"),
       check = function(m) return m.finished_books >= 500 end },
@@ -325,14 +326,13 @@ M.CATALOGUE = {
       check = function(m) return m.max_books_one_author >= 5 end },
 }
 
--- Gyors "ez a kulcs a katalógus tagja-e" halmaz, hogy egy időközben
--- eltávolított achievement elárvult, fájlban maradt bejegyzése ne számítson
--- bele a darabszámba.
+-- Quick "is this key in the catalogue" set, so a stale entry left in the
+-- file for an achievement that's since been removed doesn't get counted.
 local CATALOGUE_IDS = {}
 for _idx, a in ipairs(M.CATALOGUE) do CATALOGUE_IDS[a.id] = true end
 
 -- ---------------------------------------------------------------------
--- Perzisztálás
+-- Persistence
 -- ---------------------------------------------------------------------
 local store
 
@@ -344,8 +344,8 @@ local function openStore()
     return store or nil
 end
 
--- { [id] = megszerzés_ts }. A hiányzó/rossz alakú tartalom üres táblaként jön
--- vissza, hogy egy régi vagy kézzel szerkesztett fájl se tudjon elszállni.
+-- { [id] = earn_ts }. Missing/malformed content comes back as an empty
+-- table, so an old or hand-edited file can't crash this.
 function M.getEarned()
     local s = openStore()
     if not s then return {} end
@@ -363,14 +363,14 @@ function M.earnedCount()
     return n
 end
 
--- Az összes (katalógusbeli) achievement száma.
+-- The total number of (catalogue) achievements.
 function M.totalCount()
     return #M.CATALOGUE
 end
 
--- Az "új" (még nem nyugtázott) achievementek halmaza: amiket a legutóbbi
--- lista-megnyitás ÓTA szereztél meg. A recompute() teszi bele az újonnan
--- megszerzetteket, a markAllSeen() (a lista megnyitásakor) üríti.
+-- The set of "new" (not yet acknowledged) achievements: the ones earned
+-- SINCE the last time the list was opened. recompute() adds newly earned
+-- ones to it, markAllSeen() (called when the list opens) clears it.
 function M.getNew()
     local s = openStore()
     if not s then return {} end
@@ -379,8 +379,8 @@ function M.getNew()
     return raw
 end
 
--- Hány megszerzett, de még nem nyugtázott achievement van (ennyi jelzi az
--- insight cellán a ★-ot).
+-- How many earned-but-not-yet-acknowledged achievements there are (this
+-- is what drives the ★ shown on the insight cell).
 function M.newCount()
     local earned  = M.getEarned()
     local new_set = M.getNew()
@@ -391,8 +391,8 @@ function M.newCount()
     return n
 end
 
--- A lista megnyitásakor hívjuk: mostantól minden eddig megszerzett
--- achievement "látott", tehát a ★-jelölés eltűnik a következő nézetnél.
+-- Called when the list opens: from now on every achievement earned so
+-- far is "seen", so the ★ marker disappears on the next view.
 function M.markAllSeen()
     local s = openStore()
     if not s then return end
@@ -401,17 +401,17 @@ function M.markAllSeen()
 end
 
 -- ---------------------------------------------------------------------
--- Kiértékeléshez használt Lua-segédek (a distinct-napok halmazán)
+-- Lua helpers used for evaluation (operating on the set of distinct days)
 -- ---------------------------------------------------------------------
 
--- Egy adott hónap napjainak száma (a következő hónap 0. napja = ennek a
--- hónapnak az utolsó napja).
+-- Number of days in a given month (day 0 of the next month = the last
+-- day of this month).
 local function daysInMonth(y, mo)
     local t = os.time({ year = y, month = mo + 1, day = 0, hour = 12 })
     return tonumber(os.date("%d", t)) or 31
 end
 
--- Van-e olyan naptári hónap, amelynek MINDEN napján volt olvasás.
+-- Whether there's a calendar month with reading on EVERY one of its days.
 local function anyFullMonth(day_set, months)
     for ym in pairs(months) do
         local y  = tonumber(ym:sub(1, 4))
@@ -430,17 +430,17 @@ local function anyFullMonth(day_set, months)
     return false
 end
 
--- Van-e 4 egymást követő hétvége, amikor szombaton ÉS vasárnap is olvastál.
--- Egy hétvégét a szombatja azonosít; a "következő" hétvége szombatja pontosan
--- 7 nappal később van.
+-- Whether there are 4 consecutive weekends with reading on both Saturday
+-- AND Sunday. A weekend is identified by its Saturday; the "next" weekend's
+-- Saturday is exactly 7 days later.
 local function anyWeekendStreak(day_set, day_list)
-    local good = {}  -- "jó" hétvégék szombat-dátumai
+    local good = {}  -- Saturday dates of "good" weekends
     for _idx, d in ipairs(day_list) do
         local y, mo, da = d:match("^(%d+)-(%d+)-(%d+)$")
         if y then
             local ts = os.time({ year = tonumber(y), month = tonumber(mo), day = tonumber(da), hour = 12 })
-            if ts and tonumber(os.date("%w", ts)) == 6 then  -- szombat
-                if day_set[os.date("%Y-%m-%d", ts + 86400)] then  -- vasárnap is
+            if ts and tonumber(os.date("%w", ts)) == 6 then  -- Saturday
+                if day_set[os.date("%Y-%m-%d", ts + 86400)] then  -- Sunday too
                     good[os.date("%Y-%m-%d", ts)] = ts
                 end
             end
@@ -459,14 +459,14 @@ local function anyWeekendStreak(day_set, day_list)
     return false
 end
 
--- Van-e olyan naptári hét (hétfőtől vasárnapig), amelynek mind a 7 napján
--- volt olvasás.
+-- Whether there's a calendar week (Monday to Sunday) with reading on all
+-- 7 of its days.
 local function anyFullWeek(day_set, day_list)
     for _idx, d in ipairs(day_list) do
         local y, mo, da = d:match("^(%d+)-(%d+)-(%d+)$")
         if y then
             local ts = os.time({ year = tonumber(y), month = tonumber(mo), day = tonumber(da), hour = 12 })
-            if ts and tonumber(os.date("%w", ts)) == 1 then  -- hétfő
+            if ts and tonumber(os.date("%w", ts)) == 1 then  -- Monday
                 local all = true
                 for k = 1, 6 do
                     if not day_set[os.date("%Y-%m-%d", ts + k * 86400)] then
@@ -481,9 +481,9 @@ local function anyFullWeek(day_set, day_list)
     return false
 end
 
--- Volt-e legalább 30 napos szünet két egymást követő olvasási nap között
--- (aztán újra olvastál) - a "visszatérő" achievementhez. A day_list növekvő
--- sorrendű.
+-- Whether there was a gap of at least 30 days between two consecutive
+-- reading days (and then reading resumed) - for the "comeback"
+-- achievement. day_list is in ascending order.
 local function anyLongGap(day_list)
     local prev_ts
     for _idx, d in ipairs(day_list) do
@@ -499,10 +499,10 @@ local function anyLongGap(day_list)
     return false
 end
 
--- Az adatbázis olcsó "ujjlenyomata": a legutolsó olvasási időbélyeg és a
--- sorok száma. Ez a kettő együtt olcsón megmondja, változott-e a page_stat a
--- legutóbbi kiértékelés óta (ugyanaz az ötlet, mint a RecordsData
--- cache-fingerprintje). { max_start_time, row_count }.
+-- The database's cheap "fingerprint": the latest reading timestamp and
+-- the row count. Together these cheaply tell whether page_stat has changed
+-- since the last evaluation (same idea as RecordsData's cache fingerprint).
+-- { max_start_time, row_count }.
 local function queryFingerprint()
     return StatsDb.withDb({ 0, 0 }, function(conn)
         local mx, cnt = 0, 0
@@ -517,14 +517,14 @@ local function queryFingerprint()
 end
 
 -- ---------------------------------------------------------------------
--- Kiértékelés (teljes reloadkor, illetve refreshIfChanged() nyomán, ha
--- változott az adat az utolsó kiértékelés óta)
+-- Evaluation (on a full reload, or via refreshIfChanged() when the data
+-- has changed since the last evaluation)
 -- ---------------------------------------------------------------------
 
--- A checkeknek átadott friss mérőszámok. A könnyű aggregátumokat a meglévő
--- modulokból veszi (RecordsData a rekordokat, ugyanazt az össz-időt, amit a
--- Records popup mutat; InsightsData az all-time oldalt/könyvet és a heti
--- sorozatot), a többit egyetlen kapcsolaton futó lekérdezésekből.
+-- The fresh metrics passed to the checks. The lightweight aggregates come
+-- from the existing modules (RecordsData for the records, the same total
+-- time the Records popup shows; InsightsData for the all-time pages/books
+-- and the weekly streak), the rest from queries run on a single connection.
 function M.computeMetrics()
     local records = RecordsData.load() or {}
     local total_secs       = records.total_secs or 0
@@ -564,7 +564,7 @@ function M.computeMetrics()
         read_jan1    = false,
         max_book_pace_pph = 0,
         max_book_secs     = 0,
-        -- Bővített mérőszámok (a +20 achievementhez)
+        -- Extended metrics (for the +20 achievements)
         total_reading_days   = 0,
         any_year_all_months  = false,
         all_seasons          = false,
@@ -578,11 +578,11 @@ function M.computeMetrics()
         max_books_one_author = 0,
     }
 
-    -- Befejezett könyvek: az évek befejezett-darabszámainak összege (ugyanaz
-    -- a definíció, mint a goal-cellánál), plusz a nyers befejezett-lista az
-    -- évenkénti/havi maximumhoz és a könyv-ID-khez.
-    local finished_ids = {}          -- id_book -> befejezés_ts
-    local finished_by_month = {}     -- "YYYY-MM" -> darab
+    -- Finished books: the sum of each year's finished-count (same
+    -- definition as the goal cell), plus the raw finished-book list for the
+    -- per-year/per-month maximum and the book IDs.
+    local finished_ids = {}          -- id_book -> finish_ts
+    local finished_by_month = {}     -- "YYYY-MM" -> count
     local range = Data.getYearRange()
     if range and range.min_year and range.max_year then
         m.span_years = range.max_year - range.min_year + 1
@@ -604,8 +604,8 @@ function M.computeMetrics()
     end
 
     StatsDb.withDb(nil, function(conn)
-        -- Év/hó összegek -> óra/év, óra/hó, oldal/hó, "minden hónap egy
-        -- évben", "mind a négy évszak".
+        -- Year/month totals -> hours/year, hours/month, pages/month,
+        -- "every month in a year", "all four seasons".
         StatsDb.withStatement(conn, [[
             SELECT strftime('%Y', start_time, 'unixepoch', 'localtime') AS y,
                    strftime('%m', start_time, 'unixepoch', 'localtime') AS mo,
@@ -636,7 +636,7 @@ function M.computeMetrics()
                 for _mo in pairs(mset) do n = n + 1 end
                 if n >= 12 then m.any_year_all_months = true end
             end
-            -- Évszakok: tél (12,1,2), tavasz (3,4,5), nyár (6,7,8), ősz (9,10,11).
+            -- Seasons: winter (12,1,2), spring (3,4,5), summer (6,7,8), autumn (9,10,11).
             local function seasonHit(a, b, c)
                 return all_months[a] or all_months[b] or all_months[c]
             end
@@ -644,19 +644,21 @@ function M.computeMetrics()
                 and seasonHit(6, 7, 8) and seasonHit(9, 10, 11) or false
         end)
 
-        -- Heti időösszegek (ISO-hét) -> leghosszabb hét.
-        StatsDb.withStatement(conn, [[
-            SELECT strftime('%Y-%W', start_time, 'unixepoch', 'localtime') AS wk,
+        -- Weekly time totals -> the week with the most reading. The week's
+        -- start day comes from the shared setting (Mon/Sun), the same way the
+        -- weekly streak counts it.
+        StatsDb.withStatement(conn, string.format([[
+            SELECT %s AS wk,
                    SUM(duration) AS dur
             FROM page_stat GROUP BY wk
-        ]], function(stmt)
+        ]], Data.weekStartSqlExpr(Data.weekStartWday())), function(stmt)
             for row in stmt:rows() do
                 local dur = tonumber(row[2]) or 0
                 if dur / 3600 > m.max_week_hours then m.max_week_hours = dur / 3600 end
             end
         end)
 
-        -- Az olvasott napok listája -> teljes hónap, hétvégi sorozat.
+        -- The list of days read -> full month, weekend streak.
         local day_list, day_set, months = {}, {}, {}
         StatsDb.withStatement(conn, [[
             SELECT DISTINCT date(start_time, 'unixepoch', 'localtime') AS d
@@ -676,7 +678,7 @@ function M.computeMetrics()
         m.full_week_mon_sun = anyFullWeek(day_set, day_list)
         m.total_reading_days = #day_list
         m.had_comeback = anyLongGap(day_list)
-        -- Évforduló: hány nap telt el az első olvasási nap óta.
+        -- Anniversary: how many days have passed since the first reading day.
         if day_list[1] then
             local y, mo, da = day_list[1]:match("^(%d+)-(%d+)-(%d+)$")
             if y then
@@ -687,7 +689,7 @@ function M.computeMetrics()
             end
         end
 
-        -- Óra-lefedettség + napszak-jelzők.
+        -- Hour coverage + time-of-day flags.
         StatsDb.withStatement(conn, [[
             SELECT DISTINCT CAST(strftime('%H', start_time, 'unixepoch', 'localtime') AS INTEGER)
             FROM page_stat
@@ -703,7 +705,7 @@ function M.computeMetrics()
             m.read_lunch = hset[12] or false
         end)
 
-        -- Hétköznap-lefedettség.
+        -- Weekday coverage.
         StatsDb.withStatement(conn, [[
             SELECT DISTINCT strftime('%w', start_time, 'unixepoch', 'localtime') FROM page_stat
         ]], function(stmt)
@@ -712,7 +714,7 @@ function M.computeMetrics()
             m.distinct_weekdays = n
         end)
 
-        -- Speciális naptári napok.
+        -- Special calendar days.
         StatsDb.withStatement(conn, [[
             SELECT
               MAX(CASE WHEN strftime('%m-%d', start_time, 'unixepoch', 'localtime') = '12-31' THEN 1 ELSE 0 END),
@@ -725,7 +727,7 @@ function M.computeMetrics()
             end
         end)
 
-        -- Könyvenkénti összegek -> leghosszabb idő egy könyvön, legjobb tempó.
+        -- Per-book totals -> longest time spent on one book, best pace.
         StatsDb.withStatement(conn, [[
             SELECT id_book, SUM(duration) AS secs, COUNT(DISTINCT page) AS pages
             FROM page_stat GROUP BY id_book
@@ -734,8 +736,8 @@ function M.computeMetrics()
                 local secs  = tonumber(row[2]) or 0
                 local pages = tonumber(row[3]) or 0
                 if secs > m.max_book_secs then m.max_book_secs = secs end
-                -- Csak legalább félórányi olvasásra számolunk tempót, hogy egy
-                -- pár másodperces "belenézés" ne adjon irreális oldal/óra-t.
+                -- Only compute pace for at least half an hour of reading, so a
+                -- few-second "peek" doesn't produce an unrealistic pages/hour.
                 if secs >= 1800 and pages > 0 then
                     local pph = pages / (secs / 3600)
                     if pph > m.max_book_pace_pph then m.max_book_pace_pph = pph end
@@ -743,7 +745,7 @@ function M.computeMetrics()
             end
         end)
 
-        -- Befejezett könyvek: oldalszám + szerzők + első olvasás napja.
+        -- Finished books: page count + authors + first reading day.
         local ids = {}
         for id in pairs(finished_ids) do ids[#ids + 1] = id end
         if #ids > 0 then
@@ -781,8 +783,8 @@ function M.computeMetrics()
             end)
         end
 
-        -- Folyamatos olvasási ülések (10 perces szünet-küszöb): leghosszabb
-        -- ülés hossza + éjfélen átnyúló ülés.
+        -- Continuous reading sessions (10-minute gap threshold): longest
+        -- session length + a session that crosses midnight.
         StatsDb.withStatement(conn, [[
             SELECT start_time, duration FROM page_stat ORDER BY start_time
         ]], function(stmt)
@@ -820,10 +822,10 @@ function M.computeMetrics()
     return m
 end
 
--- Minden még meg nem szerzett achievement újraértékelése friss mérőszámokkal,
--- és az újonnan megszerzettek kiírása. Sosem von vissza. A fájlt akkor is
--- kiírja (evaluated_ts + ujjlenyomat), ha semmi nem változott, hogy a
--- refreshIfChanged() onnantól átugorja. Visszaadja az aktuális darabszámot.
+-- Re-evaluates every not-yet-earned achievement with fresh metrics, and
+-- records the newly earned ones. Never un-earns anything. Writes the file
+-- (evaluated_ts + fingerprint) even if nothing changed, so
+-- refreshIfChanged() can skip it from then on. Returns the current count.
 function M.recompute()
     local ok_m, m = pcall(M.computeMetrics)
     if not ok_m or type(m) ~= "table" then
@@ -838,7 +840,7 @@ function M.recompute()
             local ok_c, got = pcall(a.check, m)
             if ok_c and got then
                 earned[a.id]  = now
-                new_set[a.id] = true   -- frissen megszerzett -> "új"
+                new_set[a.id] = true   -- freshly earned -> "new"
             end
         end
     end
@@ -849,8 +851,8 @@ function M.recompute()
         s:saveSetting("new", new_set)
         s:saveSetting("evaluated_ts", now)
         s:saveSetting("evaluated_date", os.date("%Y-%m-%d", now))
-        -- Az adatbázis "ujjlenyomata" a kiértékelés pillanatában, hogy a
-        -- refreshIfChanged() olcsón el tudja dönteni, változott-e azóta.
+        -- The database's "fingerprint" at the moment of evaluation, so
+        -- refreshIfChanged() can cheaply tell whether it's changed since.
         local fp = queryFingerprint()
         s:saveSetting("fp_max_time",  fp[1])
         s:saveSetting("fp_row_count", fp[2])
@@ -864,36 +866,36 @@ function M.recompute()
     return n
 end
 
--- Olcsó automatikus frissítés a háttérben. `mode`:
---   "daily" (alapértelmezett): naponta legfeljebb egyszer értékel újra - ha
---     ma már volt kiértékelés, meg sem nézi az ujjlenyomatot;
---   "every_open": minden nyitáskor megnézi az ujjlenyomatot.
--- Mindkét esetben a teljes recompute() csak akkor fut, ha tényleg változott
--- az adat a legutóbbi kiértékelés óta (vagy még soha nem volt). Így az
--- achievementek maguktól frissülnek olvasás után, de a nyitás nem lassul.
--- Visszaadja, hogy futott-e teljes újraértékelés.
+-- Cheap automatic background refresh. `mode`:
+--   "daily" (default): re-evaluates at most once a day - if there's
+--     already been an evaluation today, it doesn't even check the fingerprint;
+--   "every_open": checks the fingerprint on every open.
+-- Either way, the full recompute() only runs if the data has actually
+-- changed since the last evaluation (or there's never been one). So
+-- achievements update themselves after reading, without slowing down
+-- opening. Returns whether a full re-evaluation ran.
 function M.refreshIfChanged(mode)
     local s = openStore()
     if mode == "daily" and s
        and s:readSetting("evaluated_date") == os.date("%Y-%m-%d") then
-        return false  -- ma már volt kiértékelés
+        return false  -- already evaluated today
     end
     local fp = queryFingerprint()
     if s and s:readSetting("evaluated_ts") ~= nil
        and s:readSetting("fp_max_time")  == fp[1]
        and s:readSetting("fp_row_count") == fp[2] then
-        return false  -- semmi nem változott
+        return false  -- nothing changed
     end
     M.recompute()
     return true
 end
 
 -- ---------------------------------------------------------------------
--- Lista a popuphoz
+-- List for the popup
 -- ---------------------------------------------------------------------
--- Megszerzettek elöl, megszerzés ideje szerint csökkenő sorrendben, majd a
--- zároltak katalógus-sorrendben. Minden elem:
--- { def = <katalógus-bejegyzés>, earned = bool, earned_ts = ts|nil }.
+-- Earned ones first, sorted by earn time descending, then the locked
+-- ones in catalogue order. Each item:
+-- { def = <catalogue entry>, earned = bool, earned_ts = ts|nil }.
 function M.list()
     local earned  = M.getEarned()
     local new_set = M.getNew()

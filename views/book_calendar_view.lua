@@ -31,7 +31,6 @@ local HorizontalGroup = require("ui/widget/horizontalgroup")
 local HorizontalSpan  = require("ui/widget/horizontalspan")
 local InfoMessage     = require("ui/widget/infomessage")
 local InputContainer  = require("ui/widget/container/inputcontainer")
-local LineWidget      = require("ui/widget/linewidget")
 local Math            = require("optmath")
 local OverlapGroup    = require("ui/widget/overlapgroup")
 local Size            = require("ui/size")
@@ -142,8 +141,9 @@ end
 -- along the bottom showing cumulative_ratios[day] - how far into the
 -- book that day's reading got, out of the whole book.
 --
--- Today's cell gets its day number rendered in bold (Fonts.getBoldFace)
--- plus a black border, so "where am I now" is unambiguous at a glance.
+-- Today's cell gets its day number rendered in bold (Fonts.getBoldFace),
+-- so "where am I now" is unambiguous at a glance. Cells have no border - the
+-- days sit flush, like the streak calendar.
 --
 -- finish_day (optional): day-of-month of this book's estimated finish
 -- date, IF it falls within the month currently being rendered (callers
@@ -177,7 +177,6 @@ local function buildBookCalendarGrid(daily_map, year, month, day_font, small_fon
     local bar_h   = Screen:scaleBySize(4)
     local bar_pad = Screen:scaleBySize(3)
     local bar_w   = cell_w - 2 * bar_pad
-    local cell_radius = Screen:scaleBySize(6)
     local day_font_bold = Fonts.getBoldFace("stats_label")
 
     local grid = VerticalGroup:new{ align = "center" }
@@ -203,14 +202,35 @@ local function buildBookCalendarGrid(daily_map, year, month, day_font, small_fon
 
     local today_str = os.date("%Y-%m-%d")
 
-    local day = 1 - lead_blanks
-    while day <= days_in_month do
+    -- Fixed six-week grid: always 6 rows starting from the first day's row, so
+    -- every month is the same height regardless of how it falls across weeks.
+    local start_cell_day = 1 - lead_blanks
+    for r = 0, 5 do
+        local day = start_cell_day + r * 7
         local row = HorizontalGroup:new{}
         for col = 1, 7 do
             local cell_day = day + col - 1
             if cell_day < 1 or cell_day > days_in_month then
-                table.insert(row, LineWidget:new{
-                    dimen = Geom:new{ w = cell_w, h = cell_h }, background = Blitbuffer.COLOR_WHITE,
+                -- Adjacent-month day (previous month's tail / next month's
+                -- start): show its date in gray as context, with no progress
+                -- bar, flag or border, and don't make it tappable.
+                local adj_t   = os.time{ year = year, month = month, day = cell_day, hour = 12 }
+                local adj_num = TextWidget:new{
+                    text = tostring(tonumber(os.date("%d", adj_t))),
+                    face = (os.date("%Y-%m-%d", adj_t) == today_str) and day_font_bold or day_font,
+                    fgcolor = Blitbuffer.COLOR_GRAY,
+                }
+                local adj_inner = VerticalGroup:new{
+                    align = "center",
+                    adj_num,
+                    TextWidget:new{ text = "", face = small_font, fgcolor = Colors.value() },
+                    VerticalSpan:new{ height = bar_pad },
+                    VerticalSpan:new{ height = bar_h },
+                }
+                table.insert(row, OverlapGroup:new{
+                    dimen = Geom:new{ w = cell_w, h = cell_h },
+                    Colors.newBar(cell_w, cell_h, Blitbuffer.COLOR_WHITE),
+                    CenterContainer:new{ dimen = Geom:new{ w = cell_w, h = cell_h }, adj_inner },
                 })
             else
                 local entry     = daily_map[cell_day]
@@ -375,26 +395,15 @@ local function buildBookCalendarGrid(daily_map, year, month, day_font, small_fon
                         },
                     })
                 end
-                local border = is_today and Size.line.medium or Size.line.thin
-                local frame = FrameContainer:new{
-                    background = nil,
-                    bordersize = border,
-                    color      = is_today and Blitbuffer.COLOR_BLACK or Colors.separator(),
-                    radius     = cell_radius,
-                    padding    = 0,
-                    margin     = 0,
-                    width      = cell_w,
-                    height     = cell_h,
-                    cell_content,
-                }
-                table.insert(day_cells, { frame = frame, day = cell_day, data = entry })
-                table.insert(row, frame)
+                -- No cell border: the day cells sit flush, like the streak
+                -- calendar. Today is still marked by its bold day number.
+                table.insert(day_cells, { frame = cell_content, day = cell_day, data = entry })
+                table.insert(row, cell_content)
             end
             if col < 7 then table.insert(row, HorizontalSpan:new{ width = gap }) end
         end
         table.insert(grid, row)
         table.insert(grid, VerticalSpan:new{ height = gap })
-        day = day + 7
     end
 
     return grid, day_cells
