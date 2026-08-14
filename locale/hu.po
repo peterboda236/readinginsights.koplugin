@@ -105,6 +105,12 @@ msgstr "olvasott könyv"
 msgid "books read"
 msgstr "olvasott könyv"
 
+msgid "book"
+msgstr "könyv"
+
+msgid "books"
+msgstr "könyv"
+
 msgid "day/book avg"
 msgstr "átlag nap/könyv"
 
@@ -311,6 +317,12 @@ msgstr "Speciális beállítások"
 
 msgid "Reading heatmap range"
 msgstr "Heatmap időtartama"
+
+msgid "Streak popup reading time"
+msgstr "Olvasási idő a sorozat felugróban"
+
+msgid "Show the total reading time and per-day averages at the bottom of the streak popup."
+msgstr "A teljes olvasási idő és a napi átlagok megjelenítése a sorozat felugró alján."
 
 msgid "3 months"
 msgstr "3 hónap"

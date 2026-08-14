@@ -981,25 +981,24 @@ function StreakDatePopup:_rebuild()
         self._right_w  = next_available and right_w or nil
     end
 
-    -- Below the calendar: the streak's name + date range as a header, a divider,
-    -- then all its figures as evenly spaced value rows (days/weeks first, then
-    -- reading time/pages and the book count) - the same header + value-block
-    -- shape the main insights popup uses, so it doesn't read as one dense dump.
-    -- The value rows below use the (taller) value font; force the name/date
-    -- header to that same height so its row and its divider line up with them
-    -- instead of being noticeably shorter.
+    -- Below the calendar: the streak's name (left) and date range (right), with
+    -- no divider between them, then the figures as evenly spaced value rows.
+    -- The value rows use the (taller) value font; force the name/date header to
+    -- that same height so it lines up instead of being noticeably shorter.
     local value_row_h = buildValueLine(fonts.value, fonts.label, col_w, "0", "x"):getSize().h
     if self.heading_label then
         local title_w = TextWidget:new{ text = self.heading_label, face = fonts.section, fgcolor = Colors.section() }
         local date_w  = TextWidget:new{ text = self.date_str, face = fonts.label, fgcolor = Colors.label() }
-        -- Vertical divider between the streak name and its date range, so the
-        -- header lines up with (and is separated the same way as) the value
-        -- rows below it.
-        table.insert(content, HorizontalGroup:new{
+        -- Name flush left, date flush right, a flexible spacer between them.
+        local spacer = math.max(0, cont_w - title_w:getSize().w - date_w:getSize().w)
+        local heading = HorizontalGroup:new{
             align = "center",
-            UI.fixedCol(title_w, col_w, value_row_h),
-            UI.buildColumnSeparator(layout.column_gap, value_row_h),
-            UI.fixedCol(date_w, col_w, value_row_h),
+            title_w,
+            HorizontalSpan:new{ width = spacer },
+            date_w,
+        }
+        table.insert(content, CenterContainer:new{
+            dimen = Geom:new{ w = cont_w, h = value_row_h }, heading,
         })
     else
         local date_w  = TextWidget:new{ text = self.date_str, face = fonts.label, fgcolor = Colors.label() }
@@ -1009,32 +1008,36 @@ function StreakDatePopup:_rebuild()
     table.insert(content, Colors.newBar(cont_w, Size.line.thin, Colors.separator()))
     table.insert(content, VerticalSpan:new{ height = Size.padding.large })
 
-    -- First stat row: the days/weeks-in-a-row pair packed into the left column
-    -- (split in two, as on the insights page), and the books-read count filling
-    -- the right column beside it - so the book count no longer sits alone on its
-    -- own line at the very bottom.
+    -- First stat row: days / weeks / books split into three equal columns.
     local inner_gap  = math.floor(layout.column_gap / 2)
-    local half_col   = math.floor((col_w - inner_gap) / 2)
-    local days_line  = buildValueLine(fonts.value, fonts.label, half_col, formatCount(self.dc), N_("day",  "days",  self.dc))
-    local weeks_line = buildValueLine(fonts.value, fonts.label, half_col, formatCount(self.wc), N_("week", "weeks", self.wc))
-    local dw_cell = HorizontalGroup:new{
+    local sep_unit   = 2 * inner_gap + Size.line.medium  -- width of one column separator
+    local third_w    = math.floor((cont_w - 2 * sep_unit) / 3)
+    local days_line  = buildValueLine(fonts.value, fonts.label, third_w, formatCount(self.dc), N_("day",  "days",  self.dc))
+    local weeks_line = buildValueLine(fonts.value, fonts.label, third_w, formatCount(self.wc), N_("week", "weeks", self.wc))
+    local books_line = buildValueLine(fonts.value, fonts.label, third_w, tostring(self.book_count), self.book_label)
+    local thirds_h   = math.max(days_line:getSize().h, weeks_line:getSize().h, books_line:getSize().h)
+    table.insert(content, HorizontalGroup:new{
         align = "center",
-        UI.fixedCol(days_line, half_col),
-        UI.buildColumnSeparator(inner_gap, days_line:getSize().h),
-        UI.fixedCol(weeks_line, half_col),
-    }
-    local books_line = buildValueLine(fonts.value, fonts.label, col_w, tostring(self.book_count), self.book_label)
-    table.insert(content, UI.buildTwoColRow(dw_cell, books_line, layout))
-    table.insert(content, VerticalSpan:new{ height = Size.padding.large })
-    table.insert(content, UI.buildTwoColRow(
-        buildValueLine(fonts.value, fonts.label, col_w, self.total_time_val,  self.total_time_unit),
-        buildValueLine(fonts.value, fonts.label, col_w, self.total_pages_val, self.total_pages_unit),
-        layout))
-    table.insert(content, VerticalSpan:new{ height = Size.padding.large })
-    table.insert(content, UI.buildTwoColRow(
-        buildValueLine(fonts.value, fonts.label, col_w, self.avg_time_val,  self.avg_time_unit),
-        buildValueLine(fonts.value, fonts.label, col_w, self.avg_pages_val, self.avg_pages_unit),
-        layout))
+        UI.fixedCol(days_line,  third_w, thirds_h),
+        UI.buildColumnSeparator(inner_gap, thirds_h),
+        UI.fixedCol(weeks_line, third_w, thirds_h),
+        UI.buildColumnSeparator(inner_gap, thirds_h),
+        UI.fixedCol(books_line, third_w, thirds_h),
+    })
+    -- Reading time / pages and the per-day averages: hidden by default, shown
+    -- only when the "Show reading time in streak popup" setting is on.
+    if VS.Opt.readShowStreakTime() then
+        table.insert(content, VerticalSpan:new{ height = Size.padding.large })
+        table.insert(content, UI.buildTwoColRow(
+            buildValueLine(fonts.value, fonts.label, col_w, self.total_time_val,  self.total_time_unit),
+            buildValueLine(fonts.value, fonts.label, col_w, self.total_pages_val, self.total_pages_unit),
+            layout))
+        table.insert(content, VerticalSpan:new{ height = Size.padding.large })
+        table.insert(content, UI.buildTwoColRow(
+            buildValueLine(fonts.value, fonts.label, col_w, self.avg_time_val,  self.avg_time_unit),
+            buildValueLine(fonts.value, fonts.label, col_w, self.avg_pages_val, self.avg_pages_unit),
+            layout))
+    end
 
     self.box_content = FrameContainer:new{
         background     = Blitbuffer.COLOR_WHITE,
@@ -1199,45 +1202,20 @@ local function showStreakDatePopup(dates, is_weekly, is_current, days_count, wee
     local avg_pages_unit = _("avg pages/day")
 
     local book_count = period.books
-    local book_label = N_("book read", "books read", book_count)
+    local book_label = N_("book", "books", book_count)
 
     local fonts = getCachedFonts()
     local inner_padding = Size.padding.large
-    local max_width = math.floor(Screen:getWidth() * 0.9) - 2 * inner_padding
 
-    -- Heading: the streak name in the section face (bold), the date range
-    -- beside it in the plain label face.
-    local title_w
-    if is_current ~= nil then
-        local label = is_current and _("Current streak") or _("Best streak")
-        title_w = TextWidget:new{ text = label, face = fonts.section, fgcolor = Colors.section() }
-    end
-    local date_w = TextWidget:new{ text = start_str .. " – " .. end_str, face = fonts.label, fgcolor = Colors.label() }
-
-    -- Measure every cell at its natural (unwrapped) width, then give both
-    -- columns the widest of them, so the two line up and the box hugs its
-    -- content instead of being a fixed fraction of the screen.
-    local function naturalRowWidth(value, unit)
-        local value_w = TextWidget:new{ text = value, face = fonts.value }:getSize().w
-        local label_w = TextWidget:new{ text = unit,  face = fonts.label }:getSize().w
-        return value_w + Size.padding.large + label_w
-    end
-
-    local col_width = math.max(
-        naturalRowWidth(total_time_val, total_time_unit),
-        naturalRowWidth(total_pages_val, total_pages_unit),
-        naturalRowWidth(avg_time_val, avg_time_unit),
-        naturalRowWidth(avg_pages_val, avg_pages_unit),
-        naturalRowWidth(tostring(book_count), book_label),
-        date_w:getSize().w,
-        title_w and title_w:getSize().w or 0
-    )
-
+    -- Fixed 94%-of-screen-wide box, like the book progress calendar and the
+    -- reading heatmap, rather than sizing to the content.
     local column_gap = Size.padding.large
-    local layout = UI.buildLayout(math.min(2 * col_width + 2 * column_gap + Size.line.medium,
-                                           max_width), 0, column_gap)
-    col_width = layout.col_width
+    local layout = UI.buildLayout(math.floor(Screen:getWidth() * 0.94) - 2 * inner_padding, 0, column_gap)
+    local col_width = layout.col_width
     local content_width = layout.content_width
+
+    -- Only prepend the streak name (Current/Best streak) when is_current is set.
+    local has_title = (is_current ~= nil)
 
     -- Calendar data: the months the streak spans (one calendar page each) and
     -- the set of days that had reading, queried once here. Open on the last
@@ -1254,7 +1232,7 @@ local function showStreakDatePopup(dates, is_weekly, is_current, days_count, wee
         content_width = content_width,
         inner_padding = inner_padding,
 
-        heading_label = title_w and (is_current and _("Current streak") or _("Best streak")) or nil,
+        heading_label = has_title and (is_current and _("Current streak") or _("Best streak")) or nil,
         date_str      = start_str .. " – " .. end_str,
         dc            = days_count or 0,
         wc            = weeks_count or 0,
@@ -1878,7 +1856,7 @@ function ReadingInsightsPopup:showWeeklyTrendPopup(metric)
 
     local fonts  = getCachedFonts()
     local inner_padding = Size.padding.large
-    local box_width   = math.floor(Screen:getWidth() * 0.86)
+    local box_width   = math.floor(Screen:getWidth() * 0.94)
     local chart_width = box_width - 2 * inner_padding
 
     local title_w = TextWidget:new{ text = Trend.trendTitle(metric), face = fonts.section, fgcolor = Colors.section() }

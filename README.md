@@ -33,8 +33,11 @@ A full-screen scrollable overlay with a comprehensive overview of your reading h
   keys; today's date is shown in bold, and the days spilling in from the
   previous/next month are shown in gray). Below it come the streak's name and
   date range, then the days/weeks-in-a-row pair (the same figures the page
-  itself shows) with the book count beside it, and reading time and pages side
-  by side (total, and average per day). On the calendar, read days use the
+  itself shows) with the book count beside it, split into three equal columns.
+  The total reading time / pages and the per-day averages can be shown below
+  that too, but are **off by default** (turn them on under *Settings ▸ Advanced
+  settings ▸ Reading insight popup ▸ Streak popup reading time*). On the
+  calendar, read days use the
   daily-streak color (dark gray by default); once a week has any reading its
   remaining days use the gap color (light gray) to show the weekly streak is
   secured for that week; every other day stays white. Consecutive days within a
@@ -275,8 +278,9 @@ Tap the "Pace" section title on the Book progress popup or use the "Show Book
   progress calendar menu entry/gesture — see [Where it shows
   up](#where-it-shows-up) below) to open a fixed six-week month grid for this
   book, colored like a heatmap and showing a bottom progress bar per day (days
-  with no reading are left blank — no bar at all); days spilling in from the
-  previous/next month are shown in gray. It also shows the starting date,
+  with no reading are left blank — no bar at all); the day cells sit flush with
+  no borders, and days spilling in from the previous/next month are shown in
+  gray. It also shows the starting date,
   the estimated finish day and, if the book is finished, that too on the calendar.
   What the small text under each day number shows is configurable
   (*Settings → Advanced settings → Book progress calendar → Book progress

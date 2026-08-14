@@ -105,6 +105,12 @@ msgstr "book read"
 msgid "books read"
 msgstr "books read"
 
+msgid "book"
+msgstr "book"
+
+msgid "books"
+msgstr "books"
+
 msgid "day/book avg"
 msgstr "day/book avg"
 
@@ -302,6 +308,12 @@ msgstr "Advanced settings"
 
 msgid "Reading heatmap range"
 msgstr "Reading heatmap range"
+
+msgid "Streak popup reading time"
+msgstr "Streak popup reading time"
+
+msgid "Show the total reading time and per-day averages at the bottom of the streak popup."
+msgstr "Show the total reading time and per-day averages at the bottom of the streak popup."
 
 msgid "3 months"
 msgstr "3 months"

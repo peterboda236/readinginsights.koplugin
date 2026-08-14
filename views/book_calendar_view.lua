@@ -141,8 +141,9 @@ end
 -- along the bottom showing cumulative_ratios[day] - how far into the
 -- book that day's reading got, out of the whole book.
 --
--- Today's cell gets its day number rendered in bold (Fonts.getBoldFace)
--- plus a black border, so "where am I now" is unambiguous at a glance.
+-- Today's cell gets its day number rendered in bold (Fonts.getBoldFace),
+-- so "where am I now" is unambiguous at a glance. Cells have no border - the
+-- days sit flush, like the streak calendar.
 --
 -- finish_day (optional): day-of-month of this book's estimated finish
 -- date, IF it falls within the month currently being rendered (callers
@@ -176,7 +177,6 @@ local function buildBookCalendarGrid(daily_map, year, month, day_font, small_fon
     local bar_h   = Screen:scaleBySize(4)
     local bar_pad = Screen:scaleBySize(3)
     local bar_w   = cell_w - 2 * bar_pad
-    local cell_radius = Screen:scaleBySize(6)
     local day_font_bold = Fonts.getBoldFace("stats_label")
 
     local grid = VerticalGroup:new{ align = "center" }
@@ -395,34 +395,10 @@ local function buildBookCalendarGrid(daily_map, year, month, day_font, small_fon
                         },
                     })
                 end
-                -- Only a right + bottom border (no top/left line): draw the
-                -- normal 4-sided FrameContainer border (reliable, keeps the
-                -- rounded corners), then paint two white strips on top of
-                -- it to erase the top and left segments of that border.
-                -- These erase-strips are each smaller than the full cell,
-                -- so OverlapGroup's default top-left anchoring places them
-                -- exactly where we want (top edge, left edge) with no need
-                -- for right/bottom anchoring.
-                local border = is_today and Size.line.medium or Size.line.thin
-                local bordered_cell = FrameContainer:new{
-                    background = nil,
-                    bordersize = border,
-                    color      = is_today and Blitbuffer.COLOR_BLACK or Colors.separator(),
-                    radius     = cell_radius,
-                    padding    = 0,
-                    margin     = 0,
-                    width      = cell_w,
-                    height     = cell_h,
-                    cell_content,
-                }
-                local frame = OverlapGroup:new{
-                    dimen = Geom:new{ w = cell_w, h = cell_h },
-                    bordered_cell,
-                    Colors.newBar(cell_w, border, Blitbuffer.COLOR_WHITE), -- erase top line
-                    Colors.newBar(border, cell_h, Blitbuffer.COLOR_WHITE), -- erase left line
-                }
-                table.insert(day_cells, { frame = frame, day = cell_day, data = entry })
-                table.insert(row, frame)
+                -- No cell border: the day cells sit flush, like the streak
+                -- calendar. Today is still marked by its bold day number.
+                table.insert(day_cells, { frame = cell_content, day = cell_day, data = entry })
+                table.insert(row, cell_content)
             end
             if col < 7 then table.insert(row, HorizontalSpan:new{ width = gap }) end
         end

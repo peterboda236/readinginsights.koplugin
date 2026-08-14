@@ -10,8 +10,13 @@
 - Days within a week sit flush, so a run of reading reads as one solid strip.
 - Days from the previous/next month are shown in gray.
 - Today's date is bold.
-- The popup also shows the days/weeks-in-a-row pair and the book count, laid out beside the calendar.
-- The streak-name/date header lines up with the value rows below it.
+- The popup shows the days/weeks-in-a-row pair and the book count in three equal columns.
+- The streak name is on the left, the date range right-aligned, with no divider between them.
+- The total reading time and per-day averages are hidden by default. A new setting turns them back on (Settings ▸ Advanced settings ▸ Reading insight popup ▸ Streak popup reading time).
+
+### Popup widths
+- The streak, book progress calendar, heatmap and 8-week trend popups all open at a fixed 94% of screen width.
+- The Records popup still sizes to its content, now capped at 94% of screen width.
 
 ### Colors
 - New settings under **Colors ▸ Reading streak calendar**: daily-streak day and weekly-streak gap day.
@@ -25,3 +30,4 @@
 ### Book progress calendar
 - The month grid is now a fixed six weeks.
 - Days from the previous/next month are shown in gray.
+- Day cells no longer have borders; they sit flush, and today is marked by its bold day number.

@@ -73,6 +73,12 @@ msgstr "已读完书籍"
 msgid "books read"
 msgstr "已读完书籍"
 
+msgid "book"
+msgstr "本书"
+
+msgid "books"
+msgstr "本书"
+
 msgid "day/book avg"
 msgstr "单书平均天数"
 msgid "days/book avg"
@@ -223,6 +229,12 @@ msgid "Advanced settings"
 msgstr "高级设置"
 msgid "Reading heatmap range"
 msgstr "阅读热力图时间范围"
+
+msgid "Streak popup reading time"
+msgstr "连续记录弹窗中的阅读时间"
+
+msgid "Show the total reading time and per-day averages at the bottom of the streak popup."
+msgstr "在连续记录弹窗底部显示总阅读时间和每日平均值。"
 
 msgid "3 months"
 msgstr "3个月"

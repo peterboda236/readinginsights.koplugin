@@ -105,6 +105,12 @@ msgstr "Buch gelesen"
 msgid "books read"
 msgstr "Bücher gelesen"
 
+msgid "book"
+msgstr "Buch"
+
+msgid "books"
+msgstr "Bücher"
+
 msgid "day/book avg"
 msgstr "Ø Tage/Buch"
 
@@ -302,6 +308,12 @@ msgstr "Erweiterte Einstellungen"
 
 msgid "Reading heatmap range"
 msgstr "Zeitraum der Lese-Heatmap"
+
+msgid "Streak popup reading time"
+msgstr "Lesezeit im Serien-Popup"
+
+msgid "Show the total reading time and per-day averages at the bottom of the streak popup."
+msgstr "Gesamtlesezeit und Tagesdurchschnitte unten im Serien-Popup anzeigen."
 
 msgid "3 months"
 msgstr "3 Monate"
