@@ -212,10 +212,6 @@ msgid "page read today"
 msgstr "今日阅读页数"
 msgid "pages read today"
 msgstr "今日阅读页数"
-msgid "book read in this streak"
-msgstr "本轮连续阅读完成书籍"
-msgid "books read in this streak"
-msgstr "本轮连续阅读完成书籍"
 
 msgid "Show Reading insights"
 msgstr "打开阅读统计"
@@ -590,6 +586,15 @@ msgid "High activity (75%)"
 msgstr "高活跃度（75%）"
 msgid "Peak activity (100%)"
 msgstr "峰值活跃度（100%）"
+
+msgid "Reading streak calendar"
+msgstr "阅读连续记录日历"
+
+msgid "Daily streak day"
+msgstr "每日连续记录日"
+
+msgid "Weekly streak gap day"
+msgstr "每周连续记录缺读日"
 
 msgid "Show long durations (24h+) as days"
 msgstr "时长超过24小时以「天」显示"

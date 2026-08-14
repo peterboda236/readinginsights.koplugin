@@ -45,9 +45,16 @@ rest, and stale copies as a fallback when the DB can't be read at all.
 ]]--
 
 local deps = ...
-local Locale, StatsDb, Cache, VS, Manual =
-    deps.Locale, deps.StatsDb, deps.Cache, deps.VS, deps.Manual
+local Locale, StatsDb, Cache, VS, Manual, Prefs =
+    deps.Locale, deps.StatsDb, deps.Cache, deps.VS, deps.Manual, deps.Prefs
 local Math = require("optmath")
+
+-- 0 = Sunday, 1 = Monday - the shared "week start day" setting the heatmaps and
+-- calendars use. Falls back to Monday if Prefs isn't wired in (e.g. a test).
+local function weekStartWday()
+    if Prefs and Prefs.weekStartWday then return Prefs.weekStartWday() end
+    return 1
+end
 
 -- Month labels for the monthly series. Same strings the view uses for its
 -- own axis labels; they are attached to the data because the chart, the
@@ -269,6 +276,50 @@ function M.weekStrToMondayDate(week_str)
     return os.date("%Y-%m-%d", target_mon)
 end
 
+-- The shared "week start day" (0 = Sunday, 1 = Monday) as a public accessor,
+-- so other modules (e.g. achievements) can group weeks the same way the weekly
+-- streak does.
+function M.weekStartWday()
+    return weekStartWday()
+end
+
+-- SQL expression mapping page_stat.start_time to the "YYYY-MM-DD" date its
+-- (setting-defined) week starts on. SQLite has no Sunday-week token (%U), so
+-- the shift is derived from %w (0=Sun..6=Sat): Monday-start weeks step back
+-- (%w+6)%7 days, Sunday-start weeks step back %w days. Used by both the weekly
+-- streak and the "most read in a week" achievement, so they agree on where a
+-- week begins.
+function M.weekStartSqlExpr(week_start_wd)
+    local dow = "strftime('%w', start_time, 'unixepoch', 'localtime')"
+    local offset = (week_start_wd == 0) and dow or ("((" .. dow .. " + 6) % 7)")
+    return "date(start_time, 'unixepoch', 'localtime', '-' || " .. offset .. " || ' days')"
+end
+
+-- The "YYYY-MM-DD" date on which the (setting-defined) week containing
+-- `date_str` starts. week_start_wd is 0 = Sunday, 1 = Monday, matching
+-- Prefs.weekStartWday(). This is what the weekly streak groups reading by now,
+-- so the streak follows the same Monday/Sunday choice as the calendar display.
+function M.weekStartDate(date_str, week_start_wd)
+    local y, m, d = M.parseDateYMD(date_str)
+    if not y then return nil end
+    local t    = os.time{ year = y, month = m, day = d, hour = 12 }
+    local wday = tonumber(os.date("%w", t))  -- 0=Sun..6=Sat
+    local offset = (week_start_wd == 0) and wday or ((wday + 6) % 7)
+    return os.date("%Y-%m-%d", t - offset * 86400)
+end
+
+-- Are two week-start dates ("YYYY-MM-DD", from weekStartDate) adjacent weeks?
+-- `prev` is the newer week, `curr` the older one (streaks iterate newest-first),
+-- so they are consecutive exactly when they are 7 days apart.
+function M.isConsecutiveWeekDate(prev, curr)
+    local py, pm, pd = M.parseDateYMD(prev)
+    local cy, cm, cd = M.parseDateYMD(curr)
+    if not py or not cy then return false end
+    local pt = os.time{ year = py, month = pm, day = pd, hour = 12 }
+    local ct = os.time{ year = cy, month = cm, day = cd, hour = 12 }
+    return math.floor((pt - ct) / 86400 + 0.5) == 7
+end
+
 -- Total reading seconds and distinct book count for a "YYYY-MM-DD" date range (inclusive).
 function M.getStreakPeriodStats(start_date, end_date)
     local stats = { duration = 0, pages = 0, books = 0 }
@@ -303,6 +354,26 @@ function M.getStreakPeriodStats(start_date, end_date)
     end)
 end
 
+-- Set of days that had any reading in a "YYYY-MM-DD" date range (inclusive),
+-- as { ["YYYY-MM-DD"] = true }. Used to fill the streak-date popup's calendar:
+-- days present in this set are drawn as read (daily-streak) cells, the rest of
+-- the streak's span as weekly-streak gap cells.
+function M.getReadingDaysInRange(start_date, end_date)
+    local days = {}
+    if not start_date or not end_date then return days end
+    return StatsDb.withDb(days, function(conn)
+        local sql = string.format([[
+            SELECT DISTINCT date(start_time, 'unixepoch', 'localtime') AS d
+            FROM page_stat
+            WHERE date(start_time, 'unixepoch', 'localtime') BETWEEN '%s' AND '%s'
+        ]], start_date, end_date)
+        StatsDb.withStatement(conn, sql, function(stmt)
+            for row in stmt:rows() do days[row[1]] = true end
+        end)
+        return days
+    end)
+end
+
 -- Number of calendar days between two "YYYY-MM-DD" dates, inclusive.
 function M.daysBetweenInclusive(start_date, end_date)
     local sy, sm, sd = M.parseDateYMD(start_date)
@@ -316,15 +387,18 @@ function M.daysBetweenInclusive(start_date, end_date)
 end
 
 function M.calculateStreaks(shared_conn)
-    local today  = Cache.todayDateStr()
-    local minute = Cache.currentMinute()
+    local today      = Cache.todayDateStr()
+    local minute     = Cache.currentMinute()
+    local week_start = weekStartWday()
 
     -- Daily lock: once we have confirmed today's reading and cached the result
     -- for today, skip the expensive full-table scan for the rest of the day.
     -- If today has no reading yet, fall back to per-minute checks so the streak
     -- updates as soon as the user starts reading.
     -- Force-reload (Cache.clearAllCache) wipes streaks_date so this is always bypassed.
-    if Cache.ENABLE_CACHE and Cache._cache.streaks then
+    -- The cache is also bypassed when the week-start setting changed, since that
+    -- changes the weekly streak.
+    if Cache.ENABLE_CACHE and Cache._cache.streaks and Cache._cache.streaks_week_start == week_start then
         if Cache._cache.streaks_date == today then
             return Cache._cache.streaks
         end
@@ -366,22 +440,27 @@ function M.calculateStreaks(shared_conn)
         streaks.current_days_dates, streaks.best_days_dates =
             M.computeStreaksWithDates(dates, isConsecutiveDay, isCurrentDayStart)
 
+        -- Group reading into weeks whose first day matches the week-start
+        -- setting (Monday or Sunday), by mapping each reading day to the date
+        -- its week began on (see M.weekStartSqlExpr).
+        local weekstart_expr = M.weekStartSqlExpr(week_start)
+
         local weeks    = {}
-        local sql_weeks = "SELECT DISTINCT strftime('%Y-%W', start_time, 'unixepoch', 'localtime') as w FROM page_stat ORDER BY w DESC"
+        local sql_weeks = "SELECT DISTINCT " .. weekstart_expr .. " AS w FROM page_stat ORDER BY w DESC"
         StatsDb.withStatement(conn, sql_weeks, function(stmt_weeks)
             for row in stmt_weeks:rows() do table.insert(weeks, row[1]) end
         end)
 
-        local current_week = os.date("%Y-%W")
-        local last_week    = os.date("%Y-%W", os.time() - 7 * 86400)
+        local this_week_start = M.weekStartDate(today_str, week_start)
+        local last_week_start = M.weekStartDate(os.date("%Y-%m-%d", os.time() - 7 * 86400), week_start)
 
         local function isCurrentWeekStart(first_week)
-            return first_week == current_week or first_week == last_week
+            return first_week == this_week_start or first_week == last_week_start
         end
 
         streaks.current_weeks, streaks.best_weeks,
         streaks.current_weeks_dates, streaks.best_weeks_dates =
-            M.computeStreaksWithDates(weeks, M.isConsecutiveWeek, isCurrentWeekStart)
+            M.computeStreaksWithDates(weeks, M.isConsecutiveWeekDate, isCurrentWeekStart)
 
         -- Check whether today already has confirmed reading activity in the DB.
         -- If yes, the streak result is stable for the rest of the day.
@@ -397,6 +476,7 @@ function M.calculateStreaks(shared_conn)
     if Cache.ENABLE_CACHE then
         Cache._cache.streaks      = result
         Cache._stale_cache.streaks = result
+        Cache._cache.streaks_week_start = week_start
         -- If today's reading is confirmed in the DB, lock to daily refresh.
         -- Otherwise keep the per-minute fallback so the first read of the day is picked up.
         local today_confirmed = result and result._today_confirmed

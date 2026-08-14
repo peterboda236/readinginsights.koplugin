@@ -288,12 +288,6 @@ msgstr "heute gelesene Seite"
 msgid "pages read today"
 msgstr "heute gelesene Seiten"
 
-msgid "book read in this streak"
-msgstr "Buch in dieser Serie gelesen"
-
-msgid "books read in this streak"
-msgstr "Bücher in dieser Serie gelesen"
-
 msgid "Show Reading insights"
 msgstr "Leseeinblicke anzeigen"
 
@@ -817,6 +811,15 @@ msgstr "Hohe Aktivität (75 %)"
 
 msgid "Peak activity (100%)"
 msgstr "Maximale Aktivität (100 %)"
+
+msgid "Reading streak calendar"
+msgstr "Kalender der Lesesträhne"
+
+msgid "Daily streak day"
+msgstr "Tag der Tagessträhne"
+
+msgid "Weekly streak gap day"
+msgstr "Lückentag der Wochensträhne"
 
 msgid "Show long durations (24h+) as days"
 msgstr "Lange Zeitspannen (24 Std. oder mehr) als Tage anzeigen"

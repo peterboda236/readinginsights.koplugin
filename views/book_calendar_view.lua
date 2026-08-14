@@ -31,7 +31,6 @@ local HorizontalGroup = require("ui/widget/horizontalgroup")
 local HorizontalSpan  = require("ui/widget/horizontalspan")
 local InfoMessage     = require("ui/widget/infomessage")
 local InputContainer  = require("ui/widget/container/inputcontainer")
-local LineWidget      = require("ui/widget/linewidget")
 local Math            = require("optmath")
 local OverlapGroup    = require("ui/widget/overlapgroup")
 local Size            = require("ui/size")
@@ -203,14 +202,35 @@ local function buildBookCalendarGrid(daily_map, year, month, day_font, small_fon
 
     local today_str = os.date("%Y-%m-%d")
 
-    local day = 1 - lead_blanks
-    while day <= days_in_month do
+    -- Fixed six-week grid: always 6 rows starting from the first day's row, so
+    -- every month is the same height regardless of how it falls across weeks.
+    local start_cell_day = 1 - lead_blanks
+    for r = 0, 5 do
+        local day = start_cell_day + r * 7
         local row = HorizontalGroup:new{}
         for col = 1, 7 do
             local cell_day = day + col - 1
             if cell_day < 1 or cell_day > days_in_month then
-                table.insert(row, LineWidget:new{
-                    dimen = Geom:new{ w = cell_w, h = cell_h }, background = Blitbuffer.COLOR_WHITE,
+                -- Adjacent-month day (previous month's tail / next month's
+                -- start): show its date in gray as context, with no progress
+                -- bar, flag or border, and don't make it tappable.
+                local adj_t   = os.time{ year = year, month = month, day = cell_day, hour = 12 }
+                local adj_num = TextWidget:new{
+                    text = tostring(tonumber(os.date("%d", adj_t))),
+                    face = (os.date("%Y-%m-%d", adj_t) == today_str) and day_font_bold or day_font,
+                    fgcolor = Blitbuffer.COLOR_GRAY,
+                }
+                local adj_inner = VerticalGroup:new{
+                    align = "center",
+                    adj_num,
+                    TextWidget:new{ text = "", face = small_font, fgcolor = Colors.value() },
+                    VerticalSpan:new{ height = bar_pad },
+                    VerticalSpan:new{ height = bar_h },
+                }
+                table.insert(row, OverlapGroup:new{
+                    dimen = Geom:new{ w = cell_w, h = cell_h },
+                    Colors.newBar(cell_w, cell_h, Blitbuffer.COLOR_WHITE),
+                    CenterContainer:new{ dimen = Geom:new{ w = cell_w, h = cell_h }, adj_inner },
                 })
             else
                 local entry     = daily_map[cell_day]
@@ -375,8 +395,16 @@ local function buildBookCalendarGrid(daily_map, year, month, day_font, small_fon
                         },
                     })
                 end
+                -- Only a right + bottom border (no top/left line): draw the
+                -- normal 4-sided FrameContainer border (reliable, keeps the
+                -- rounded corners), then paint two white strips on top of
+                -- it to erase the top and left segments of that border.
+                -- These erase-strips are each smaller than the full cell,
+                -- so OverlapGroup's default top-left anchoring places them
+                -- exactly where we want (top edge, left edge) with no need
+                -- for right/bottom anchoring.
                 local border = is_today and Size.line.medium or Size.line.thin
-                local frame = FrameContainer:new{
+                local bordered_cell = FrameContainer:new{
                     background = nil,
                     bordersize = border,
                     color      = is_today and Blitbuffer.COLOR_BLACK or Colors.separator(),
@@ -387,6 +415,12 @@ local function buildBookCalendarGrid(daily_map, year, month, day_font, small_fon
                     height     = cell_h,
                     cell_content,
                 }
+                local frame = OverlapGroup:new{
+                    dimen = Geom:new{ w = cell_w, h = cell_h },
+                    bordered_cell,
+                    Colors.newBar(cell_w, border, Blitbuffer.COLOR_WHITE), -- erase top line
+                    Colors.newBar(border, cell_h, Blitbuffer.COLOR_WHITE), -- erase left line
+                }
                 table.insert(day_cells, { frame = frame, day = cell_day, data = entry })
                 table.insert(row, frame)
             end
@@ -394,7 +428,6 @@ local function buildBookCalendarGrid(daily_map, year, month, day_font, small_fon
         end
         table.insert(grid, row)
         table.insert(grid, VerticalSpan:new{ height = gap })
-        day = day + 7
     end
 
     return grid, day_cells

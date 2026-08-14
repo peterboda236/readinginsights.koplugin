@@ -644,12 +644,13 @@ function M.computeMetrics()
                 and seasonHit(6, 7, 8) and seasonHit(9, 10, 11) or false
         end)
 
-        -- Heti időösszegek (ISO-hét) -> leghosszabb hét.
-        StatsDb.withStatement(conn, [[
-            SELECT strftime('%Y-%W', start_time, 'unixepoch', 'localtime') AS wk,
+        -- Heti időösszegek -> legtöbbet olvasott hét. A hét kezdőnapját a közös
+        -- beállítás adja (hétfő/vasárnap), ugyanúgy, ahogy a heti sorozat számol.
+        StatsDb.withStatement(conn, string.format([[
+            SELECT %s AS wk,
                    SUM(duration) AS dur
             FROM page_stat GROUP BY wk
-        ]], function(stmt)
+        ]], Data.weekStartSqlExpr(Data.weekStartWday())), function(stmt)
             for row in stmt:rows() do
                 local dur = tonumber(row[2]) or 0
                 if dur / 3600 > m.max_week_hours then m.max_week_hours = dur / 3600 end

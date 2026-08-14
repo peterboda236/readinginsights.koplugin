@@ -297,12 +297,6 @@ msgstr "oldal olvasva ma"
 msgid "pages read today"
 msgstr "oldal olvasva ma"
 
-msgid "book read in this streak"
-msgstr "könyvet olvasva ez alatt"
-
-msgid "books read in this streak"
-msgstr "könyv olvasva ez alatt"
-
 msgid "Show Reading insights"
 msgstr "Olvasási áttekintés megnyitása"
 
@@ -832,6 +826,15 @@ msgstr "Magas aktivitás (75%)"
 
 msgid "Peak activity (100%)"
 msgstr "Csúcsaktivitás (100%)"
+
+msgid "Reading streak calendar"
+msgstr "Olvasási sorozat naptár"
+
+msgid "Daily streak day"
+msgstr "Napi sorozat napja"
+
+msgid "Weekly streak gap day"
+msgstr "Heti sorozat kihagyott napja"
 
 msgid "Show long durations (24h+) as days"
 msgstr "24 óra feletti időtartamok napokban"
