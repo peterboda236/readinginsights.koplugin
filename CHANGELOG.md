@@ -1,5 +1,10 @@
 # Changelog
 
+## v6.1.2
+
+### Reading streak popup
+- The "Current streak / Best streak" header row and the date row below it are now the same height as the days | weeks row, so the three rows line up evenly.
+
 ## v6.1.1
 
 ### Internal

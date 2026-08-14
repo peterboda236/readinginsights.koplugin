@@ -412,31 +412,42 @@ function StreakDatePopup:_rebuild()
     --   [ date range     | date range   ]
     --   ---------------------------------   thin divider
     --   [ days | weeks   | days | weeks ]
+    -- The days|weeks value line (fonts.value) is the tallest of the three text
+    -- roles here, so its line height sets a single row height (row_h) that the
+    -- section-header and date rows above are also pinned to - all three rows
+    -- then read as the same height, with their text vertically centred.
+    local inner_gap = math.floor(layout.column_gap / 2)
+    local half_col  = math.floor((col_w - inner_gap) / 2)
+    local row_h = buildValueLine(fonts.value, fonts.label, half_col, "0", N_("day", "days", 0)):getSize().h
+
     local cur_hdr  = TextWidget:new{ text = _("Current streak"), face = fonts.section, fgcolor = Colors.section() }
     local best_hdr = TextWidget:new{ text = _("Best streak"),    face = fonts.section, fgcolor = Colors.section() }
-    table.insert(content, UI.buildTwoColRow(cur_hdr, best_hdr, layout))
+    table.insert(content, UI.buildTwoColRow(
+        UI.fixedCol(cur_hdr,  col_w, row_h),
+        UI.fixedCol(best_hdr, col_w, row_h),
+        layout))
     table.insert(content, VerticalSpan:new{ height = Size.padding.default })
 
     local cur_date  = TextWidget:new{ text = self.cur_date_str,  face = fonts.label, fgcolor = Colors.label() }
     local best_date = TextWidget:new{ text = self.best_date_str, face = fonts.label, fgcolor = Colors.label() }
-    table.insert(content, UI.buildTwoColRow(cur_date, best_date, layout))
+    table.insert(content, UI.buildTwoColRow(
+        UI.fixedCol(cur_date,  col_w, row_h),
+        UI.fixedCol(best_date, col_w, row_h),
+        layout))
 
     table.insert(content, VerticalSpan:new{ height = Size.padding.large })
     table.insert(content, Colors.newBar(cont_w, Size.line.thin, Colors.separator()))
     table.insert(content, VerticalSpan:new{ height = Size.padding.large })
 
-    -- Stats row: each streak's column split into days | weeks.
-    local inner_gap = math.floor(layout.column_gap / 2)
-    local half_col  = math.floor((col_w - inner_gap) / 2)
+    -- Stats row: each streak's column split into days | weeks, at row_h.
     local function daysWeeksCell(days, weeks)
         local dline = buildValueLine(fonts.value, fonts.label, half_col, formatCount(days),  N_("day",  "days",  days))
         local wline = buildValueLine(fonts.value, fonts.label, half_col, formatCount(weeks), N_("week", "weeks", weeks))
-        local h = math.max(dline:getSize().h, wline:getSize().h)
         return HorizontalGroup:new{
             align = "center",
-            UI.fixedCol(dline, half_col, h),
-            UI.buildColumnSeparator(inner_gap, h),
-            UI.fixedCol(wline, half_col, h),
+            UI.fixedCol(dline, half_col, row_h),
+            UI.buildColumnSeparator(inner_gap, row_h),
+            UI.fixedCol(wline, half_col, row_h),
         }
     end
     table.insert(content, UI.buildTwoColRow(
