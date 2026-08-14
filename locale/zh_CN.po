@@ -230,12 +230,6 @@ msgstr "高级设置"
 msgid "Reading heatmap range"
 msgstr "阅读热力图时间范围"
 
-msgid "Streak popup reading time"
-msgstr "连续记录弹窗中的阅读时间"
-
-msgid "Show the total reading time and per-day averages at the bottom of the streak popup."
-msgstr "在连续记录弹窗底部显示总阅读时间和每日平均值。"
-
 msgid "3 months"
 msgstr "3个月"
 msgid "4 months"
@@ -657,6 +651,9 @@ msgid "Reading insights: records"
 msgstr "阅读统计：阅读记录"
 msgid "Show Records"
 msgstr "查看阅读记录"
+
+msgid "Show Reading streak"
+msgstr "查看阅读连续记录"
 msgid "Sub-values (date / book title)"
 msgstr "附属信息（日期/书名）"
 

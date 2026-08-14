@@ -899,13 +899,13 @@ local function buildStreakCalHeader(title_str, content_width, section_font, prev
     return header_row, left_widget:getSize().w, right_widget:getSize().w, header_row:getSize().h
 end
 
--- The streak-date popup itself: a modal box that lays out (top to bottom) the
--- streak name + date range, the days/weeks-in-a-row pair, one pageable calendar
--- month, then the streak's reading totals. The calendar pages one month at a
--- time (‹ / › arrows, swipe, or Left/Right keys) across the months the streak
--- spans; any other tap/swipe/key dismisses the popup. All the display data is
--- precomputed by showStreakDatePopup and stashed on the instance, so paging
--- only re-lays-out the (cheap) widgets, never re-queries the database.
+-- The streaks popup itself: a modal box laying out (top to bottom) one pageable
+-- calendar month with the reading/streaks marked, then current and best streak
+-- side by side (name, date range, days | weeks). The calendar pages one month
+-- at a time (‹ / › arrows, swipe, or Left/Right keys); any other tap/swipe/key
+-- dismisses the popup. All the display data is precomputed by showStreaksPopup
+-- and stashed on the instance, so paging only re-lays-out the (cheap) widgets,
+-- never re-queries the database.
 local StreakDatePopup = InputContainer:extend{
     modal = true,
 }
@@ -981,63 +981,42 @@ function StreakDatePopup:_rebuild()
         self._right_w  = next_available and right_w or nil
     end
 
-    -- Below the calendar: the streak's name (left) and date range (right), with
-    -- no divider between them, then the figures as evenly spaced value rows.
-    -- The value rows use the (taller) value font; force the name/date header to
-    -- that same height so it lines up instead of being noticeably shorter.
-    local value_row_h = buildValueLine(fonts.value, fonts.label, col_w, "0", "x"):getSize().h
-    if self.heading_label then
-        local title_w = TextWidget:new{ text = self.heading_label, face = fonts.section, fgcolor = Colors.section() }
-        local date_w  = TextWidget:new{ text = self.date_str, face = fonts.label, fgcolor = Colors.label() }
-        -- Name flush left, date flush right, a flexible spacer between them.
-        local spacer = math.max(0, cont_w - title_w:getSize().w - date_w:getSize().w)
-        local heading = HorizontalGroup:new{
-            align = "center",
-            title_w,
-            HorizontalSpan:new{ width = spacer },
-            date_w,
-        }
-        table.insert(content, CenterContainer:new{
-            dimen = Geom:new{ w = cont_w, h = value_row_h }, heading,
-        })
-    else
-        local date_w  = TextWidget:new{ text = self.date_str, face = fonts.label, fgcolor = Colors.label() }
-        table.insert(content, UI.fixedCol(date_w, cont_w, value_row_h))
-    end
+    -- Below the calendar: current and best streak side by side.
+    --   [ Current streak | Best streak ]   section headers
+    --   [ date range     | date range   ]
+    --   ---------------------------------   thin divider
+    --   [ days | weeks   | days | weeks ]
+    local cur_hdr  = TextWidget:new{ text = _("Current streak"), face = fonts.section, fgcolor = Colors.section() }
+    local best_hdr = TextWidget:new{ text = _("Best streak"),    face = fonts.section, fgcolor = Colors.section() }
+    table.insert(content, UI.buildTwoColRow(cur_hdr, best_hdr, layout))
+    table.insert(content, VerticalSpan:new{ height = Size.padding.default })
+
+    local cur_date  = TextWidget:new{ text = self.cur_date_str,  face = fonts.label, fgcolor = Colors.label() }
+    local best_date = TextWidget:new{ text = self.best_date_str, face = fonts.label, fgcolor = Colors.label() }
+    table.insert(content, UI.buildTwoColRow(cur_date, best_date, layout))
+
     table.insert(content, VerticalSpan:new{ height = Size.padding.large })
     table.insert(content, Colors.newBar(cont_w, Size.line.thin, Colors.separator()))
     table.insert(content, VerticalSpan:new{ height = Size.padding.large })
 
-    -- First stat row: days / weeks / books split into three equal columns.
-    local inner_gap  = math.floor(layout.column_gap / 2)
-    local sep_unit   = 2 * inner_gap + Size.line.medium  -- width of one column separator
-    local third_w    = math.floor((cont_w - 2 * sep_unit) / 3)
-    local days_line  = buildValueLine(fonts.value, fonts.label, third_w, formatCount(self.dc), N_("day",  "days",  self.dc))
-    local weeks_line = buildValueLine(fonts.value, fonts.label, third_w, formatCount(self.wc), N_("week", "weeks", self.wc))
-    local books_line = buildValueLine(fonts.value, fonts.label, third_w, tostring(self.book_count), self.book_label)
-    local thirds_h   = math.max(days_line:getSize().h, weeks_line:getSize().h, books_line:getSize().h)
-    table.insert(content, HorizontalGroup:new{
-        align = "center",
-        UI.fixedCol(days_line,  third_w, thirds_h),
-        UI.buildColumnSeparator(inner_gap, thirds_h),
-        UI.fixedCol(weeks_line, third_w, thirds_h),
-        UI.buildColumnSeparator(inner_gap, thirds_h),
-        UI.fixedCol(books_line, third_w, thirds_h),
-    })
-    -- Reading time / pages and the per-day averages: hidden by default, shown
-    -- only when the "Show reading time in streak popup" setting is on.
-    if VS.Opt.readShowStreakTime() then
-        table.insert(content, VerticalSpan:new{ height = Size.padding.large })
-        table.insert(content, UI.buildTwoColRow(
-            buildValueLine(fonts.value, fonts.label, col_w, self.total_time_val,  self.total_time_unit),
-            buildValueLine(fonts.value, fonts.label, col_w, self.total_pages_val, self.total_pages_unit),
-            layout))
-        table.insert(content, VerticalSpan:new{ height = Size.padding.large })
-        table.insert(content, UI.buildTwoColRow(
-            buildValueLine(fonts.value, fonts.label, col_w, self.avg_time_val,  self.avg_time_unit),
-            buildValueLine(fonts.value, fonts.label, col_w, self.avg_pages_val, self.avg_pages_unit),
-            layout))
+    -- Stats row: each streak's column split into days | weeks.
+    local inner_gap = math.floor(layout.column_gap / 2)
+    local half_col  = math.floor((col_w - inner_gap) / 2)
+    local function daysWeeksCell(days, weeks)
+        local dline = buildValueLine(fonts.value, fonts.label, half_col, formatCount(days),  N_("day",  "days",  days))
+        local wline = buildValueLine(fonts.value, fonts.label, half_col, formatCount(weeks), N_("week", "weeks", weeks))
+        local h = math.max(dline:getSize().h, wline:getSize().h)
+        return HorizontalGroup:new{
+            align = "center",
+            UI.fixedCol(dline, half_col, h),
+            UI.buildColumnSeparator(inner_gap, h),
+            UI.fixedCol(wline, half_col, h),
+        }
     end
+    table.insert(content, UI.buildTwoColRow(
+        daysWeeksCell(self.cur_days,  self.cur_weeks),
+        daysWeeksCell(self.best_days, self.best_weeks),
+        layout))
 
     self.box_content = FrameContainer:new{
         background     = Blitbuffer.COLOR_WHITE,
@@ -1131,98 +1110,56 @@ function StreakDatePopup:onCloseWidget()
     UIManager:setDirty(nil, function() return "ui", self:_centeredRect(self.box_content) end)
 end
 
--- Show a popup (styled like the main insights popup) with the period start/end
--- dates for a streak, plus total reading time, average time/day, and book count.
--- dates table: { start = "YYYY-MM-DD" or "YYYY-WW", end_ = same }, is_weekly = bool
--- is_current: true = current streak, false = best streak. When given, a label
--- naming which streak's period is shown is prepended above the date range.
--- days_count / weeks_count: this streak's day and week totals, shown as a
--- "days / weeks in a row" row under the date (mirroring the insights page),
--- above the calendar.
-local function showStreakDatePopup(dates, is_weekly, is_current, days_count, weeks_count)
-    if not dates then
-        UIManager:show(InfoMessage:new{ text = _("No streak dates") })
-        return
-    end
-    local start_str, end_str, range_start, range_end
-    if is_weekly then
-        -- The weekly streak's dates are the start dates of its first and last
-        -- weeks (from Data.weekStartDate - Monday or Sunday per the setting).
-        local week_from = dates.start
-        local week_to   = dates.end_
-        local week_end
-        if week_to then
-            local wy, wm, wd = Data.parseDateYMD(week_to)
-            week_end = os.date("%Y-%m-%d",
-                os.time{ year = wy, month = wm, day = wd, hour = 12 } + 6 * 86400)
-            -- The most recent week of a running streak is only partly over, so
-            -- its last day is still in the future. Clamp the period to today so
-            -- the totals cover the days actually read and the per-day averages
-            -- divide by the days elapsed so far, not by a full seven-day week.
-            -- (ISO date strings compare correctly as plain strings.)
-            local today_str = os.date("%Y-%m-%d")
-            if week_end > today_str then week_end = today_str end
-        end
-        range_start = week_from
-        range_end   = week_end or week_to
-        start_str = formatDateForDisplay(week_from, true)
-        end_str   = formatDateForDisplay(week_end or week_to)
-    else
-        range_start = dates.start
-        range_end   = dates.end_
-        start_str = formatDateForDisplay(dates.start, true)
-        end_str   = formatDateForDisplay(dates.end_)
-    end
-
-    local period = Data.getStreakPeriodStats(range_start, range_end)
-    local num_days = Data.daysBetweenInclusive(range_start, range_end)
-    local avg_seconds = num_days > 0 and (period.duration / num_days) or 0
-
-    -- Two columns, time on the left and pages on the right, mirroring how
-    -- the insights page itself pairs those two numbers. The book count sits
-    -- on its own below, since it has no counterpart.
-    local total_time_val, total_time_unit = splitDurationValueUnit(period.duration, _("reading time"))
-    local avg_time_val,   avg_time_unit   = splitDurationValueUnit(avg_seconds, _("avg time/day"))
-
-    local total_pages     = period.pages or 0
-    local total_pages_val = formatCount(total_pages)
-    -- Same label the last-week section uses for its page total, so the two
-    -- read the same way and share one translation.
-    local total_pages_unit = N_("page read", "pages read", total_pages)
-
-    local avg_pages = num_days > 0 and (total_pages / num_days) or 0
-    local avg_pages_rounded
-    if avg_pages >= 10 then
-        avg_pages_rounded = math.floor(avg_pages + 0.5)
-    else
-        avg_pages_rounded = math.floor(avg_pages * 10 + 0.5) / 10
-    end
-    local avg_pages_val  = formatNumber(avg_pages_rounded,
-        avg_pages_rounded ~= math.floor(avg_pages_rounded) and 1 or 0)
-    local avg_pages_unit = _("avg pages/day")
-
-    local book_count = period.books
-    local book_label = N_("book", "books", book_count)
-
+-- The combined streak popup: current and best streak side by side, above a
+-- calendar of your reading with the streaks marked. Opened by tapping any of
+-- the streak cells on the insights page, and from the menu - always the same
+-- popup. `streaks` is the table from Data.calculateStreaks().
+local function showStreaksPopup(streaks)
+    streaks = streaks or {}
     local fonts = getCachedFonts()
     local inner_padding = Size.padding.large
 
     -- Fixed 94%-of-screen-wide box, like the book progress calendar and the
-    -- reading heatmap, rather than sizing to the content.
+    -- reading heatmap.
     local column_gap = Size.padding.large
     local layout = UI.buildLayout(math.floor(Screen:getWidth() * 0.94) - 2 * inner_padding, 0, column_gap)
     local col_width = layout.col_width
     local content_width = layout.content_width
 
-    -- Only prepend the streak name (Current/Best streak) when is_current is set.
-    local has_title = (is_current ~= nil)
+    -- Each streak's date range comes from its daily-streak span; "–" when there
+    -- is no such streak yet.
+    local function rangeStr(dates)
+        if not dates or not dates.start then return "\xE2\x80\x93" end
+        return formatDateForDisplay(dates.start, true) .. " \xE2\x80\x93 " .. formatDateForDisplay(dates.end_)
+    end
+    local cur_date_str  = rangeStr(streaks.current_days_dates)
+    local best_date_str = rangeStr(streaks.best_days_dates)
 
-    -- Calendar data: the months the streak spans (one calendar page each) and
-    -- the set of days that had reading, queried once here. Open on the last
-    -- (most recent) page, which is the streak's end - today's month for a
-    -- running streak.
-    local months        = streakMonthList(range_start, range_end)
-    local read_set      = months and (Data.getReadingDaysInRange(range_start, range_end) or {}) or {}
+    -- Calendar span: from the month of the very first reading record up to
+    -- today, so the whole history pages through with its reading marked. The
+    -- read set covers the whole shown span. Falls back to the earliest streak
+    -- start (or today) if the first-reading month can't be read.
+    local today     = os.date("%Y-%m-%d")
+    local range_end = today
+    local yr = Data.getYearRange()
+    local list_start = (yr and yr.min_year)
+        and string.format("%04d-%02d-01", yr.min_year, yr.min_month or 1)
+        or nil
+    if not list_start then
+        local starts = {}
+        if streaks.current_days_dates and streaks.current_days_dates.start then
+            starts[#starts + 1] = streaks.current_days_dates.start
+        end
+        if streaks.best_days_dates and streaks.best_days_dates.start then
+            starts[#starts + 1] = streaks.best_days_dates.start
+        end
+        table.sort(starts)
+        list_start = starts[1] or today
+    end
+    if list_start > range_end then list_start = range_end end
+
+    local months        = streakMonthList(list_start, range_end)
+    local read_set      = months and (Data.getReadingDaysInRange(list_start, range_end) or {}) or {}
     local week_start_wd = (Prefs and Prefs.weekStartWday and Prefs.weekStartWday()) or 1
 
     UIManager:show(StreakDatePopup:new{
@@ -1232,23 +1169,17 @@ local function showStreakDatePopup(dates, is_weekly, is_current, days_count, wee
         content_width = content_width,
         inner_padding = inner_padding,
 
-        heading_label = has_title and (is_current and _("Current streak") or _("Best streak")) or nil,
-        date_str      = start_str .. " – " .. end_str,
-        dc            = days_count or 0,
-        wc            = weeks_count or 0,
+        cur_date_str  = cur_date_str,
+        best_date_str = best_date_str,
+        cur_days      = streaks.current_days  or 0,
+        cur_weeks     = streaks.current_weeks or 0,
+        best_days     = streaks.best_days     or 0,
+        best_weeks    = streaks.best_weeks    or 0,
 
-        range_start   = range_start,
-        range_end     = range_end,
         read_set      = read_set,
         months        = months,
         week_start_wd = week_start_wd,
         month_index   = months and #months or 1,
-
-        total_time_val   = total_time_val,   total_time_unit   = total_time_unit,
-        total_pages_val  = total_pages_val,  total_pages_unit  = total_pages_unit,
-        avg_time_val     = avg_time_val,     avg_time_unit     = avg_time_unit,
-        avg_pages_val    = avg_pages_val,    avg_pages_unit    = avg_pages_unit,
-        book_count       = book_count,       book_label        = book_label,
     })
 end
 
@@ -1373,8 +1304,7 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
     }
     tap_current_header.ges_events = { Tap = { GestureRange:new{ ges="tap", range=tap_current_header.dimen } } }
     function tap_current_header:onTap()
-        showStreakDatePopup(streaks.current_days_dates, false, true,
-            streaks.current_days, streaks.current_weeks)
+        showStreaksPopup(streaks)
         return true
     end
 
@@ -1384,8 +1314,7 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
     }
     tap_best_header.ges_events = { Tap = { GestureRange:new{ ges="tap", range=tap_best_header.dimen } } }
     function tap_best_header:onTap()
-        showStreakDatePopup(streaks.best_days_dates, false, false,
-            streaks.best_days, streaks.best_weeks)
+        showStreaksPopup(streaks)
         return true
     end
 
@@ -1417,25 +1346,25 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
         dimen = Geom:new{ x=0, y=0, w=half_col_width, h=cd_line:getSize().h }, cd_line,
     }
     tap_cd.ges_events = { Tap = { GestureRange:new{ ges="tap", range=tap_cd.dimen } } }
-    function tap_cd:onTap() showStreakDatePopup(streaks.current_days_dates, false, true, streaks.current_days, streaks.current_weeks) return true end
+    function tap_cd:onTap() showStreaksPopup(streaks) return true end
 
     local tap_cw = InputContainer:new{
         dimen = Geom:new{ x=0, y=0, w=half_col_width, h=cw_line:getSize().h }, cw_line,
     }
     tap_cw.ges_events = { Tap = { GestureRange:new{ ges="tap", range=tap_cw.dimen } } }
-    function tap_cw:onTap() showStreakDatePopup(streaks.current_weeks_dates, true, true, streaks.current_days, streaks.current_weeks) return true end
+    function tap_cw:onTap() showStreaksPopup(streaks) return true end
 
     local tap_bd = InputContainer:new{
         dimen = Geom:new{ x=0, y=0, w=half_col_width, h=bd_line:getSize().h }, bd_line,
     }
     tap_bd.ges_events = { Tap = { GestureRange:new{ ges="tap", range=tap_bd.dimen } } }
-    function tap_bd:onTap() showStreakDatePopup(streaks.best_days_dates, false, false, streaks.best_days, streaks.best_weeks) return true end
+    function tap_bd:onTap() showStreaksPopup(streaks) return true end
 
     local tap_bw = InputContainer:new{
         dimen = Geom:new{ x=0, y=0, w=half_col_width, h=bw_line:getSize().h }, bw_line,
     }
     tap_bw.ges_events = { Tap = { GestureRange:new{ ges="tap", range=tap_bw.dimen } } }
-    function tap_bw:onTap() showStreakDatePopup(streaks.best_weeks_dates, true, false, streaks.best_days, streaks.best_weeks) return true end
+    function tap_bw:onTap() showStreaksPopup(streaks) return true end
 
     local current_cell = HorizontalGroup:new{
         align = "center",
@@ -3033,4 +2962,8 @@ BookList.bind{
 -- functions this view does, without the view having to pass them through.
 return {
     Popup = ReadingInsightsPopup,
+    -- Open the combined current/best streak popup straight from the menu.
+    showStreaks = function()
+        showStreaksPopup(Data.calculateStreaks())
+    end,
 }

@@ -27,17 +27,14 @@ A full-screen scrollable overlay with a comprehensive overview of your reading h
 **Highlights:**
 - **Last week** — 7-day average time and pages per day; tap either value to open its own 8-week trend popup (time trend or pages trend). Its daily bar chart puts today on the left by default, and can be flipped to put it on the right (see **Settings** below)
 - **Streaks** — current and best daily & weekly reading streaks; tap any of
-  the four to open a popup summarising that streak. At the top is a **calendar**
-  of the streak's span with the days you actually read marked (a fixed six-week
-  month you page one at a time with the ‹ / › arrows, a swipe, or the Left/Right
-  keys; today's date is shown in bold, and the days spilling in from the
-  previous/next month are shown in gray). Below it come the streak's name and
-  date range, then the days/weeks-in-a-row pair (the same figures the page
-  itself shows) with the book count beside it, split into three equal columns.
-  The total reading time / pages and the per-day averages can be shown below
-  that too, but are **off by default** (turn them on under *Settings ▸ Advanced
-  settings ▸ Reading insight popup ▸ Streak popup reading time*). On the
-  calendar, read days use the
+  the four (or use **Show Reading streak** in the menu) to open one combined
+  popup. At the top is a **calendar** of your reading with the streaks marked (a
+  fixed six-week month you page one at a time with the ‹ / › arrows, a swipe, or
+  the Left/Right keys; today's date is shown in bold, and the days spilling in
+  from the previous/next month are shown in gray). It pages back through your
+  whole history to the month of your first-ever reading. Below the calendar,
+  **current** and **best** streak sit side by side — each with its name, date
+  range, and days | weeks. On the calendar, read days use the
   daily-streak color (dark gray by default); once a week has any reading its
   remaining days use the gap color (light gray) to show the weekly streak is
   secured for that week; every other day stays white. Consecutive days within a

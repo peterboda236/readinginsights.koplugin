@@ -318,12 +318,6 @@ msgstr "Speciális beállítások"
 msgid "Reading heatmap range"
 msgstr "Heatmap időtartama"
 
-msgid "Streak popup reading time"
-msgstr "Olvasási idő a sorozat felugróban"
-
-msgid "Show the total reading time and per-day averages at the bottom of the streak popup."
-msgstr "A teljes olvasási idő és a napi átlagok megjelenítése a sorozat felugró alján."
-
 msgid "3 months"
 msgstr "3 hónap"
 
@@ -916,6 +910,9 @@ msgstr "Olvasási áttekintés: rekordok"
 
 msgid "Show Records"
 msgstr "Rekordok megjelenítése"
+
+msgid "Show Reading streak"
+msgstr "Olvasási sorozat megjelenítése"
 
 msgid "Sub-values (date / book title)"
 msgstr "Alértékek (dátum / könyvcím)"
