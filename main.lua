@@ -248,12 +248,21 @@ local Achievements = loadModule("lib/achievements.lua",
 local AchievementsView = loadModule("views/achievements_view.lua",
     { Achievements = Achievements, Locale = Locale, ListWidget = ListWidget })
 
+-- The combined current/best streak popup with its full-history calendar,
+-- opened both from the insights page's streak cells and straight from the
+-- menu. Split out of insights_view.lua; it needs only the shared data/UI
+-- modules, so it loads first and is handed to the insights view below.
+local StreakCalendar = loadModule("views/streak_calendar_view.lua", {
+    Locale = Locale, Colors = Colors, Fonts = Fonts, UI = UI,
+    Data = InsightsData, Prefs = Prefs,
+})
+
 local Insights = loadModule("views/insights_view.lua", {
     Locale = Locale, Colors = Colors, Fonts = Fonts,
     PopupUtil = PopupUtil, VS = ViewSettings, Cache = InsightsCache, UI = UI,
     Trend = Trend, Heatmap = Heatmap, BookList = BookList, Data = InsightsData,
     Manual = ManualBooks, Achievements = Achievements, AchievementsView = AchievementsView,
-    Prefs = Prefs,
+    Prefs = Prefs, Streak = StreakCalendar,
 })
 local BookCalendar = loadModule("views/book_calendar_view.lua", {
     Locale = Locale, Colors = Colors, Fonts = Fonts, Prefs = Prefs,
