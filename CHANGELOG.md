@@ -1,5 +1,10 @@
 # Changelog
 
+## v6.1.1
+
+### Internal
+- Moved the reading streak calendar popup out of the insights view into its own `views/streak_calendar_view.lua` module (no behavior change).
+
 ## v6.1.0
 
 ### Reading streak popup
