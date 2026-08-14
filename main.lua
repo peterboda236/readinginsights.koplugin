@@ -821,6 +821,15 @@ function ReadingInsights:onShowReadingRecordsPopup()
     return true
 end
 
+-- General, like the Records popup above: the current/best streak popup is
+-- global all-time data, not tied to any open book, so it opens in both Reader
+-- view and the File manager. Same combined popup the insights page's streak
+-- cells open (views/insights_view.lua's showStreaksPopup).
+function ReadingInsights:onShowReadingStreakPopup()
+    Insights.showStreaks()
+    return true
+end
+
 -- General, like the Records popup above: achievements are global, all-time
 -- data not tied to any open book, so this opens in both Reader view and the
 -- File manager. Opens the same list the reading-goal section's "N earned"

@@ -193,10 +193,6 @@ M.Opt = {
     SHOW_PACE_DATES_KEY      = "reading_insights_book_show_pace_dates",
     SHOW_PACE_DATES_DEFAULT  = true,
 
-    -- Streak popup: whether the two bottom rows (total reading time / pages and
-    -- the per-day averages) are shown. Off by default.
-    SHOW_STREAK_TIME_KEY     = "reading_insights_streak_show_time",
-    SHOW_STREAK_TIME_DEFAULT = false,
 }
 
 -- Reading heatmap period length (Prefs ▸ Advanced settings ▸ how many
@@ -481,14 +477,6 @@ end
 
 function M.Opt.saveShowPaceDates(value)
     M.saveBoolSetting(M.Opt.SHOW_PACE_DATES_KEY, value)
-end
-
-function M.Opt.readShowStreakTime()
-    return M.readBoolSetting(M.Opt.SHOW_STREAK_TIME_KEY, M.Opt.SHOW_STREAK_TIME_DEFAULT)
-end
-
-function M.Opt.saveShowStreakTime(value)
-    M.saveBoolSetting(M.Opt.SHOW_STREAK_TIME_KEY, value)
 end
 
 function M.Opt.readAchievementRefresh()

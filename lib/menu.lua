@@ -43,6 +43,13 @@ function M.build(self, deps)
             end,
         },
         {
+            text = _("Show Reading streak"),
+            keep_menu_open = false,
+            callback = function()
+                self:onShowReadingStreakPopup()
+            end,
+        },
+        {
             text = _("Show Records"),
             keep_menu_open = false,
             callback = function()
@@ -410,16 +417,6 @@ function M.build(self, deps)
             },
         })
     end
-
-    table.insert(insights_popup_sub_item_table, {
-        text = _("Streak popup reading time"),
-        help_text = _("Show the total reading time and per-day averages at the bottom of the streak popup."),
-        keep_menu_open = true,
-        checked_func = function() return deps.ViewSettings.Opt.readShowStreakTime() end,
-        callback = function()
-            deps.ViewSettings.Opt.saveShowStreakTime(not deps.ViewSettings.Opt.readShowStreakTime())
-        end,
-    })
 
     table.insert(insights_popup_sub_item_table, {
         text_func = function()

@@ -1,5 +1,11 @@
 # Changelog
 
+## v6.1.0
+
+### Reading streak popup
+- Tapping any streak on the insights page - or "Show Reading streak" in the menu - now opens one combined popup: current and best streak side by side (name, date range, days | weeks) above the calendar.
+- The calendar shows your whole reading history back to your first reading, with every read day marked and each week's streak shaded.
+
 ## v6.0.0
 
 ### Reading streak popups

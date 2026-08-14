@@ -309,12 +309,6 @@ msgstr "Definições avançadas"
 msgid "Reading heatmap range"
 msgstr "Intervalo do mapa de calor de leitura"
 
-msgid "Streak popup reading time"
-msgstr "Tempo de leitura na janela de sequência"
-
-msgid "Show the total reading time and per-day averages at the bottom of the streak popup."
-msgstr "Mostrar o tempo total de leitura e as médias diárias no fundo da janela de sequência."
-
 msgid "3 months"
 msgstr "3 meses"
 
@@ -901,6 +895,9 @@ msgstr "Reading Insights: recordes"
 
 msgid "Show Records"
 msgstr "Mostrar recordes"
+
+msgid "Show Reading streak"
+msgstr "Mostrar sequência de leitura"
 
 msgid "Sub-values (date / book title)"
 msgstr "Subvalores (data / título do livro)"
