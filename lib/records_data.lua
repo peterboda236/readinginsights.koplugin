@@ -524,7 +524,7 @@ function M.load()
             StatsDb.withStatement(conn, string.format([[
                 SELECT 1 FROM page_stat
                 WHERE start_time > %d
-                  AND date(start_time, 'unixepoch', 'localtime') != %q
+                  AND date(start_time, 'unixepoch', 'localtime') != '%s'
                 LIMIT 1
             ]], hw, cache.streak_end), function(stmt)
                 for _ in stmt:rows() do new_distinct_dates = true end
