@@ -24,8 +24,8 @@ there. Four popups, all reachable from *Tools → Reading insights*:
 A full-screen overview of your whole reading history.
 
 - **Last week** — average time and pages per day; tap either to see its 8-week trend.
-- **Streaks** — current and best daily & weekly streaks, plus a calendar of
-  your reading with the streaks marked. Page back through your whole history.
+- **Streaks** — current and best daily & weekly streaks; tap any of them (or
+  see the separate [Reading streak](#-reading-streak) popup below).
 - **Yearly & monthly** — hours/days read and pages, navigable by year; a
   monthly bar chart you can tap to see the books behind each month.
 - **All-time totals** — cumulative hours and pages. Tap the "Total read"
@@ -41,6 +41,21 @@ A full-screen overview of your whole reading history.
 the title bar to force a data reload.
 
 Available everywhere (book view and file manager).
+
+## 🔥 Reading streak
+
+Your current and best daily & weekly streaks in one popup, openable straight
+from *Tools → Reading insights → Show Reading streak* (or by tapping a streak
+in the Reading insights popup).
+
+- A **calendar** of your reading with the streaks marked — page back through
+  your whole history to your very first reading day.
+- **Current** and **best** streak side by side, each with its date range and
+  days | weeks.
+
+The calendar's colours (daily-streak days and weekly-streak gap days) and its
+week-start day (Monday or Sunday) are configurable in Settings. Available
+everywhere.
 
 ## 🏆 Records
 
@@ -128,8 +143,8 @@ unticked keeps everything, so a later reinstall picks up where you left off.
   which sections the insights popup shows, the heatmap range, achievement
   refresh frequency, and the Book progress calendar's cell content.
 
-All four actions are also registered with `Dispatcher`, so you can assign them
-to gestures under *Settings → Taps and gestures*.
+The popups are also registered with `Dispatcher`, so you can assign them to
+gestures under *Settings → Taps and gestures*.
 
 ## For developers
 
