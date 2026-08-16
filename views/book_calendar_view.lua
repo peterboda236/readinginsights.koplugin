@@ -397,8 +397,28 @@ local function buildBookCalendarGrid(daily_map, year, month, day_font, small_fon
                 end
                 -- No cell border: the day cells sit flush, like the streak
                 -- calendar. Today is still marked by its bold day number.
-                table.insert(day_cells, { frame = cell_content, day = cell_day, data = entry })
-                table.insert(row, cell_content)
+                --
+                -- Wrapped in a bordersize-0 FrameContainer (rather than added
+                -- raw) so the cell has a real, absolute .dimen for
+                -- BookCalendarPopup:onTap's UI.hitTest. cell_content is an
+                -- OverlapGroup, and OverlapGroup fixes its .dimen at init with
+                -- x=0,y=0 and never updates it while painting - so a raw cell
+                -- reports the wrong position and the tap-for-detail (pages /
+                -- percent / time) never registers; the tap falls through and
+                -- just closes the calendar instead. FrameContainer, by
+                -- contrast, sets dimen.x/y at paintTo. Same reasoning as
+                -- book_stats_view.lua's tappableWrap. Layout is unchanged:
+                -- same width/height, no border, no padding.
+                local cell_tappable = FrameContainer:new{
+                    background = Blitbuffer.COLOR_WHITE,
+                    bordersize = 0,
+                    padding    = 0,
+                    margin     = 0,
+                    dimen      = Geom:new{ w = cell_w, h = cell_h },
+                    cell_content,
+                }
+                table.insert(day_cells, { frame = cell_tappable, day = cell_day, data = entry })
+                table.insert(row, cell_tappable)
             end
             if col < 7 then table.insert(row, HorizontalSpan:new{ width = gap }) end
         end
