@@ -559,7 +559,7 @@ function M.getMonthlyReadingDays(year, shared_conn)
         return { days = days }
     end)
 
-    Cache.setMinuteCache(Cache._monthly_cache, Cache._stale_monthly, key, key .. ":minute", minute, months)
+    Cache.setMinuteCache(Cache._monthly_cache, Cache._stale_monthly, key, key .. ":minute", minute, months, base_key .. ":")
     return months
 end
 
@@ -645,7 +645,7 @@ function M.getMonthlyReadingHours(year, shared_conn)
         return { hours = hours, seconds = math.floor(seconds_raw + 0.5) }
     end)
 
-    Cache.setMinuteCache(Cache._monthly_cache, Cache._stale_monthly, key, key .. ":minute", minute, months)
+    Cache.setMinuteCache(Cache._monthly_cache, Cache._stale_monthly, key, key .. ":minute", minute, months, base_key .. ":")
     return months
 end
 
@@ -765,7 +765,7 @@ function M.getYearlyStats(year, shared_conn)
         result.avg_days_per_book = math.ceil(result.days / result.books_started)
     end
 
-    Cache.setMinuteCache(Cache._yearly_cache, Cache._stale_yearly, key, key .. ":minute", minute, result)
+    Cache.setMinuteCache(Cache._yearly_cache, Cache._stale_yearly, key, key .. ":minute", minute, result, base_key .. ":")
     return result
 end
 
@@ -1579,7 +1579,7 @@ function M.getMonthlyBookCounts(year, shared_conn)
         return { book_count = book_count }
     end)
 
-    Cache.setMinuteCache(Cache._monthly_cache, Cache._stale_monthly, key, key .. ":minute", minute, months)
+    Cache.setMinuteCache(Cache._monthly_cache, Cache._stale_monthly, key, key .. ":minute", minute, months, base_key .. ":")
     return months
 end
 

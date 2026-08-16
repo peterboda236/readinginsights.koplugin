@@ -411,11 +411,35 @@ end
 -- Per-minute cache write: stores value + minute stamp, and mirrors it into
 -- stale_table (read on the next popup open for instant stale-while-revalidate
 -- display). No-op when caching is disabled.
-function M.setMinuteCache(cache_table, stale_table, key, minute_key, minute, value)
+--
+-- `stale_prefix` (optional) prunes the date-keyed caches. The yearly/monthly
+-- entries are keyed "<base>:<today>", so a new key appears every calendar day;
+-- without pruning both the in-memory and the disk-mirrored stale tables would
+-- grow without bound (a cache file that keeps getting bigger, re-parsed at
+-- every startup and re-serialized at every popup close). Only the newest entry
+-- per prefix is ever read back (findStaleByPrefix picks the lexicographically
+-- greatest = most recent), so when a prefix is given every older sibling under
+-- it is dropped, leaving just this write - one entry per year/mode instead of
+-- one per day. The fixed-key caches (last_week, all_time, ...) pass no prefix
+-- and are left exactly as they were.
+function M.setMinuteCache(cache_table, stale_table, key, minute_key, minute, value, stale_prefix)
     if M.ENABLE_CACHE then
         cache_table[key]   = value
         cache_table[minute_key] = minute
         stale_table[key]   = value
+        if stale_prefix then
+            local plen = #stale_prefix
+            for k in pairs(stale_table) do
+                if k ~= key and k:sub(1, plen) == stale_prefix then
+                    stale_table[k] = nil
+                end
+            end
+            for k in pairs(cache_table) do
+                if k ~= key and k ~= minute_key and k:sub(1, plen) == stale_prefix then
+                    cache_table[k] = nil
+                end
+            end
+        end
     end
 end
 
@@ -449,16 +473,16 @@ end
 -- fresh/minute-cached value is available yet (e.g. right after a restart,
 -- mode switch, or year change).
 --
--- Entries are never pruned from these tables (each calendar day adds a new
--- date-suffixed key rather than overwriting the previous one - see
--- M.setMinuteCache), so a given prefix (e.g. "2026:v3:") can match several
--- entries at once, one per day the plugin has ever run. pairs() iteration
--- order is undefined, so simply returning the first match found could just
--- as easily return yesterday's (or older) entry as today's, which is
--- exactly what caused the "yesterday's value flashes briefly after
--- restart" bug: the date suffix is an ISO "YYYY-MM-DD" string, so the
--- lexicographically greatest matching key is also the chronologically
--- most recent one - that's the one we want.
+-- setMinuteCache now prunes older date-suffixed siblings when it writes (see
+-- its `stale_prefix`), so in normal operation a given prefix (e.g. "2026:v3:")
+-- matches just the newest entry. This lookup still picks by lexicographic
+-- maximum rather than trusting a single match, both as a safety net and
+-- because a prefix can legitimately span more than one key for a moment: the
+-- date suffix is an ISO "YYYY-MM-DD" string, so the greatest matching key is
+-- also the chronologically most recent one - that's the one we want. (This is
+-- what fixed the old "yesterday's value flashes briefly after restart" bug,
+-- back when every day's entry was kept forever and pairs() could return an
+-- older one first.)
 function M.findStaleByPrefix(stale_table, prefix)
     if not M.ENABLE_CACHE then return nil end
     local best_key, best_val
