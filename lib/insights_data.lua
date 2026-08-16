@@ -1316,15 +1316,23 @@ function M.getLastWeekAll(shared_conn)
         return Cache._cache.last_week, Cache._cache.last_week_daily
     end
 
-    local now_ts  = os.time()
-    local now_t   = os.date("*t")
-    local today_midnight = now_ts - (now_t.hour * 3600 + now_t.min * 60 + now_t.sec)
-    local week_start_ts  = today_midnight - 6 * 86400
+    -- Each day's local midnight from calendar components (year/month/day - i),
+    -- not today_midnight - i*86400: os.time() normalises the components in
+    -- local time, so a 23- or 25-hour DST day still lands exactly on midnight,
+    -- whereas the fixed-86400 step would drift onto 23:00/01:00 of the wrong
+    -- day and its date_str would then miss the SQL date() grouping entirely
+    -- (that day's bar reading as 0). Same reasoning as M.dayBounds.
+    local now_t = os.date("*t")
+    local function localMidnight(day_offset)
+        return os.time{ year = now_t.year, month = now_t.month, day = now_t.day + day_offset,
+                        hour = 0, min = 0, sec = 0 }
+    end
+    local week_start_ts = localMidnight(-6)
 
     local DOW_KEYS = { [0]="Sun", [1]="Mon", [2]="Tue", [3]="Wed", [4]="Thu", [5]="Fri", [6]="Sat" }
     local date_info = {}
     for i = 0, 6 do
-        local day_midnight = today_midnight - i * 86400
+        local day_midnight = localMidnight(-i)
         local date_str = os.date("%Y-%m-%d", day_midnight)
         local dow      = tonumber(os.date("%w", day_midnight))
         local label
@@ -1426,18 +1434,26 @@ function M.getLast8WeeksData()
         return cached_val
     end
 
-    local now_ts  = os.time()
-    local now_t   = os.date("*t")
-    local today_midnight = now_ts - (now_t.hour * 3600 + now_t.min * 60 + now_t.sec)
-    local period_start_ts = today_midnight - (8 * 7 - 1) * 86400
+    -- Local midnights from calendar components, not today_midnight - N*86400:
+    -- across a 23-/25-hour DST day the fixed step drifts off midnight and the
+    -- week's start_date/end_date label would name the wrong day (and the SQL
+    -- boundary below would slip by an hour). Same reasoning as M.dayBounds and
+    -- getLastWeekAll. The day-bucketing further down stays correct on its own:
+    -- it rounds diff_days to the nearest whole day, which absorbs the DST hour.
+    local now_t = os.date("*t")
+    local function localMidnight(day_offset)
+        return os.time{ year = now_t.year, month = now_t.month, day = now_t.day + day_offset,
+                        hour = 0, min = 0, sec = 0 }
+    end
+    local today_midnight  = localMidnight(0)
+    local period_start_ts = localMidnight(-(8 * 7 - 1))
 
     local weeks = {}
     for w = 1, 8 do
-        local week_end_midnight   = today_midnight - (8 - w) * 7 * 86400
-        local week_start_midnight = week_end_midnight - 6 * 86400
+        local end_offset   = -(8 - w) * 7
         weeks[w] = {
-            start_date = os.date("%Y-%m-%d", week_start_midnight),
-            end_date   = os.date("%Y-%m-%d", week_end_midnight),
+            start_date = os.date("%Y-%m-%d", localMidnight(end_offset - 6)),
+            end_date   = os.date("%Y-%m-%d", localMidnight(end_offset)),
             seconds    = 0,
             pages      = 0,
         }

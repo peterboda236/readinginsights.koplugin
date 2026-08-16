@@ -67,63 +67,78 @@ end
 
 -- Year/month of this book's most recent page_stat entry, so the calendar
 -- opens on the month last actually read in. nil, nil if no reading yet.
+--
+-- Goes through StatsDb.withDb/withStatement (pcall-guarded, always closes)
+-- rather than a raw conn:rowexec: KOReader's statistics plugin writes to this
+-- file on every page turn, so a read here can lose that race and raise
+-- SQLITE_BUSY - which a raw rowexec would turn into a leaked connection and a
+-- failed popup. On any such failure this just falls back to "no reading yet".
 function M.getBookLastReadYearMonth(book_id)
     if not book_id then return nil, nil end
-    local conn = StatsDb.open()
-    if not conn then return nil, nil end
-
-    local sql = string.format([[
-        SELECT strftime('%%Y', start_time, 'unixepoch', 'localtime'),
-               strftime('%%m', start_time, 'unixepoch', 'localtime')
-        FROM   page_stat
-        WHERE  id_book = %d
-        ORDER  BY start_time DESC
-        LIMIT  1
-    ]], book_id)
-    local y, m = conn:rowexec(sql)
-    conn:close()
-    if not y or not m then return nil, nil end
-    return tonumber(y), tonumber(m)
+    local r = StatsDb.withDb(nil, function(conn)
+        local ym = {}
+        StatsDb.withStatement(conn, string.format([[
+            SELECT strftime('%%Y', start_time, 'unixepoch', 'localtime'),
+                   strftime('%%m', start_time, 'unixepoch', 'localtime')
+            FROM   page_stat
+            WHERE  id_book = %d
+            ORDER  BY start_time DESC
+            LIMIT  1
+        ]], book_id), function(stmt)
+            for row in stmt:rows() do
+                ym.y, ym.m = tonumber(row[1]), tonumber(row[2])
+                break
+            end
+        end)
+        return ym
+    end)
+    if not r or not r.y or not r.m then return nil, nil end
+    return r.y, r.m
 end
 
 -- This book's first-ever page_stat start_time (when reading started), or
--- nil if there's no reading data yet.
+-- nil if there's no reading data yet. Same pcall-guarded access as above.
 function M.getBookStartedTimestamp(book_id)
     if not book_id then return nil end
-    local conn = StatsDb.open()
-    if not conn then return nil end
-
-    local sql = string.format([[
-        SELECT start_time
-        FROM   page_stat
-        WHERE  id_book = %d
-        ORDER  BY start_time ASC
-        LIMIT  1
-    ]], book_id)
-    local started_timestamp = conn:rowexec(sql)
-    conn:close()
-    return started_timestamp and tonumber(started_timestamp) or nil
+    return StatsDb.withDb(nil, function(conn)
+        local ts
+        StatsDb.withStatement(conn, string.format([[
+            SELECT start_time
+            FROM   page_stat
+            WHERE  id_book = %d
+            ORDER  BY start_time ASC
+            LIMIT  1
+        ]], book_id), function(stmt)
+            for row in stmt:rows() do
+                ts = tonumber(row[1])
+                break
+            end
+        end)
+        return ts
+    end)
 end
 
 -- Whether this book has any page_stat entry in the given year/month, used
--- to stop paging back into empty months.
+-- to stop paging back into empty months. Same pcall-guarded access as above;
+-- a lost race falls back to "no data" (the arrows just won't page there).
 function M.bookCalendarMonthHasData(book_id, year, month)
     if not book_id then return false end
-    local conn = StatsDb.open()
-    if not conn then return false end
-
     local year_month = string.format("%04d-%02d", year, month)
-    local sql = string.format([[
-        SELECT EXISTS(
+    return StatsDb.withDb(false, function(conn)
+        local has = false
+        StatsDb.withStatement(conn, string.format([[
             SELECT 1 FROM page_stat
             WHERE  id_book = %d
             AND    strftime('%%Y-%%m', start_time, 'unixepoch', 'localtime') = '%s'
             LIMIT  1
-        );
-    ]], book_id, year_month)
-    local exists = conn:rowexec(sql)
-    conn:close()
-    return tonumber(exists) == 1
+        ]], book_id, year_month), function(stmt)
+            for _row in stmt:rows() do
+                has = true
+                break
+            end
+        end)
+        return has
+    end)
 end
 
 -- "How far into the book had I gotten as of the last page reached this day"
