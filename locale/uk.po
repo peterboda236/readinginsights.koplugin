@@ -1,0 +1,1660 @@
+# Ukrainian translation for the Reading Insights KOReader plugin.
+# Copyright (C) 2026
+# This file is distributed under the same license as the Reading Insights package.
+# advokatb <igor.butsky@gmail.com>, 2026.
+msgid ""
+msgstr ""
+"Project-Id-Version: reading-insights\n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: 2026-08-19 09:06+0200\n"
+"Last-Translator: advokatb <igor.butsky@gmail.com>\n"
+"Language-Team: \n"
+"Language: uk_UA\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n"
+"%100<10 || n%100>=20) ? 1 : 2);\n"
+"POT-Creation-Date: \n"
+"X-Generator: Poedit 1.7.5\n"
+
+msgid "Jan"
+msgstr "Січ"
+
+msgid "Feb"
+msgstr "Лют"
+
+msgid "Mar"
+msgstr "Бер"
+
+msgid "Apr"
+msgstr "Кві"
+
+msgid "May"
+msgstr "Тра"
+
+msgid "Jun"
+msgstr "Чер"
+
+msgid "Jul"
+msgstr "Лип"
+
+msgid "Aug"
+msgstr "Сер"
+
+msgid "Sep"
+msgstr "Вер"
+
+msgid "Oct"
+msgstr "Жов"
+
+msgid "Nov"
+msgstr "Лис"
+
+msgid "Dec"
+msgstr "Гру"
+
+msgid "January"
+msgstr "Січень"
+
+msgid "February"
+msgstr "Лютий"
+
+msgid "March"
+msgstr "Березень"
+
+msgid "April"
+msgstr "Квітень"
+
+msgid "May "
+msgstr "Травень "
+
+msgid "June"
+msgstr "Червень"
+
+msgid "July"
+msgstr "Липень"
+
+msgid "August"
+msgstr "Серпень"
+
+msgid "September"
+msgstr "Вересень"
+
+msgid "October"
+msgstr "Жовтень"
+
+msgid "November"
+msgstr "Листопад"
+
+msgid "December"
+msgstr "Грудень"
+
+msgid "second read"
+msgstr "секунда читання"
+
+msgid "seconds read"
+msgstr "секунд читання"
+
+msgid "minute read"
+msgstr "хвилина читання"
+
+msgid "minutes read"
+msgstr "хвилин читання"
+
+msgid "hour read"
+msgstr "година читання"
+
+msgid "hours read"
+msgstr "годин читання"
+
+msgid "day read"
+msgstr "день читання"
+
+msgid "days read"
+msgstr "днів читання"
+
+msgid "book read"
+msgstr "книга прочитана"
+
+msgid "books read"
+msgstr "книг прочитано"
+
+msgid "book"
+msgstr "книга"
+
+msgid "books"
+msgstr "книг"
+
+msgid "day/book avg"
+msgstr "день/книга сер."
+
+msgid "days/book avg"
+msgstr "днів/книгу сер."
+
+msgid "of days read"
+msgstr "днів читання"
+
+msgid "page read"
+msgstr "сторінка прочитана"
+
+msgid "pages read"
+msgstr "сторінок прочитано"
+
+msgid "week"
+msgstr "тиждень"
+
+msgid "weeks"
+msgstr "тижнів"
+
+msgid "No streak"
+msgstr "Немає серії"
+
+msgid "Current streak"
+msgstr "Поточна серія"
+
+msgid "Best streak"
+msgstr "Найкраща серія"
+
+msgid "Days read per month"
+msgstr "Днів читання на місяць"
+
+msgid "Time read per month"
+msgstr "Час читання на місяць"
+
+msgid "Books read per month"
+msgstr "Книг прочитано на місяць"
+
+msgid "Unknown"
+msgstr "Невідомо"
+
+msgid "No books read"
+msgstr "Книг не прочитано"
+
+msgid "No books read in %1"
+msgstr "Книг не прочитано в %1"
+
+msgid "No books read in "
+msgstr "Книг не прочитано в "
+
+msgid "%1 - book read %2"
+msgstr "%1 - прочитано книгу %2"
+
+msgid "%1 - books read %2"
+msgstr "%1 - прочитано книг %2"
+
+msgid "Reading goal"
+msgstr "Ціль читання"
+
+msgid "%1 - reading goal"
+msgstr "%1 - ціль читання"
+
+msgid "book finished"
+msgstr "книгу завершено"
+
+msgid "books finished"
+msgstr "книг завершено"
+
+msgid "book goal"
+msgstr "ціль книг"
+
+msgid "books goal"
+msgstr "ціль книг"
+
+msgid "%1 - book finished %2"
+msgstr "%1 - книгу завершено %2"
+
+msgid "%1 - books finished %2"
+msgstr "%1 - книг завершено %2"
+
+msgid "No books finished in %1"
+msgstr "Жодної книги не завершено в %1"
+
+msgid "Mark book finished - %1"
+msgstr "Позначити книгу завершеною - %1"
+
+msgid "No books read in this year"
+msgstr "Цього року книг не прочитано"
+
+msgid "Reloading data..."
+msgstr "Перезавантаження даних..."
+
+msgid "Reading insights"
+msgstr "Аналітика читання"
+
+msgid "Reading insights: all time statistics"
+msgstr "Аналітика читання: статистика за весь час"
+
+msgid "Reading insights: current book progress"
+msgstr "Аналітика читання: прогрес поточної книги"
+
+msgid "Reading insights: book progress calendar"
+msgstr "Аналітика читання: календар прогресу книги"
+
+msgid "All books read %1"
+msgstr "Усі книги прочитано %1"
+
+msgid "TOTAL READ"
+msgstr "ВСЬОГО ПРОЧИТАНО"
+
+msgid "LAST WEEK"
+msgstr "МИНУЛИЙ ТИЖДЕНЬ"
+
+msgid "avg/day"
+msgstr "сер./день"
+
+msgid "Today"
+msgstr "Сьогодні"
+
+msgid "Yesterday"
+msgstr "Вчора"
+
+msgid "Mon"
+msgstr "Пн"
+
+msgid "Tue"
+msgstr "Вт"
+
+msgid "Wed"
+msgstr "Ср"
+
+msgid "Thu"
+msgstr "Чт"
+
+msgid "Fri"
+msgstr "Пт"
+
+msgid "Sat"
+msgstr "Сб"
+
+msgid "Sun"
+msgstr "Нд"
+
+msgid "read time avg/day"
+msgstr "сер. час читання/день"
+
+msgid "reading time"
+msgstr "час читання"
+
+msgid "No streak dates"
+msgstr "Немає дат серії"
+
+msgid "CalendarView not available"
+msgstr "CalendarView недоступний"
+
+msgid "Reading time over the last 8 weeks"
+msgstr "Час читання за останні 8 тижнів"
+
+msgid "Pages read over the last 8 weeks"
+msgstr "Прочитано сторінок за останні 8 тижнів"
+
+msgid "Average daily reading time, last 8 weeks"
+msgstr "Середній щоденний час читання за останні 8 тижнів"
+
+msgid "Average daily pages, last 8 weeks"
+msgstr "Середня кількість сторінок на день, останні 8 тижнів"
+
+msgid "No reading data in the last 8 weeks"
+msgstr "Немає даних читання за останні 8 тижнів"
+
+msgid "avg time/day"
+msgstr "сер. час/день"
+
+msgid "avg pages/day"
+msgstr "сер. сторінок/день"
+
+msgid "page read today"
+msgstr "сторінку прочитано сьогодні"
+
+msgid "pages read today"
+msgstr "сторінок прочитано сьогодні"
+
+msgid "Show Reading insights"
+msgstr "Показати Аналітику читання"
+
+msgid "Full-screen refresh on open/close"
+msgstr "Повноекранне оновлення при відкритті/закритті"
+
+msgid "8-week chart order"
+msgstr "Порядок графіка за 8 тижнів"
+
+msgid "Advanced settings"
+msgstr "Розширені налаштування"
+
+msgid "Reading heatmap range"
+msgstr "Діапазон теплокарти читання"
+
+msgid "3 months"
+msgstr "3 місяці"
+
+msgid "4 months"
+msgstr "4 місяці"
+
+msgid "6 months"
+msgstr "6 місяців"
+
+msgid "Time format"
+msgstr "Формат часу"
+
+msgid "24-hour"
+msgstr "24-годинний"
+
+msgid "12-hour (AM/PM)"
+msgstr "12-годинний (ДП/ПП)"
+
+msgid "First day of week"
+msgstr "Перший день тижня"
+
+msgid "Newest first"
+msgstr "Спочатку нові"
+
+msgid "Oldest first"
+msgstr "Спочатку старі"
+
+msgid "Newest first (descending)"
+msgstr "Спочатку нові (за спаданням)"
+
+msgid "Oldest first (ascending)"
+msgstr "Спочатку старі (за зростанням)"
+
+msgid "Loading data…"
+msgstr "Завантаження даних…"
+
+msgid "Book progress"
+msgstr "Прогрес книги"
+
+msgid "Show Book progress"
+msgstr "Показати прогрес книги"
+
+msgid "Show Book progress calendar"
+msgstr "Показати календар прогресу книги"
+
+msgid "Book progress calendar"
+msgstr "Календар прогресу книги"
+
+msgid "No reading data for this book yet."
+msgstr "Для цієї книги ще немає даних читання."
+
+msgid "This chapter"
+msgstr "Ця глава"
+
+msgid "Next chapter"
+msgstr "Наступна глава"
+
+msgid "This book"
+msgstr "Ця книга"
+
+msgid "Pace"
+msgstr "Темп"
+
+msgid "Chapters"
+msgstr "Глави"
+
+msgid "today for all books"
+msgstr "сьогодні для всіх книг"
+
+msgid "to go"
+msgstr "залишилось"
+
+msgid "to read"
+msgstr "до прочитання"
+
+msgid "read"
+msgstr "прочитано"
+
+msgid "read today"
+msgstr "прочитано сьогодні"
+
+msgid "read time"
+msgstr "час читання"
+
+msgid "per day"
+msgstr "на день"
+
+msgid "minute"
+msgstr "хвилина"
+
+msgid "minutes"
+msgstr "хвилин"
+
+msgid "hour"
+msgstr "година"
+
+msgid "hours"
+msgstr "годин"
+
+msgid "week reading"
+msgstr "тиждень читання"
+
+msgid "weeks reading"
+msgstr "тижнів читання"
+
+msgid "month reading"
+msgstr "місяць читання"
+
+msgid "months reading"
+msgstr "місяців читання"
+
+msgid "day reading"
+msgstr "день читання"
+
+msgid "days reading"
+msgstr "днів читання"
+
+msgid "week to go"
+msgstr "тиждень залишилось"
+
+msgid "weeks to go"
+msgstr "тижнів залишилось"
+
+msgid "month to go"
+msgstr "місяць залишилось"
+
+msgid "months to go"
+msgstr "місяців залишилось"
+
+msgid "day to go"
+msgstr "день залишилось"
+
+msgid "days to go"
+msgstr "днів залишилось"
+
+msgid "page"
+msgstr "сторінка"
+
+msgid "pages"
+msgstr "сторінок"
+
+msgid "page left"
+msgstr "сторінка залишилась"
+
+msgid "pages left"
+msgstr "сторінок залишилось"
+
+msgid "page per minute"
+msgstr "сторінка на хвилину"
+
+msgid "pages per minute"
+msgstr "сторінок на хвилину"
+
+msgid "less than"
+msgstr "менше ніж"
+
+msgid "read so far"
+msgstr "прочитано наразі"
+
+msgid "reading time left"
+msgstr "залишилось часу читання"
+
+msgid "(%d day left)"
+msgstr "(залишився %d день)"
+
+msgid "(%d days left)"
+msgstr "(залишилось %d днів)"
+
+msgid "day of reading left"
+msgstr "день читання залишився"
+
+msgid "days of reading left"
+msgstr "днів читання залишилось"
+
+msgid "day since started"
+msgstr "день з початку"
+
+msgid "days since started"
+msgstr "днів з початку"
+
+msgid "Colors"
+msgstr "Кольори"
+
+msgid "Active column color"
+msgstr "Колір активного стовпця"
+
+msgid "Inactive column color"
+msgstr "Колір неактивного стовпця"
+
+msgid "Trend chart line color"
+msgstr "Колір лінії графіка тренду"
+
+msgid "Separator line color"
+msgstr "Колір лінії роздільника"
+
+msgid "Label color"
+msgstr "Колір мітки"
+
+msgid "Value color"
+msgstr "Колір значення"
+
+msgid "Section color"
+msgstr "Колір розділу"
+
+msgid "Chart label color"
+msgstr "Колір міток графіка"
+
+msgid "Settings"
+msgstr "Налаштування"
+
+msgid "Reset all colors to default"
+msgstr "Скинути всі кольори до значень за замовчуванням"
+
+msgid "Cancel"
+msgstr "Скасувати"
+
+msgid "Default"
+msgstr "За замовчуванням"
+
+msgid "Save"
+msgstr "Зберегти"
+
+msgid "Pick with color wheel"
+msgstr "Вибрати за допомогою кольорового кола"
+
+msgid "Apply"
+msgstr "Застосувати"
+
+msgid "Brightness: %d%%"
+msgstr "Яскравість: %d%%"
+
+msgid "Enter a hex color code (e.g. #1E90FF), the way KOReader expects it."
+msgstr "Введіть HEX-код кольору (напр., #1E90FF) у форматі, який очікує KOReader."
+
+msgid "Not a valid hex color code, e.g. #1E90FF."
+msgstr "Недійсний HEX-код кольору, напр., #1E90FF."
+
+msgid "Reset all colors to their default values?"
+msgstr "Скинути всі кольори до значень за замовчуванням?"
+
+msgid "Reset"
+msgstr "Скинути"
+
+msgid "Font"
+msgstr "Шрифт"
+
+msgid "Fonts"
+msgstr "Шрифти"
+
+msgid "Choose a font"
+msgstr "Вибрати шрифт"
+
+msgid "Section headers"
+msgstr "Заголовки розділів"
+
+msgid "Values (big numbers)"
+msgstr "Значення (великі числа)"
+
+msgid "Labels"
+msgstr "Мітки"
+
+msgid "Chart/axis labels"
+msgstr "Мітки графіка/осей"
+
+msgid "Chapter-bar arrows"
+msgstr "Стрілки панелі глав"
+
+msgid "Font name"
+msgstr "Назва шрифту"
+
+msgid ""
+"Enter a bundled font file name (e.g. NotoSans-Bold.ttf) or a KOReader font alias (e."
+"g. tfont, cfont). If it can't be found, this role falls back to its default font."
+msgstr ""
+"Введіть назву вбудованого файлу шрифту (напр., NotoSans-Bold.ttf) або псевдонім "
+"шрифту KOReader (напр., tfont, cfont). Якщо його не знайдено, ця роль повертається до "
+"свого шрифту за замовчуванням."
+
+msgid "Please enter a non-empty font name."
+msgstr "Будь ласка, введіть непорожню назву шрифту."
+
+msgid "Font size"
+msgstr "Розмір шрифту"
+
+msgid "Custom font name (type manually)"
+msgstr "Користувацька назва шрифту (введіть вручну)"
+
+msgid "Reset to default"
+msgstr "Скинути до значень за замовчуванням"
+
+msgid "Reset all fonts to default"
+msgstr "Скинути всі шрифти до значень за замовчуванням"
+
+msgid "Reset all fonts to their default values?"
+msgstr "Скинути всі шрифти до значень за замовчуванням?"
+
+msgid "Set"
+msgstr "Встановити"
+
+msgid "Tomorrow"
+msgstr "Завтра"
+
+msgid "Monday"
+msgstr "Понеділок"
+
+msgid "Tuesday"
+msgstr "Вівторок"
+
+msgid "Wednesday"
+msgstr "Середа"
+
+msgid "Thursday"
+msgstr "Четвер"
+
+msgid "Friday"
+msgstr "П’ятниця"
+
+msgid "Saturday"
+msgstr "Субота"
+
+msgid "Sunday"
+msgstr "Неділя"
+
+msgid "Started:"
+msgstr "Розпочато:"
+
+msgid "Expected finish:"
+msgstr "Очікуване завершення:"
+
+msgid "Use as sleep screen"
+msgstr "Використовувати як екран сну"
+
+msgid "Reading insights sleep screen"
+msgstr "Екран сну Аналітики читання"
+
+msgid "Sleep-screen indicator"
+msgstr "Індикатор екрана сну"
+
+msgid "Off"
+msgstr "Вимкнено"
+
+msgid "File manager only"
+msgstr "Лише файловий менеджер"
+
+msgid "File manager + book"
+msgstr "Файловий менеджер + книга"
+
+msgid "Only when locking from the file manager"
+msgstr "Лише при блокуванні з файлового менеджера"
+
+msgid "File manager and book view"
+msgstr "Файловий менеджер і перегляд книги"
+
+msgid "Transition"
+msgstr "Перехід"
+
+msgid "Slight delay"
+msgstr "Невелика затримка"
+
+msgid "Instant"
+msgstr "Миттєво"
+
+msgid "Slight delay (0.1s)"
+msgstr "Невелика затримка (0.1с)"
+
+msgid "sleeping…"
+msgstr "сплячий режим…"
+
+msgid "Indicator"
+msgstr "Індикатор"
+
+msgid "\"(sleeping…)\" after the title"
+msgstr "«(сплячий режим…)» після назви"
+
+msgid "None"
+msgstr "Немає"
+
+msgid "%d p"
+msgstr "%d стор."
+
+msgid "Updates"
+msgstr "Оновлення"
+
+msgid "Notify on wake when update available"
+msgstr "Сповіщати при пробудженні, якщо є оновлення"
+
+msgid "Update available"
+msgstr "Доступне оновлення"
+
+msgid "Installed version"
+msgstr "Встановлена версія"
+
+msgid "Developer updates"
+msgstr "Оновлення для розробників"
+
+msgid "Development branch"
+msgstr "Гілка розробки"
+
+msgid "Branch name (leave empty for stable)"
+msgstr "Назва гілки (залиште порожнім для стабільної)"
+
+msgid "Check for updates"
+msgstr "Перевірити оновлення"
+
+msgid "Install branch"
+msgstr "Встановити гілку"
+
+msgid "Reset to latest stable release"
+msgstr "Скинути до останнього стабільного випуску"
+
+msgid "Installed: v"
+msgstr "Встановлено: v"
+
+msgid ""
+"This will clear the development branch setting and install the latest stable release "
+"of Reading insights, then restart KOReader. Continue?"
+msgstr ""
+"Це очистить налаштування гілки розробки та встановить останній стабільний випуск "
+"Аналітики читання, потім перезапустить KOReader. Продовжити?"
+
+msgid "Reading insights update available: v"
+msgstr "Доступне оновлення Аналітики читання: v"
+
+msgid "Open the releases page in a browser?"
+msgstr "Відкрити сторінку релізів у браузері?"
+
+msgid "Open"
+msgstr "Відкрити"
+
+msgid "Checking for updates..."
+msgstr "Перевірка оновлень..."
+
+msgid "Could not check for updates."
+msgstr "Не вдалося перевірити оновлення."
+
+msgid "Reading insights is up to date."
+msgstr "Аналітику читання оновлено до останньої версії."
+
+msgid "Version: "
+msgstr "Версія: "
+
+msgid "Update available!"
+msgstr "Доступне оновлення!"
+
+msgid "Installed: "
+msgstr "Встановлено: "
+
+msgid "Latest: "
+msgstr "Останнє: "
+
+msgid "Close"
+msgstr "Закрити"
+
+msgid "Update and restart"
+msgstr "Оновити й перезапустити"
+
+msgid "No download available for this release."
+msgstr "Для цього релізу немає доступного завантаження."
+
+msgid "Downloading update..."
+msgstr "Завантаження оновлення..."
+
+msgid "Download failed."
+msgstr "Не вдалося завантажити."
+
+msgid "Installation failed: "
+msgstr "Не вдалося встановити: "
+
+msgid "Reading insights updated to v"
+msgstr "Аналітику читання оновлено до v"
+
+msgid "Restart KOReader now?"
+msgstr "Перезапустити KOReader зараз?"
+
+msgid "Restart"
+msgstr "Перезапустити"
+
+msgid "Could not install branch:"
+msgstr "Не вдалося встановити гілку:"
+
+msgid "Downloading latest release..."
+msgstr "Завантаження останнього релізу..."
+
+msgid "Could not fetch latest release."
+msgstr "Не вдалося отримати останній реліз."
+
+msgid "Latest release has no downloadable zip."
+msgstr "В останньому релізі немає завантажуваного zip."
+
+msgid "Reading heatmap"
+msgstr "Теплокарта читання"
+
+msgid "Time of day heatmap"
+msgstr "Теплокарта часу доби"
+
+msgid "Calendar heatmap"
+msgstr "Теплокарта календаря"
+
+msgid "Less"
+msgstr "Менше"
+
+msgid "More"
+msgstr "Більше"
+
+msgid "No reading (0%)"
+msgstr "Без читання (0%)"
+
+msgid "Low activity (25%)"
+msgstr "Низька активність (25%)"
+
+msgid "Medium activity (50%)"
+msgstr "Середня активність (50%)"
+
+msgid "High activity (75%)"
+msgstr "Висока активність (75%)"
+
+msgid "Peak activity (100%)"
+msgstr "Пікова активність (100%)"
+
+msgid "Reading streak calendar"
+msgstr "Календар серії читання"
+
+msgid "Daily streak day"
+msgstr "День щоденної серії"
+
+msgid "Weekly streak gap day"
+msgstr "День пропуску тижневої серії"
+
+msgid "Show long durations (24h+) as days"
+msgstr "Показати тривалі періоди (24г+) у днях"
+
+msgid "Date format"
+msgstr "Формат дати"
+
+msgid "Book progress calendar cell content"
+msgstr "Вміст комірки календаря прогресу книги"
+
+msgid "Percent"
+msgstr "Відсоток"
+
+msgid "Pages"
+msgstr "Сторінки"
+
+msgid "Time"
+msgstr "Час"
+
+msgid "day"
+msgstr "день"
+
+msgid "days"
+msgstr "днів"
+
+msgid "No reading on this day."
+msgstr "У цей день читання не було."
+
+msgid "About"
+msgstr "Про програму"
+
+msgid "Reading insight"
+msgstr "Аналітика читання"
+
+msgid ""
+"A full-screen overlay with a comprehensive overview of your reading history, powered "
+"by KOReader's statistics database."
+msgstr ""
+"Повноекранний огляд з детальним підсумком історії вашого читання на основі бази "
+"статистики KOReader."
+
+msgid "Most reading time in a day"
+msgstr "Найбільше часу читання за день"
+
+msgid "Most pages in a day"
+msgstr "Найбільше сторінок за день"
+
+msgid "Best daily streak"
+msgstr "Найкраща щоденна серія"
+
+msgid "Fastest book finished"
+msgstr "Найшвидше завершена книга"
+
+msgid "Last milestone"
+msgstr "Остання віха"
+
+msgid "Next milestone"
+msgstr "Наступна віха"
+
+msgid "Records"
+msgstr "Рекорди"
+
+msgid "%d hour left"
+msgstr "залишилась %d година"
+
+msgid "%d hours left"
+msgstr "залишилось %d годин"
+
+msgid "Reading insights: records"
+msgstr "Аналітика читання: рекорди"
+
+msgid "Show Records"
+msgstr "Показати рекорди"
+
+msgid "Show Reading streak"
+msgstr "Показати серію читання"
+
+msgid "Sub-values (date / book title)"
+msgstr "Додаткові значення (дата / назва книги)"
+
+msgid "Reading goal section"
+msgstr "Розділ цілі читання"
+
+msgid ""
+"Shows the number of books finished this year next to your yearly goal. Long press the "
+"goal value to change it."
+msgstr ""
+"Показує кількість книг, завершених цього року, поруч із вашою річною ціллю. Утримуйте "
+"значення цілі, щоб змінити його."
+
+msgid "book to read"
+msgstr "книга до прочитання"
+
+msgid "books to read"
+msgstr "книг до прочитання"
+
+msgid "* = changed by you"
+msgstr "* = змінено вами"
+
+msgid "You changed 1 book. Go back?"
+msgstr "Ви змінили 1 книгу. Повернутися назад?"
+
+msgid "You changed %d books. Go back?"
+msgstr "Ви змінили %d книг(и). Повернутися назад?"
+
+msgid "Keep editing"
+msgstr "Продовжити редагування"
+
+msgid "Automatic"
+msgstr "Автоматично"
+
+msgid ""
+"Sizes the Reading insights bar charts so the page fits the screen without a scroll "
+"bar."
+msgstr ""
+"Підбирає розмір стовпчастих графіків Аналітики читання так, щоб сторінка вміщалась на "
+"екрані без смуги прокрутки."
+
+msgid "Bar chart height"
+msgstr "Висота стовпчастого графіка"
+
+msgid "Last week"
+msgstr "Минулий тиждень"
+
+msgid "Months"
+msgstr "Місяці"
+
+msgid "Total read"
+msgstr "Всього прочитано"
+
+msgid "Last read (newest first)"
+msgstr "Останнє читання (спочатку нові)"
+
+msgid "Last read (oldest first)"
+msgstr "Останнє читання (спочатку старі)"
+
+msgid "Title (A to Z)"
+msgstr "Назва (А-Я)"
+
+msgid "Title (Z to A)"
+msgstr "Назва (Я-А)"
+
+msgid "Books finished in %1"
+msgstr "Книг завершено в %1"
+
+msgid "Mark books finished"
+msgstr "Позначити книги завершеними"
+
+msgid "Add book"
+msgstr "Додати книгу"
+
+msgid "Edit book"
+msgstr "Редагувати книгу"
+
+msgid "Edit"
+msgstr "Редагувати"
+
+msgid "Delete"
+msgstr "Видалити"
+
+msgid "Delete \"%1\"?"
+msgstr "Видалити «%1»?"
+
+msgid "Title"
+msgstr "Назва"
+
+msgid "Author"
+msgstr "Автор"
+
+msgid "Please enter a title"
+msgstr "Будь ласка, введіть назву"
+
+msgid "Date read (%1)"
+msgstr "Дата читання (%1)"
+
+msgid "Please enter the date as %1"
+msgstr "Будь ласка, введіть дату у форматі %1"
+
+msgid "Reload data"
+msgstr "Перезавантажити дані"
+
+msgid "Add books manually"
+msgstr "Додати книги вручну"
+
+msgid "Add books manually - %1"
+msgstr "Додати книги вручну - %1"
+
+msgid "Date & time"
+msgstr "Дата й час"
+
+msgid "Reading insight popup"
+msgstr "Спливне вікно Аналітики читання"
+
+msgid "Last week chapter bar order"
+msgstr "Порядок панелі глав за минулий тиждень"
+
+msgid "Today on the left"
+msgstr "Сьогодні ліворуч"
+
+msgid "Today on the right"
+msgstr "Сьогодні праворуч"
+
+msgid "Reading goal display"
+msgstr "Відображення цілі читання"
+
+msgid "Goal total"
+msgstr "Всього за ціллю"
+
+msgid "Remaining"
+msgstr "Залишилось"
+
+msgid "book left"
+msgstr "книга залишилась"
+
+msgid "books left"
+msgstr "книг залишилось"
+
+msgid "night"
+msgstr "вночі"
+
+msgid "morning"
+msgstr "вранці"
+
+msgid "late morning"
+msgstr "пізно вранці"
+
+msgid "afternoon"
+msgstr "вдень"
+
+msgid "evening"
+msgstr "ввечері"
+
+msgid "You read most in the %1, around %2"
+msgstr "Найбільше ви читаєте %1, приблизно о %2"
+
+msgid "Achievements"
+msgstr "Досягнення"
+
+msgid "Show Achievements"
+msgstr "Показати досягнення"
+
+msgid "Reading insights: achievements"
+msgstr "Аналітика читання: досягнення"
+
+msgid "earned"
+msgstr "отримано"
+
+msgid "Locked"
+msgstr "Заблоковано"
+
+msgid "Set reading goal"
+msgstr "Встановити ціль читання"
+
+msgid "First book"
+msgstr "Перша книга"
+
+msgid "Finish your first book"
+msgstr "Завершіть свою першу книгу"
+
+msgid "Bookworm"
+msgstr "Книжковий хробак"
+
+msgid "Finish 10 books"
+msgstr "Завершіть 10 книг"
+
+msgid "Bibliophile"
+msgstr "Бібліофіл"
+
+msgid "Finish 50 books"
+msgstr "Завершіть 50 книг"
+
+msgid "100 hours"
+msgstr "100 годин"
+
+msgid "Read for 100 hours in total"
+msgstr "Читайте загалом 100 годин"
+
+msgid "1000 hours"
+msgstr "1000 годин"
+
+msgid "Read for 1000 hours in total"
+msgstr "Читайте загалом 1000 годин"
+
+msgid "Weekly streak"
+msgstr "Тижнева серія"
+
+msgid "Read on 7 days in a row"
+msgstr "Читайте 7 днів поспіль"
+
+msgid "Monthly streak"
+msgstr "Місячна серія"
+
+msgid "Read on 30 days in a row"
+msgstr "Читайте 30 днів поспіль"
+
+msgid "Marathon"
+msgstr "Марафон"
+
+msgid "Read for 3 hours in a single day"
+msgstr "Читайте 3 години за один день"
+
+msgid "Page turner"
+msgstr "Невідривне читання"
+
+msgid "Read 300 pages in a single day"
+msgstr "Прочитайте 300 сторінок за один день"
+
+msgid "Night owl"
+msgstr "Нічна сова"
+
+msgid "Read between midnight and 4 a.m."
+msgstr "Читайте між північчю та 4 ранку"
+
+msgid "Earned (newest first)"
+msgstr "Отримано (спочатку нові)"
+
+msgid "Earned (oldest first)"
+msgstr "Отримано (спочатку старі)"
+
+msgid "Name (A to Z)"
+msgstr "Назва (А-Я)"
+
+msgid "Name (Z to A)"
+msgstr "Назва (Я-А)"
+
+msgid "Five books"
+msgstr "П’ять книг"
+
+msgid "Collector"
+msgstr "Колекціонер"
+
+msgid "Century of books"
+msgstr "Сто книг"
+
+msgid "Library"
+msgstr "Бібліотека"
+
+msgid "Prolific month"
+msgstr "Продуктивний місяць"
+
+msgid "Ten a year"
+msgstr "Десять за рік"
+
+msgid "Fifty a year"
+msgstr "П’ятдесят за рік"
+
+msgid "In one sitting"
+msgstr "За один присід"
+
+msgid "Brick"
+msgstr "Цеглина"
+
+msgid "Tome"
+msgstr "Том"
+
+msgid "First hour"
+msgstr "Перша година"
+
+msgid "Five hours"
+msgstr "П’ять годин"
+
+msgid "Ten hours"
+msgstr "Десять годин"
+
+msgid "Twenty-five hours"
+msgstr "Двадцять п’ять годин"
+
+msgid "Fifty hours"
+msgstr "П’ятдесят годин"
+
+msgid "250 hours"
+msgstr "250 годин"
+
+msgid "500 hours"
+msgstr "500 годин"
+
+msgid "2500 hours"
+msgstr "2500 годин"
+
+msgid "5000 hours"
+msgstr "5000 годин"
+
+msgid "10000 hours"
+msgstr "10000 годин"
+
+msgid "Intense month"
+msgstr "Інтенсивний місяць"
+
+msgid "100 hours in a year"
+msgstr "100 годин за рік"
+
+msgid "500 hours in a year"
+msgstr "500 годин за рік"
+
+msgid "1000 pages"
+msgstr "1000 сторінок"
+
+msgid "10000 pages"
+msgstr "10000 сторінок"
+
+msgid "50000 pages"
+msgstr "50000 сторінок"
+
+msgid "100000 pages"
+msgstr "100000 сторінок"
+
+msgid "Devourer"
+msgstr "Поглинач"
+
+msgid "Unstoppable"
+msgstr "Незупинний"
+
+msgid "Getting into it"
+msgstr "Входження у ритм"
+
+msgid "Two weeks"
+msgstr "Два тижні"
+
+msgid "Hundred-day streak"
+msgstr "Сторіденна серія"
+
+msgid "A full year"
+msgstr "Цілий рік"
+
+msgid "Monthly rhythm"
+msgstr "Місячний ритм"
+
+msgid "Quarter"
+msgstr "Квартал"
+
+msgid "Perfect month"
+msgstr "Ідеальний місяць"
+
+msgid "Weekend warrior"
+msgstr "Вихідний воїн"
+
+msgid "Absorbed"
+msgstr "Занурення"
+
+msgid "Marathon day"
+msgstr "Марафонський день"
+
+msgid "One sitting"
+msgstr "Один присід"
+
+msgid "Deep session"
+msgstr "Глибока сесія"
+
+msgid "Past midnight"
+msgstr "Після півночі"
+
+msgid "Early bird"
+msgstr "Рання пташка"
+
+msgid "Lunch break"
+msgstr "Обідня перерва"
+
+msgid "Around the clock"
+msgstr "Цілодобово"
+
+msgid "Full week"
+msgstr "Повний тиждень"
+
+msgid "New Year's Eve reader"
+msgstr "Читач напередодні Нового року"
+
+msgid "New Year's resolution"
+msgstr "Новорічна обіцянка"
+
+msgid "Speed reader"
+msgstr "Швидкий читач"
+
+msgid "Devoted"
+msgstr "Відданий"
+
+msgid "Well-read"
+msgstr "Начитаний"
+
+msgid "Literary"
+msgstr "Літературний"
+
+msgid "Explorer"
+msgstr "Дослідник"
+
+msgid "Finish 5 books"
+msgstr "Завершіть 5 книг"
+
+msgid "Finish 25 books"
+msgstr "Завершіть 25 книг"
+
+msgid "Finish 100 books"
+msgstr "Завершіть 100 книг"
+
+msgid "Finish 250 books"
+msgstr "Завершіть 250 книг"
+
+msgid "Finish 3 books in one calendar month"
+msgstr "Завершіть 3 книги за один календарний місяць"
+
+msgid "Finish 10 books in one year"
+msgstr "Завершіть 10 книг за один рік"
+
+msgid "Finish 50 books in one year"
+msgstr "Завершіть 50 книг за один рік"
+
+msgid "Finish a book on the day you started it"
+msgstr "Завершіть книгу того ж дня, коли почали"
+
+msgid "Finish a book of 500+ pages"
+msgstr "Завершіть книгу обсягом 500+ сторінок"
+
+msgid "Finish a book of 1000+ pages"
+msgstr "Завершіть книгу обсягом 1000+ сторінок"
+
+msgid "Read for 1 hour in total"
+msgstr "Читайте загалом 1 годину"
+
+msgid "Read for 5 hours in total"
+msgstr "Читайте загалом 5 годин"
+
+msgid "Read for 10 hours in total"
+msgstr "Читайте загалом 10 годин"
+
+msgid "Read for 25 hours in total"
+msgstr "Читайте загалом 25 годин"
+
+msgid "Read for 50 hours in total"
+msgstr "Читайте загалом 50 годин"
+
+msgid "Read for 250 hours in total"
+msgstr "Читайте загалом 250 годин"
+
+msgid "Read for 500 hours in total"
+msgstr "Читайте загалом 500 годин"
+
+msgid "Read for 2500 hours in total"
+msgstr "Читайте загалом 2500 годин"
+
+msgid "Read for 5000 hours in total"
+msgstr "Читайте загалом 5000 годин"
+
+msgid "Read for 10000 hours in total"
+msgstr "Читайте загалом 10000 годин"
+
+msgid "Read for 50 hours in one calendar month"
+msgstr "Читайте 50 годин за один календарний місяць"
+
+msgid "Read for 100 hours in one year"
+msgstr "Читайте 100 годин за один рік"
+
+msgid "Read for 500 hours in one year"
+msgstr "Читайте 500 годин за один рік"
+
+msgid "Read 1000 pages in total"
+msgstr "Прочитайте загалом 1000 сторінок"
+
+msgid "Read 10000 pages in total"
+msgstr "Прочитайте загалом 10000 сторінок"
+
+msgid "Read 50000 pages in total"
+msgstr "Прочитайте загалом 50000 сторінок"
+
+msgid "Read 100000 pages in total"
+msgstr "Прочитайте загалом 100000 сторінок"
+
+msgid "Read 500 pages in a single day"
+msgstr "Прочитайте 500 сторінок за один день"
+
+msgid "Read 1000 pages in a single day"
+msgstr "Прочитайте 1000 сторінок за один день"
+
+msgid "Read on 3 days in a row"
+msgstr "Читайте 3 дні поспіль"
+
+msgid "Read on 14 days in a row"
+msgstr "Читайте 14 днів поспіль"
+
+msgid "Read on 100 days in a row"
+msgstr "Читайте 100 днів поспіль"
+
+msgid "Read on 365 days in a row"
+msgstr "Читайте 365 днів поспіль"
+
+msgid "A 4-week reading streak"
+msgstr "4-тижнева серія читання"
+
+msgid "A 12-week reading streak"
+msgstr "12-тижнева серія читання"
+
+msgid "Read on every day of a calendar month"
+msgstr "Читайте кожен день календарного місяця"
+
+msgid "Read on both weekend days, 4 weekends in a row"
+msgstr "Читайте в обидва вихідні дні, 4 вихідних поспіль"
+
+msgid "Read for 5 hours in a single day"
+msgstr "Читайте 5 годин за один день"
+
+msgid "Read for 6 hours in a single day"
+msgstr "Читайте 6 годин за один день"
+
+msgid "Read for 1 hour without a break"
+msgstr "Читайте 1 годину без перерви"
+
+msgid "Read for 2 hours without a break"
+msgstr "Читайте 2 години без перерви"
+
+msgid "Read on both sides of midnight in one session"
+msgstr "Читайте по обидва боки півночі за один сеанс"
+
+msgid "Read between 5 and 7 a.m."
+msgstr "Читайте між 5 і 7 ранку"
+
+msgid "Read between noon and 1 p.m."
+msgstr "Читайте між полуднем і 13:00"
+
+msgid "Read in every hour of the day at some point"
+msgstr "Читайте в кожну годину доби хоча б раз"
+
+msgid "Read on every day of the week at some point"
+msgstr "Читайте в кожен день тижня хоча б раз"
+
+msgid "Read on 31 December"
+msgstr "Читайте 31 грудня"
+
+msgid "Read on 1 January"
+msgstr "Читайте 1 січня"
+
+msgid "Average over 60 pages per hour in a book"
+msgstr "Досягніть середньої швидкості понад 60 сторінок на годину в книзі"
+
+msgid "Spend over 20 hours on a single book"
+msgstr "Витратьте понад 20 годин на одну книгу"
+
+msgid "Finish books by 5 different authors"
+msgstr "Завершіть книги 5 різних авторів"
+
+msgid "Finish books by 25 different authors"
+msgstr "Завершіть книги 25 різних авторів"
+
+msgid "Open 50 different books"
+msgstr "Відкрийте 50 різних книг"
+
+msgid "Grand library"
+msgstr "Велика бібліотека"
+
+msgid "Adventurer"
+msgstr "Шукач пригод"
+
+msgid "Cartographer"
+msgstr "Картограф"
+
+msgid "Well-versed"
+msgstr "Обізнаний"
+
+msgid "100 reading days"
+msgstr "100 днів читання"
+
+msgid "365 reading days"
+msgstr "365 днів читання"
+
+msgid "1000 reading days"
+msgstr "1000 днів читання"
+
+msgid "Every month"
+msgstr "Кожен місяць"
+
+msgid "Four seasons"
+msgstr "Чотири сезони"
+
+msgid "Complete week"
+msgstr "Повний тиждень"
+
+msgid "Veteran"
+msgstr "Ветеран"
+
+msgid "Reading anniversary"
+msgstr "Річниця читання"
+
+msgid "Iron focus"
+msgstr "Залізна зосередженість"
+
+msgid "Sprint"
+msgstr "Спринт"
+
+msgid "Big month"
+msgstr "Великий місяць"
+
+msgid "Big week"
+msgstr "Великий тиждень"
+
+msgid "Comeback"
+msgstr "Повернення"
+
+msgid "Author loyalty"
+msgstr "Вірність автору"
+
+msgid "Finish 500 books"
+msgstr "Завершіть 500 книг"
+
+msgid "Open 100 different books"
+msgstr "Відкрийте 100 різних книг"
+
+msgid "Open 250 different books"
+msgstr "Відкрийте 250 різних книг"
+
+msgid "Finish books by 50 different authors"
+msgstr "Завершіть книги 50 різних авторів"
+
+msgid "Read on 100 different days"
+msgstr "Читайте в 100 різних днів"
+
+msgid "Read on 365 different days"
+msgstr "Читайте в 365 різних днів"
+
+msgid "Read on 1000 different days"
+msgstr "Читайте в 1000 різних днів"
+
+msgid "Read in every month of one year"
+msgstr "Читайте в кожному місяці одного року"
+
+msgid "Read in all four seasons"
+msgstr "Читайте в усі чотири пори року"
+
+msgid "Read every day of one calendar week (Mon-Sun)"
+msgstr "Читайте кожен день одного календарного тижня (Пн-Нд)"
+
+msgid "Your reading history spans 5 calendar years"
+msgstr "Ваша історія читання охоплює 5 календарних років"
+
+msgid "One year since your first reading"
+msgstr "Рік з вашого першого читання"
+
+msgid "Read for 3 hours without a break"
+msgstr "Читайте 3 години без перерви"
+
+msgid "Read 100 pages in one session"
+msgstr "Прочитайте 100 сторінок за один сеанс"
+
+msgid "Read 5000 pages in one calendar month"
+msgstr "Прочитайте 5000 сторінок за один календарний місяць"
+
+msgid "Read 20 hours in one week"
+msgstr "Читайте 20 годин за один тиждень"
+
+msgid "Read again after a 30-day break"
+msgstr "Почніть читати знову після 30-денної перерви"
+
+msgid "Finish 5 books by the same author"
+msgstr "Завершіть 5 книг одного автора"
+
+msgid "Achievement refresh"
+msgstr "Оновлення досягнень"
+
+msgid "Once a day"
+msgstr "Раз на день"
+
+msgid "Every open"
+msgstr "При кожному відкритті"
+
+msgid "Reloading achievements..."
+msgstr "Перезавантаження досягнень..."
+
+msgid "Show all"
+msgstr "Показати всі"
+
+msgid "Show earned only"
+msgstr "Показати лише отримані"
+
+msgid "Show locked only"
+msgstr "Показати лише заблоковані"
+
+msgid "Shows the reading goal and achievements section of the Reading insights popup."
+msgstr "Показує розділ цілі читання та досягнень у спливному вікні Аналітики читання."
+
+msgid "Reading goal & achievements"
+msgstr "Ціль читання та досягнення"
+
+msgid "Reading goal only"
+msgstr "Лише ціль читання"
+
+msgid "Reading time by time of day"
+msgstr "Час читання за часом доби"
+
+msgid "Book progress popup"
+msgstr "Спливне вікно прогресу книги"
+
+msgid "Chapter bar"
+msgstr "Панель глав"
+
+msgid "Show the chapter bar chart in the \"This book\" section."
+msgstr "Показати панель глав у розділі «Ця книга»."
+
+msgid "Chapters per page"
+msgstr "Глав на сторінку"
+
+msgid "How many chapters the chapter bar shows at once before paging with the arrows."
+msgstr "Скільки глав показує панель глав одночасно, перш ніж перегортати стрілками."
+
+msgid "Custom value"
+msgstr "Користувацьке значення"
+
+msgid "Started / expected finish row"
+msgstr "Рядок «Розпочато / очікуване завершення»"
+
+msgid "Show the \"started …\" and \"expected finish\" date row in the \"Pace\" section."
+msgstr "Показати рядок дат «розпочато…» та «очікуване завершення» в розділі «Темп»."
