@@ -899,7 +899,7 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
 
     local chart = buildMonthlyChart(popup_self, monthly_data, layout, fonts)
 
-    UI.addSectionWithRow(sections, year_header, yearly_row, layout, { pad_row = false, no_bottom_line = not chart })
+    UI.addSectionWithRow(sections, year_header, yearly_row, layout, { pad_row = false, no_bottom_line = not chart, bottom_line_thin = true })
 
     if chart then
         local chart_header_text = (popup_self.mode == VS.INSIGHTS_MODE_HOURS
@@ -921,7 +921,11 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
             popup_self:cycleInsightsMode()
             return true
         end
-        UI.addSectionWithRow(sections, tappable_chart_header, chart, layout, { add_divider = true, no_bottom_line = false })
+        -- Thin only when the reading-goal/achievements section follows right
+        -- after (see below); otherwise this line sits above "Total read"
+        -- and stays the regular thick divider.
+        UI.addSectionWithRow(sections, tappable_chart_header, chart, layout,
+            { add_divider = true, no_bottom_line = false, bottom_line_thin = VS.Opt.readShowReadingGoal() })
     end
 
     -- Long-press targets for the reading-goal section (its headers and
