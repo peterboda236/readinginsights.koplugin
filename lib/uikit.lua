@@ -119,12 +119,14 @@ function M.buildTwoColRow(left_widget, right_widget, layout, hide_separator)
     }
 end
 
--- A section title, left-aligned across the full width.
-function M.buildSectionHeader(font_section, text, width, left_padding)
+-- A section title, left-aligned across the full width. `background`
+-- optionally overrides the default white fill behind the header text (e.g.
+-- a light gray to visually group a header with the section above it).
+function M.buildSectionHeader(font_section, text, width, left_padding, background)
     left_padding = left_padding or Size.padding.large
     local text_widget = TextWidget:new{ text = text, face = font_section, fgcolor = Colors.section() }
     return FrameContainer:new{
-        background     = Blitbuffer.COLOR_WHITE,
+        background     = background or Blitbuffer.COLOR_WHITE,
         bordersize     = 0,
         padding_top    = Size.padding.small,
         padding_bottom = Size.padding.small,
@@ -143,22 +145,18 @@ end
 --   add_divider    = false  no divider or closing line at all
 --   no_top_line    = true   skip the thin divider under the header
 --   no_bottom_line = true   skip the thick line under the row
---   bottom_line_thin = true draw the line under the row thin instead of
---                            thick (ignored if no_bottom_line is set)
 -- Anything other than a table is ignored, so an older call that passed a
 -- stray extra argument can't turn into an indexing error here.
 function M.addSectionWithRow(sections, header_widget, row, layout, opts)
-    local pad_row          = true
-    local add_divider      = true
-    local no_bottom_line   = false
-    local no_top_line      = false
-    local bottom_line_thin = false
+    local pad_row        = true
+    local add_divider    = true
+    local no_bottom_line = false
+    local no_top_line    = false
     if type(opts) == "table" then
-        if opts.pad_row          == false then pad_row          = false end
-        if opts.add_divider      == false then add_divider      = false end
-        if opts.no_bottom_line   == true  then no_bottom_line   = true  end
-        if opts.no_top_line      == true  then no_top_line      = true  end
-        if opts.bottom_line_thin == true  then bottom_line_thin = true  end
+        if opts.pad_row        == false then pad_row        = false end
+        if opts.add_divider    == false then add_divider    = false end
+        if opts.no_bottom_line == true  then no_bottom_line = true  end
+        if opts.no_top_line    == true  then no_top_line    = true  end
     end
 
     table.insert(sections, header_widget)
@@ -170,9 +168,8 @@ function M.addSectionWithRow(sections, header_widget, row, layout, opts)
     table.insert(sections, pad_row and M.padded(layout.padding_h, row) or row)
     table.insert(sections, VerticalSpan:new{ height = Size.padding.large })
     if add_divider and not no_bottom_line then
-        local bottom_line_size = bottom_line_thin and Size.line.thin or Size.line.thick
         table.insert(sections, M.padded(layout.padding_h,
-            Colors.newBar(layout.content_width, bottom_line_size, Colors.separator())))
+            Colors.newBar(layout.content_width, Size.line.thick, Colors.separator())))
     end
 end
 

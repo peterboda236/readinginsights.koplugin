@@ -381,6 +381,9 @@ msgstr "分区标题颜色"
 msgid "Chart label color"
 msgstr "图表标签颜色"
 
+msgid "Section header background color"
+msgstr "分区标题背景颜色"
+
 msgid "Settings"
 msgstr "设置"
 msgid "Reset all colors to default"

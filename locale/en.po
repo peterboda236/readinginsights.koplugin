@@ -516,6 +516,9 @@ msgstr "Section color"
 msgid "Chart label color"
 msgstr "Chart label color"
 
+msgid "Section header background color"
+msgstr "Section header background color"
+
 msgid "Settings"
 msgstr "Settings"
 

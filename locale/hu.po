@@ -531,6 +531,9 @@ msgstr "Szekció színe"
 msgid "Chart label color"
 msgstr "Diagram felirat színe"
 
+msgid "Section header background color"
+msgstr "Szakaszfejléc háttérszíne"
+
 msgid "Settings"
 msgstr "Beállítások"
 

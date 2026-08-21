@@ -516,6 +516,9 @@ msgstr "Abschnittsfarbe"
 msgid "Chart label color"
 msgstr "Diagrammbeschriftungsfarbe"
 
+msgid "Section header background color"
+msgstr "Hintergrundfarbe der Abschnittsüberschrift"
+
 msgid "Settings"
 msgstr "Einstellungen"
 

@@ -516,6 +516,9 @@ msgstr "Cor da secção"
 msgid "Chart label color"
 msgstr "Cor do rótulo do gráfico"
 
+msgid "Section header background color"
+msgstr "Cor de fundo do cabeçalho de secção"
+
 msgid "Settings"
 msgstr "Definições"
 
