@@ -941,7 +941,23 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
             or _("Days read per month")
         chart_header_text = chart_header_text
         --.. " \xe2\x80\xba"
-        local chart_header = UI.buildSectionHeader(fonts.section, chart_header_text, layout.full_width)
+        -- Styled like the label captions under a value (e.g. "pages read",
+        -- "reading time" - fonts.label/Colors.label()) rather than a bold
+        -- section title, and with no divider under it (no_top_line below),
+        -- so it reads as a lightweight caption for the chart rather than a
+        -- heavyweight section header.
+        local chart_header_text_widget = TextWidget:new{
+            text = chart_header_text, face = fonts.label, fgcolor = Colors.label(),
+        }
+        local chart_header = FrameContainer:new{
+            background     = Blitbuffer.COLOR_WHITE,
+            bordersize     = 0,
+            padding_top    = Size.padding.small,
+            padding_bottom = Size.padding.small,
+            padding_left   = Size.padding.large,
+            padding_right  = 0,
+            chart_header_text_widget,
+        }
         local tappable_chart_header = InputContainer:new{
             dimen = Geom:new{ x = 0, y = 0, w = chart_header:getSize().w, h = chart_header:getSize().h },
             chart_header,
@@ -953,13 +969,23 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
             popup_self:cycleInsightsMode()
             return true
         end
-        -- Thin unless both Reading goal and Achievements show right below
-        -- (the "both" section mode) - that combination keeps the regular
-        -- thick divider; goal-only, and reading goal turned off entirely
-        -- (nothing follows, this line sits above "Total read"), both stay
-        -- thin.
+        -- The divider below the chart depends on what comes right after it:
+        --   - GOAL_MODE_BOTH: the "Reading goal | Achievements" header/row
+        --     follows, with its own gray header background - keep the
+        --     regular thick line to separate it clearly.
+        --   - GOAL_MODE_GOAL: the goal row now follows with no header of
+        --     its own (see the goal-only branch below) - thin line, so
+        --     the row still reads as visually separated from the chart.
+        --   - GOAL_MODE_OFF: "Total read" follows instead (its own thin
+        --     top line included) - since nothing else sits between them,
+        --     use the regular thick line, same as any other section end.
+        -- no_top_line: no divider directly under the chart header - it now
+        -- reads as a plain caption for the chart rather than a section
+        -- title with its own separator line.
+        local goal_mode = VS.Opt.readGoalSectionMode()
         UI.addSectionWithRow(sections, tappable_chart_header, chart, layout,
-            { add_divider = true, no_bottom_line = false, bottom_line_thin = VS.Opt.readGoalSectionMode() ~= VS.Opt.GOAL_MODE_BOTH })
+            { add_divider = true, no_top_line = true,
+              no_bottom_line = false, bottom_line_thin = goal_mode == VS.Opt.GOAL_MODE_GOAL })
     end
 
     -- Long-press targets for the reading-goal section (its headers and
@@ -1023,24 +1049,9 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
             return cell
         end
 
-        -- The same small top/bottom padding buildSectionHeader wraps its
-        -- title in, so a custom header lines up vertically with every other
-        -- section header.
-        local function paddedHeader(inner)
-            return FrameContainer:new{
-                background     = Blitbuffer.COLOR_WHITE,
-                bordersize     = 0,
-                padding_top    = Size.padding.small,
-                padding_bottom = Size.padding.small,
-                padding_left   = 0,
-                padding_right  = 0,
-                UI.padded(layout.padding_h, inner),
-            }
-        end
-
-        -- Same idea as paddedHeader, but the small top/bottom padding is
-        -- baked into each column individually (instead of once for the
-        -- whole row), so one column can get its own background (used to
+        -- Same small top/bottom padding buildSectionHeader wraps its title
+        -- in, but baked into each column individually (instead of once for
+        -- the whole row), so one column can get its own background (used to
         -- gray out only "Achievements", not "Reading goal" next to it -
         -- see HEADER_BG above) while staying the same height as the other.
         -- `extra_left_gap`, when given, adds that much blank space *inside*
@@ -1113,14 +1124,19 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
             local right_cell = dataCell(right_line, editGoal)
             addHold(right_cell, editGoal)
 
-            -- Single "Reading goal" header spanning the row, tap/hold behaving
-            -- like the finished-book (left) cell.
-            local header = headerCell(buildGoalYearLabel(goal_year), openFinished, layout.content_width)
-            addHold(header, openFinishedMenu)
-
-            UI.addSectionWithRow(sections, paddedHeader(header),
-                wrapRow(UI.buildTwoColRow(left_cell, right_cell, layout)),
-                layout, { pad_row = false })
+            -- Reading-goal-only mode drops the "Reading goal" header/title
+            -- row entirely - unlike the combined view below, there's no
+            -- "Achievements" column next to it to label, and tapping/
+            -- holding the finished-book cell still does what the header
+            -- used to (openFinished / openFinishedMenu), so nothing is
+            -- lost by removing the caption. No top divider of its own
+            -- either - the chart section's own (thin) bottom line, right
+            -- above, already separates it from the chart.
+            table.insert(sections, VerticalSpan:new{ height = Size.padding.default })
+            table.insert(sections, wrapRow(UI.buildTwoColRow(left_cell, right_cell, layout)))
+            table.insert(sections, VerticalSpan:new{ height = Size.padding.large })
+            table.insert(sections, UI.padded(layout.padding_h,
+                Colors.newBar(layout.content_width, Size.line.thick, Colors.separator())))
         else
             -- Combined view: "finished/target" figure + achievements count.
             local left_value = formatCount(finished_count) .. "/" .. formatCount(goal_value)
