@@ -778,6 +778,13 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
                 VerticalSpan:new{ height = Size.padding.default },
                 UI.padded(layout.padding_h, week_row),
             }
+            -- Thin divider under the avg time/day - avg pages/day row, so it
+            -- reads as visually separated from the daily bar chart below it
+            -- (mirrors the thin divider used under the yearly figures,
+            -- above the monthly chart).
+            table.insert(last_week_content, VerticalSpan:new{ height = Size.padding.default })
+            table.insert(last_week_content, UI.padded(layout.padding_h,
+                Colors.newBar(layout.content_width, Size.line.thin, Colors.separator())))
             if weekly_chart then
                 table.insert(last_week_content, VerticalSpan:new{ height = Size.padding.default })
                 table.insert(last_week_content, UI.padded(layout.padding_h, weekly_chart))
