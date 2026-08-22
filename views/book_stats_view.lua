@@ -361,8 +361,13 @@ local function buildSections(stats, fonts, layout, popup)
         )
     table.insert(sections, UI.padded(layout.padding_h,
         Colors.newBar(layout.full_width - 2 * layout.padding_h, Size.line.thick, Colors.separator())))
-    local this_book_header = UI.padded(layout.padding_h,
+    local this_book_header_content = UI.padded(layout.padding_h,
         UI.buildSectionHeader(fonts.section, _("This book"), layout.content_width, 0, Colors.headerBg()))
+    -- Wrapped in tappableWrap (fixed dimen), same reasoning as chapter_headers
+    -- above: a bare HorizontalGroup from UI.padded isn't guaranteed a usable
+    -- .dimen for UI.hitTest, so the "This book" tap-to-open-stats target was
+    -- unreliable without it.
+    local this_book_header = tappableWrap(this_book_header_content, this_book_header_content:getSize().w)
     if popup then
         popup._this_book_header = this_book_header
     end
@@ -402,8 +407,11 @@ local function buildSections(stats, fonts, layout, popup)
     end
     table.insert(sections, UI.padded(layout.padding_h,
         Colors.newBar(layout.full_width - 2 * layout.padding_h, Size.line.thick, Colors.separator())))
-    local pace_header = UI.padded(layout.padding_h,
+    local pace_header_content = UI.padded(layout.padding_h,
         UI.buildSectionHeader(fonts.section, _("Pace"), layout.content_width, 0, Colors.headerBg()))
+    -- Same fixed-dimen wrapping as this_book_header above - without it the
+    -- "Pace" tap-to-open-calendar target was unreliable.
+    local pace_header = tappableWrap(pace_header_content, pace_header_content:getSize().w)
     if popup then popup._pace_header = pace_header end
     table.insert(sections, pace_header)
     table.insert(sections, VerticalSpan:new{ height = Size.padding.default })
