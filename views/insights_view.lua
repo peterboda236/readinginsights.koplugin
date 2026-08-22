@@ -1128,8 +1128,13 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
 
             local left_cell  = dataCell(left_line, openFinished)
             addHold(left_cell, openFinishedMenu)
-            local right_cell = dataCell(right_line, editGoal)
-            addHold(right_cell, editGoal)
+            -- The target figure is informational only in this mode - with
+            -- no "Achievements" column next to it to label, tap/hold used
+            -- to open the goal-edit dialog, but that made it too easy to
+            -- trigger by accident while reading the count. Leave it a
+            -- plain, non-interactive cell; the goal can still be changed
+            -- from the settings menu.
+            local right_cell = right_line
 
             -- Reading-goal-only mode drops the "Reading goal" header/title
             -- row entirely - unlike the combined view below, there's no
