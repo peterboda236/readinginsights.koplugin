@@ -845,14 +845,31 @@ end
 -- cell does (views/achievements_view.lua).
 function ReadingInsights:onShowReadingAchievements()
     -- Opened straight from the menu (not via the insights popup, which runs
-    -- its own background refresh). Do a cheap fingerprint check first so any
-    -- newly earned achievements show up in the list right away. In "daily"
-    -- mode this is a no-op once per calendar day; in "every_open" it runs one
-    -- fingerprint query and only recomputes when the reading data changed.
+    -- its own background refresh - see ReadingInsightsPopup:
+    -- _scheduleAchievementsRefresh() in insights_view.lua). Show the list
+    -- immediately with whatever's already on disk: list()/earnedCount() are
+    -- cheap, file-only reads (see achievements.lua), so this is instant
+    -- regardless of how large the statistics DB is.
+    --
+    -- The (occasionally expensive, DB-querying) refreshIfChanged() runs
+    -- after, in the background, the same "show now, refresh a beat later"
+    -- shape the insights popup already uses. In "daily" mode this is a
+    -- no-op once per calendar day; in "every_open" it's one cheap
+    -- fingerprint query, and only recomputes when the reading data actually
+    -- changed. If that recompute unlocks anything, the list - if still open
+    -- - is closed and reopened fresh, the same way its own title-bar
+    -- long-press reload already does.
+    local closed = false
+    local widget = AchievementsView.show(function() closed = true end)
     if Achievements then
-        pcall(Achievements.refreshIfChanged, ViewSettings.Opt.readAchievementRefresh())
+        UIManager:scheduleIn(0.1, function()
+            local ok, changed = pcall(Achievements.refreshIfChanged, ViewSettings.Opt.readAchievementRefresh())
+            if ok and changed and not closed then
+                UIManager:close(widget)
+                AchievementsView.show()
+            end
+        end)
     end
-    AchievementsView.show()
     return true
 end
 
