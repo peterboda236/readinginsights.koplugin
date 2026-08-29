@@ -133,6 +133,25 @@ function M.heatmapMaxPeriodsBack(min_year, min_month)
     return periods_back
 end
 
+-- Deterministic upper bound on the number of week-columns a heatmap
+-- period of the configured length (VS.readHeatmapMonthsSetting(), 3/4/6
+-- months) can ever need, independent of which actual calendar months the
+-- period lands on or where "today" is. Every real period, once padded
+-- out to full weeks, uses at most this many columns (worst case: every
+-- one of those months is a 31-day month, plus the maximum 6 days of
+-- week-alignment padding at both the start and the end) - so every page
+-- of the heatmap can be laid out at this same fixed column count. That
+-- keeps cell_size (and the grid's overall pixel width, and therefore the
+-- centered popup box's on-screen position) identical from page to page,
+-- instead of drifting by a column - and the cells shifting/resizing by a
+-- pixel or two with it - depending on which months happen to be in view.
+-- See M.buildRangeHeatmapWidget below, which passes this in.
+function M.heatmapFixedNumCols()
+    local months_per_period = VS.readHeatmapMonthsSetting()
+    local max_days = 31 * months_per_period + 12
+    return math.ceil(max_days / 7)
+end
+
 -- Lays [start_t, end_t] out into week columns starting on the configured
 -- week start day (Settings ▸ Advanced settings ▸ Date & time ▸ "First day
 -- of week" - see VS.weekStartWday), UI.padded at both ends so every column
@@ -140,7 +159,15 @@ end
 -- (leading/trailing days outside the period are kept but marked
 -- in_range = false so they render as blank spacer cells rather than
 -- colored squares).
-function M.buildRangeHeatmapGrid(daily_map, start_t, end_t)
+--
+-- fixed_num_cols, when given and larger than the column count the period
+-- naturally needs, pads the grid with extra blank columns *before*
+-- grid_start (i.e. further into the past) until it reaches that count,
+-- rather than changing how many columns the visible period itself spans.
+-- That keeps the most recent period right-anchored - the same shape a
+-- shorter period would have on its own, just with empty columns trailing
+-- off to the left - which is what M.heatmapFixedNumCols is for.
+function M.buildRangeHeatmapGrid(daily_map, start_t, end_t, fixed_num_cols)
     local week_start_wd = VS.weekStartWday()          -- 0=Sun, 1=Mon
     local week_end_wd   = (week_start_wd + 6) % 7  -- last weekday of a row
 
@@ -154,6 +181,11 @@ function M.buildRangeHeatmapGrid(daily_map, start_t, end_t)
 
     local total_days = math.floor((grid_end - grid_start) / 86400) + 1
     local num_cols   = math.ceil(total_days / 7)
+
+    if fixed_num_cols and fixed_num_cols > num_cols then
+        grid_start = grid_start - (fixed_num_cols - num_cols) * 7 * 86400
+        num_cols = fixed_num_cols
+    end
 
     local start_str = os.date("%Y-%m-%d", start_t)
     local end_str   = os.date("%Y-%m-%d", end_t)
@@ -245,7 +277,7 @@ end
 -- [start_t, end_t]. Returns the combined widget plus the cell_size
 -- actually used (so the legend below can draw matching squares).
 function M.buildRangeHeatmapWidget(daily_map, start_t, end_t, fonts, max_width)
-    local cols, num_cols = M.buildRangeHeatmapGrid(daily_map, start_t, end_t)
+    local cols, num_cols = M.buildRangeHeatmapGrid(daily_map, start_t, end_t, M.heatmapFixedNumCols())
 
     local gap     = Screen:scaleBySize(2)
     -- Vertical gap between grid rows - clearly wider than the horizontal
@@ -324,6 +356,20 @@ function M.buildRangeHeatmapWidget(daily_map, start_t, end_t, fonts, max_width)
         end
     end
 
+    -- A month label is normally left-anchored at its own column and left
+    -- free to overflow rightward into later, unlabeled columns (same as
+    -- the "Dec." overflow the year-label nudge above already accounts
+    -- for) - there's always room since it's just spilling into blank
+    -- space. That breaks down for whichever label lands closest to the
+    -- *last* column: there's nothing to its right to spill into but the
+    -- popup's own edge, so it got silently clipped there instead. Caught
+    -- here instead: any label whose left-anchored position would cross
+    -- max_width is pulled out of the normal flow (a blank spacer takes
+    -- its place there) and stashed to be laid down separately, right-
+    -- anchored to max_width, once labels_row is complete - see the
+    -- OverlapGroup wrapping below.
+    local overflow_label = nil   -- { widget = TextWidget, width = n }
+
     local labels_row = HorizontalGroup:new{ align = "bottom" }
     table.insert(labels_row, HorizontalSpan:new{ width = wd_label_w + gap })
     local col = 1
@@ -364,10 +410,17 @@ function M.buildRangeHeatmapWidget(daily_map, start_t, end_t, fonts, max_width)
                     face = fonts.small, fgcolor = Colors.small() }
             end
             if widget then
-                table.insert(labels_row, LeftContainer:new{
-                    dimen = Geom:new{ w = cell_size, h = label_h },
-                    widget,
-                })
+                local x_col = wd_label_w + gap + (col - 1) * (cell_size + gap)
+                local text_w = widget:getSize().w
+                if x_col + text_w > max_width then
+                    overflow_label = { widget = widget, width = text_w }
+                    table.insert(labels_row, HorizontalSpan:new{ width = cell_size })
+                else
+                    table.insert(labels_row, LeftContainer:new{
+                        dimen = Geom:new{ w = cell_size, h = label_h },
+                        widget,
+                    })
+                end
             else
                 table.insert(labels_row, HorizontalSpan:new{ width = cell_size })
             end
@@ -391,10 +444,22 @@ function M.buildRangeHeatmapWidget(daily_map, start_t, end_t, fonts, max_width)
     -- VerticalSpan pattern between labels_row and the row widgets one
     -- level up rendered correctly. Flattening avoids the nested case
     -- entirely.
+    local labels_row_final = labels_row
+    if overflow_label then
+        labels_row_final = OverlapGroup:new{
+            dimen = Geom:new{ w = max_width, h = label_h },
+            labels_row,
+            HorizontalGroup:new{
+                HorizontalSpan:new{ width = max_width - overflow_label.width },
+                overflow_label.widget,
+            },
+        }
+    end
+
     local row_labels = getWeekdayRowLabels()
     local widget = VerticalGroup:new{
         align = "left",
-        labels_row,
+        labels_row_final,
         VerticalSpan:new{ height = Size.padding.small },
     }
     for row = 1, 7 do
@@ -717,9 +782,9 @@ end
 -- SWATCH_SIZE_RATIO of that height, so they stay visibly smaller than
 -- the label text (and the grid's own cells) instead of matching it
 -- 1-for-1. They're spaced apart from each other by Size.padding.small.
--- The whole row starts at left_offset, the same x position as the
--- grid's first day column, so it always lines up with the heatmap above
--- it regardless of how many months are currently shown.
+-- The whole row starts at left_offset - the caller decides what that
+-- lines the legend up with (its own left edge, a grid's first data
+-- column, etc).
 local SWATCH_SIZE_RATIO = 0.55
 
 function M.buildHeatmapLegendWidget(fonts, left_offset)
@@ -932,11 +997,12 @@ function M.buildHeatmapBoxContent(popup_self, periods_back, force_fresh)
             M.buildDayPartHeatmapWidget(weekday_hour_map, fonts, content_width)
     end
 
-    -- One shared legend for both grids, aligned flush-left like them: its
-    -- built-in left_offset (the weekday-label gutter + gap) pushes the first
-    -- swatch under the grids' first data column, so the whole legend lines up
-    -- with the columns above it.
-    local legend_row = M.buildHeatmapLegendWidget(fonts, day_part_left_offset)
+    -- One shared legend for both grids, flush-left with the weekday-label
+    -- column (the "Mon"/"Wed"/"Fri" row labels, e.g. "Pén.") rather than
+    -- indented under the grids' first data column - left_offset = 0, not
+    -- day_part_left_offset, which is that indented position and was
+    -- previously (wrongly) passed here.
+    local legend_row = M.buildHeatmapLegendWidget(fonts, 0)
     local legend_widget = LeftContainer:new{
         dimen = Geom:new{ w = content_width, h = legend_row:getSize().h },
         legend_row,
