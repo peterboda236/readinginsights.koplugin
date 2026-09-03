@@ -148,22 +148,24 @@ end
 -- finish_day (optional): day-of-month of this book's estimated finish
 -- date, IF it falls within the month currently being rendered (callers
 -- pre-filter this - see BookCalendarPopup:_rebuild). That cell gets a
--- small flag glyph in its top-right corner (the day number itself is
--- untouched and stays in its normal spot) so the projected finish day
--- stands out on the calendar itself, not just in the "Expected finish"
--- tap popup.
+-- small white/hollow flag glyph in its top-right corner (the day number
+-- itself is untouched and stays in its normal spot) so the projected
+-- finish day stands out on the calendar itself, not just in the
+-- "Expected finish" tap popup. It's hollow rather than solid because
+-- it's only a projection - the book hasn't actually been finished yet
+-- (see the checkmark below, for when it has).
 --
 -- start_day (optional): day-of-month this book's reading was actually
 -- started, IF it falls within the month currently being rendered (same
 -- pre-filtering as finish_day - see BookCalendarPopup:_rebuild). That cell
--- gets a matching white/hollow flag glyph, placed to the left of the day
--- number (mirrored from the black finish flag on the right) so start and
--- finish day both get an on-calendar marker without colliding if they
--- ever land on the same day.
+-- gets a ▷ marker glyph, placed to the left of the day number (mirrored
+-- from the finish_day flag on the right) so start and finish day both
+-- get an on-calendar marker without colliding if they ever land on the
+-- same day.
 --
 -- Finished-day checkmark: any day whose cumulative_ratios entry is ≥0.99
 -- (i.e. the last page reached that day already covers ≥99% of the book)
--- gets a small ✓ in the exact same spot the black finish_day flag would
+-- gets a small ✓ in the exact same spot the finish_day flag would
 -- otherwise take (right of the day number). When both would apply to the
 -- same cell, the checkmark wins and the finish_day flag is suppressed for
 -- that cell - see is_book_finished_day below.
@@ -318,7 +320,7 @@ local function buildBookCalendarGrid(daily_map, year, month, day_font, small_fon
                     -- do coincide.
                     local flag_pad = Screen:scaleBySize(2)
                     local flag_glyph = TextWidget:new{
-                        text = "\xe2\x9a\x91", -- ⚑ BLACK FLAG
+                        text = "\xe2\x9a\x90", -- ⚐ WHITE FLAG
                         face = small_font,
                         fgcolor = Colors.value(),
                     }
@@ -341,7 +343,7 @@ local function buildBookCalendarGrid(daily_map, year, month, day_font, small_fon
                     })
                 end
                 if is_start_day then
-                    -- Mirror image of the black finish flag above, placed
+                    -- Mirror position of the finish flag above, placed
                     -- immediately to the LEFT of the centered day number
                     -- instead of to the right, using the same gap/top
                     -- offset so the two line up visually if a book ever
@@ -350,7 +352,7 @@ local function buildBookCalendarGrid(daily_map, year, month, day_font, small_fon
                     -- other left of it, even on the same day).
                     local flag_pad = Screen:scaleBySize(2)
                     local flag_glyph = TextWidget:new{
-                        text = "\xe2\x9a\x90", -- ⚐ WHITE FLAG
+                        text = "\xe2\x96\xb7", -- ▷ WHITE RIGHT-POINTING TRIANGLE
                         face = small_font,
                         fgcolor = Colors.value(),
                     }
@@ -373,7 +375,7 @@ local function buildBookCalendarGrid(daily_map, year, month, day_font, small_fon
                     })
                 end
                 if is_book_finished_day then
-                    -- Same spot the black finish flag would otherwise take
+                    -- Same spot the finish flag would otherwise take
                     -- (right of the centered day number) - see is_finish_day
                     -- above, which is suppressed for this cell when this
                     -- branch fires.
@@ -509,7 +511,7 @@ local BookCalendarPopup = InputContainer:extend{
     -- Timestamp of this book's very first recorded reading (stats.started_timestamp
     -- / getBookStartedTimestamp above), or nil if there's no reading data
     -- yet. When set and it falls in the month being rendered, that day
-    -- gets marked with a white flag - see start_day/_rebuild below.
+    -- gets marked with a ▷ marker - see start_day/_rebuild below.
     started_timestamp = nil,
 }
 
