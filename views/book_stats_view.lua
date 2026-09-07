@@ -281,12 +281,8 @@ local function buildSections(stats, fonts, layout, popup)
     -- counts - toggled by tapping the pace row (see ReadingStatsPopup:onTapClose).
     -- popup._pace_view_mode is nil/"time" by default; "pages" once toggled.
     local pace_view_mode = (popup and popup._pace_view_mode) or "time"
-    local today_time_data_hhmm = popup and popup.today_all_books
-        and stats.today_time_all_hhmm
-        or  stats.today_time_hhmm
-    local today_pages_data = popup and popup.today_all_books
-        and stats.today_pages_all
-        or  stats.today_pages
+    local today_time_data_hhmm = stats.today_time_hhmm
+    local today_pages_data = stats.today_pages
 
     local zero_hhmm = { value = "00:00", unit = "" }
     local function nonEmpty(td)
@@ -495,14 +491,12 @@ local ReadingStatsPopup = InputContainer:extend{
     width              = nil,
     height             = nil,
     chapter_bar_offset = nil,
-    today_all_books    = false,
     _has_book_id       = false,
     _chapter_view_mode = "time",
     _pace_view_mode    = "time",
 }
 
 function ReadingStatsPopup:init()
-    self.today_all_books = self.today_all_books or false
     self._stats  = self:gatherStats()
     self._fonts  = buildSerifFonts()
     if not self.chapter_bar_offset and self._stats.chapter_info then
@@ -592,8 +586,6 @@ function ReadingStatsPopup:gatherStats()
         days_to_go             = zero_days_to_go,
         today_pages            = UI.emptyValue(),
         today_time_hhmm        = zero_hhmm,
-        today_pages_all        = UI.emptyValue(),
-        today_time_all_hhmm    = zero_hhmm,
         chapter_info           = nil,
         has_next_chapter       = false,
         chapter_pages_left_count = nil,
@@ -720,7 +712,7 @@ function ReadingStatsPopup:gatherStats()
             stats.book_time_spent_hhmm = Locale.formatTimeHHMM(total_time)
         end
 
-        local total_days, today_p, today_t, all_p, all_t, days_since_start, started_timestamp =
+        local total_days, today_p, today_t, days_since_start, started_timestamp =
             BookStatsData.getBookAndTodayStats(plugin.id_curr_book)
 
         -- "Started N days ago": only shown when there is at least one
@@ -769,16 +761,6 @@ function ReadingStatsPopup:gatherStats()
         end
         if today_t and today_t > 0 then
             stats.today_time_hhmm = Locale.formatTimeHHMM(today_t)
-        end
-
-        if all_p and all_p > 0 then
-            stats.today_pages_all = {
-                value = formatCount(all_p),
-                unit  = N_("page", "pages", all_p),
-            }
-        end
-        if all_t and all_t > 0 then
-            stats.today_time_all_hhmm = Locale.formatTimeHHMM(all_t)
         end
 
         self._has_book_id = true
@@ -831,7 +813,6 @@ end
 -- the reader screen.
 function ReadingStatsPopup:openBookCalendar()
     local saved_ui                 = self.ui
-    local saved_today_all_books    = self.today_all_books
     local saved_chapter_bar_offset = self.chapter_bar_offset
     local saved_book_id            = self._stats and self._stats.book_id
     local saved_total_pages        = self._stats and self._stats.total_pages_for_calendar
@@ -845,7 +826,6 @@ function ReadingStatsPopup:openBookCalendar()
         local function reopen_popup()
             UIManager:show(ReadingStatsPopup:new{
                 ui                 = saved_ui,
-                today_all_books    = saved_today_all_books,
                 chapter_bar_offset = saved_chapter_bar_offset,
             })
         end
