@@ -3,8 +3,7 @@ Reading Insights - the data behind the book progress overlay.
 
 One query, but the one that feeds most of the overlay: for a given book it
 returns how many distinct days it has been read, today's pages and time for
-that book, today's pages and time across *all* books (the overlay can show
-either), how long ago it was started, and when.
+that book, how long ago it was started, and when.
 
 Split out of book_stats_view.lua so every popup in the plugin follows the
 same shape - queries in lib/, widgets in views/ - and so this one is
@@ -13,8 +12,8 @@ come from lib/bookprogress.lua (positions and page counts) and
 lib/chapterinfo.lua (chapters), which were already separate.
 
   BookStatsData.getBookAndTodayStats(book_id)
-      -> total_days, today_pages, today_time, today_pages_all,
-         today_time_all, days_since_start, started_timestamp
+      -> total_days, today_pages, today_time,
+         days_since_start, started_timestamp
 ]]--
 
 local deps = ...
@@ -30,7 +29,7 @@ local M = {}
 -- On any such failure a field is simply left nil, which the caller already
 -- treats as "no data yet".
 function M.getBookAndTodayStats(book_id)
-    if not book_id then return nil, nil, nil, nil, nil, nil, nil end
+    if not book_id then return nil, nil, nil, nil, nil end
 
     local r = StatsDb.withDb(nil, function(conn)
         -- Reads the first row of `sql` into out[k1] (col 1) and, when k2 is
@@ -70,17 +69,6 @@ function M.getBookAndTodayStats(book_id)
             );
         ]], book_id), "today_pages", "today_time")
 
-        readRow([[
-            SELECT count(*), sum(duration)
-            FROM (
-                SELECT page, sum(duration) AS duration
-                FROM   page_stat
-                WHERE  strftime('%Y-%m-%d', start_time, 'unixepoch', 'localtime')
-                       = strftime('%Y-%m-%d', 'now', 'localtime')
-                GROUP  BY id_book, page
-            );
-        ]], "today_pages_all", "today_time_all")
-
         -- Days elapsed since this book's very first page_stat entry (i.e. since
         -- reading it was started). Used for the "N days since started" cell.
         readRow(string.format([[
@@ -97,8 +85,8 @@ function M.getBookAndTodayStats(book_id)
     end)
 
     r = r or {}
-    return r.total_days, r.today_pages, r.today_time, r.today_pages_all,
-           r.today_time_all, r.days_since_start, r.started_timestamp
+    return r.total_days, r.today_pages, r.today_time,
+           r.days_since_start, r.started_timestamp
 end
 
 return M
