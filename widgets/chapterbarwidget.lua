@@ -30,6 +30,15 @@ the rest of the book-progress settings in the view).
       offset_override  first chapter to show, for paging with the arrows
       on_prev/on_next  called with the new offset when an arrow is tapped;
                        nil when that direction has nothing more to show
+
+  When chapter_info.total is less than or equal to the page-size setting,
+  everything already fits in one row: the arrows are omitted entirely
+  (rather than just greyed out) and the bars are stretched to fill the width
+  they would otherwise share with the arrows, while the gap between bars
+  stays exactly what it would be at the full page size. Any pixels left over
+  from that stretch are parked as margins at the two ends of the row (extra
+  odd pixel to the right), the same "leftover goes at the edges" idea used
+  for the arrow case, so the bars stay flush to the left.
 ]]--
 
 local Blitbuffer = require("ffi/blitbuffer")
@@ -146,6 +155,10 @@ function M.build(chapter_info, full_width, padding_h, offset_override, on_prev, 
     local slot_w        = arrow_glyph_w + 2 * inner_pad
 
     -- Available width for exactly page_size columns, after symmetric padding and both arrow slots.
+    -- Computed the same way regardless of how many chapters there actually
+    -- are, because `gap` (below) has to come out identical whether the book
+    -- has fewer chapters than page_size or not - see the no-arrows branch
+    -- further down, which reuses this same `gap`.
     local avail_w   = full_width - 2 * padding_h - 2 * slot_w
     local col_w     = math.floor(avail_w / page_size)
     -- Pixels lost to col_w's floor(): 0 .. page_size-1. These are NOT spread
@@ -160,14 +173,32 @@ function M.build(chapter_info, full_width, padding_h, offset_override, on_prev, 
     -- offset snaps to page_size pages: 1, 1+page_size, 1+2*page_size, …
     local offset = math.max(1, math.min(offset_override or 1, total))
 
-    local can_go_left  = (offset > 1)
-    local can_go_right = (offset + page_size - 1 < total)
+    -- When every chapter already fits in a single page there is nothing to
+    -- page through, so the arrows are dropped entirely (not just greyed out)
+    -- and the columns are stretched to use the width the arrows would
+    -- otherwise have occupied. `gap` stays exactly what it would be at
+    -- page_size (computed above) - only bar_w grows.
+    local show_arrows = total > page_size
+    local columns     = show_arrows and page_size or total
+
+    if not show_arrows then
+        offset = 1
+        local row_avail = full_width - 2 * padding_h
+        if columns > 0 then
+            bar_w = math.max(1, math.floor((row_avail - (columns - 1) * gap) / columns))
+        end
+        remainder = row_avail - (columns * bar_w + math.max(0, columns - 1) * gap)
+    end
+
+    local can_go_left  = show_arrows and (offset > 1)
+    local can_go_right = show_arrows and (offset + page_size - 1 < total)
     local left_arrow_color  = can_go_left  and Blitbuffer.COLOR_BLACK or Blitbuffer.COLOR_GRAY_E
     local right_arrow_color = can_go_right and Blitbuffer.COLOR_BLACK or Blitbuffer.COLOR_GRAY_E
 
-    -- Build exactly page_size slots; slots beyond total are white (empty).
+    -- Build exactly `columns` slots; slots beyond total are white (empty) -
+    -- only possible in the show_arrows branch, since otherwise columns == total.
     local bar_row = HorizontalGroup:new{ align = "bottom" }
-    for i = 1, page_size do
+    for i = 1, columns do
         local ch_idx = offset + i - 1
         if ch_idx <= total then
             local bh = barHeight(ch_idx)
@@ -196,7 +227,7 @@ function M.build(chapter_info, full_width, padding_h, offset_override, on_prev, 
                 background = Blitbuffer.COLOR_WHITE,
             })
         end
-        if i < page_size then
+        if i < columns then
             table.insert(bar_row, LineWidget:new{
                 dimen      = Geom:new{ w = gap, h = col_h_max },
                 background = Blitbuffer.COLOR_WHITE,
@@ -230,28 +261,45 @@ function M.build(chapter_info, full_width, padding_h, offset_override, on_prev, 
         }
     end
 
-    -- Layout: padding_h | left_arrow | inner_left | [page_size slots] | inner_right | right_arrow | padding_h
-    -- The bars fill page_size*bar_w + (page_size-1)*gap = avail_w - remainder
-    -- - gap, so all the leftover width (the floor() remainder plus the one
-    -- missing trailing gap) is parked on the inner side of the two arrows -
-    -- between each arrow and the bars. The arrows themselves stay pinned to
-    -- the same padding_h from the edge. Split in half, with the odd extra
-    -- pixel going to the right side.
-    local inner_total = remainder + gap
-    local inner_left  = math.floor(inner_total / 2)
-    local inner_right = inner_total - inner_left
-
-    local left_arrow_widget  = makeArrowSpan("\xe2\x80\xb9", left_arrow_color)
-    local right_arrow_widget = makeArrowSpan("\xe2\x80\xba", right_arrow_color)
-
     local flat_row = HorizontalGroup:new{ align = "center" }
-    table.insert(flat_row, HorizontalSpan:new{ width = padding_h })
-    table.insert(flat_row, left_arrow_widget)
-    table.insert(flat_row, HorizontalSpan:new{ width = inner_left })
-    table.insert(flat_row, bar_row)
-    table.insert(flat_row, HorizontalSpan:new{ width = inner_right })
-    table.insert(flat_row, right_arrow_widget)
-    table.insert(flat_row, HorizontalSpan:new{ width = padding_h })
+    local left_arrow_widget, right_arrow_widget
+
+    if show_arrows then
+        -- Layout: padding_h | left_arrow | inner_left | [page_size slots] | inner_right | right_arrow | padding_h
+        -- The bars fill page_size*bar_w + (page_size-1)*gap = avail_w - remainder
+        -- - gap, so all the leftover width (the floor() remainder plus the one
+        -- missing trailing gap) is parked on the inner side of the two arrows -
+        -- between each arrow and the bars. The arrows themselves stay pinned to
+        -- the same padding_h from the edge. Split in half, with the odd extra
+        -- pixel going to the right side.
+        local inner_total = remainder + gap
+        local inner_left  = math.floor(inner_total / 2)
+        local inner_right = inner_total - inner_left
+
+        left_arrow_widget  = makeArrowSpan("\xe2\x80\xb9", left_arrow_color)
+        right_arrow_widget = makeArrowSpan("\xe2\x80\xba", right_arrow_color)
+
+        table.insert(flat_row, HorizontalSpan:new{ width = padding_h })
+        table.insert(flat_row, left_arrow_widget)
+        table.insert(flat_row, HorizontalSpan:new{ width = inner_left })
+        table.insert(flat_row, bar_row)
+        table.insert(flat_row, HorizontalSpan:new{ width = inner_right })
+        table.insert(flat_row, right_arrow_widget)
+        table.insert(flat_row, HorizontalSpan:new{ width = padding_h })
+    else
+        -- Fewer chapters than page_size: no paging possible, so no arrows at
+        -- all. The row is padding_h | left_margin | [columns bars] | right_margin
+        -- | padding_h, i.e. the same "leftover parked at the edges" idea as
+        -- above, just without arrows to park it against. Split in half, with
+        -- the odd extra pixel going to the right side, so the bars stay
+        -- flush-left (same convention as the show_arrows branch).
+        local left_margin  = math.floor(remainder / 2)
+        local right_margin = remainder - left_margin
+
+        table.insert(flat_row, HorizontalSpan:new{ width = padding_h + left_margin })
+        table.insert(flat_row, bar_row)
+        table.insert(flat_row, HorizontalSpan:new{ width = right_margin + padding_h })
+    end
 
     local bar_h = col_h_max + 2 * Size.padding.default
 
