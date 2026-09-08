@@ -657,6 +657,15 @@ msgstr "查看阅读记录"
 
 msgid "Show Reading streak"
 msgstr "查看阅读连续记录"
+
+msgid "Reading insights: reading streak"
+msgstr "阅读统计：阅读连续记录"
+
+msgid "Reading insights: reading heatmap"
+msgstr "阅读统计：阅读热力图"
+
+msgid "Show Reading heatmap"
+msgstr "查看阅读热力图"
 msgid "Sub-values (date / book title)"
 msgstr "附属信息（日期/书名）"
 

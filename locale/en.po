@@ -902,6 +902,15 @@ msgstr "Show Records"
 msgid "Show Reading streak"
 msgstr "Show Reading streak"
 
+msgid "Reading insights: reading streak"
+msgstr "Reading insights: reading streak"
+
+msgid "Reading insights: reading heatmap"
+msgstr "Reading insights: reading heatmap"
+
+msgid "Show Reading heatmap"
+msgstr "Show Reading heatmap"
+
 msgid "Sub-values (date / book title)"
 msgstr "Sub-values (date / book title)"
 

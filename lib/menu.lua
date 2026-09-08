@@ -50,6 +50,13 @@ function M.build(self, deps)
             end,
         },
         {
+            text = _("Show Reading heatmap"),
+            keep_menu_open = false,
+            callback = function()
+                self:onShowReadingHeatmapPopup()
+            end,
+        },
+        {
             text = _("Show Records"),
             keep_menu_open = false,
             callback = function()

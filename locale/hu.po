@@ -917,6 +917,15 @@ msgstr "Rekordok megjelenítése"
 msgid "Show Reading streak"
 msgstr "Olvasási sorozat megjelenítése"
 
+msgid "Reading insights: reading streak"
+msgstr "Olvasási áttekintés: olvasási sorozat"
+
+msgid "Reading insights: reading heatmap"
+msgstr "Olvasási áttekintés: olvasási hőtérkép"
+
+msgid "Show Reading heatmap"
+msgstr "Olvasási hőtérkép megjelenítése"
+
 msgid "Sub-values (date / book title)"
 msgstr "Alértékek (dátum / könyvcím)"
 

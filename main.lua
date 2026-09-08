@@ -342,6 +342,27 @@ function ReadingInsights:onDispatcherRegisterActions()
         title    = _("Reading insights: achievements"),
         general  = true,
     })
+    -- general = true: the current/best streak popup is global, all-time
+    -- data, not tied to any open book, so this is assignable everywhere,
+    -- same as the records/achievements actions above. The popup itself
+    -- already existed (onShowReadingStreakPopup, used by the Tools-menu
+    -- "Show Reading streak" entry) - this just also exposes it as a
+    -- gesture/shortcut target.
+    Dispatcher:registerAction("reading_streak_popup", {
+        category = "none",
+        event    = "ShowReadingStreakPopup",
+        title    = _("Reading insights: reading streak"),
+        general  = true,
+    })
+    -- general = true: the heatmap is built from all-time reading data (see
+    -- onShowReadingHeatmapPopup below), not tied to any open book, so this
+    -- is assignable everywhere too.
+    Dispatcher:registerAction("reading_heatmap_popup", {
+        category = "none",
+        event    = "ShowReadingHeatmapPopup",
+        title    = _("Reading insights: reading heatmap"),
+        general  = true,
+    })
 end
 
 --[[
@@ -836,6 +857,49 @@ end
 -- cells open (views/insights_view.lua's showStreaksPopup).
 function ReadingInsights:onShowReadingStreakPopup()
     Insights.showStreaks()
+    return true
+end
+
+-- Backs onShowReadingHeatmapPopup below. Identical to
+-- ReadingInsightsPopup:getDailyReadingDataForRange in views/insights_view.lua
+-- (which Heatmap.Popup normally calls on the open insights popup instance):
+-- a { ["YYYY-MM-DD"] = seconds_read } map for the inclusive date range,
+-- built from InsightsData.getDailyReadingData one calendar year at a time.
+-- Duplicated rather than shared because the insights view doesn't expose it
+-- as a standalone function - only as a method on a popup instance that, for
+-- a gesture/shortcut opening the heatmap directly, doesn't exist yet.
+local function heatmapGetDailyReadingDataForRange(_self, start_t, end_t, shared_conn)
+    local year_start = tonumber(os.date("%Y", start_t))
+    local year_end   = tonumber(os.date("%Y", end_t))
+    local start_str  = os.date("%Y-%m-%d", start_t)
+    local end_str    = os.date("%Y-%m-%d", end_t)
+
+    local merged = {}
+    for year = year_start, year_end do
+        local year_map = InsightsData.getDailyReadingData(year, shared_conn)
+        for dstr, seconds in pairs(year_map) do
+            if dstr >= start_str and dstr <= end_str then
+                merged[dstr] = seconds
+            end
+        end
+    end
+    return merged
+end
+
+-- General, like the Records/Streak popups above: the heatmap is built from
+-- all-time reading data, not tied to any open book, so it opens in both
+-- Reader view and the File manager. Same full-screen popup the insights
+-- page's "Total read" header opens (views/insights_view.lua's
+-- showReadingHeatmap) - Heatmap.Popup only ever calls
+-- getDailyReadingDataForRange on the "popup_self" it's given, so a minimal
+-- stand-in table with just that one method (heatmapGetDailyReadingDataForRange
+-- above) is enough to open it directly, without going through the insights
+-- popup first.
+function ReadingInsights:onShowReadingHeatmapPopup()
+    UIManager:show(Heatmap.Popup:new{
+        popup_self   = { getDailyReadingDataForRange = heatmapGetDailyReadingDataForRange },
+        periods_back = 0,
+    })
     return true
 end
 

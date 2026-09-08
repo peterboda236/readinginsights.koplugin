@@ -928,6 +928,15 @@ msgstr "Показати рекорди"
 msgid "Show Reading streak"
 msgstr "Показати серію читання"
 
+msgid "Reading insights: reading streak"
+msgstr "Аналітика читання: серія читання"
+
+msgid "Reading insights: reading heatmap"
+msgstr "Аналітика читання: теплокарта читання"
+
+msgid "Show Reading heatmap"
+msgstr "Показати теплокарту читання"
+
 msgid "Sub-values (date / book title)"
 msgstr "Додаткові значення (дата / назва книги)"
 

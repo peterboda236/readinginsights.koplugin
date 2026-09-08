@@ -902,6 +902,15 @@ msgstr "Rekorde anzeigen"
 msgid "Show Reading streak"
 msgstr "Lesesträhne anzeigen"
 
+msgid "Reading insights: reading streak"
+msgstr "Leseeinblicke: Lesesträhne"
+
+msgid "Reading insights: reading heatmap"
+msgstr "Leseeinblicke: Lese-Heatmap"
+
+msgid "Show Reading heatmap"
+msgstr "Lese-Heatmap anzeigen"
+
 msgid "Sub-values (date / book title)"
 msgstr "Unterwerte (Datum / Buchtitel)"
 
