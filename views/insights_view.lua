@@ -184,13 +184,23 @@ local function getCachedFonts()
     return buildSerifFonts()
 end
 
+-- Rebuilt whenever the screen width changes - not just on first use - so a
+-- rotation between two openings of the popup (or, on devices that support
+-- it, while it's open) is picked up instead of serving a stale portrait/
+-- landscape layout.
 local function getCachedLayout()
-    if not _cached_layout then
-        local screen_w = Screen:getWidth()
+    local screen_w = Screen:getWidth()
+    if not _cached_layout or _cached_layout.full_width ~= screen_w then
         _cached_layout = UI.buildLayout(screen_w, Size.padding.large, Screen:scaleBySize(20))
     end
     return _cached_layout
 end
+
+-- Landscape vs. portrait, used to switch a couple of sections (the "Last
+-- week" figures, the monthly chart) between a layout tuned for a narrow
+-- portrait popup and one that makes use of the extra horizontal room in
+-- landscape. Shared with the calendar popups - see uikit.lua.
+local isLandscapeScreen = UI.isLandscapeScreen
 
 local function buildValueLine(font_value, font_label, col_width, value, unit)
     if value == "" then
@@ -482,8 +492,12 @@ local function buildMonthlyChart(popup_self, monthly_data, layout, fonts)
     local chart_width  = layout.content_width
     VS.Opt.built_monthly = true
     local bar_height   = tonumber(Screen:scaleBySize(VS.Opt.monthlyBarHeight()))
-    local bar_width    = math.floor(chart_width / 6) - tonumber(Screen:scaleBySize(8))
-    local bar_gap      = math.floor((chart_width - bar_width * 6) / 5)
+    -- Portrait: two rows of up to 6 months. Landscape: the popup is wide
+    -- enough to fit all 12 months on one row, so the year reads as a
+    -- single strip instead of two stacked ones.
+    local months_per_row = isLandscapeScreen() and 12 or 6
+    local bar_width    = math.floor(chart_width / months_per_row) - tonumber(Screen:scaleBySize(8))
+    local bar_gap      = math.floor((chart_width - bar_width * months_per_row) / (months_per_row - 1))
     local font_small   = fonts.small
 
     local sample_label = TextWidget:new{ text = "0", face = font_small }
@@ -573,9 +587,9 @@ local function buildMonthlyChart(popup_self, monthly_data, layout, fonts)
 
     local chart     = VerticalGroup:new{ align = "center" }
     local row_index = 0
-    for i = 1, #monthly_data, 6 do
+    for i = 1, #monthly_data, months_per_row do
         local row_data = {}
-        for j = i, math.min(i + 5, #monthly_data) do
+        for j = i, math.min(i + months_per_row - 1, #monthly_data) do
             table.insert(row_data, monthly_data[j])
         end
         if #row_data > 0 then
@@ -745,15 +759,6 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
                 week_pages_unit = pages_unit_base .. " " .. avg_day_str
             end
 
-            local week_row = UI.buildTwoColRow(
-                tappableCell(
-                    buildValueLine(fonts.value, fonts.label, layout.col_width, week_time_val,   week_time_unit_full),
-                    layout.col_width, function() popup_self:showWeeklyTrendPopup("time_avg") end),
-                tappableCell(
-                    buildValueLine(fonts.value, fonts.label, layout.col_width, week_pages_val,  week_pages_unit),
-                    layout.col_width, function() popup_self:showWeeklyTrendPopup("pages_avg") end),
-                layout)
-
             local total_secs = (lw.avg_seconds or 0) * 7
             local total_time_val, total_time_unit = splitDurationValueUnit(total_secs, _("reading time"))
 
@@ -761,23 +766,57 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
             local total_pages_val = formatCount(total_pages_raw)
             local total_pages_unit = N_("page read", "pages read", total_pages_raw)
 
-            local total_row = UI.buildTwoColRow(
-                tappableCell(
-                    buildValueLine(fonts.value, fonts.label, layout.col_width, total_time_val, total_time_unit),
-                    layout.col_width, function() popup_self:showWeeklyTrendPopup("time_total") end),
-                tappableCell(
-                    buildValueLine(fonts.value, fonts.label, layout.col_width, total_pages_val, total_pages_unit),
-                    layout.col_width, function() popup_self:showWeeklyTrendPopup("pages_total") end),
-                layout)
+            -- Portrait: two 2-column rows (total above, daily average
+            -- below). Landscape: the popup is wide enough to lay all four
+            -- values out on a single row instead - reading time, reading
+            -- time per day, pages read, pages read per day.
+            local last_week_rows
+            if isLandscapeScreen() then
+                local four_row = UI.buildFourColRow(
+                    tappableCell(
+                        buildValueLine(fonts.value, fonts.label, layout.col_width_4, total_time_val, total_time_unit),
+                        layout.col_width_4, function() popup_self:showWeeklyTrendPopup("time_total") end),
+                    tappableCell(
+                        buildValueLine(fonts.value, fonts.label, layout.col_width_4, week_time_val,   week_time_unit_full),
+                        layout.col_width_4, function() popup_self:showWeeklyTrendPopup("time_avg") end),
+                    tappableCell(
+                        buildValueLine(fonts.value, fonts.label, layout.col_width_4, total_pages_val, total_pages_unit),
+                        layout.col_width_4, function() popup_self:showWeeklyTrendPopup("pages_total") end),
+                    tappableCell(
+                        buildValueLine(fonts.value, fonts.label, layout.col_width_4, week_pages_val,  week_pages_unit),
+                        layout.col_width_4, function() popup_self:showWeeklyTrendPopup("pages_avg") end),
+                    layout)
+                last_week_rows = { four_row }
+            else
+                local week_row = UI.buildTwoColRow(
+                    tappableCell(
+                        buildValueLine(fonts.value, fonts.label, layout.col_width, week_time_val,   week_time_unit_full),
+                        layout.col_width, function() popup_self:showWeeklyTrendPopup("time_avg") end),
+                    tappableCell(
+                        buildValueLine(fonts.value, fonts.label, layout.col_width, week_pages_val,  week_pages_unit),
+                        layout.col_width, function() popup_self:showWeeklyTrendPopup("pages_avg") end),
+                    layout)
+
+                local total_row = UI.buildTwoColRow(
+                    tappableCell(
+                        buildValueLine(fonts.value, fonts.label, layout.col_width, total_time_val, total_time_unit),
+                        layout.col_width, function() popup_self:showWeeklyTrendPopup("time_total") end),
+                    tappableCell(
+                        buildValueLine(fonts.value, fonts.label, layout.col_width, total_pages_val, total_pages_unit),
+                        layout.col_width, function() popup_self:showWeeklyTrendPopup("pages_total") end),
+                    layout)
+                last_week_rows = { total_row, week_row }
+            end
 
             local weekly_chart_mode = VS.normalizeWeeklyChartMode(popup_self.weekly_chart_mode)
             local weekly_chart = buildWeeklyChart(popup_self, last_week_daily, layout, fonts, weekly_chart_mode)
-            local last_week_content = VerticalGroup:new{
-                align = "left",
-                UI.padded(layout.padding_h, total_row),
-                VerticalSpan:new{ height = Size.padding.default },
-                UI.padded(layout.padding_h, week_row),
-            }
+            local last_week_content = VerticalGroup:new{ align = "left" }
+            for idx, row in ipairs(last_week_rows) do
+                if idx > 1 then
+                    table.insert(last_week_content, VerticalSpan:new{ height = Size.padding.default })
+                end
+                table.insert(last_week_content, UI.padded(layout.padding_h, row))
+            end
             -- Thin divider under the avg time/day - avg pages/day row, so it
             -- reads as visually separated from the daily bar chart below it
             -- (mirrors the thin divider used under the yearly figures,

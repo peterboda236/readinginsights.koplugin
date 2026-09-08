@@ -36,6 +36,7 @@ Loaded once by main.lua with the shared Colors module.
 ]]--
 
 local Blitbuffer = require("ffi/blitbuffer")
+local Device = require("device")
 local FrameContainer = require("ui/widget/container/framecontainer")
 local Geom = require("ui/geometry")
 local HorizontalGroup = require("ui/widget/horizontalgroup")
@@ -45,6 +46,7 @@ local Size = require("ui/size")
 local TextWidget = require("ui/widget/textwidget")
 local VerticalGroup = require("ui/widget/verticalgroup")
 local VerticalSpan = require("ui/widget/verticalspan")
+local Screen = Device.screen
 
 -- Shared modules, passed in as one named table by main.lua (see there).
 local deps = ...
@@ -53,6 +55,22 @@ local Colors =
 
 local M = {}
 
+-- Landscape vs. portrait, used to switch a few sections/popups between a
+-- layout tuned for a narrow portrait screen and one that makes better use
+-- of the extra horizontal room in landscape (e.g. laying value cells out
+-- in one row instead of a grid, or capping a popup by screen height instead
+-- of width). Screen:getScreenMode() is the proper KOReader API for this
+-- (it accounts for the device's rotation quirks); falling back to a plain
+-- width/height comparison keeps this working even if that method is ever
+-- unavailable.
+function M.isLandscapeScreen()
+    local ok, mode = pcall(function() return Screen:getScreenMode() end)
+    if ok and mode then
+        return mode == "landscape"
+    end
+    return Screen:getWidth() > Screen:getHeight()
+end
+
 -- The horizontal geometry every section is built against: the full screen
 -- width, the padding either side of it, the gap+line that separates the two
 -- columns, and the resulting width of one column.
@@ -60,6 +78,11 @@ function M.buildLayout(screen_w, padding_h, column_gap)
     local separator_width = 2 * column_gap + Size.line.medium
     local content_width = screen_w - 2 * padding_h
     local col_width = math.floor((content_width - separator_width) / 2)
+    -- Four-column variant (three separators instead of one), used when a
+    -- section is wide enough - e.g. the popup in landscape - to lay four
+    -- value cells out side by side instead of stacking them 2x2.
+    local separator_width_4 = 3 * separator_width
+    local col_width_4 = math.floor((content_width - separator_width_4) / 4)
     return {
         full_width      = screen_w,
         padding_h       = padding_h,
@@ -67,6 +90,7 @@ function M.buildLayout(screen_w, padding_h, column_gap)
         separator_width = separator_width,
         content_width   = content_width,
         col_width       = col_width,
+        col_width_4     = col_width_4,
     }
 end
 
@@ -116,6 +140,30 @@ function M.buildTwoColRow(left_widget, right_widget, layout, hide_separator)
         M.fixedCol(left_widget,  layout.col_width, row_height),
         separator,
         M.fixedCol(right_widget, layout.col_width, row_height),
+    }
+end
+
+-- One row of a four-column grid, laid out the same way buildTwoColRow does
+-- its two - fixed-width cells separated by the same vertical bar - just
+-- three of them instead of one. Used where four value cells fit better
+-- side by side (e.g. a wide/landscape popup) than stacked 2x2.
+function M.buildFourColRow(w1, w2, w3, w4, layout, hide_separator)
+    local row_height = math.max(
+        w1:getSize().h, w2:getSize().h, w3:getSize().h, w4:getSize().h)
+    local function separator()
+        return hide_separator
+            and HorizontalSpan:new{ width = layout.separator_width }
+            or  M.buildColumnSeparator(layout.column_gap, row_height)
+    end
+    return HorizontalGroup:new{
+        align = "center",
+        M.fixedCol(w1, layout.col_width_4, row_height),
+        separator(),
+        M.fixedCol(w2, layout.col_width_4, row_height),
+        separator(),
+        M.fixedCol(w3, layout.col_width_4, row_height),
+        separator(),
+        M.fixedCol(w4, layout.col_width_4, row_height),
     }
 end
 

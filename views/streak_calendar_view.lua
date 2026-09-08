@@ -375,8 +375,13 @@ function StreakDatePopup:_rebuild()
     self._left_w, self._right_w, self._header_h = nil, nil, 0
     if self.months and #self.months > 0 then
         -- Day squares sit flush (no gap between days), so the whole grid is
-        -- exactly 7 cells wide; cell size is a seventh of the content width.
-        local cell = math.floor(cont_w / 7)
+        -- exactly 7 cells wide; cell size is a seventh of the content width -
+        -- unless cal_cell_override is set (see showStreaksPopup's landscape
+        -- handling below), in which case the calendar is drawn smaller than
+        -- the box and centered within it, so the box itself can stay full
+        -- width for the streak figures below without the grid overflowing
+        -- the screen's height.
+        local cell = self.cal_cell_override or math.floor(cont_w / 7)
         local mo   = self.months[self.month_index]
         local is_hu = (getLangBase() == "hu")
         local title_str = is_hu
@@ -555,11 +560,14 @@ local function showStreaksPopup(streaks)
     streaks = streaks or {}
     local fonts = getCachedFonts()
     local inner_padding = Size.padding.large
+    local column_gap = Size.padding.large
+    local screen_w = Screen:getWidth()
+    local screen_h = Screen:getHeight()
 
     -- Fixed 94%-of-screen-wide box, like the book progress calendar and the
     -- reading heatmap.
-    local column_gap = Size.padding.large
-    local layout = UI.buildLayout(math.floor(Screen:getWidth() * 0.94) - 2 * inner_padding, 0, column_gap)
+    local box_width = math.floor(screen_w * 0.94)
+    local layout = UI.buildLayout(box_width - 2 * inner_padding, 0, column_gap)
     local col_width = layout.col_width
     local content_width = layout.content_width
 
@@ -599,7 +607,7 @@ local function showStreaksPopup(streaks)
     local read_set      = months and (Data.getReadingDaysInRange(list_start, range_end) or {}) or {}
     local week_start_wd = (Prefs and Prefs.weekStartWday and Prefs.weekStartWday()) or 1
 
-    UIManager:show(StreakDatePopup:new{
+    local popup = StreakDatePopup:new{
         fonts         = fonts,
         layout        = layout,
         col_width     = col_width,
@@ -617,7 +625,38 @@ local function showStreaksPopup(streaks)
         months        = months,
         week_start_wd = week_start_wd,
         month_index   = months and #months or 1,
-    })
+    }
+
+    -- Landscape: the calendar's day squares are exactly content_width / 7 on
+    -- a side (buildStreakMonthGrid), so scaling them to a wide landscape
+    -- screen's width makes the 6-week grid taller than the screen. :new()
+    -- above already built it once at the normal (width-based) box size; if
+    -- that actually comes out taller than 94% of the screen height, shrink
+    -- just the calendar's day-cell size until the grid fits that instead,
+    -- and rebuild - the box itself stays at its normal full width (so the
+    -- date range and streak figures below the calendar keep all the room
+    -- they had before), with the now-smaller calendar centered inside it.
+    if UI.isLandscapeScreen() then
+        local target_h = math.floor(screen_h * 0.94)
+        local measured_h = popup.box_content:getSize().h
+        if measured_h > target_h then
+            -- Every element in the box other than the 6 calendar week rows
+            -- has a fixed height, independent of the cell size; each week
+            -- row is exactly one cell tall. So shrinking the cell size by d
+            -- shrinks the total height by close to 6 * d - solve for the d
+            -- that closes the gap, then rebuild once with that smaller cell
+            -- size. A couple of extra pixels are shaved off on top, as a
+            -- margin against the rounding math.floor() introduces along
+            -- the way.
+            local normal_cell = math.floor(content_width / 7)
+            local delta_cell = math.ceil((measured_h - target_h) / 6) + 2
+            popup.cal_cell_override = math.max(
+                normal_cell - delta_cell, Screen:scaleBySize(24))
+            popup:_rebuild()
+        end
+    end
+
+    UIManager:show(popup)
 end
 
 -- Module export. `show(streaks)` opens the combined streak popup for the given

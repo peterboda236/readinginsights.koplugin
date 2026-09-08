@@ -534,10 +534,11 @@ end
 function BookCalendarPopup:_rebuild()
     local day_font   = Fonts.getFace("stats_label")
     local small_font = Fonts.getFace("insights_small")
+    local section_font = Fonts.getFace("stats_section")
 
-    local box_width     = math.floor(Screen:getWidth() * 0.94)
+    local screen_w = Screen:getWidth()
+    local screen_h = Screen:getHeight()
     local inner_padding = Size.padding.large
-    local content_width = box_width - 2 * inner_padding
 
     local is_hu = (getLangBase() == "hu")
     local title_str = is_hu
@@ -583,34 +584,91 @@ function BookCalendarPopup:_rebuild()
     if prev_month < 1 then prev_month = 12; prev_year = prev_year - 1 end
     local prev_available = CalendarData.bookCalendarMonthHasData(self.book_id, prev_year, prev_month)
 
-    local title_row, left_arrow_frame, right_arrow_frame, left_w, right_w, header_h = buildBookCalendarHeader(
-        title_str, content_width, Fonts.getFace("stats_section"), prev_available, next_available)
-
     local daily_map = CalendarData.getBookDailyStatsForMonth(self.book_id, self.year, self.month)
     local cumulative_ratios = CalendarData.getBookCumulativeProgressForMonth(
         self.book_id, self.year, self.month, self.total_pages)
-    local grid, day_cells = buildBookCalendarGrid(
-        daily_map, self.year, self.month, day_font, small_font, content_width, self.total_pages, cumulative_ratios,
-        finish_day, start_day)
-    self._day_cells = day_cells
 
-    local content = VerticalGroup:new{
-        align = "center",
-        title_row,
-        VerticalSpan:new{ height = Size.padding.large },
-        grid,
-    }
+    -- Everything below depends on content_width. Built by a local function
+    -- so it can be called a second time, at a narrower width, if the first
+    -- pass (see the landscape handling further down) comes out taller than
+    -- the screen.
+    local function build(content_width)
+        local title_row, left_arrow_frame, right_arrow_frame, left_w, right_w, header_h = buildBookCalendarHeader(
+            title_str, content_width, section_font, prev_available, next_available)
 
-    self.box_content = FrameContainer:new{
-        background     = Blitbuffer.COLOR_WHITE,
-        bordersize     = Size.border.window,
-        radius         = Size.radius.window,
-        padding_top    = inner_padding,
-        padding_bottom = inner_padding,
-        padding_left   = inner_padding,
-        padding_right  = inner_padding,
-        content,
-    }
+        local grid, day_cells = buildBookCalendarGrid(
+            daily_map, self.year, self.month, day_font, small_font, content_width, self.total_pages, cumulative_ratios,
+            finish_day, start_day)
+
+        local content = VerticalGroup:new{
+            align = "center",
+            title_row,
+            VerticalSpan:new{ height = Size.padding.large },
+            grid,
+        }
+
+        local box_content = FrameContainer:new{
+            background     = Blitbuffer.COLOR_WHITE,
+            bordersize     = Size.border.window,
+            radius         = Size.radius.window,
+            padding_top    = inner_padding,
+            padding_bottom = inner_padding,
+            padding_left   = inner_padding,
+            padding_right  = inner_padding,
+            content,
+        }
+
+        return {
+            content_width      = content_width,
+            box_content        = box_content,
+            day_cells          = day_cells,
+            title_row          = title_row,
+            left_arrow_frame   = left_arrow_frame,
+            right_arrow_frame  = right_arrow_frame,
+            left_w             = left_w,
+            right_w            = right_w,
+            header_h           = header_h,
+        }
+    end
+
+    -- Portrait (and the usual case): size the box off the screen width, as
+    -- before. Landscape: the day cells are near-square (buildBookCalendarGrid
+    -- makes each cell_h = 1.15 * cell_w), so scaling them to a wide
+    -- landscape screen's width would make the 6-week grid taller than the
+    -- screen - build once at the normal width, and if that actually comes
+    -- out taller than 94% of the screen height, shrink the box down until
+    -- it fits that instead. The box then ends up sized off whichever of the
+    -- two screen dimensions is actually the binding constraint.
+    local box_width = math.floor(screen_w * 0.94)
+    local built = build(box_width - 2 * inner_padding)
+
+    if UI.isLandscapeScreen() then
+        local target_h = math.floor(screen_h * 0.94)
+        local measured_h = built.box_content:getSize().h
+        if measured_h > target_h then
+            -- Every element in the box other than the 6 week rows has a
+            -- fixed height, independent of the width; each week row is
+            -- 1.15x as tall as it is wide. So shrinking content_width by d
+            -- shrinks the total height by close to (6 * 1.15 / 7) * d -
+            -- solve for the d that closes the gap, then rebuild once at the
+            -- corrected width. A couple of extra pixels are shaved off on
+            -- top, as a margin against the rounding buildBookCalendarGrid's
+            -- own math.floor()s introduce.
+            local CELL_HEIGHT_SLOPE = 6 * 1.15 / 7
+            local delta_w = math.ceil((measured_h - target_h) / CELL_HEIGHT_SLOPE) + 2
+            local corrected_content_width = math.max(
+                built.content_width - delta_w, Screen:scaleBySize(200))
+            box_width = corrected_content_width + 2 * inner_padding
+            built = build(corrected_content_width)
+        end
+    end
+
+    local content_width = built.content_width
+    local title_row, left_arrow_frame, right_arrow_frame, left_w, right_w, header_h =
+        built.title_row, built.left_arrow_frame, built.right_arrow_frame,
+        built.left_w, built.right_w, built.header_h
+    self._day_cells = built.day_cells
+    self.box_content = built.box_content
 
     self[1] = CenterContainer:new{
         dimen = self.dimen,
