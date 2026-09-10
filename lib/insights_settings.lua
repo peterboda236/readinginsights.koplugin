@@ -332,6 +332,22 @@ function M.weekStartWday()
     return Prefs.weekStartWday()
 end
 
+-- Whether the Reading streak calendar and the Book progress calendar draw
+-- an extra "Week" column to the left of their day columns, showing each row's
+-- ISO week number (Prefs ▸ Advanced settings ▸ Date & time ▸ "Show week
+-- numbers"). Off by default so neither calendar gets narrower day cells for
+-- anyone who hasn't asked for this. Read by streak_calendar_view.lua and
+-- book_calendar_view.lua every time their month grid is (re)built.
+M.SETTINGS_KEY_SHOW_WEEK_NUMBERS = "reading_insights_calendar_show_week_numbers"
+
+function M.readShowWeekNumbers()
+    return M.readBoolSetting(M.SETTINGS_KEY_SHOW_WEEK_NUMBERS, false)
+end
+
+function M.saveShowWeekNumbers(value)
+    M.saveBoolSetting(M.SETTINGS_KEY_SHOW_WEEK_NUMBERS, value)
+end
+
 M.INSIGHTS_MODE_KEY = "reading_insights_popup_mode"
 
 M.INSIGHTS_MODE_DAYS = "days"

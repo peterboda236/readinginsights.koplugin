@@ -42,9 +42,9 @@ local Screen          = Device.screen
 
 -- Shared modules, passed in as one named table by main.lua (see there).
 local deps = ...
-local Locale, Colors, Fonts, Prefs, BookProgress, UI, CalendarData =
+local Locale, Colors, Fonts, Prefs, BookProgress, UI, CalendarData, VS =
     deps.Locale, deps.Colors, deps.Fonts, deps.Prefs, deps.BookProgress,
-    deps.UI, deps.CalendarData
+    deps.UI, deps.CalendarData, deps.VS
 local _            = Locale._
 local N_           = Locale.N_
 local getLangBase  = Locale.getLangBase
@@ -131,6 +131,30 @@ local function buildBookCalendarCellText(entry, total_pages)
     return "+" .. formatCount(pct) .. "%"
 end
 
+-- Whether to show week numbers (Prefs ▸ Advanced settings ▸ Date & time ▸
+-- "Show week numbers"). Off by default. Shared with the Reading streak
+-- calendar (streak_calendar_view.lua), which has its own copy of this same
+-- one-line check since the two views don't otherwise share any locals.
+local function showWeekNumbers()
+    return VS and VS.readShowWeekNumbers and VS.readShowWeekNumbers()
+end
+
+-- Metrics for the optional "Week" column: its own width (sized to the
+-- "Week" header label, always wider than a 2-digit week number) plus the
+-- padding either side of the thin separator line to its right. col_w is the
+-- column's own drawing width; prefix_w is the *total* extra horizontal
+-- space the column + separator take up, to subtract from content_width
+-- before splitting the remainder into 7 equal day columns. Both are 0 when
+-- show_week is false, so the calendar lays out exactly as before.
+local WEEK_COL_SIDE_PAD = Screen:scaleBySize(4)
+local function weekColumnMetrics(show_week, small_font)
+    if not show_week then return 0, 0 end
+    local label_w = TextWidget:new{ text = _("Week"), face = small_font }:getSize().w
+    local col_w = label_w + 2 * WEEK_COL_SIDE_PAD
+    local prefix_w = col_w + WEEK_COL_SIDE_PAD + Size.line.thin + WEEK_COL_SIDE_PAD
+    return col_w, prefix_w
+end
+
 -- Builds the weekday header row + week rows of day cells for one month.
 -- Returns the combined widget and a list of { frame = <tappable widget>,
 -- day = N, data = daily_map[N] or nil } used by BookCalendarPopup:onTap
@@ -173,7 +197,9 @@ local function buildBookCalendarGrid(daily_map, year, month, day_font, small_fon
     local week_start_wd = Prefs.weekStartWday() -- 0=Sun, 1=Mon
     local gap    = Screen:scaleBySize(2)
     local cols   = 7
-    local cell_w = math.floor((content_width - (cols - 1) * gap) / cols)
+    local show_week = showWeekNumbers()
+    local week_col_w, week_prefix_w = weekColumnMetrics(show_week, small_font)
+    local cell_w = math.floor((content_width - week_prefix_w - (cols - 1) * gap) / cols)
     local cell_h = math.floor(cell_w * 1.15) -- room for day number + percent line + bottom progress bar
 
     local bar_h   = Screen:scaleBySize(4)
@@ -181,11 +207,32 @@ local function buildBookCalendarGrid(daily_map, year, month, day_font, small_fon
     local bar_w   = cell_w - 2 * bar_pad
     local day_font_bold = Fonts.getBoldFace("stats_label")
 
+    -- The optional "Week" column prefix: a gray label/number cell, then a
+    -- thin gray separator line, then a bit of breathing room either side -
+    -- built fresh for the header row and for each week row, at that row's
+    -- own height. Mirrors weekPrefix in streak_calendar_view.lua so both
+    -- calendars' week columns look alike.
+    local function weekPrefix(text, height)
+        if not show_week then return nil end
+        local label = TextWidget:new{ text = text, face = small_font, fgcolor = Blitbuffer.COLOR_GRAY }
+        return HorizontalGroup:new{
+            align = "center",
+            CenterContainer:new{ dimen = Geom:new{ w = week_col_w, h = height }, label },
+            HorizontalSpan:new{ width = WEEK_COL_SIDE_PAD },
+            Colors.newBar(Size.line.thin, height, Colors.separator()),
+            HorizontalSpan:new{ width = WEEK_COL_SIDE_PAD },
+        }
+    end
+
     local grid = VerticalGroup:new{ align = "center" }
     local day_cells = {}
 
-    -- Weekday header row.
+    -- Weekday header row, with the gray "Week" column label in front when
+    -- the option is on.
     local header_row = HorizontalGroup:new{}
+    local header_label_h = TextWidget:new{ text = _(WEEKDAY_SHORT[1]), face = small_font }:getSize().h
+    local week_header = weekPrefix(_("Week"), header_label_h)
+    if week_header then table.insert(header_row, week_header) end
     for i = 0, 6 do
         local wd = ((week_start_wd + i) % 7) + 1 -- 1=Sun..7=Sat
         local label_w = TextWidget:new{ text = _(WEEKDAY_SHORT[wd]), face = small_font, fgcolor = Colors.label() }
@@ -210,6 +257,20 @@ local function buildBookCalendarGrid(daily_map, year, month, day_font, small_fon
     for r = 0, 5 do
         local day = start_cell_day + r * 7
         local row = HorizontalGroup:new{}
+        if show_week then
+            -- ISO week number of the row's first (leftmost) column, whatever
+            -- the configured week-start day - a row is one calendar week
+            -- either way, so it has exactly one ISO week number. day may
+            -- fall in the previous/next month; os.time/os.date normalise
+            -- that the same way cellDate does elsewhere in this file.
+            local row_t = os.time{ year = year, month = month, day = day, hour = 12 }
+            table.insert(row, weekPrefix(
+                tostring(Locale.isoWeekNumber(
+                    tonumber(os.date("%Y", row_t)),
+                    tonumber(os.date("%m", row_t)),
+                    tonumber(os.date("%d", row_t)))),
+                cell_h))
+        end
         for col = 1, 7 do
             local cell_day = day + col - 1
             if cell_day < 1 or cell_day > days_in_month then

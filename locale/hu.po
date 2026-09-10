@@ -1669,3 +1669,12 @@ msgstr "A hamburger menü (a fejléc bal oldalán) megjelenítése, amely gyors 
 
 msgid "Couldn't open Records: "
 msgstr "Nem sikerült megnyitni a Rekordokat: "
+
+msgid "Week"
+msgstr "Hét"
+
+msgid "Show week numbers"
+msgstr "Hetek számának megjelenítése"
+
+msgid "Add a \"Week\" column with each row's week number to the reading streak and Book progress calendars."
+msgstr "„Hét” oszlop hozzáadása, amely soronként a hét számát mutatja az olvasási sorozat és a könyvhaladási naptárakon."

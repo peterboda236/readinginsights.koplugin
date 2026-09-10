@@ -1672,3 +1672,12 @@ msgstr "Afficher le menu hamburger (en haut à gauche de la barre de titre) donn
 
 msgid "Couldn't open Records: "
 msgstr "Impossible d'ouvrir Records : "
+
+msgid "Week"
+msgstr "Semaine"
+
+msgid "Show week numbers"
+msgstr "Afficher les numéros de semaine"
+
+msgid "Add a \"Week\" column with each row's week number to the reading streak and Book progress calendars."
+msgstr "Ajouter une colonne « Semaine » indiquant le numéro de semaine de chaque ligne aux calendriers de série de lecture et de progression du livre."

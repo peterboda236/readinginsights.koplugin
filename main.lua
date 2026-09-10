@@ -254,7 +254,7 @@ local AchievementsView = loadModule("views/achievements_view.lua",
 -- modules, so it loads first and is handed to the insights view below.
 local StreakCalendar = loadModule("views/streak_calendar_view.lua", {
     Locale = Locale, Colors = Colors, Fonts = Fonts, UI = UI,
-    Data = InsightsData, Prefs = Prefs,
+    Data = InsightsData, Prefs = Prefs, VS = ViewSettings,
 })
 
 -- Records: the queries and their cache (lib/records_data.lua, loaded above
@@ -276,7 +276,7 @@ local Insights = loadModule("views/insights_view.lua", {
     Prefs = Prefs, Streak = StreakCalendar, Records = Records,
 })
 local BookCalendar = loadModule("views/book_calendar_view.lua", {
-    Locale = Locale, Colors = Colors, Fonts = Fonts, Prefs = Prefs,
+    Locale = Locale, Colors = Colors, Fonts = Fonts, Prefs = Prefs, VS = ViewSettings,
     BookProgress = BookProgress, UI = UI, CalendarData = BookCalendarData,
 })
 local StatsPopup = loadModule("views/book_stats_view.lua", {

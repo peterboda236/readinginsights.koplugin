@@ -1721,3 +1721,12 @@ msgstr "Показувати меню-гамбургер (у верхньому 
 
 msgid "Couldn't open Records: "
 msgstr "Не вдалося відкрити Рекорди: "
+
+msgid "Week"
+msgstr "Тиждень"
+
+msgid "Show week numbers"
+msgstr "Показувати номери тижнів"
+
+msgid "Add a \"Week\" column with each row's week number to the reading streak and Book progress calendars."
+msgstr "Додати стовпець «Тиждень» із номером тижня для кожного рядка до календарів серії читання та прогресу книги."

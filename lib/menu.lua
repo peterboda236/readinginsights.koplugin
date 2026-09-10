@@ -385,6 +385,19 @@ function M.build(self, deps)
         },
     })
 
+    -- Extra "Week" column (ISO week number) on the Reading streak calendar
+    -- and the Book progress calendar. Off by default - see
+    -- ViewSettings.readShowWeekNumbers.
+    table.insert(date_time_sub_item_table, {
+        text = _("Show week numbers"),
+        help_text = _("Add a \"Week\" column with each row's week number to the reading streak and Book progress calendars."),
+        keep_menu_open = true,
+        checked_func = function() return deps.ViewSettings.readShowWeekNumbers() end,
+        callback = function()
+            deps.ViewSettings.saveShowWeekNumbers(not deps.ViewSettings.readShowWeekNumbers())
+        end,
+    })
+
     -- "Reading insight popup": everything that changes what the insights
     -- popup itself shows. Inserted into Advanced settings below, after the
     -- "Date & time" group.

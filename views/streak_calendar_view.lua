@@ -46,8 +46,8 @@ local Screen = Device.screen
 -- Locale/Colors/Fonts/UI/Data/Prefs the insights view uses, so this popup
 -- reads the same colors, fonts and reading data.
 local deps = ...
-local Locale, Colors, Fonts, UI, Data, Prefs =
-    deps.Locale, deps.Colors, deps.Fonts, deps.UI, deps.Data, deps.Prefs
+local Locale, Colors, Fonts, UI, Data, Prefs, VS =
+    deps.Locale, deps.Colors, deps.Fonts, deps.UI, deps.Data, deps.Prefs, deps.VS
 
 local _            = Locale._
 local N_           = Locale.N_
@@ -153,6 +153,29 @@ local function streakNumColor(fill_hex)
     return (hexLuminance(fill_hex) < 128) and Blitbuffer.COLOR_WHITE or Blitbuffer.COLOR_BLACK
 end
 
+-- Whether to show week numbers (Prefs ▸ Advanced settings ▸ Date & time ▸
+-- "Show week numbers"). Off by default.
+local function showWeekNumbers()
+    return VS and VS.readShowWeekNumbers and VS.readShowWeekNumbers()
+end
+
+-- Metrics for the optional "Week" column: its own width (sized to the
+-- "Week" header label, which is always wider than a 2-digit week number)
+-- plus the padding on either side of the thin separator line to its right.
+-- col_w is the column's own drawing width; prefix_w is the *total* extra
+-- horizontal space the column + separator take up, so callers can subtract
+-- it from the available width before splitting the remainder into 7 equal
+-- day columns. Both are 0 when show_week is false, so the calendar lays out
+-- exactly as it did before this option existed.
+local WEEK_COL_SIDE_PAD = Screen:scaleBySize(4)
+local function weekColumnMetrics(show_week, small_font)
+    if not show_week then return 0, 0 end
+    local label_w = TextWidget:new{ text = _("Week"), face = small_font }:getSize().w
+    local col_w = label_w + 2 * WEEK_COL_SIDE_PAD
+    local prefix_w = col_w + WEEK_COL_SIDE_PAD + Size.line.thin + WEEK_COL_SIDE_PAD
+    return col_w, prefix_w
+end
+
 -- One month's grid of day cells for the streak-date popup calendar (weekday
 -- header row + week rows; the month/year title lives in the paging header
 -- built separately - see buildStreakCalHeader/StreakDatePopup below).
@@ -168,7 +191,7 @@ end
 --     Day squares (side `cell`) sit flush horizontally - no gap between the
 --     consecutive days of a week - while a small `row_gap` separates the week
 --     rows, so each week reads as one solid strip.
-local function buildStreakMonthGrid(year, month, read_set, fonts, cell, week_start_wd)
+local function buildStreakMonthGrid(year, month, read_set, fonts, cell, week_start_wd, show_week, week_col_w)
     local today_str = os.date("%Y-%m-%d")
     -- Day-number face matches the Book progress calendar's day cells
     -- (Fonts.getFace("stats_label")/getBoldFace) rather than this popup's
@@ -180,12 +203,38 @@ local function buildStreakMonthGrid(year, month, read_set, fonts, cell, week_sta
     -- a zero-width child gets dropped from this centered VerticalGroup's height,
     -- which both swallowed the row gap and left the grid under-reporting its
     -- size (so the divider below it crept up over the calendar).
-    local grid_w  = 7 * cell
+    local week_prefix_w = show_week and (week_col_w + 2 * WEEK_COL_SIDE_PAD + Size.line.thin) or 0
+    local grid_w  = week_prefix_w + 7 * cell
     local row_gap = Screen:scaleBySize(6)
     local grid = VerticalGroup:new{ align = "center" }
 
-    -- Weekday header row (each label centered over its day column).
+    -- The optional "Week" column prefix: a gray label/number cell, then a
+    -- thin gray separator line, then a bit of breathing room either side -
+    -- built fresh for each row (header or day row) at the given height, so
+    -- the separator only ever spans one row at a time (the white row_gap
+    -- bars between weeks already provide a natural break in the line).
+    local function weekPrefix(text, height, is_bold)
+        if not show_week then return nil end
+        local label = TextWidget:new{
+            text = text,
+            face = is_bold and Fonts.getBoldFace("stats_label") or fonts.small,
+            fgcolor = Blitbuffer.COLOR_GRAY,
+        }
+        return HorizontalGroup:new{
+            align = "center",
+            CenterContainer:new{ dimen = Geom:new{ w = week_col_w, h = height }, label },
+            HorizontalSpan:new{ width = WEEK_COL_SIDE_PAD },
+            Colors.newBar(Size.line.thin, height, Colors.separator()),
+            HorizontalSpan:new{ width = WEEK_COL_SIDE_PAD },
+        }
+    end
+
+    -- Weekday header row (each label centered over its day column), with
+    -- the gray "Week" column label in front when the option is on.
     local header_row = HorizontalGroup:new{}
+    local header_label_h = TextWidget:new{ text = _(STREAK_WEEKDAY_SHORT[1]), face = fonts.small }:getSize().h
+    local week_header = weekPrefix(_("Week"), header_label_h)
+    if week_header then table.insert(header_row, week_header) end
     for i = 0, 6 do
         local wd = ((week_start_wd + i) % 7) + 1
         local label_w = TextWidget:new{ text = _(STREAK_WEEKDAY_SHORT[wd]), face = fonts.small, fgcolor = Colors.label() }
@@ -230,6 +279,16 @@ local function buildStreakMonthGrid(year, month, read_set, fonts, cell, week_sta
         end
 
         local row = HorizontalGroup:new{}
+        if show_week then
+            -- ISO week number of the row's first (leftmost) column, whatever
+            -- the configured week-start day - a row is one calendar week
+            -- either way, so it has exactly one ISO week number.
+            local row_date = cellDate(base)
+            local ry = tonumber(row_date:sub(1, 4))
+            local rm = tonumber(row_date:sub(6, 7))
+            local rd = tonumber(row_date:sub(9, 10))
+            table.insert(row, weekPrefix(tostring(Locale.isoWeekNumber(ry, rm, rd)), cell))
+        end
         for col = 0, 6 do
             local cell_day = base + col
             local day_str  = cellDate(cell_day)
@@ -381,7 +440,9 @@ function StreakDatePopup:_rebuild()
         -- the box and centered within it, so the box itself can stay full
         -- width for the streak figures below without the grid overflowing
         -- the screen's height.
-        local cell = self.cal_cell_override or math.floor(cont_w / 7)
+        local show_week = showWeekNumbers()
+        local week_col_w, week_prefix_w = weekColumnMetrics(show_week, fonts.small)
+        local cell = self.cal_cell_override or math.floor((cont_w - week_prefix_w) / 7)
         local mo   = self.months[self.month_index]
         local is_hu = (getLangBase() == "hu")
         local title_str = is_hu
@@ -392,7 +453,7 @@ function StreakDatePopup:_rebuild()
         local header, left_w, right_w, header_h =
             buildStreakCalHeader(title_str, cont_w, fonts.section, prev_available, next_available)
         local grid = buildStreakMonthGrid(mo.year, mo.month, self.read_set,
-            fonts, cell, self.week_start_wd)
+            fonts, cell, self.week_start_wd, show_week, week_col_w)
 
         table.insert(content, header)
         table.insert(content, VerticalSpan:new{ height = Size.padding.default })
@@ -648,7 +709,8 @@ local function showStreaksPopup(streaks)
             -- size. A couple of extra pixels are shaved off on top, as a
             -- margin against the rounding math.floor() introduces along
             -- the way.
-            local normal_cell = math.floor(content_width / 7)
+            local _week_col_w, week_prefix_w = weekColumnMetrics(showWeekNumbers(), fonts.small)
+            local normal_cell = math.floor((content_width - week_prefix_w) / 7)
             local delta_cell = math.ceil((measured_h - target_h) / 6) + 2
             popup.cal_cell_override = math.max(
                 normal_cell - delta_cell, Screen:scaleBySize(24))

@@ -1389,3 +1389,12 @@ msgstr "显示汉堡菜单（位于标题栏左上角），可快速打开连续
 
 msgid "Couldn't open Records: "
 msgstr "无法打开记录："
+
+msgid "Week"
+msgstr "周"
+
+msgid "Show week numbers"
+msgstr "显示周数"
+
+msgid "Add a \"Week\" column with each row's week number to the reading streak and Book progress calendars."
+msgstr "在连续阅读天数和书籍进度日历中添加“周”列，显示每行对应的周数。"

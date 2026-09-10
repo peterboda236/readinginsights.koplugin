@@ -474,6 +474,23 @@ local function formatDuration(seconds, without_seconds)
     return parts.value .. " " .. parts.unit
 end
 
+-- ISO-8601 week number for a Y/M/D date. Used by the optional "Week" column
+-- on the reading streak and Book progress calendars (see
+-- ViewSettings.readShowWeekNumbers). Not implemented as os.date("%V", ts):
+-- %V is a glibc extension that isn't reliably available on every platform
+-- KOReader runs on (some embedded/eReader libc builds don't support it), so
+-- this computes it directly from the standard rule instead - a date's ISO
+-- week is the week of the Thursday that falls in the same Mon-Sun week as
+-- that date, and that week's number is ceil(Thursday's day-of-year / 7).
+local function isoWeekNumber(year, month, day)
+    local t = os.time{ year = year, month = month, day = day, hour = 12 }
+    local wday = tonumber(os.date("%w", t)) -- 0=Sun..6=Sat
+    local iso_wday = (wday == 0) and 7 or wday -- 1=Mon..7=Sun
+    local thursday_t = t + (4 - iso_wday) * 86400
+    local iso_doy = tonumber(os.date("%j", thursday_t))
+    return math.floor((iso_doy - 1) / 7) + 1
+end
+
 return {
     pluginDir                  = pluginDir,
     _                          = _,
@@ -484,6 +501,7 @@ return {
     formatDuration             = formatDuration,
     formatDurationParts        = formatDurationParts,
     formatTimeHHMM             = formatTimeHHMM,
+    isoWeekNumber              = isoWeekNumber,
     readDurationDaysSetting    = readDurationDaysSetting,
     saveDurationDaysSetting    = saveDurationDaysSetting,
     formatDate                 = formatDate,

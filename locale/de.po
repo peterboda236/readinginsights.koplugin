@@ -1672,3 +1672,12 @@ msgstr "Das Hamburger-Menü (oben links in der Titelleiste) mit schnellem Zugrif
 
 msgid "Couldn't open Records: "
 msgstr "Rekorde konnten nicht geöffnet werden: "
+
+msgid "Week"
+msgstr "Woche"
+
+msgid "Show week numbers"
+msgstr "Wochennummern anzeigen"
+
+msgid "Add a \"Week\" column with each row's week number to the reading streak and Book progress calendars."
+msgstr "Eine Spalte „Woche“ mit der Wochennummer jeder Zeile zum Lesesträhnen- und Buchfortschritts-Kalender hinzufügen."
