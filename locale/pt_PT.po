@@ -396,6 +396,12 @@ msgstr "tempo de leitura"
 msgid "per day"
 msgstr "por dia"
 
+msgid "second"
+msgstr "segundo"
+
+msgid "seconds"
+msgstr "segundos"
+
 msgid "minute"
 msgstr "minuto"
 
@@ -1607,6 +1613,30 @@ msgstr "Meta de leitura e conquistas"
 msgid "Reading goal only"
 msgstr "Apenas meta de leitura"
 
+msgid "Time of day"
+msgstr "Período do dia"
+
+msgid "Time of day view"
+msgstr "Vista por período do dia"
+
+msgid "Chart"
+msgstr "Gráfico"
+
+msgid "Heatmap"
+msgstr "Mapa de calor"
+
+msgid "Night"
+msgstr "Noite"
+
+msgid "Morning"
+msgstr "Manhã"
+
+msgid "Afternoon"
+msgstr "Tarde"
+
+msgid "Evening"
+msgstr "Noitinha"
+
 msgid "Reading time by time of day"
 msgstr "Tempo de leitura por período do dia"
 
@@ -1633,3 +1663,12 @@ msgstr "Linha \"iniciado / conclusão prevista\""
 
 msgid "Show the \"started …\" and \"expected finish\" date row in the \"Pace\" section."
 msgstr "Mostrar a linha de datas \"iniciado …\" e \"conclusão prevista\" na secção \"Ritmo\"."
+
+msgid "Hamburger menu"
+msgstr "Menu hambúrguer"
+
+msgid "Show the hamburger menu (top left of the title bar) with quick access to the streak, heatmap, records and achievements popups."
+msgstr "Mostrar o menu hambúrguer (no canto superior esquerdo da barra de título) com acesso rápido às janelas de sequência de leitura, mapa de calor, recordes e conquistas."
+
+msgid "Couldn't open Records: "
+msgstr "Não foi possível abrir os Recordes: "

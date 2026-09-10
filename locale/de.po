@@ -396,6 +396,12 @@ msgstr "Lesezeit"
 msgid "per day"
 msgstr "pro Tag"
 
+msgid "second"
+msgstr "Sekunde"
+
+msgid "seconds"
+msgstr "Sekunden"
+
 msgid "minute"
 msgstr "Minute"
 
@@ -1607,6 +1613,30 @@ msgstr "Leseziel & Erfolge"
 msgid "Reading goal only"
 msgstr "Nur Leseziel"
 
+msgid "Time of day"
+msgstr "Tageszeit"
+
+msgid "Time of day view"
+msgstr "Tageszeit-Ansicht"
+
+msgid "Chart"
+msgstr "Diagramm"
+
+msgid "Heatmap"
+msgstr "Heatmap"
+
+msgid "Night"
+msgstr "Nacht"
+
+msgid "Morning"
+msgstr "Morgen"
+
+msgid "Afternoon"
+msgstr "Nachmittag"
+
+msgid "Evening"
+msgstr "Abend"
+
 msgid "Reading time by time of day"
 msgstr "Lesezeit nach Tageszeit"
 
@@ -1633,3 +1663,12 @@ msgstr "Zeile „Begonnen / voraussichtliches Ende“"
 
 msgid "Show the \"started …\" and \"expected finish\" date row in the \"Pace\" section."
 msgstr "Die Datumszeile „begonnen …“ und „voraussichtliches Ende“ im Abschnitt „Lesetempo“ anzeigen."
+
+msgid "Hamburger menu"
+msgstr "Hamburger-Menü"
+
+msgid "Show the hamburger menu (top left of the title bar) with quick access to the streak, heatmap, records and achievements popups."
+msgstr "Das Hamburger-Menü (oben links in der Titelleiste) mit schnellem Zugriff auf die Popups für Lesesträhne, Heatmap, Rekorde und Erfolge anzeigen."
+
+msgid "Couldn't open Records: "
+msgstr "Rekorde konnten nicht geöffnet werden: "

@@ -411,6 +411,12 @@ msgstr "час читання"
 msgid "per day"
 msgstr "на день"
 
+msgid "second"
+msgstr "секунда"
+
+msgid "seconds"
+msgstr "секунди"
+
 msgid "minute"
 msgstr "хвилина"
 
@@ -531,6 +537,9 @@ msgstr "Колір розділу"
 msgid "Chart label color"
 msgstr "Колір міток графіка"
 
+msgid "Section header background color"
+msgstr "Колір фону заголовка розділу"
+
 msgid "Settings"
 msgstr "Налаштування"
 
@@ -593,6 +602,9 @@ msgstr "Стрілки панелі глав"
 
 msgid "Font name"
 msgstr "Назва шрифту"
+
+msgid "Enter a bundled font file name (e.g. NotoSans-Bold.ttf) or a KOReader font alias (e.g. tfont, cfont). If it can't be found, this role falls back to its default font."
+msgstr "Введіть назву файлу вбудованого шрифту (напр., NotoSans-Bold.ttf) або псевдонім шрифту KOReader (напр., tfont, cfont). Якщо його не вдасться знайти, ця роль повернеться до свого типового шрифту."
 
 msgid ""
 "Enter a bundled font file name (e.g. NotoSans-Bold.ttf) or a KOReader font alias (e."
@@ -885,6 +897,9 @@ msgstr "Про програму"
 msgid "Reading insight"
 msgstr "Аналітика читання"
 
+msgid "A full-screen overlay with a comprehensive overview of your reading history, powered by KOReader's statistics database."
+msgstr "Повноекранний огляд з детальною статистикою вашої історії читання на основі бази даних статистики KOReader."
+
 msgid ""
 "A full-screen overlay with a comprehensive overview of your reading history, powered "
 "by KOReader's statistics database."
@@ -943,6 +958,9 @@ msgstr "Додаткові значення (дата / назва книги)"
 msgid "Reading goal section"
 msgstr "Розділ цілі читання"
 
+msgid "Shows the number of books finished this year next to your yearly goal. Long press the goal value to change it."
+msgstr "Показує кількість завершених цього року книжок поряд із вашою річною ціллю. Довге натискання на значення цілі дозволяє її змінити."
+
 msgid ""
 "Shows the number of books finished this year next to your yearly goal. Long press the "
 "goal value to change it."
@@ -970,6 +988,9 @@ msgstr "Продовжити редагування"
 
 msgid "Automatic"
 msgstr "Автоматично"
+
+msgid "Sizes the Reading insights bar charts so the page fits the screen without a scroll bar."
+msgstr "Підбирає розмір стовпчикових діаграм аналітики читання так, щоб сторінка вміщалася на екрані без смуги прокрутки."
 
 msgid ""
 "Sizes the Reading insights bar charts so the page fits the screen without a scroll "
@@ -1641,6 +1662,30 @@ msgstr "Ціль читання та досягнення"
 msgid "Reading goal only"
 msgstr "Лише ціль читання"
 
+msgid "Time of day"
+msgstr "Час доби"
+
+msgid "Time of day view"
+msgstr "Вигляд за часом доби"
+
+msgid "Chart"
+msgstr "Графік"
+
+msgid "Heatmap"
+msgstr "Теплова карта"
+
+msgid "Night"
+msgstr "Ніч"
+
+msgid "Morning"
+msgstr "Ранок"
+
+msgid "Afternoon"
+msgstr "День"
+
+msgid "Evening"
+msgstr "Вечір"
+
 msgid "Reading time by time of day"
 msgstr "Час читання за часом доби"
 
@@ -1667,3 +1712,12 @@ msgstr "Рядок «Розпочато / очікуване завершенн�
 
 msgid "Show the \"started …\" and \"expected finish\" date row in the \"Pace\" section."
 msgstr "Показати рядок дат «розпочато…» та «очікуване завершення» в розділі «Темп»."
+
+msgid "Hamburger menu"
+msgstr "Меню-гамбургер"
+
+msgid "Show the hamburger menu (top left of the title bar) with quick access to the streak, heatmap, records and achievements popups."
+msgstr "Показувати меню-гамбургер (у верхньому лівому куті панелі заголовка) зі швидким доступом до вікон серії читання, теплової карти, рекордів і досягнень."
+
+msgid "Couldn't open Records: "
+msgstr "Не вдалося відкрити Рекорди: "

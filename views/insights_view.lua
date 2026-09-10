@@ -70,10 +70,11 @@ local T = require("ffi/util").template
 -- loadModule() call for this file).
 -- Shared modules, passed in as one named table by main.lua (see there).
 local deps = ...
-local Locale, Colors, Fonts, PopupUtil, VS, Cache, UI, Trend, Heatmap, BookList, Data, Manual, Achievements, AchievementsView, Prefs, Streak =
+local Locale, Colors, Fonts, PopupUtil, VS, Cache, UI, Trend, Heatmap, BookList, Data, Manual, Achievements, AchievementsView, Prefs, Streak, Records =
     deps.Locale, deps.Colors, deps.Fonts, deps.PopupUtil,
     deps.VS, deps.Cache, deps.UI, deps.Trend, deps.Heatmap, deps.BookList,
-    deps.Data, deps.Manual, deps.Achievements, deps.AchievementsView, deps.Prefs, deps.Streak
+    deps.Data, deps.Manual, deps.Achievements, deps.AchievementsView, deps.Prefs, deps.Streak,
+    deps.Records
 
 -- true: today's bar in the weekly chart is black. false: all bars gray.
 local WEEKLY_CHART_HIGHLIGHT_TODAY = true
@@ -1056,18 +1057,9 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
         local function openFinished()     popup_self:showFinishedBooksForYear(goal_year) end
         local function openFinishedMenu() popup_self:showFinishedBooksMenu(goal_year) end
         local function editGoal()         popup_self:editReadingGoal(goal_year) end
-        local function openAchievements()
-            if not AchievementsView then return end
-            -- Refresh the cell when the list closes, so the "new" star badge
-            -- clears at once (opening the list marks everything seen).
-            AchievementsView.show(function()
-                if popup_self._closed then return end
-                popup_self:_buildUI()
-                UIManager:setDirty(popup_self, function()
-                    return "ui", popup_self.popup_frame.dimen
-                end)
-            end)
-        end
+        -- Shared with the hamburger menu - see
+        -- ReadingInsightsPopup:openAchievementsList() above.
+        local function openAchievements() popup_self:openAchievementsList() end
 
         -- A value/label data cell (col_width wide) with a tap action.
         local function dataCell(line, on_tap)
@@ -1332,6 +1324,125 @@ end
 -- newer half-years as far back as there's data.
 function ReadingInsightsPopup:showReadingHeatmap()
     UIManager:show(Heatmap.Popup:new{ popup_self = self, periods_back = 0 })
+end
+
+-- Opens the achievements list. Shared by the reading-goal section's
+-- "Achievements" title/cell (see buildInsightsSections) and the hamburger
+-- menu (see onShowHamburgerMenu). Refreshes this popup's own build when the
+-- list closes, so the "new" star badge next to the earned count clears at
+-- once (opening the list marks everything seen).
+function ReadingInsightsPopup:openAchievementsList()
+    if not AchievementsView then return end
+    local popup_self = self
+    AchievementsView.show(function()
+        if popup_self._closed then return end
+        popup_self:_buildUI()
+        UIManager:setDirty(popup_self, function()
+            return "ui", popup_self.popup_frame.dimen
+        end)
+    end)
+end
+
+-- Opens the Records popup (all-time reading records) - same popup the
+-- Tools-menu "Show Records" entry opens (see main.lua's
+-- onShowReadingRecordsPopup), reachable here from the hamburger menu.
+function ReadingInsightsPopup:openRecordsPopup()
+    if not Records then return end
+    local popup_self = self
+    -- A first-ever open (no records cache yet) recomputes every record from
+    -- the full statistics history in one blocking scan - the plugin's own
+    -- slowest thing, and it runs on the UI thread (see records_view.lua's
+    -- onHold, which shows this same message before its own forced recount
+    -- for exactly that reason). Shown here too, so a big history doesn't
+    -- read as "nothing happened" while it's still counting - the message is
+    -- given a moment to actually reach the screen before the blocking call.
+    local msg = InfoMessage:new{ text = _("Loading data…") }
+    UIManager:show(msg)
+    UIManager:scheduleIn(0.1, function()
+        -- Wrapped in pcall: this is the one popup among the four
+        -- hamburger-menu entries that also touches the statistics database
+        -- on the way up (RecordsData.load()), so an InfoMessage here beats
+        -- a tap that silently does nothing if that ever throws instead of
+        -- returning its documented zero-value fallback.
+        local ok, err = pcall(function()
+            UIManager:show(Records.Popup:new{ ui = popup_self.ui })
+        end)
+        UIManager:close(msg)
+        if not ok then
+            UIManager:show(InfoMessage:new{
+                text = _("Couldn't open Records: ") .. tostring(err),
+            })
+        end
+    end)
+end
+
+-- Opens the combined current/best streak popup - same popup the streak
+-- header cells open (see buildInsightsSections) and the Tools-menu
+-- "Show Reading streak" entry (Insights.showStreaks below), reachable here
+-- from the hamburger menu. Uses whatever streak data this popup already
+-- has loaded rather than re-querying the DB.
+function ReadingInsightsPopup:openStreakPopup()
+    Streak.show(self._streaks or Data.calculateStreaks())
+end
+
+-- Hamburger menu (title bar, top left): quick access to the other reading-
+-- insights popups without paging/tapping through this one. Mirrors the
+-- sort-menu pattern used by the book-list popups (see
+-- widgets/booklistwidget.lua's onShowWidgetMenu / M.showSortMenu) - a
+-- ButtonDialog anchored under the title bar's left icon button.
+function ReadingInsightsPopup:onShowHamburgerMenu()
+    local ButtonDialog = require("ui/widget/buttondialog")
+    local popup_self = self
+    local dialog
+    local title_bar = self.title_bar
+    dialog = ButtonDialog:new{
+        -- This popup is itself modal, and UIManager stacks a non-modal
+        -- window shown over it underneath it - see showFinishedBooksMenu
+        -- above for the same reasoning.
+        modal                  = true,
+        shrink_unneeded_width  = true,
+        buttons = {
+            {{
+                text  = _("Show Reading streak"),
+                align = "left",
+                callback = function()
+                    UIManager:close(dialog)
+                    popup_self:openStreakPopup()
+                end,
+            }},
+            {{
+                text  = _("Show Reading heatmap"),
+                align = "left",
+                callback = function()
+                    UIManager:close(dialog)
+                    popup_self:showReadingHeatmap()
+                end,
+            }},
+            {{
+                text  = _("Show Records"),
+                align = "left",
+                callback = function()
+                    UIManager:close(dialog)
+                    popup_self:openRecordsPopup()
+                end,
+            }},
+            {{
+                text  = _("Show Achievements"),
+                align = "left",
+                callback = function()
+                    UIManager:close(dialog)
+                    popup_self:openAchievementsList()
+                end,
+            }},
+        },
+        -- Anchored under the title bar's hamburger icon, like the book
+        -- lists' sort menu - falls back to centred if that button isn't
+        -- there for some reason.
+        anchor = title_bar and title_bar.left_button and function()
+            return title_bar.left_button.image.dimen
+        end or nil,
+    }
+    UIManager:show(dialog)
 end
 
 -- Combines getFinishedBooksForYear's query-based list with the user's
@@ -1791,12 +1902,19 @@ function ReadingInsightsPopup:_buildUI()
             width          = screen_w,
             align          = "left",
             title          = self:_titleBarText(),
+            -- Hamburger menu, top left: quick access to the streak/heatmap/
+            -- records/achievements popups - see onShowHamburgerMenu below.
+            -- Hidden in readonly (sleep-screen) mode, same as close_callback,
+            -- so a stray touch there can't navigate away from the wake screen.
+            left_icon              = (not self.readonly and VS.Opt.readShowHamburgerMenu()) and "appbar.menu" or nil,
+            left_icon_tap_callback = (not self.readonly and VS.Opt.readShowHamburgerMenu()) and function() self:onShowHamburgerMenu() end or nil,
             close_callback = (not self.readonly) and function() UIManager:close(self) end or nil,
             show_parent    = self,
             top_v_padding    = Size.padding.default,
             bottom_v_padding = Size.padding.default,
         }
         self._title_bar_height = title_bar_inner:getSize().h
+        self.title_bar = title_bar_inner
 
         self.popup_frame = FrameContainer:new{
             background = Blitbuffer.COLOR_WHITE,
@@ -1853,6 +1971,12 @@ function ReadingInsightsPopup:_buildUI()
             width          = screen_w,
             align          = "left",
             title          = self:_titleBarText(),
+            -- Hamburger menu, top left: quick access to the streak/heatmap/
+            -- records/achievements popups - see onShowHamburgerMenu below.
+            -- Hidden in readonly (sleep-screen) mode, same as close_callback,
+            -- so a stray touch there can't navigate away from the wake screen.
+            left_icon              = (not self.readonly and VS.Opt.readShowHamburgerMenu()) and "appbar.menu" or nil,
+            left_icon_tap_callback = (not self.readonly and VS.Opt.readShowHamburgerMenu()) and function() self:onShowHamburgerMenu() end or nil,
             close_callback = (not self.readonly) and function() UIManager:close(self) end or nil,
             show_parent    = self,
             top_v_padding    = Size.padding.default,
@@ -1861,6 +1985,7 @@ function ReadingInsightsPopup:_buildUI()
 
         local title_bar_h = title_bar_inner:getSize().h
         self._title_bar_height = title_bar_h
+        self.title_bar = title_bar_inner
 
         -- Manual mode keeps the generous title-bar-tall bottom spacer it
         -- always had (the page is expected to scroll there anyway); auto
