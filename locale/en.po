@@ -1633,3 +1633,12 @@ msgstr "Started / expected finish row"
 
 msgid "Show the \"started …\" and \"expected finish\" date row in the \"Pace\" section."
 msgstr "Show the \"started …\" and \"expected finish\" date row in the \"Pace\" section."
+
+msgid "Hamburger menu"
+msgstr "Hamburger menu"
+
+msgid "Show the hamburger menu (top left of the title bar) with quick access to the streak, heatmap, records and achievements popups."
+msgstr "Show the hamburger menu (top left of the title bar) with quick access to the streak, heatmap, records and achievements popups."
+
+msgid "Couldn't open Records: "
+msgstr "Couldn't open Records: "

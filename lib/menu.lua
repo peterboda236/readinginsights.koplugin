@@ -426,6 +426,16 @@ function M.build(self, deps)
     end
 
     table.insert(insights_popup_sub_item_table, {
+        text = _("Hamburger menu"),
+        help_text = _("Show the hamburger menu (top left of the title bar) with quick access to the streak, heatmap, records and achievements popups."),
+        keep_menu_open = true,
+        checked_func = function() return deps.ViewSettings.Opt.readShowHamburgerMenu() end,
+        callback = function()
+            deps.ViewSettings.Opt.saveShowHamburgerMenu(not deps.ViewSettings.Opt.readShowHamburgerMenu())
+        end,
+    })
+
+    table.insert(insights_popup_sub_item_table, {
         text_func = function()
             local months = deps.ViewSettings.readHeatmapMonthsSetting()
             local label

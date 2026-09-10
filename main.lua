@@ -257,12 +257,23 @@ local StreakCalendar = loadModule("views/streak_calendar_view.lua", {
     Data = InsightsData, Prefs = Prefs,
 })
 
+-- Records: the queries and their cache (lib/records_data.lua, loaded above
+-- with the achievements wiring) are separate from the popup that draws them.
+-- Loaded here (moved up from below BookStatsData/BookCalendar) so the
+-- Records popup class can be handed to Insights below - the insights
+-- popup's hamburger menu opens it directly, the same way it already opens
+-- Streak/Heatmap/AchievementsView.
+local Records = loadModule("views/records_view.lua", {
+    Locale = Locale, Colors = Colors, Fonts = Fonts, PopupUtil = PopupUtil,
+    RecordsData = RecordsData,
+})
+
 local Insights = loadModule("views/insights_view.lua", {
     Locale = Locale, Colors = Colors, Fonts = Fonts,
     PopupUtil = PopupUtil, VS = ViewSettings, Cache = InsightsCache, UI = UI,
     Trend = Trend, Heatmap = Heatmap, BookList = BookList, Data = InsightsData,
     Manual = ManualBooks, Achievements = Achievements, AchievementsView = AchievementsView,
-    Prefs = Prefs, Streak = StreakCalendar,
+    Prefs = Prefs, Streak = StreakCalendar, Records = Records,
 })
 local BookCalendar = loadModule("views/book_calendar_view.lua", {
     Locale = Locale, Colors = Colors, Fonts = Fonts, Prefs = Prefs,
@@ -273,12 +284,6 @@ local StatsPopup = loadModule("views/book_stats_view.lua", {
     BookProgress = BookProgress, BookCalendar = BookCalendar,
     ChapterInfo = ChapterInfo, ChapterBar = ChapterBar, UI = UI,
     BookStatsData = BookStatsData, VS = ViewSettings,
-})
--- Records: the queries and their cache (lib/records_data.lua, loaded above
--- with the achievements wiring) are separate from the popup that draws them.
-local Records = loadModule("views/records_view.lua", {
-    Locale = Locale, Colors = Colors, Fonts = Fonts, PopupUtil = PopupUtil,
-    RecordsData = RecordsData,
 })
 local Updater = loadModule("lib/updater.lua", { Locale = Locale })
 local About   = loadModule("views/about.lua",

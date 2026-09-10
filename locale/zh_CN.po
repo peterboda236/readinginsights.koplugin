@@ -294,6 +294,12 @@ msgstr "阅读时长"
 msgid "per day"
 msgstr "每日"
 
+msgid "second"
+msgstr "秒"
+
+msgid "seconds"
+msgstr "秒"
+
 msgid "minute"
 msgstr "分钟"
 msgid "minutes"
@@ -1324,6 +1330,30 @@ msgstr "阅读目标与成就"
 msgid "Reading goal only"
 msgstr "仅阅读目标"
 
+msgid "Time of day"
+msgstr "时段"
+
+msgid "Time of day view"
+msgstr "时段视图"
+
+msgid "Chart"
+msgstr "图表"
+
+msgid "Heatmap"
+msgstr "热力图"
+
+msgid "Night"
+msgstr "夜间"
+
+msgid "Morning"
+msgstr "上午"
+
+msgid "Afternoon"
+msgstr "下午"
+
+msgid "Evening"
+msgstr "晚上"
+
 msgid "Reading time by time of day"
 msgstr "各时段阅读时长"
 
@@ -1350,3 +1380,12 @@ msgstr "“开始 / 预计完成”行"
 
 msgid "Show the \"started …\" and \"expected finish\" date row in the \"Pace\" section."
 msgstr "在“阅读速度”区域显示“开始…”和“预计完成”日期行。"
+
+msgid "Hamburger menu"
+msgstr "汉堡菜单"
+
+msgid "Show the hamburger menu (top left of the title bar) with quick access to the streak, heatmap, records and achievements popups."
+msgstr "显示汉堡菜单（位于标题栏左上角），可快速打开连续阅读天数、热力图、记录和成就弹窗。"
+
+msgid "Couldn't open Records: "
+msgstr "无法打开记录："

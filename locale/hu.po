@@ -1660,3 +1660,12 @@ msgstr "„Kezdve / várható befejezés” sor"
 
 msgid "Show the \"started …\" and \"expected finish\" date row in the \"Pace\" section."
 msgstr "A „kezdve…” és „várható befejezés” dátumsor megjelenítése a „Haladás” szakaszban."
+
+msgid "Hamburger menu"
+msgstr "Hamburger menü"
+
+msgid "Show the hamburger menu (top left of the title bar) with quick access to the streak, heatmap, records and achievements popups."
+msgstr "A hamburger menü (a fejléc bal oldalán) megjelenítése, amely gyors elérést biztosít az olvasási sorozat, a hőtérkép, a rekordok és a teljesítmények popupokhoz."
+
+msgid "Couldn't open Records: "
+msgstr "Nem sikerült megnyitni a Rekordokat: "

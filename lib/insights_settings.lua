@@ -193,6 +193,13 @@ M.Opt = {
     SHOW_PACE_DATES_KEY      = "reading_insights_book_show_pace_dates",
     SHOW_PACE_DATES_DEFAULT  = true,
 
+    -- Reading insights popup: whether the title bar's hamburger menu (top
+    -- left - quick access to the streak/heatmap/records/achievements
+    -- popups) is shown at all (Settings > Advanced settings > Reading
+    -- insight popup > "Hamburger menu"). On by default.
+    SHOW_HAMBURGER_MENU_KEY     = "reading_insights_show_hamburger_menu",
+    SHOW_HAMBURGER_MENU_DEFAULT = false,
+
 }
 
 -- Reading heatmap period length (Prefs ▸ Advanced settings ▸ how many
@@ -477,6 +484,18 @@ end
 
 function M.Opt.saveShowPaceDates(value)
     M.saveBoolSetting(M.Opt.SHOW_PACE_DATES_KEY, value)
+end
+
+-- Reading insights popup's title-bar hamburger menu (Settings > Advanced
+-- settings > Reading insight popup > "Hamburger menu"). Read by
+-- insights_view.lua's _buildUI when deciding whether to draw the title
+-- bar's left icon at all.
+function M.Opt.readShowHamburgerMenu()
+    return M.readBoolSetting(M.Opt.SHOW_HAMBURGER_MENU_KEY, M.Opt.SHOW_HAMBURGER_MENU_DEFAULT)
+end
+
+function M.Opt.saveShowHamburgerMenu(value)
+    M.saveBoolSetting(M.Opt.SHOW_HAMBURGER_MENU_KEY, value)
 end
 
 function M.Opt.readAchievementRefresh()
