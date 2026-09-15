@@ -2105,6 +2105,39 @@ function ReadingInsightsPopup:_buildUI()
     self[1] = VerticalGroup:new{ self.popup_frame }
 end
 
+-- Runs the DB getter for one insights mode's monthly chart. Shared by
+-- _fetchYearSpecific (current mode, on the popup's own load path) and
+-- _prefetchOtherModes (the other two modes, in the background) so both stay
+-- in sync with which getter belongs to which mode.
+local function queryMonthlyForMode(year, mode, conn)
+    if mode == VS.INSIGHTS_MODE_HOURS then
+        return Data.getMonthlyReadingHours(year, conn)
+    elseif mode == VS.INSIGHTS_MODE_BOOKS then
+        return Data.getMonthlyBookCounts(year, conn)
+    end
+    return Data.getMonthlyReadingDays(year, conn)
+end
+
+-- Fetches (and, for a completed year, freezes) one mode's monthly chart for
+-- `year`. This is the completed-year-aware wrapper around
+-- queryMonthlyForMode: a past year is read from the frozen completed-year
+-- cache and only ever queried the first time it's needed for that mode, the
+-- current year always queries live (which itself is cheap after the first
+-- call today - see the base-cache comments on the getters in
+-- lib/insights_data.lua). Used for the popup's own mode as well as for
+-- warming the modes it isn't currently showing.
+local function fetchMonthlyForYearMode(year, mode, conn)
+    if not isCompletedYear(year) then
+        return queryMonthlyForMode(year, mode, conn)
+    end
+    local monthly = Cache.getCompletedMonthly(year, mode)
+    if monthly == nil then
+        monthly = queryMonthlyForMode(year, mode, conn)
+        Cache.setCompletedYearData(year, nil, mode, monthly)
+    end
+    return monthly
+end
+
 -- The two year-specific slices (yearly totals + the monthly chart for the
 -- current mode), fetched the way the selected year wants them. A completed
 -- (past) year is read from the frozen completed-year cache and only queried
@@ -2114,26 +2147,54 @@ end
 function ReadingInsightsPopup:_fetchYearSpecific(conn)
     local year = self.selected_year
     local mode = self.mode or VS.INSIGHTS_MODE_HOURS
-    local function queryMonthly()
-        if mode == VS.INSIGHTS_MODE_HOURS then
-            return Data.getMonthlyReadingHours(year, conn)
-        elseif mode == VS.INSIGHTS_MODE_BOOKS then
-            return Data.getMonthlyBookCounts(year, conn)
-        end
-        return Data.getMonthlyReadingDays(year, conn)
-    end
 
     if not isCompletedYear(year) then
-        return Data.getYearlyStats(year, conn), queryMonthly()
+        return Data.getYearlyStats(year, conn), queryMonthlyForMode(year, mode, conn)
     end
 
     local yearly  = Cache.getCompletedYearly(year)
     local monthly = Cache.getCompletedMonthly(year, mode)
     if yearly == nil then yearly = Data.getYearlyStats(year, conn) end
-    if monthly == nil then monthly = queryMonthly() end
+    if monthly == nil then monthly = queryMonthlyForMode(year, mode, conn) end
     -- Freeze whatever we had to compute (a no-op re-store for cache hits).
     Cache.setCompletedYearData(year, yearly, mode, monthly)
     return yearly, monthly
+end
+
+-- Warms the monthly chart cache for the insights modes the popup ISN'T
+-- currently showing, so switching to "days" or "books" later this session
+-- lands on the same warm cache as the mode the popup opened with, instead of
+-- doing the once-a-day full-year scan right when the user taps to switch.
+--
+-- Scheduled from _loadAndRebuild, after that call's own data has already
+-- loaded and painted (see _scheduleAchievementsRefresh right above it for
+-- the same reasoning), so this never delays what's on screen for the
+-- current mode. For a mode whose base cache was already computed today -
+-- an earlier popup open, or an earlier switch this session - the getter
+-- call below is effectively free (same per-day base cache the visible mode
+-- itself relies on), so this is a real DB scan at most once per mode per
+-- day, same cost the visible mode already pays for itself.
+function ReadingInsightsPopup:_schedulePrefetchOtherModes()
+    if self._prefetch_scheduled then return end
+    self._prefetch_scheduled = true
+    UIManager:scheduleIn(0.3, function()
+        self._prefetch_scheduled = false
+        if self._closed then return end
+        local year         = self.selected_year
+        local current_mode = self.mode or VS.INSIGHTS_MODE_HOURS
+        local other_modes = {}
+        for _, m in ipairs({ VS.INSIGHTS_MODE_HOURS, VS.INSIGHTS_MODE_DAYS, VS.INSIGHTS_MODE_BOOKS }) do
+            if m ~= current_mode then table.insert(other_modes, m) end
+        end
+        Data.withBatchConnection(function(conn)
+            for _, m in ipairs(other_modes) do
+                if self._closed then break end
+                pcall(fetchMonthlyForYearMode, year, m, conn)
+            end
+        end)
+        if self._closed then return end
+        Cache.saveDiskCache()
+    end)
 end
 
 -- Set self._yearly/_monthly for the current selected_year+mode ahead of a
@@ -2268,6 +2329,7 @@ function ReadingInsightsPopup:_loadAndRebuild()
         self._ach_count       = new_ach_count
         Cache.saveDiskCache()
         self:_scheduleAchievementsRefresh()
+        self:_schedulePrefetchOtherModes()
         return
     end
 
@@ -2288,6 +2350,7 @@ function ReadingInsightsPopup:_loadAndRebuild()
     end)
     Cache.saveDiskCache()
     self:_scheduleAchievementsRefresh()
+    self:_schedulePrefetchOtherModes()
 end
 
 -- Deferred, one-shot achievement re-evaluation. Scheduled at the end of
