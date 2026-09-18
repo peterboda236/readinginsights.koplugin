@@ -1323,7 +1323,32 @@ end
 -- half-year; swipe left/right inside the popup to page through older/
 -- newer half-years as far back as there's data.
 function ReadingInsightsPopup:showReadingHeatmap()
-    UIManager:show(Heatmap.Popup:new{ popup_self = self, periods_back = 0 })
+    -- Whether this open is actually going to touch the DB: mirrors the
+    -- exact stale-cache check getHeatmapData (heatmap_view.lua) makes for
+    -- the current (periods_back == 0) period. There's no way to measure a
+    -- blocking Lua call's duration before making it, so this is the best
+    -- available proxy for "this open is about to be slow" - a cache hit
+    -- returns with no DB access at all and stays instant, while a miss
+    -- runs the full calendar + day-part queries synchronously on the UI
+    -- thread. Same "let the message actually reach the screen first"
+    -- pattern as openRecordsPopup above.
+    local start_t, end_t = Heatmap.getHeatmapPeriodRange(0)
+    local key = os.date("%Y-%m-%d", start_t) .. ".." .. os.date("%Y-%m-%d", end_t)
+    local cache_hit = Cache.ENABLE_CACHE
+        and Cache._stale_daily_map[key] and Cache._stale_weekday_hour_map[key]
+
+    if cache_hit then
+        UIManager:show(Heatmap.Popup:new{ popup_self = self, periods_back = 0 })
+        return
+    end
+
+    local popup_self = self
+    local msg = InfoMessage:new{ text = _("Loading data…") }
+    UIManager:show(msg)
+    UIManager:scheduleIn(0.1, function()
+        UIManager:show(Heatmap.Popup:new{ popup_self = popup_self, periods_back = 0 })
+        UIManager:close(msg)
+    end)
 end
 
 -- Opens the achievements list. Shared by the reading-goal section's

@@ -33,6 +33,7 @@ count stays clear of Lua's 200-per-scope limit (see those files' headers).
 ]]--
 
 local Dispatcher = require("dispatcher")
+local InfoMessage = require("ui/widget/infomessage")
 local UIManager = require("ui/uimanager")
 local WidgetContainer = require("ui/widget/container/widgetcontainer")
 local Device = require("device")
@@ -904,10 +905,29 @@ end
 -- above) is enough to open it directly, without going through the insights
 -- popup first.
 function ReadingInsights:onShowReadingHeatmapPopup()
-    UIManager:show(Heatmap.Popup:new{
-        popup_self   = { getDailyReadingDataForRange = heatmapGetDailyReadingDataForRange },
-        periods_back = 0,
-    })
+    -- Same stale-cache proxy views/insights_view.lua's showReadingHeatmap
+    -- uses: no way to time a blocking call before making it, so a miss on
+    -- the exact mirrors getHeatmapData checks is the best available signal
+    -- that this open is about to run the full calendar + day-part queries
+    -- synchronously on the UI thread instead of returning instantly.
+    local start_t, end_t = Heatmap.getHeatmapPeriodRange(0)
+    local key = os.date("%Y-%m-%d", start_t) .. ".." .. os.date("%Y-%m-%d", end_t)
+    local cache_hit = InsightsCache.ENABLE_CACHE
+        and InsightsCache._stale_daily_map[key] and InsightsCache._stale_weekday_hour_map[key]
+
+    local popup_self = { getDailyReadingDataForRange = heatmapGetDailyReadingDataForRange }
+
+    if cache_hit then
+        UIManager:show(Heatmap.Popup:new{ popup_self = popup_self, periods_back = 0 })
+        return true
+    end
+
+    local msg = InfoMessage:new{ text = _("Loading data…") }
+    UIManager:show(msg)
+    UIManager:scheduleIn(0.1, function()
+        UIManager:show(Heatmap.Popup:new{ popup_self = popup_self, periods_back = 0 })
+        UIManager:close(msg)
+    end)
     return true
 end
 
