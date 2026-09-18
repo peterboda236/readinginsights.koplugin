@@ -836,6 +836,9 @@ msgstr "Dia da sequência diária"
 msgid "Weekly streak gap day"
 msgstr "Dia sem leitura da sequência semanal"
 
+msgid "Book progress bar"
+msgstr "Barra de progresso do livro"
+
 msgid "Show long durations (24h+) as days"
 msgstr "Mostrar durações longas (24h+) em dias"
 
@@ -1654,6 +1657,24 @@ msgstr "Capítulos por página"
 
 msgid "How many chapters the chapter bar shows at once before paging with the arrows."
 msgstr "Quantos capítulos a barra de capítulos mostra de uma vez antes de paginar com as setas."
+
+msgid "Progress bar"
+msgstr "Barra de progresso"
+
+msgid "Show progress bar"
+msgstr "Mostrar barra de progresso"
+
+msgid "Show the progress bar in the \"This book\" section."
+msgstr "Mostrar a barra de progresso na secção \"Este livro\"."
+
+msgid "Progress bar height"
+msgstr "Altura da barra de progresso"
+
+msgid "Read portion color"
+msgstr "Cor da parte lida"
+
+msgid "Unread portion color"
+msgstr "Cor da parte não lida"
 
 msgid "Custom value"
 msgstr "Valor personalizado"

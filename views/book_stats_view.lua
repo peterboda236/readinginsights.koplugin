@@ -57,9 +57,9 @@ local Screen = Device.screen
 -- header comment above).
 -- Shared modules, passed in as one named table by main.lua (see there).
 local deps = ...
-local Locale, Colors, Fonts, Prefs, BookProgress, BookCalendar, ChapterInfo, ChapterBar, UI, BookStatsData, VS =
+local Locale, Colors, Fonts, Prefs, BookProgress, BookCalendar, ChapterInfo, ChapterBar, ProgressBar, UI, BookStatsData, VS =
     deps.Locale, deps.Colors, deps.Fonts, deps.Prefs, deps.BookProgress,
-    deps.BookCalendar, deps.ChapterInfo, deps.ChapterBar, deps.UI,
+    deps.BookCalendar, deps.ChapterInfo, deps.ChapterBar, deps.ProgressBar, deps.UI,
     deps.BookStatsData, deps.VS
 local _            = Locale._
 local N_           = Locale.N_
@@ -367,20 +367,51 @@ local function buildSections(stats, fonts, layout, popup)
     if popup then
         popup._this_book_header = this_book_header
     end
+
+    -- Progress bar: a black/gray (by default) filled bar showing how far
+    -- into the book the reader is, between the "This book" header/divider
+    -- and the percentage row. Toggle + colors + height are all user
+    -- settings (Settings > Advanced settings > Book progress popup >
+    -- Progress bar); skipped entirely when off or when there's no width to
+    -- draw it in.
+    local this_book_rows = VerticalGroup:new{ align = "center" }
+    table.insert(this_book_rows, book_progress_tap)
+    table.insert(this_book_rows, VerticalSpan:new{ height = Size.padding.default })
+    table.insert(this_book_rows, book_row)
+
+    -- Progress bar: moved to sit right above the chapter bar (rather than
+    -- inside the "This book" row block) so it visually introduces the
+    -- chapter bar below it. Built here, then inserted into `sections`
+    -- after this_book_rows and before the chapter-bar divider, so we can
+    -- also decide whether that divider line should be hidden (see below:
+    -- when the progress bar is showing, the bar itself is a strong enough
+    -- separator and the thin line under it look redundant).
+    local progress_bar_widget = nil
+    if ProgressBar and VS.Opt.readShowProgressBar() then
+        progress_bar_widget = ProgressBar.build(stats.book_progress_ratio, layout.content_width)
+    end
+
     UI.addSectionWithRow(
         sections,
         this_book_header,
-        VerticalGroup:new{
-            align = "center",
-            book_progress_tap,
-            VerticalSpan:new{ height = Size.padding.default },
-            book_row,
-        },
+        this_book_rows,
         layout,
         -- Same look as before the shared uikit: header, thin divider, row,
         -- and no closing line (the chapter bar follows right below).
         { no_bottom_line = true }
     )
+
+    if progress_bar_widget then
+        -- Gap above the bar matching the padding that already surrounds the
+        -- divider line shown above the chapter bar when the progress bar is
+        -- off (UI.addSectionWithRow's own trailing
+        -- VerticalSpan{height = Size.padding.large} after this_book_rows,
+        -- above): reuse that same amount here. No extra gap below the bar -
+        -- in the off state nothing sits between the divider line and the
+        -- chapter bar either, so adding one here made the bar's bottom
+        -- spacing bigger than the line's.
+        table.insert(sections, UI.padded(layout.padding_h, progress_bar_widget))
+    end
 
     if chapter_bar and VS.Opt.readShowChapterBar() then
         if popup then
@@ -397,8 +428,14 @@ local function buildSections(stats, fonts, layout, popup)
             popup._chapter_bar_on_prev    = chapter_on_prev
             popup._chapter_bar_on_next    = chapter_on_next
         end
+        -- Skip this divider when the progress bar is showing right above:
+        -- the bar itself already separates the "This book" block from the
+        -- chapter bar, so the thin line on top of it was a redundant
+        -- second divider.
+        if not progress_bar_widget then
             table.insert(sections, UI.padded(layout.padding_h,
                 Colors.newBar(layout.full_width - 2 * layout.padding_h, Size.line.thin, Colors.separator())))
+        end
         table.insert(sections, chapter_bar)
     end
     table.insert(sections, UI.padded(layout.padding_h,
@@ -579,6 +616,7 @@ function ReadingStatsPopup:gatherStats()
         book_time_left_hhmm    = na_hhmm,
         book_time_spent_hhmm   = zero_hhmm,
         book_progress          = zero_progress,
+        book_progress_ratio    = 0,
         book_pages_read        = zero_pages_read,
         avg_time_per_day_hhmm  = na_hhmm,
         pages_per_minute       = zero_pages_per_minute,
@@ -610,6 +648,11 @@ function ReadingStatsPopup:gatherStats()
     local progress_percent = BookProgress.percent(ui)
     if progress_percent then
         stats.book_progress = { value = formatCount(progress_percent) .. "%", unit = "" }
+        -- Fraction (0.0..1.0) for the progress bar widget - kept alongside
+        -- book_progress rather than re-derived from its formatted "N%"
+        -- string, the same "keep the raw number, not just its formatted
+        -- text" reasoning as total_pages_for_calendar below.
+        stats.book_progress_ratio = progress_percent / 100
     end
     local current_page_count, total_page_count = BookProgress.counts(ui)
     if current_page_count and total_page_count and total_page_count > 0 then

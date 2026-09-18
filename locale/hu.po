@@ -845,6 +845,9 @@ msgstr "Napi sorozat napja"
 msgid "Weekly streak gap day"
 msgstr "Heti sorozat kihagyott napja"
 
+msgid "Book progress bar"
+msgstr "Könyv előrehaladás-sáv"
+
 msgid "Show long durations (24h+) as days"
 msgstr "24 óra feletti időtartamok napokban"
 
@@ -1651,6 +1654,24 @@ msgstr "Fejezetek oldalanként"
 
 msgid "How many chapters the chapter bar shows at once before paging with the arrows."
 msgstr "Hány fejezetet mutat egyszerre a fejezetsáv, mielőtt a nyilakkal lapozni kell."
+
+msgid "Progress bar"
+msgstr "Előrehaladás-sáv"
+
+msgid "Show progress bar"
+msgstr "Előrehaladás-sáv megjelenítése"
+
+msgid "Show the progress bar in the \"This book\" section."
+msgstr "Az előrehaladás-sáv megjelenítése a „Könyv” szakaszban."
+
+msgid "Progress bar height"
+msgstr "Előrehaladás-sáv magassága"
+
+msgid "Read portion color"
+msgstr "Elolvasott rész színe"
+
+msgid "Unread portion color"
+msgstr "El nem olvasott rész színe"
 
 msgid "Custom value"
 msgstr "Egyéni érték"

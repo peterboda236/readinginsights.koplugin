@@ -734,6 +734,39 @@ function M.build(self, deps)
         })
     end
 
+    -- "Progress bar": the filled bar shown between the "This book" header
+    -- and the percentage row (widgets/progressbarwidget.lua). On/off toggle
+    -- and the bar's height live here; its two colors moved to the top-level
+    -- Colors menu (Colors > Book progress bar), alongside every other color
+    -- in the plugin, instead of being duplicated here.
+    do
+        local progress_bar_sub_item_table = {}
+
+        table.insert(progress_bar_sub_item_table, {
+            text = _("Show progress bar"),
+            help_text = _("Show the progress bar in the \"This book\" section."),
+            keep_menu_open = true,
+            checked_func = function() return deps.ViewSettings.Opt.readShowProgressBar() end,
+            callback = function()
+                deps.ViewSettings.Opt.saveShowProgressBar(not deps.ViewSettings.Opt.readShowProgressBar())
+            end,
+        })
+
+        table.insert(progress_bar_sub_item_table, buildBarHeightMenuEntry(
+            _("Progress bar height"),
+            deps.ProgressBar.readHeightSetting,
+            deps.ProgressBar.saveHeightSetting,
+            deps.ProgressBar.DEFAULT_HEIGHT,
+            1, 200
+        ))
+
+        table.insert(book_progress_sub_item_table, {
+            text = _("Progress bar"),
+            keep_menu_open = true,
+            sub_item_table = progress_bar_sub_item_table,
+        })
+    end
+
     table.insert(book_progress_sub_item_table, {
         text = _("Started / expected finish row"),
         help_text = _("Show the \"started …\" and \"expected finish\" date row in the \"Pace\" section."),

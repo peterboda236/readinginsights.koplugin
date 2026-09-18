@@ -193,6 +193,12 @@ M.Opt = {
     SHOW_PACE_DATES_KEY      = "reading_insights_book_show_pace_dates",
     SHOW_PACE_DATES_DEFAULT  = true,
 
+    -- Book progress popup: whether the progress bar (the black/gray filled
+    -- bar between the "This book" header and the percentage row) is shown.
+    -- On by default. See widgets/progressbarwidget.lua for the bar itself.
+    SHOW_PROGRESS_BAR_KEY     = "reading_insights_book_show_progress_bar",
+    SHOW_PROGRESS_BAR_DEFAULT = true,
+
     -- Reading insights popup: whether the title bar's hamburger menu (top
     -- left - quick access to the streak/heatmap/records/achievements
     -- popups) is shown at all (Settings > Advanced settings > Reading
@@ -500,6 +506,14 @@ end
 
 function M.Opt.saveShowPaceDates(value)
     M.saveBoolSetting(M.Opt.SHOW_PACE_DATES_KEY, value)
+end
+
+function M.Opt.readShowProgressBar()
+    return M.readBoolSetting(M.Opt.SHOW_PROGRESS_BAR_KEY, M.Opt.SHOW_PROGRESS_BAR_DEFAULT)
+end
+
+function M.Opt.saveShowProgressBar(value)
+    M.saveBoolSetting(M.Opt.SHOW_PROGRESS_BAR_KEY, value)
 end
 
 -- Reading insights popup's title-bar hamburger menu (Settings > Advanced

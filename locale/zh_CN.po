@@ -611,6 +611,9 @@ msgstr "每日连续记录日"
 msgid "Weekly streak gap day"
 msgstr "每周连续记录缺读日"
 
+msgid "Book progress bar"
+msgstr "书籍进度条"
+
 msgid "Show long durations (24h+) as days"
 msgstr "时长超过24小时以「天」显示"
 msgid "Date format"
@@ -1371,6 +1374,24 @@ msgstr "每页章节数"
 
 msgid "How many chapters the chapter bar shows at once before paging with the arrows."
 msgstr "章节条一次显示多少章节，之后需用箭头翻页。"
+
+msgid "Progress bar"
+msgstr "进度条"
+
+msgid "Show progress bar"
+msgstr "显示进度条"
+
+msgid "Show the progress bar in the \"This book\" section."
+msgstr "在“本书”区域显示进度条。"
+
+msgid "Progress bar height"
+msgstr "进度条高度"
+
+msgid "Read portion color"
+msgstr "已读部分颜色"
+
+msgid "Unread portion color"
+msgstr "未读部分颜色"
 
 msgid "Custom value"
 msgstr "自定义值"

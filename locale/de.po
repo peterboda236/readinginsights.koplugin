@@ -836,6 +836,9 @@ msgstr "Tag der Tagessträhne"
 msgid "Weekly streak gap day"
 msgstr "Lückentag der Wochensträhne"
 
+msgid "Book progress bar"
+msgstr "Fortschrittsbalken des Buches"
+
 msgid "Show long durations (24h+) as days"
 msgstr "Lange Zeitspannen (24 Std. oder mehr) als Tage anzeigen"
 
@@ -1654,6 +1657,24 @@ msgstr "Kapitel pro Seite"
 
 msgid "How many chapters the chapter bar shows at once before paging with the arrows."
 msgstr "Wie viele Kapitel der Kapitelbalken auf einmal anzeigt, bevor mit den Pfeilen geblättert wird."
+
+msgid "Progress bar"
+msgstr "Fortschrittsbalken"
+
+msgid "Show progress bar"
+msgstr "Fortschrittsbalken anzeigen"
+
+msgid "Show the progress bar in the \"This book\" section."
+msgstr "Den Fortschrittsbalken im Abschnitt „Dieses Buch“ anzeigen."
+
+msgid "Progress bar height"
+msgstr "Höhe des Fortschrittsbalkens"
+
+msgid "Read portion color"
+msgstr "Farbe des gelesenen Teils"
+
+msgid "Unread portion color"
+msgstr "Farbe des ungelesenen Teils"
 
 msgid "Custom value"
 msgstr "Eigener Wert"

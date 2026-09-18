@@ -153,13 +153,20 @@ local HEATMAP_KEY_ORDER = { "heatmap_0", "heatmap_25", "heatmap_50", "heatmap_75
 -- setting.
 local STREAK_KEY_ORDER = { "streak_read", "streak_gap" }
 
--- Every color key that exists, flat + heatmap + streak combined - used
--- wherever the code needs to touch *all* colors (e.g. "reset all colors
--- to default").
+-- The "This book" progress bar's two colors, grouped together under their
+-- own "Book progress bar" submenu in the Colors menu (same pattern as
+-- HEATMAP_KEY_ORDER/STREAK_KEY_ORDER above). Still included in
+-- ALL_KEY_ORDER so "Reset all colors to default" covers them too.
+local PROGRESS_BAR_KEY_ORDER = { "progress_bar_read", "progress_bar_unread" }
+
+-- Every color key that exists, flat + heatmap + streak + progress bar
+-- combined - used wherever the code needs to touch *all* colors (e.g.
+-- "reset all colors to default").
 local ALL_KEY_ORDER = {}
 for _, key in ipairs(KEY_ORDER) do table.insert(ALL_KEY_ORDER, key) end
 for _, key in ipairs(HEATMAP_KEY_ORDER) do table.insert(ALL_KEY_ORDER, key) end
 for _, key in ipairs(STREAK_KEY_ORDER) do table.insert(ALL_KEY_ORDER, key) end
+for _, key in ipairs(PROGRESS_BAR_KEY_ORDER) do table.insert(ALL_KEY_ORDER, key) end
 
 -- These match what was previously hard-coded directly in the two view
 -- files (Blitbuffer.COLOR_BLACK = "#000000", Blitbuffer.COLOR_GRAY = "#AAAAAA"),
@@ -194,6 +201,13 @@ local DEFAULTS = {
     --   (the weekly streak is secured for that week) - light gray.
     streak_read  = "#555555",
     streak_gap   = "#CCCCCC",
+    -- Book progress popup: the "This book" progress bar (see
+    -- widgets/progressbarwidget.lua). progress_bar_read is the filled
+    -- (already-read) portion, progress_bar_unread the remaining portion -
+    -- black and light gray by default, distinct from active_bar/
+    -- inactive_bar above so the two bars can be colored independently.
+    progress_bar_read   = "#000000",
+    progress_bar_unread = "#E0E0E0",
 }
 
 local SETTINGS_PREFIX = "reading_insights_color_"
@@ -319,6 +333,8 @@ function M.heatmap75()   return M.getColor("heatmap_75")   end
 function M.heatmap100()  return M.getColor("heatmap_100")  end
 function M.streakRead()  return M.getColor("streak_read")  end
 function M.streakGap()   return M.getColor("streak_gap")   end
+function M.progressBarRead()   return M.getColor("progress_bar_read")   end
+function M.progressBarUnread() return M.getColor("progress_bar_unread") end
 
 -- Menu ---------------------------------------------------------------
 
@@ -340,6 +356,8 @@ local function labelFor(key)
         heatmap_100  = _("Peak activity (100%)"),
         streak_read  = _("Daily streak day"),
         streak_gap   = _("Weekly streak gap day"),
+        progress_bar_read   = _("Read portion color"),
+        progress_bar_unread = _("Unread portion color"),
     }
     return labels[key] or key
 end
@@ -437,6 +455,12 @@ local function colorItem(key, on_change)
     }
 end
 
+-- Exposed so other menus (e.g. the "Book progress popup > Progress bar"
+-- submenu in menu.lua) can drop in a single "tap to edit hex" entry for one
+-- of their own colors, without duplicating showHexInputDialog/colorItem or
+-- pulling in the rest of the flat Colors menu.
+M.colorItem = colorItem
+
 -- Returns the sub_item_table for a "Colors" menu entry. on_change (optional)
 -- is invoked every time a color is changed or reset, so the caller can e.g.
 -- close/refresh any currently open popup. The menu itself is always kept
@@ -465,6 +489,16 @@ function M.buildMenu(on_change)
         text = _("Reading streak calendar"),
         keep_menu_open = true,
         sub_item_table = streak_sub_item_table,
+    })
+
+    local progress_bar_sub_item_table = {}
+    for _, key in ipairs(PROGRESS_BAR_KEY_ORDER) do
+        table.insert(progress_bar_sub_item_table, colorItem(key, on_change))
+    end
+    table.insert(sub_item_table, {
+        text = _("Book progress bar"),
+        keep_menu_open = true,
+        sub_item_table = progress_bar_sub_item_table,
     })
 
     table.insert(sub_item_table, {
