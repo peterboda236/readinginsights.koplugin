@@ -425,8 +425,14 @@ local function buildSections(stats, fonts, layout, popup)
     if has_book_rows or progress_bar_widget or show_chapter_bar then
         sectionSeparator()
 
+        -- When the chapter bar is the only thing enabled in this section
+        -- (read row, time row and progress bar all off), "This book" as a
+        -- header reads oddly above a bar of chapters and nothing else, so
+        -- use "Chapters" instead. Any other combination keeps "This book".
+        local this_book_title = (show_chapter_bar and not has_book_rows and not progress_bar_widget)
+            and _("Chapters") or _("This book")
         local this_book_header_content = UI.padded(layout.padding_h,
-            UI.buildSectionHeader(fonts.section, _("This book"), layout.content_width, 0, Colors.headerBg()))
+            UI.buildSectionHeader(fonts.section, this_book_title, layout.content_width, 0, Colors.headerBg()))
         -- Wrapped in tappableWrap (fixed dimen), same reasoning as
         -- chapter_headers above: a bare HorizontalGroup from UI.padded isn't
         -- guaranteed a usable .dimen for UI.hitTest, so the "This book"
