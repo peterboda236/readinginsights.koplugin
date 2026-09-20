@@ -1702,3 +1702,45 @@ msgstr "Wochennummern anzeigen"
 
 msgid "Add a \"Week\" column with each row's week number to the reading streak and Book progress calendars."
 msgstr "Eine Spalte „Woche“ mit der Wochennummer jeder Zeile zum Lesesträhnen- und Buchfortschritts-Kalender hinzufügen."
+
+msgid "Popup position"
+msgstr "Fensterposition"
+
+msgid "Top of the screen"
+msgstr "Oben am Bildschirm"
+
+msgid "Centered"
+msgstr "Zentriert"
+
+msgid "A bordered box in the middle of the screen, as wide as the Book progress calendar."
+msgstr "Ein umrahmtes Fenster in der Bildschirmmitte, so breit wie der Buchfortschrittskalender."
+
+msgid "Read row"
+msgstr "Zeile „Gelesen“"
+
+msgid "Reading time row"
+msgstr "Zeile „Lesezeit“"
+
+msgid "Read today row"
+msgstr "Zeile „Heute gelesen“"
+
+msgid "Show the \"This chapter\" column (reading time or pages left in the chapter). If this and \"Next chapter\" are both off, the whole chapter section is hidden."
+msgstr "Die Spalte „Dieses Kapitel“ anzeigen (verbleibende Lesezeit oder Seiten im Kapitel). Sind diese und „Nächstes Kapitel“ beide aus, wird der gesamte Kapitelbereich ausgeblendet."
+
+msgid "Show the \"Next chapter\" column. If this and \"This chapter\" are both off, the whole chapter section is hidden."
+msgstr "Die Spalte „Nächstes Kapitel“ anzeigen. Sind diese und „Dieses Kapitel“ beide aus, wird der gesamte Kapitelbereich ausgeblendet."
+
+msgid "Show the row with the read percentage and page count in the \"This book\" section. If every part of the section is off, its header is hidden too."
+msgstr "Die Zeile mit gelesenem Prozentsatz und Seitenzahl im Bereich „Dieses Buch“ anzeigen. Ist jeder Teil des Bereichs aus, wird auch die Überschrift ausgeblendet."
+
+msgid "Show the row with the time read so far and the reading time left in the \"This book\" section. If every part of the section is off, its header is hidden too."
+msgstr "Die Zeile mit der bisher gelesenen Zeit und der verbleibenden Lesezeit im Bereich „Dieses Buch“ anzeigen. Ist jeder Teil des Bereichs aus, wird auch die Überschrift ausgeblendet."
+
+msgid "Show the row with today's reading time and the average time per day in the \"Pace\" section. If this and the started / expected finish row are both off, the whole \"Pace\" section is hidden."
+msgstr "Die Zeile mit der heutigen Lesezeit und der durchschnittlichen Zeit pro Tag im Bereich „Lesetempo“ anzeigen. Sind diese und die Zeile „Begonnen / voraussichtliches Ende“ beide aus, wird der gesamte Bereich „Lesetempo“ ausgeblendet."
+
+msgid "All chapters"
+msgstr "Alle Kapitel"
+
+msgid "Draw every chapter in one row, without paging."
+msgstr "Alle Kapitel in einer Zeile zeichnen, ohne Blättern."

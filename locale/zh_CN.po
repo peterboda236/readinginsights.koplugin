@@ -1419,3 +1419,45 @@ msgstr "显示周数"
 
 msgid "Add a \"Week\" column with each row's week number to the reading streak and Book progress calendars."
 msgstr "在连续阅读天数和书籍进度日历中添加“周”列，显示每行对应的周数。"
+
+msgid "Popup position"
+msgstr "弹窗位置"
+
+msgid "Top of the screen"
+msgstr "屏幕顶部"
+
+msgid "Centered"
+msgstr "居中"
+
+msgid "A bordered box in the middle of the screen, as wide as the Book progress calendar."
+msgstr "位于屏幕中央的带边框窗口，宽度与阅读进度日历相同。"
+
+msgid "Read row"
+msgstr "“已读”行"
+
+msgid "Reading time row"
+msgstr "阅读时长行"
+
+msgid "Read today row"
+msgstr "“今日已读”行"
+
+msgid "Show the \"This chapter\" column (reading time or pages left in the chapter). If this and \"Next chapter\" are both off, the whole chapter section is hidden."
+msgstr "显示“本章”列（本章剩余阅读时长或页数）。如果此项和“下一章”都关闭，则整个章节区域将被隐藏。"
+
+msgid "Show the \"Next chapter\" column. If this and \"This chapter\" are both off, the whole chapter section is hidden."
+msgstr "显示“下一章”列。如果此项和“本章”都关闭，则整个章节区域将被隐藏。"
+
+msgid "Show the row with the read percentage and page count in the \"This book\" section. If every part of the section is off, its header is hidden too."
+msgstr "在“本书”区域显示已读百分比和页数所在的行。如果该区域的所有部分都已关闭，其标题也会被隐藏。"
+
+msgid "Show the row with the time read so far and the reading time left in the \"This book\" section. If every part of the section is off, its header is hidden too."
+msgstr "在“本书”区域显示至今已读时长和预估剩余阅读时长所在的行。如果该区域的所有部分都已关闭，其标题也会被隐藏。"
+
+msgid "Show the row with today's reading time and the average time per day in the \"Pace\" section. If this and the started / expected finish row are both off, the whole \"Pace\" section is hidden."
+msgstr "在“阅读速度”区域显示今日阅读时长和日均阅读时长所在的行。如果此项和“开始 / 预计完成”行都关闭，则整个“阅读速度”区域将被隐藏。"
+
+msgid "All chapters"
+msgstr "所有章节"
+
+msgid "Draw every chapter in one row, without paging."
+msgstr "在一行中绘制所有章节，不分页。"

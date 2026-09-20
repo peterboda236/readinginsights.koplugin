@@ -199,6 +199,27 @@ M.Opt = {
     SHOW_PROGRESS_BAR_KEY     = "reading_insights_book_show_progress_bar",
     SHOW_PROGRESS_BAR_DEFAULT = true,
 
+    -- Book progress popup: which rows / columns are shown. All on by default.
+    -- A section whose parts are all off is hidden with its header (see
+    -- buildSections in views/book_stats_view.lua).
+    --   chapter section: "This chapter" / "Next chapter" columns
+    --   "This book":     the "read" row (percent + pages), the reading-time row
+    --   "Pace":          the "read today / avg per day" row
+    SHOW_CHAPTER_CURRENT_KEY = "reading_insights_book_show_chapter_current",
+    SHOW_CHAPTER_NEXT_KEY    = "reading_insights_book_show_chapter_next",
+    SHOW_BOOK_READ_ROW_KEY   = "reading_insights_book_show_read_row",
+    SHOW_BOOK_TIME_ROW_KEY   = "reading_insights_book_show_time_row",
+    SHOW_PACE_TODAY_KEY      = "reading_insights_book_show_pace_today",
+
+    -- Book progress popup: where it is placed on screen. "top" (default) is
+    -- the original full-width sheet hanging from the top edge; "center" is a
+    -- bordered box in the middle of the screen, as wide as the Book progress
+    -- calendar (94% of the screen width). Settings > Advanced settings >
+    -- Book progress popup > "Popup position".
+    BOOK_POPUP_POSITION_KEY    = "reading_insights_book_popup_position",
+    BOOK_POPUP_POSITION_TOP    = "top",
+    BOOK_POPUP_POSITION_CENTER = "center",
+
     -- Reading insights popup: whether the title bar's hamburger menu (top
     -- left - quick access to the streak/heatmap/records/achievements
     -- popups) is shown at all (Settings > Advanced settings > Reading
@@ -506,6 +527,27 @@ end
 
 function M.Opt.saveShowPaceDates(value)
     M.saveBoolSetting(M.Opt.SHOW_PACE_DATES_KEY, value)
+end
+
+function M.Opt.readShowChapterCurrent() return M.readBoolSetting(M.Opt.SHOW_CHAPTER_CURRENT_KEY, true) end
+function M.Opt.saveShowChapterCurrent(v)  M.saveBoolSetting(M.Opt.SHOW_CHAPTER_CURRENT_KEY, v) end
+function M.Opt.readShowChapterNext()    return M.readBoolSetting(M.Opt.SHOW_CHAPTER_NEXT_KEY, true) end
+function M.Opt.saveShowChapterNext(v)     M.saveBoolSetting(M.Opt.SHOW_CHAPTER_NEXT_KEY, v) end
+function M.Opt.readShowBookReadRow()    return M.readBoolSetting(M.Opt.SHOW_BOOK_READ_ROW_KEY, true) end
+function M.Opt.saveShowBookReadRow(v)     M.saveBoolSetting(M.Opt.SHOW_BOOK_READ_ROW_KEY, v) end
+function M.Opt.readShowBookTimeRow()    return M.readBoolSetting(M.Opt.SHOW_BOOK_TIME_ROW_KEY, true) end
+function M.Opt.saveShowBookTimeRow(v)     M.saveBoolSetting(M.Opt.SHOW_BOOK_TIME_ROW_KEY, v) end
+function M.Opt.readShowPaceToday()      return M.readBoolSetting(M.Opt.SHOW_PACE_TODAY_KEY, true) end
+function M.Opt.saveShowPaceToday(v)       M.saveBoolSetting(M.Opt.SHOW_PACE_TODAY_KEY, v) end
+
+function M.Opt.readBookPopupPosition()
+    local v = Prefs.read(M.Opt.BOOK_POPUP_POSITION_KEY, nil)
+    if v == M.Opt.BOOK_POPUP_POSITION_CENTER then return M.Opt.BOOK_POPUP_POSITION_CENTER end
+    return M.Opt.BOOK_POPUP_POSITION_TOP
+end
+
+function M.Opt.saveBookPopupPosition(value)
+    Prefs.save(M.Opt.BOOK_POPUP_POSITION_KEY, value)
 end
 
 function M.Opt.readShowProgressBar()

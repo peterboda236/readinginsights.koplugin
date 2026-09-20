@@ -35,6 +35,7 @@ Controls:
 ]]--
 
 local Blitbuffer = require("ffi/blitbuffer")
+local CenterContainer = require("ui/widget/container/centercontainer")
 local Device = require("device")
 local FrameContainer = require("ui/widget/container/framecontainer")
 local Geom = require("ui/geometry")
@@ -232,15 +233,14 @@ end
 -- lines above/below instead of bleeding out to the screen edges.
 -- When show_next is false (no next chapter), the "Next chapter" label is
 -- omitted, leaving that side blank instead of showing a misleading header.
-local function buildChapterHeaders(font_section, layout, show_next)
+local function buildChapterHeaders(font_section, layout, left_text, right_text)
     local left_width           = layout.col_width + math.floor(layout.separator_width / 2)
     local right_width          = layout.content_width - left_width
     local next_chapter_padding = math.ceil(layout.separator_width / 2)
-    local next_chapter_text = show_next and _("Next chapter") or ""
     return UI.padded(layout.padding_h, HorizontalGroup:new{
         align = "center",
-        UI.buildSectionHeader(font_section, _("This chapter"), left_width, 0, Colors.headerBg()),
-        UI.buildSectionHeader(font_section, next_chapter_text, right_width, next_chapter_padding, Colors.headerBg()),
+        UI.buildSectionHeader(font_section, left_text or "", left_width, 0, Colors.headerBg()),
+        UI.buildSectionHeader(font_section, right_text or "", right_width, next_chapter_padding, Colors.headerBg()),
     })
 end
 
@@ -310,39 +310,87 @@ local function buildSections(stats, fonts, layout, popup)
         pace_col2 = valueLine(avg_day_data, _("avg time/day"))
     end
 
-    local chapter_headers_content = buildChapterHeaders(fonts.section, layout, stats.has_next_chapter)
-    local chapter_values_content  = UI.buildTwoColRow(chapter_val1, chapter_val2, layout, not stats.has_next_chapter)
-    -- Wrapped in tappableWrap (fixed dimen) rather than used raw, so tapping
-    -- either row reliably hits (same reasoning as started_tap/finish_tap
-    -- below: a bare HorizontalGroup isn't guaranteed a usable .dimen for
-    -- UI.hitTest the way a FrameContainer with an explicit dimen is).
-    local chapter_headers = tappableWrap(chapter_headers_content, chapter_headers_content:getSize().w)
-    local chapter_values  = tappableWrap(chapter_values_content, chapter_values_content:getSize().w)
+    -- Which parts of each section are shown. Every toggle lives under
+    -- Settings > Advanced settings > Book progress popup. A section whose
+    -- parts are all off (or have nothing to show) is left out completely -
+    -- header, dividers and all - instead of leaving an empty header behind.
+    local Opt = VS.Opt
+
+    -- Forget tap targets of a previous build (rebuilds reuse this popup
+    -- object): a hidden part must not stay tappable.
     if popup then
-        popup._chapter_headers = chapter_headers
-        popup._chapter_values  = chapter_values
-    end
-    local book_progress_row = UI.buildTwoColRow(book_progress, book_pages_read, layout)
-    local book_progress_tap = book_progress_row
-    local book_row          = UI.buildTwoColRow(book_col1, book_col2, layout)
-    local pace_row_content = UI.buildTwoColRow(days_col2, pace_col2, layout)
-    local pace_row = tappableWrap(pace_row_content, pace_row_content:getSize().w)
-    if popup then
-        popup._pace_row = pace_row
+        popup._chapter_headers, popup._chapter_values = nil, nil
+        popup._this_book_header, popup._pace_header, popup._pace_row = nil, nil, nil
+        popup._started_widget, popup._finish_widget = nil, nil
+        popup._chapter_bar = nil
+        popup._chapter_bar_prev_arrow, popup._chapter_bar_next_arrow = nil, nil
+        popup._chapter_bar_can_prev, popup._chapter_bar_can_next = nil, nil
+        popup._chapter_bar_on_prev, popup._chapter_bar_on_next = nil, nil
     end
 
     local sections = VerticalGroup:new{
         align = "left",
     }
 
-    UI.addSectionWithRow(sections, chapter_headers, chapter_values, layout, { no_bottom_line = true })
+    -- Dividers go between two *visible* sections only.
+    local any_section_shown = false
+    local function sectionSeparator()
+        if any_section_shown then
+            table.insert(sections, UI.padded(layout.padding_h,
+                Colors.newBar(layout.full_width - 2 * layout.padding_h, Size.line.thick, Colors.separator())))
+        end
+        any_section_shown = true
+    end
 
+    -- ===== This chapter / Next chapter ==================================
+    -- One row, two columns. With only one column on (or no next chapter to
+    -- show) that column keeps the left position and the right side stays
+    -- blank without a separator, same as when a book has no next chapter.
+    local show_cur  = Opt.readShowChapterCurrent()
+    local show_next = Opt.readShowChapterNext() and stats.has_next_chapter
+    if show_cur or show_next then
+        local left_text, right_text, left_val, right_val
+        if show_cur and show_next then
+            left_text, right_text = _("This chapter"), _("Next chapter")
+            left_val,  right_val  = chapter_val1, chapter_val2
+        elseif show_cur then
+            left_text, right_text = _("This chapter"), ""
+            left_val,  right_val  = chapter_val1, valueLine(UI.emptyValue(), "")
+        else
+            left_text, right_text = _("Next chapter"), ""
+            left_val,  right_val  = chapter_val2, valueLine(UI.emptyValue(), "")
+        end
+        local chapter_headers_content = buildChapterHeaders(fonts.section, layout, left_text, right_text)
+        local chapter_values_content  = UI.buildTwoColRow(left_val, right_val, layout, not (show_cur and show_next))
+        -- Wrapped in tappableWrap (fixed dimen) rather than used raw, so tapping
+        -- either row reliably hits (same reasoning as started_tap/finish_tap
+        -- below: a bare HorizontalGroup isn't guaranteed a usable .dimen for
+        -- UI.hitTest the way a FrameContainer with an explicit dimen is).
+        local chapter_headers = tappableWrap(chapter_headers_content, chapter_headers_content:getSize().w)
+        local chapter_values  = tappableWrap(chapter_values_content, chapter_values_content:getSize().w)
+        if popup then
+            popup._chapter_headers = chapter_headers
+            popup._chapter_values  = chapter_values
+        end
+        sectionSeparator()
+        UI.addSectionWithRow(sections, chapter_headers, chapter_values, layout, { no_bottom_line = true })
+    end
+
+    local chapter_page_size = stats.chapter_info
+        and ChapterBar.pageSizeFor(stats.chapter_info.total, layout.full_width, layout.padding_h)
+        or ChapterBar.DEFAULT_PAGE_SIZE
+    if popup and not popup.chapter_bar_offset and stats.chapter_info then
+        -- Start on the page that contains the current chapter.
+        -- Pages are 1, 1+page_size, 1+2*page_size, …
+        local page_start = math.floor((stats.chapter_info.current - 1) / chapter_page_size) * chapter_page_size + 1
+        popup.chapter_bar_offset = math.max(1, page_start)
+    end
     local chapter_on_prev = popup and function()
-        popup.chapter_bar_offset = math.max(1, (popup.chapter_bar_offset or 1) - ChapterBar.readPageSizeSetting())
+        popup.chapter_bar_offset = math.max(1, (popup.chapter_bar_offset or 1) - chapter_page_size)
         popup:_rebuildUI()
     end or nil
     local chapter_on_next = popup and function()
-        popup.chapter_bar_offset = math.max(1, (popup.chapter_bar_offset or 1) + ChapterBar.readPageSizeSetting())
+        popup.chapter_bar_offset = math.max(1, (popup.chapter_bar_offset or 1) + chapter_page_size)
         popup:_rebuildUI()
     end or nil
 
@@ -355,156 +403,193 @@ local function buildSections(stats, fonts, layout, popup)
             chapter_on_prev,
             chapter_on_next
         )
-    table.insert(sections, UI.padded(layout.padding_h,
-        Colors.newBar(layout.full_width - 2 * layout.padding_h, Size.line.thick, Colors.separator())))
-    local this_book_header_content = UI.padded(layout.padding_h,
-        UI.buildSectionHeader(fonts.section, _("This book"), layout.content_width, 0, Colors.headerBg()))
-    -- Wrapped in tappableWrap (fixed dimen), same reasoning as chapter_headers
-    -- above: a bare HorizontalGroup from UI.padded isn't guaranteed a usable
-    -- .dimen for UI.hitTest, so the "This book" tap-to-open-stats target was
-    -- unreliable without it.
-    local this_book_header = tappableWrap(this_book_header_content, this_book_header_content:getSize().w)
-    if popup then
-        popup._this_book_header = this_book_header
-    end
+
+    -- ===== This book ====================================================
+    -- Parts: the "read" row (percent + pages), the reading-time row, the
+    -- progress bar and the chapter bar.
+    local show_read_row = Opt.readShowBookReadRow()
+    local show_time_row = Opt.readShowBookTimeRow()
 
     -- Progress bar: a black/gray (by default) filled bar showing how far
-    -- into the book the reader is, between the "This book" header/divider
-    -- and the percentage row. Toggle + colors + height are all user
+    -- into the book the reader is. Toggle + colors + height are all user
     -- settings (Settings > Advanced settings > Book progress popup >
     -- Progress bar); skipped entirely when off or when there's no width to
     -- draw it in.
-    local this_book_rows = VerticalGroup:new{ align = "center" }
-    table.insert(this_book_rows, book_progress_tap)
-    table.insert(this_book_rows, VerticalSpan:new{ height = Size.padding.default })
-    table.insert(this_book_rows, book_row)
-
-    -- Progress bar: moved to sit right above the chapter bar (rather than
-    -- inside the "This book" row block) so it visually introduces the
-    -- chapter bar below it. Built here, then inserted into `sections`
-    -- after this_book_rows and before the chapter-bar divider, so we can
-    -- also decide whether that divider line should be hidden (see below:
-    -- when the progress bar is showing, the bar itself is a strong enough
-    -- separator and the thin line under it look redundant).
     local progress_bar_widget = nil
-    if ProgressBar and VS.Opt.readShowProgressBar() then
+    if ProgressBar and Opt.readShowProgressBar() then
         progress_bar_widget = ProgressBar.build(stats.book_progress_ratio, layout.content_width)
     end
+    local show_chapter_bar = chapter_bar and Opt.readShowChapterBar()
+    local has_book_rows = show_read_row or show_time_row
 
-    UI.addSectionWithRow(
-        sections,
-        this_book_header,
-        this_book_rows,
-        layout,
-        -- Same look as before the shared uikit: header, thin divider, row,
-        -- and no closing line (the chapter bar follows right below).
-        { no_bottom_line = true }
-    )
+    if has_book_rows or progress_bar_widget or show_chapter_bar then
+        sectionSeparator()
 
-    if progress_bar_widget then
-        -- Gap above the bar matching the padding that already surrounds the
-        -- divider line shown above the chapter bar when the progress bar is
-        -- off (UI.addSectionWithRow's own trailing
-        -- VerticalSpan{height = Size.padding.large} after this_book_rows,
-        -- above): reuse that same amount here. No extra gap below the bar -
-        -- in the off state nothing sits between the divider line and the
-        -- chapter bar either, so adding one here made the bar's bottom
-        -- spacing bigger than the line's.
-        table.insert(sections, UI.padded(layout.padding_h, progress_bar_widget))
-    end
-
-    if chapter_bar and VS.Opt.readShowChapterBar() then
+        local this_book_header_content = UI.padded(layout.padding_h,
+            UI.buildSectionHeader(fonts.section, _("This book"), layout.content_width, 0, Colors.headerBg()))
+        -- Wrapped in tappableWrap (fixed dimen), same reasoning as
+        -- chapter_headers above: a bare HorizontalGroup from UI.padded isn't
+        -- guaranteed a usable .dimen for UI.hitTest, so the "This book"
+        -- tap-to-open-stats target was unreliable without it.
+        local this_book_header = tappableWrap(this_book_header_content, this_book_header_content:getSize().w)
         if popup then
-            popup._chapter_bar = chapter_bar
-            -- Store the arrow widgets unconditionally (not just when they can
-            -- page) so onTapClose can still recognise a tap on a greyed-out
-            -- arrow and swallow it - tapping a dead-end arrow does nothing
-            -- rather than falling through and closing the popup. The
-            -- can_prev/can_next flags say whether the tap should actually page.
-            popup._chapter_bar_prev_arrow = chapter_left_arrow
-            popup._chapter_bar_next_arrow = chapter_right_arrow
-            popup._chapter_bar_can_prev   = chapter_can_go_left
-            popup._chapter_bar_can_next   = chapter_can_go_right
-            popup._chapter_bar_on_prev    = chapter_on_prev
-            popup._chapter_bar_on_next    = chapter_on_next
+            popup._this_book_header = this_book_header
         end
-        -- Skip this divider when the progress bar is showing right above:
-        -- the bar itself already separates the "This book" block from the
-        -- chapter bar, so the thin line on top of it was a redundant
-        -- second divider.
-        if not progress_bar_widget then
-            table.insert(sections, UI.padded(layout.padding_h,
-                Colors.newBar(layout.full_width - 2 * layout.padding_h, Size.line.thin, Colors.separator())))
-        end
-        table.insert(sections, chapter_bar)
-    end
-    table.insert(sections, UI.padded(layout.padding_h,
-        Colors.newBar(layout.full_width - 2 * layout.padding_h, Size.line.thick, Colors.separator())))
-    local pace_header_content = UI.padded(layout.padding_h,
-        UI.buildSectionHeader(fonts.section, _("Pace"), layout.content_width, 0, Colors.headerBg()))
-    -- Same fixed-dimen wrapping as this_book_header above - without it the
-    -- "Pace" tap-to-open-calendar target was unreliable.
-    local pace_header = tappableWrap(pace_header_content, pace_header_content:getSize().w)
-    if popup then popup._pace_header = pace_header end
-    table.insert(sections, pace_header)
-    table.insert(sections, VerticalSpan:new{ height = Size.padding.default })
-    table.insert(sections, UI.padded(layout.padding_h,
-        Colors.newBar(layout.full_width - 2 * layout.padding_h, Size.line.thin, Colors.separator())))
-    table.insert(sections, UI.padded(layout.padding_h, pace_row))
 
-    -- Last row: "started N days ago" | "N days of reading left".
-    -- The right cell (and the separator to its left) only appears once
-    -- there's enough page_stat data to estimate a finish date; the left
-    -- cell alone still appears as soon as the book has been opened at all.
-    if (stats.started_days_ago or stats.finish_days_left) and VS.Opt.readShowPaceDates() then
-        local started_widget = stats.started_days_ago
-            and valueLine(stats.started_days_ago, "")
-            or nil
-
-        if started_widget and stats.finish_days_left then
-            local finish_widget = valueLine(
-                { value = formatCount(stats.finish_days_left),
-                  unit  = N_("day of reading left", "days of reading left", stats.finish_days_left) },
-                ""
-            )
-            local started_tap = tappableWrap(started_widget, layout.col_width)
-            local finish_tap  = tappableWrap(finish_widget, layout.col_width)
-            if popup then
-                popup._started_widget = started_tap
-                popup._finish_widget  = finish_tap
+        if has_book_rows then
+            local this_book_rows = VerticalGroup:new{ align = "center" }
+            if show_read_row then
+                table.insert(this_book_rows, UI.buildTwoColRow(book_progress, book_pages_read, layout))
             end
-            table.insert(sections, VerticalSpan:new{ height = Size.padding.small })
-            table.insert(sections, UI.padded(layout.padding_h, UI.buildTwoColRow(started_tap, finish_tap, layout)))
-            table.insert(sections, VerticalSpan:new{ height = Size.padding.default })
-        elseif started_widget then
-            local started_full_widget = buildValueLine(
-                fonts.value, fonts.label, layout.full_width - 2 * layout.padding_h,
-                stats.started_days_ago, ""
+            if show_read_row and show_time_row then
+                table.insert(this_book_rows, VerticalSpan:new{ height = Size.padding.default })
+            end
+            if show_time_row then
+                table.insert(this_book_rows, UI.buildTwoColRow(book_col1, book_col2, layout))
+            end
+            UI.addSectionWithRow(
+                sections,
+                this_book_header,
+                this_book_rows,
+                layout,
+                -- Same look as before the shared uikit: header, thin divider, row,
+                -- and no closing line (the chapter bar follows right below).
+                { no_bottom_line = true }
             )
-            local started_tap = tappableWrap(started_full_widget, layout.full_width - 2 * layout.padding_h)
-            if popup then popup._started_widget = started_tap end
-            table.insert(sections, VerticalSpan:new{ height = Size.padding.small })
-            table.insert(sections, UI.padded(layout.padding_h, started_tap))
+        else
+            -- Only bars in this section: header and its thin divider, then
+            -- the bars directly below.
+            table.insert(sections, this_book_header)
             table.insert(sections, VerticalSpan:new{ height = Size.padding.default })
-        elseif stats.finish_days_left then
-            local finish_widget = buildValueLine(
-                fonts.value, fonts.label, layout.full_width - 2 * layout.padding_h,
-                { value = formatCount(stats.finish_days_left),
-                  unit  = N_("day of reading left", "days of reading left", stats.finish_days_left) },
-                ""
-            )
-            local finish_tap = tappableWrap(finish_widget, layout.full_width - 2 * layout.padding_h)
-            if popup then popup._finish_widget = finish_tap end
-            table.insert(sections, VerticalSpan:new{ height = Size.padding.small })
-            table.insert(sections, UI.padded(layout.padding_h, finish_tap))
-            table.insert(sections, VerticalSpan:new{ height = Size.padding.default })
+            table.insert(sections, UI.padded(layout.padding_h,
+                Colors.newBar(layout.content_width, Size.line.thin, Colors.separator())))
+        end
+
+        if progress_bar_widget then
+            -- Gap above the bar matching the padding that already surrounds the
+            -- divider line shown above the chapter bar when the progress bar is
+            -- off (UI.addSectionWithRow's own trailing
+            -- VerticalSpan{height = Size.padding.large} after this_book_rows,
+            -- above): reuse that same amount here. No extra gap below the bar -
+            -- in the off state nothing sits between the divider line and the
+            -- chapter bar either, so adding one here made the bar's bottom
+            -- spacing bigger than the line's.
+            table.insert(sections, UI.padded(layout.padding_h, progress_bar_widget))
+        end
+
+        if show_chapter_bar then
+            if popup then
+                popup._chapter_bar = chapter_bar
+                -- Store the arrow widgets unconditionally (not just when they can
+                -- page) so onTapClose can still recognise a tap on a greyed-out
+                -- arrow and swallow it - tapping a dead-end arrow does nothing
+                -- rather than falling through and closing the popup. The
+                -- can_prev/can_next flags say whether the tap should actually page.
+                popup._chapter_bar_prev_arrow = chapter_left_arrow
+                popup._chapter_bar_next_arrow = chapter_right_arrow
+                popup._chapter_bar_can_prev   = chapter_can_go_left
+                popup._chapter_bar_can_next   = chapter_can_go_right
+                popup._chapter_bar_on_prev    = chapter_on_prev
+                popup._chapter_bar_on_next    = chapter_on_next
+            end
+            -- Thin line above the chapter bar only when it directly follows
+            -- the rows: the progress bar (or the header's own divider, when
+            -- there are no rows) already separates it otherwise.
+            if has_book_rows and not progress_bar_widget then
+                table.insert(sections, UI.padded(layout.padding_h,
+                    Colors.newBar(layout.full_width - 2 * layout.padding_h, Size.line.thin, Colors.separator())))
+            end
+            table.insert(sections, chapter_bar)
         end
     end
 
-    table.insert(sections, LineWidget:new{
-        dimen      = Geom:new{ w = layout.full_width, h = Size.line.thick },
-        background = Blitbuffer.COLOR_BLACK,
-    })
+    -- ===== Pace =========================================================
+    -- Parts: the "read today / avg per day" row and the started / expected
+    -- finish row.
+    local show_pace_today = Opt.readShowPaceToday()
+    local show_dates_row  = (stats.started_days_ago or stats.finish_days_left) and Opt.readShowPaceDates()
+
+    if show_pace_today or show_dates_row then
+        sectionSeparator()
+
+        local pace_header_content = UI.padded(layout.padding_h,
+            UI.buildSectionHeader(fonts.section, _("Pace"), layout.content_width, 0, Colors.headerBg()))
+        -- Same fixed-dimen wrapping as this_book_header above - without it the
+        -- "Pace" tap-to-open-calendar target was unreliable.
+        local pace_header = tappableWrap(pace_header_content, pace_header_content:getSize().w)
+        if popup then popup._pace_header = pace_header end
+        table.insert(sections, pace_header)
+        table.insert(sections, VerticalSpan:new{ height = Size.padding.default })
+        table.insert(sections, UI.padded(layout.padding_h,
+            Colors.newBar(layout.full_width - 2 * layout.padding_h, Size.line.thin, Colors.separator())))
+
+        if show_pace_today then
+            local pace_row_content = UI.buildTwoColRow(days_col2, pace_col2, layout)
+            local pace_row = tappableWrap(pace_row_content, pace_row_content:getSize().w)
+            if popup then
+                popup._pace_row = pace_row
+            end
+            table.insert(sections, UI.padded(layout.padding_h, pace_row))
+        end
+
+        -- Last row: "started N days ago" | "N days of reading left".
+        -- The right cell (and the separator to its left) only appears once
+        -- there's enough page_stat data to estimate a finish date; the left
+        -- cell alone still appears as soon as the book has been opened at all.
+        if (stats.started_days_ago or stats.finish_days_left) and VS.Opt.readShowPaceDates() then
+            local started_widget = stats.started_days_ago
+                and valueLine(stats.started_days_ago, "")
+                or nil
+
+            if started_widget and stats.finish_days_left then
+                local finish_widget = valueLine(
+                    { value = formatCount(stats.finish_days_left),
+                      unit  = N_("day of reading left", "days of reading left", stats.finish_days_left) },
+                    ""
+                )
+                local started_tap = tappableWrap(started_widget, layout.col_width)
+                local finish_tap  = tappableWrap(finish_widget, layout.col_width)
+                if popup then
+                    popup._started_widget = started_tap
+                    popup._finish_widget  = finish_tap
+                end
+                table.insert(sections, VerticalSpan:new{ height = Size.padding.small })
+                table.insert(sections, UI.padded(layout.padding_h, UI.buildTwoColRow(started_tap, finish_tap, layout)))
+                table.insert(sections, VerticalSpan:new{ height = Size.padding.default })
+            elseif started_widget then
+                local started_full_widget = buildValueLine(
+                    fonts.value, fonts.label, layout.full_width - 2 * layout.padding_h,
+                    stats.started_days_ago, ""
+                )
+                local started_tap = tappableWrap(started_full_widget, layout.full_width - 2 * layout.padding_h)
+                if popup then popup._started_widget = started_tap end
+                table.insert(sections, VerticalSpan:new{ height = Size.padding.small })
+                table.insert(sections, UI.padded(layout.padding_h, started_tap))
+                table.insert(sections, VerticalSpan:new{ height = Size.padding.default })
+            elseif stats.finish_days_left then
+                local finish_widget = buildValueLine(
+                    fonts.value, fonts.label, layout.full_width - 2 * layout.padding_h,
+                    { value = formatCount(stats.finish_days_left),
+                      unit  = N_("day of reading left", "days of reading left", stats.finish_days_left) },
+                    ""
+                )
+                local finish_tap = tappableWrap(finish_widget, layout.full_width - 2 * layout.padding_h)
+                if popup then popup._finish_widget = finish_tap end
+                table.insert(sections, VerticalSpan:new{ height = Size.padding.small })
+                table.insert(sections, UI.padded(layout.padding_h, finish_tap))
+                table.insert(sections, VerticalSpan:new{ height = Size.padding.default })
+            end
+        end
+    end
+
+    -- The closing thick line only makes sense for the full-width sheet
+    -- hanging from the top edge; the centered box already has its own border.
+    if not (popup and popup._centered) then
+        table.insert(sections, LineWidget:new{
+            dimen      = Geom:new{ w = layout.full_width, h = Size.line.thick },
+            background = Blitbuffer.COLOR_BLACK,
+        })
+    end
     return sections
 end
 
@@ -536,38 +621,71 @@ local ReadingStatsPopup = InputContainer:extend{
 function ReadingStatsPopup:init()
     self._stats  = self:gatherStats()
     self._fonts  = buildSerifFonts()
-    if not self.chapter_bar_offset and self._stats.chapter_info then
-        local info = self._stats.chapter_info
-        -- Start on the page that contains the current chapter.
-        -- Pages are 1, 1+page_size, 1+2*page_size, …
-        local page_size = ChapterBar.readPageSizeSetting()
-        local page_start = math.floor((info.current - 1) / page_size) * page_size + 1
-        self.chapter_bar_offset = math.max(1, page_start)
-    end
+    -- The chapter bar's starting page is worked out in buildSections, once
+    -- the layout width is known (the page size can depend on it - see
+    -- ChapterBar.pageSizeFor and the "All chapters" setting).
     self:_buildUI()
 end
 
--- Full-width popup, bordersize=0, radius=0, VerticalGroup wrapper.
+-- Two placements (Settings > Advanced settings > Book progress popup >
+-- "Popup position"):
+--   top     full-width sheet hanging from the top edge (bordersize=0,
+--           radius=0, VerticalGroup wrapper) - the original look
+--   center  bordered, rounded box in the middle of the screen, 94% of the
+--           screen width - the same width the Book progress calendar uses
+-- Every section is laid out against layout.full_width and tap targets are
+-- hit-tested against the absolute positions set at paint time, so the only
+-- things that change between the two are the width handed to buildLayout and
+-- the container that positions the frame. If the centered box would be taller
+-- than the screen (e.g. landscape) it falls back to the top placement rather
+-- than being clipped at both ends.
 function ReadingStatsPopup:_buildUI()
     local screen_w = Screen:getWidth()
     local screen_h = Screen:getHeight()
-    self._layout   = UI.buildLayout(screen_w, Size.padding.large, Screen:scaleBySize(20))
-    local sections = buildSections(self._stats, self._fonts, self._layout, self)
 
-    self.popup_frame = FrameContainer:new{
-        background = Blitbuffer.COLOR_WHITE,
-        bordersize = 0,
-        radius     = 0,
-        padding    = 0,
-        width      = screen_w,
-        sections,
-    }
+    local function build(centered)
+        local border_w = centered and Size.border.window or 0
+        local frame_w  = centered and math.floor(screen_w * 0.94) or screen_w
+        self._layout   = UI.buildLayout(frame_w - 2 * border_w, Size.padding.large, Screen:scaleBySize(20))
+        self._centered = centered
+        local sections = buildSections(self._stats, self._fonts, self._layout, self)
 
-    self[1] = VerticalGroup:new{
-        self.popup_frame,
-    }
+        -- Centered: keep a little white space above and below the content, at
+        -- least as tall as the corner radius, so the header's / rows' square
+        -- white backgrounds don't paint over the rounded corners of the border.
+        local corner_pad = centered and (Size.radius.window + Size.padding.small) or 0
+        local frame = FrameContainer:new{
+            background     = Blitbuffer.COLOR_WHITE,
+            bordersize     = border_w,
+            radius         = centered and Size.radius.window or 0,
+            padding        = 0,
+            padding_top    = corner_pad,
+            padding_bottom = corner_pad,
+            width          = (not centered) and screen_w or nil,
+            sections,
+        }
+        return frame
+    end
+
+    local centered = VS.Opt.readBookPopupPosition() == VS.Opt.BOOK_POPUP_POSITION_CENTER
+    self.popup_frame = build(centered)
+    if centered and self.popup_frame:getSize().h > screen_h then
+        centered = false
+        self.popup_frame = build(false)
+    end
 
     self.dimen = Geom:new{ w = screen_w, h = screen_h }
+
+    if centered then
+        self[1] = CenterContainer:new{
+            dimen = Geom:new{ w = screen_w, h = screen_h },
+            self.popup_frame,
+        }
+    else
+        self[1] = VerticalGroup:new{
+            self.popup_frame,
+        }
+    end
 
     if Device:isTouchDevice() then
         self.ges_events.TapClose = {
@@ -638,11 +756,19 @@ function ReadingStatsPopup:gatherStats()
     local doc          = ui.document
     local footer       = ui.view and ui.view.footer
 
+    -- Read avg_time BEFORE insertDB(): insertDB() recomputes it from the DB
+    -- (distinct pages, capped) which can differ slightly from the live
+    -- in-memory value the footer / Bookends use. Taking it first keeps the
+    -- popup's time-left numbers identical to what those show.
+    local avg_time = stats_plugin and stats_plugin.avg_time
+
     if stats_plugin then
         stats_plugin:insertDB()
     end
 
-    local pageno = footer and footer.pageno or 1
+    -- Same page-number source as Bookends (document:getCurrentPage()).
+    local pageno = (doc and doc.getCurrentPage and doc:getCurrentPage())
+        or (footer and footer.pageno) or 1
     local pages  = footer and footer.pages  or 1
 
     local progress_percent = BookProgress.percent(ui)
@@ -666,7 +792,6 @@ function ReadingStatsPopup:gatherStats()
         stats.total_pages_for_calendar = total_page_count
     end
 
-    local avg_time  = stats_plugin and stats_plugin.avg_time
     local has_stats = avg_time and avg_time == avg_time
 
     local pages_left = nil
@@ -688,7 +813,8 @@ function ReadingStatsPopup:gatherStats()
     -- time estimate. The *_hhmm time estimates still need avg_time.
     if toc then
         local chapter_pages_left = ChapterInfo.getChapterPagesLeft(ui, pageno)
-        if chapter_pages_left and chapter_pages_left >= 0 then
+        if chapter_pages_left then
+            chapter_pages_left = math.max(0, chapter_pages_left)
             stats.chapter_pages_left_count = chapter_pages_left
             if has_stats then
                 local ch_secs = chapter_pages_left * avg_time
@@ -715,9 +841,11 @@ function ReadingStatsPopup:gatherStats()
     end
 
     if has_stats and doc then
-        pages_left = BookProgress.pagesLeft(ui)
+        -- Exactly Bookends' formula: pages left (no "+1 for the current
+        -- page") * avg_time.
+        pages_left = doc:getTotalPagesLeft(pageno)
         if pages_left and pages_left > 0 then
-            local bl_secs = (pages_left + 1) * avg_time
+            local bl_secs = pages_left * avg_time
             stats.book_time_left_hhmm = Locale.formatTimeHHMM(bl_secs)
             stats.book_time_left_raw  = bl_secs
         elseif pages_left then

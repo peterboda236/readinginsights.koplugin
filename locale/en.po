@@ -1672,3 +1672,45 @@ msgstr "Show week numbers"
 
 msgid "Add a \"Week\" column with each row's week number to the reading streak and Book progress calendars."
 msgstr "Add a \"Week\" column with each row's week number to the reading streak and Book progress calendars."
+
+msgid "Popup position"
+msgstr "Popup position"
+
+msgid "Top of the screen"
+msgstr "Top of the screen"
+
+msgid "Centered"
+msgstr "Centered"
+
+msgid "A bordered box in the middle of the screen, as wide as the Book progress calendar."
+msgstr "A bordered box in the middle of the screen, as wide as the Book progress calendar."
+
+msgid "Read row"
+msgstr "Read row"
+
+msgid "Reading time row"
+msgstr "Reading time row"
+
+msgid "Read today row"
+msgstr "Read today row"
+
+msgid "Show the \"This chapter\" column (reading time or pages left in the chapter). If this and \"Next chapter\" are both off, the whole chapter section is hidden."
+msgstr "Show the \"This chapter\" column (reading time or pages left in the chapter). If this and \"Next chapter\" are both off, the whole chapter section is hidden."
+
+msgid "Show the \"Next chapter\" column. If this and \"This chapter\" are both off, the whole chapter section is hidden."
+msgstr "Show the \"Next chapter\" column. If this and \"This chapter\" are both off, the whole chapter section is hidden."
+
+msgid "Show the row with the read percentage and page count in the \"This book\" section. If every part of the section is off, its header is hidden too."
+msgstr "Show the row with the read percentage and page count in the \"This book\" section. If every part of the section is off, its header is hidden too."
+
+msgid "Show the row with the time read so far and the reading time left in the \"This book\" section. If every part of the section is off, its header is hidden too."
+msgstr "Show the row with the time read so far and the reading time left in the \"This book\" section. If every part of the section is off, its header is hidden too."
+
+msgid "Show the row with today's reading time and the average time per day in the \"Pace\" section. If this and the started / expected finish row are both off, the whole \"Pace\" section is hidden."
+msgstr "Show the row with today's reading time and the average time per day in the \"Pace\" section. If this and the started / expected finish row are both off, the whole \"Pace\" section is hidden."
+
+msgid "All chapters"
+msgstr "All chapters"
+
+msgid "Draw every chapter in one row, without paging."
+msgstr "Draw every chapter in one row, without paging."

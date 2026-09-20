@@ -1702,3 +1702,45 @@ msgstr "Mostrar números da semana"
 
 msgid "Add a \"Week\" column with each row's week number to the reading streak and Book progress calendars."
 msgstr "Adicionar uma coluna «Semana» com o número da semana de cada linha aos calendários de sequência de leitura e de progresso do livro."
+
+msgid "Popup position"
+msgstr "Posição da janela"
+
+msgid "Top of the screen"
+msgstr "No topo do ecrã"
+
+msgid "Centered"
+msgstr "Centrada"
+
+msgid "A bordered box in the middle of the screen, as wide as the Book progress calendar."
+msgstr "Uma caixa com moldura no centro do ecrã, com a mesma largura do calendário de progresso do livro."
+
+msgid "Read row"
+msgstr "Linha \"lido\""
+
+msgid "Reading time row"
+msgstr "Linha do tempo de leitura"
+
+msgid "Read today row"
+msgstr "Linha \"lido hoje\""
+
+msgid "Show the \"This chapter\" column (reading time or pages left in the chapter). If this and \"Next chapter\" are both off, the whole chapter section is hidden."
+msgstr "Mostrar a coluna \"Este capítulo\" (tempo de leitura ou páginas restantes no capítulo). Se esta e \"Próximo capítulo\" estiverem ambas desativadas, toda a secção do capítulo fica oculta."
+
+msgid "Show the \"Next chapter\" column. If this and \"This chapter\" are both off, the whole chapter section is hidden."
+msgstr "Mostrar a coluna \"Próximo capítulo\". Se esta e \"Este capítulo\" estiverem ambas desativadas, toda a secção do capítulo fica oculta."
+
+msgid "Show the row with the read percentage and page count in the \"This book\" section. If every part of the section is off, its header is hidden too."
+msgstr "Mostrar a linha com a percentagem lida e o número de páginas na secção \"Este livro\". Se todas as partes da secção estiverem desativadas, o cabeçalho também fica oculto."
+
+msgid "Show the row with the time read so far and the reading time left in the \"This book\" section. If every part of the section is off, its header is hidden too."
+msgstr "Mostrar a linha com o tempo lido até agora e o tempo de leitura restante na secção \"Este livro\". Se todas as partes da secção estiverem desativadas, o cabeçalho também fica oculto."
+
+msgid "Show the row with today's reading time and the average time per day in the \"Pace\" section. If this and the started / expected finish row are both off, the whole \"Pace\" section is hidden."
+msgstr "Mostrar a linha com o tempo de leitura de hoje e o tempo médio por dia na secção \"Ritmo\". Se esta e a linha \"iniciado / conclusão prevista\" estiverem ambas desativadas, toda a secção \"Ritmo\" fica oculta."
+
+msgid "All chapters"
+msgstr "Todos os capítulos"
+
+msgid "Draw every chapter in one row, without paging."
+msgstr "Desenha todos os capítulos numa só linha, sem paginação."

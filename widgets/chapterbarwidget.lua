@@ -78,15 +78,47 @@ M.DEFAULT_PAGE_SIZE = 25
 M.MIN_PAGE_SIZE = 1
 M.MAX_PAGE_SIZE = 100
 
+-- Stored value meaning "draw every chapter in one row, no paging". Kept as
+-- 0 so it can't collide with a real count (MIN_PAGE_SIZE is 1).
+M.PAGE_SIZE_ALL = 0
+
+-- The raw setting: PAGE_SIZE_ALL (0), or a column count clamped to
+-- MIN_PAGE_SIZE..MAX_PAGE_SIZE. Callers that need an actual number of
+-- columns for a given book should use M.pageSizeFor() instead.
 function M.readPageSizeSetting()
     if G_reader_settings and G_reader_settings.readSetting then
         local v = G_reader_settings:readSetting(SETTINGS_KEY_PAGE_SIZE)
         if type(v) ~= "number" then return M.DEFAULT_PAGE_SIZE end
+        if v == M.PAGE_SIZE_ALL then return M.PAGE_SIZE_ALL end
         if v < M.MIN_PAGE_SIZE then return M.MIN_PAGE_SIZE end
         if v > M.MAX_PAGE_SIZE then return M.MAX_PAGE_SIZE end
         return v
     end
     return M.DEFAULT_PAGE_SIZE
+end
+
+function M.isAllChapters()
+    return M.readPageSizeSetting() == M.PAGE_SIZE_ALL
+end
+
+-- Width of one arrow slot (glyph plus its inner padding); the same in build().
+local function arrowSlotWidth()
+    local arrow_face = Fonts.getFace("stats_arrow")
+    local glyph_w = TextWidget:new{ text = "\xe2\x80\xb9", face = arrow_face }:getSize().w
+    return glyph_w + 2 * Size.padding.default
+end
+
+-- How many chapter columns one page of the bar has for this book. With a
+-- fixed setting that is just the setting. With "All chapters" it is the
+-- book's chapter count - one column each, so everything fits in one row and
+-- there are no arrows - but never more columns than there are pixels to draw
+-- them in (one pixel per column, arrow slots reserved), so an absurdly long
+-- TOC still degrades to paging instead of zero-width bars.
+function M.pageSizeFor(total, full_width, padding_h)
+    local size = M.readPageSizeSetting()
+    if size ~= M.PAGE_SIZE_ALL then return size end
+    local max_cols = math.max(1, (full_width or 0) - 2 * (padding_h or 0) - 2 * arrowSlotWidth())
+    return math.max(1, math.min(total or max_cols, max_cols))
 end
 
 function M.savePageSizeSetting(value)
@@ -128,7 +160,6 @@ function M.build(chapter_info, full_width, padding_h, offset_override, on_prev, 
     local chapter_progress_ratio = chapter_info.chapter_progress_ratio or 0.0
 
     local col_h_max = Screen:scaleBySize(M.readHeightSetting())
-    local page_size = M.readPageSizeSetting()
 
     local max_pages = 0
     if page_counts then
@@ -153,6 +184,7 @@ function M.build(chapter_info, full_width, padding_h, offset_override, on_prev, 
     -- Measure arrow glyph width once; both arrows use the same face so width is identical.
     local arrow_glyph_w = TextWidget:new{ text = "\xe2\x80\xb9", face = arrow_face }:getSize().w
     local slot_w        = arrow_glyph_w + 2 * inner_pad
+    local page_size     = M.pageSizeFor(total, full_width, padding_h)
 
     -- Available width for exactly page_size columns, after symmetric padding and both arrow slots.
     -- Computed the same way regardless of how many chapters there actually
@@ -168,7 +200,8 @@ function M.build(chapter_info, full_width, padding_h, offset_override, on_prev, 
     -- of the arrows instead (see inner_left/inner_right below).
     local remainder = avail_w - col_w * page_size
     local gap       = math.max(1, math.floor(col_w * 0.15))
-    local bar_w     = col_w - gap
+    if col_w <= 1 then gap = 0 end   -- "All chapters" on a very long TOC: 1px bars, no gaps
+    local bar_w     = math.max(1, col_w - gap)
 
     -- offset snaps to page_size pages: 1, 1+page_size, 1+2*page_size, …
     local offset = math.max(1, math.min(offset_override or 1, total))

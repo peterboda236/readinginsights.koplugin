@@ -1751,3 +1751,45 @@ msgstr "Показувати номери тижнів"
 
 msgid "Add a \"Week\" column with each row's week number to the reading streak and Book progress calendars."
 msgstr "Додати стовпець «Тиждень» із номером тижня для кожного рядка до календарів серії читання та прогресу книги."
+
+msgid "Popup position"
+msgstr "Розташування вікна"
+
+msgid "Top of the screen"
+msgstr "Угорі екрана"
+
+msgid "Centered"
+msgstr "По центру"
+
+msgid "A bordered box in the middle of the screen, as wide as the Book progress calendar."
+msgstr "Вікно з рамкою посередині екрана тієї ж ширини, що й календар прогресу книги."
+
+msgid "Read row"
+msgstr "Рядок «Прочитано»"
+
+msgid "Reading time row"
+msgstr "Рядок часу читання"
+
+msgid "Read today row"
+msgstr "Рядок «Прочитано сьогодні»"
+
+msgid "Show the \"This chapter\" column (reading time or pages left in the chapter). If this and \"Next chapter\" are both off, the whole chapter section is hidden."
+msgstr "Показувати стовпець «Ця глава» (час читання або кількість сторінок, що залишились у главі). Якщо він і «Наступна глава» обидва вимкнені, весь розділ глави буде приховано."
+
+msgid "Show the \"Next chapter\" column. If this and \"This chapter\" are both off, the whole chapter section is hidden."
+msgstr "Показувати стовпець «Наступна глава». Якщо він і «Ця глава» обидва вимкнені, весь розділ глави буде приховано."
+
+msgid "Show the row with the read percentage and page count in the \"This book\" section. If every part of the section is off, its header is hidden too."
+msgstr "Показувати рядок із відсотком прочитаного та кількістю сторінок у розділі «Ця книга». Якщо всі елементи розділу вимкнено, його заголовок також буде приховано."
+
+msgid "Show the row with the time read so far and the reading time left in the \"This book\" section. If every part of the section is off, its header is hidden too."
+msgstr "Показувати рядок із часом, прочитаним наразі, та часом читання, що залишився, у розділі «Ця книга». Якщо всі елементи розділу вимкнено, його заголовок також буде приховано."
+
+msgid "Show the row with today's reading time and the average time per day in the \"Pace\" section. If this and the started / expected finish row are both off, the whole \"Pace\" section is hidden."
+msgstr "Показувати рядок із сьогоднішнім часом читання та середнім часом на день у розділі «Темп». Якщо він і рядок «Розпочато / очікуване завершення» обидва вимкнені, весь розділ «Темп» буде приховано."
+
+msgid "All chapters"
+msgstr "Усі глави"
+
+msgid "Draw every chapter in one row, without paging."
+msgstr "Показувати всі глави в одному рядку без перегортання."
