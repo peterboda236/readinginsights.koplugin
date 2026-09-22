@@ -419,7 +419,11 @@ local function buildDayBar(ratio, width)
     local rest_w = width - fill_w
 
     local bar_row = HorizontalGroup:new{ align = "top" }
-    if fill_w > 0 then table.insert(bar_row, Colors.newBar(fill_w, STREAK_HISTORY_BAR_HEIGHT, Colors.activeBar())) end
+    -- Filled portion matches the streak calendar's "read day" cell color
+    -- (Colors.streakRead(), same fill as a daily-streak day square) rather
+    -- than the generic activeBar() color, so the popup's bars and the
+    -- calendar it opens from read as the same visual language.
+    if fill_w > 0 then table.insert(bar_row, Colors.newBar(fill_w, STREAK_HISTORY_BAR_HEIGHT, Colors.streakRead())) end
     -- The empty remainder stays plain white rather than the shared
     -- inactive-bar gray, so the Streak History popup's bars read as
     -- "filled portion on a blank track" instead of a two-tone gray bar.
