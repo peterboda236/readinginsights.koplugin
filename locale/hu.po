@@ -493,10 +493,10 @@ msgid "(%d days left)"
 msgstr "(még %d nap)"
 
 msgid "day of reading left"
-msgstr "nap olvasás van hátra"
+msgstr "nap van hátra"
 
 msgid "days of reading left"
-msgstr "nap olvasás van hátra"
+msgstr "nap van hátra"
 
 msgid "day since started"
 msgstr "napja elkezdve"
