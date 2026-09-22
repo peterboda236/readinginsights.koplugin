@@ -420,7 +420,10 @@ local function buildDayBar(ratio, width)
 
     local bar_row = HorizontalGroup:new{ align = "top" }
     if fill_w > 0 then table.insert(bar_row, Colors.newBar(fill_w, STREAK_HISTORY_BAR_HEIGHT, Colors.activeBar())) end
-    if rest_w > 0 then table.insert(bar_row, Colors.newBar(rest_w, STREAK_HISTORY_BAR_HEIGHT, Colors.inactiveBar())) end
+    -- The empty remainder stays plain white rather than the shared
+    -- inactive-bar gray, so the Streak History popup's bars read as
+    -- "filled portion on a blank track" instead of a two-tone gray bar.
+    if rest_w > 0 then table.insert(bar_row, Colors.newBar(rest_w, STREAK_HISTORY_BAR_HEIGHT, Blitbuffer.COLOR_WHITE)) end
     bar_row.dimen = Geom:new{ w = width, h = STREAK_HISTORY_BAR_HEIGHT }
     return bar_row
 end
