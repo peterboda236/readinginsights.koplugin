@@ -53,6 +53,23 @@ function M.saveAscendingSetting(value)
     M.saveBoolSetting(M.SETTINGS_KEY_8W_ASCENDING, value)
 end
 
+-- Which value the streak-history popup's per-day bars show ("time" or
+-- "pages") - toggled by tapping the value on the right of any row (see
+-- streak_calendar_view.lua's M.showHistory). Persisted like every other
+-- "which numbers am I looking at" display mode in this file, so the popup
+-- reopens showing whichever one was last picked.
+M.SETTINGS_KEY_STREAK_HISTORY_METRIC = "reading_insights_streak_history_metric"
+
+function M.readStreakHistoryMetricSetting()
+    local v = Prefs.read(M.SETTINGS_KEY_STREAK_HISTORY_METRIC, "time")
+    if v ~= "pages" then return "time" end
+    return v
+end
+
+function M.saveStreakHistoryMetricSetting(value)
+    Prefs.save(M.SETTINGS_KEY_STREAK_HISTORY_METRIC, value == "pages" and "pages" or "time")
+end
+
 -- Bar-chart height settings (Prefs ▸ "Oszlopdiagram magassága" / "Bar
 -- chart height"). Values are the same "points" number previously hardcoded
 -- into Screen:scaleBySize(...) at each chart's call site, so restoring the

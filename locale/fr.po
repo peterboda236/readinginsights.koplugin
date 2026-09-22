@@ -264,6 +264,9 @@ msgstr "temps de lecture"
 msgid "No streak dates"
 msgstr "Aucune date de série"
 
+msgid "(Last 30 days)"
+msgstr "(30 derniers jours)"
+
 msgid "CalendarView not available"
 msgstr "CalendarView non disponible"
 
@@ -913,6 +916,15 @@ msgstr "Afficher la série de lecture"
 
 msgid "Reading insights: reading streak"
 msgstr "Statistiques de lecture : série de lecture"
+
+msgid "Show Reading in the Last 30 Days"
+msgstr "Afficher la lecture des 30 derniers jours"
+
+msgid "Reading insights: reading in the last 30 days"
+msgstr "Statistiques de lecture : lecture des 30 derniers jours"
+
+msgid "Reading in the Last 30 Days"
+msgstr "Lecture des 30 derniers jours"
 
 msgid "Reading insights: reading heatmap"
 msgstr "Statistiques de lecture : carte thermique de lecture"

@@ -50,6 +50,13 @@ function M.build(self, deps)
             end,
         },
         {
+            text = _("Show Reading in the Last 30 Days"),
+            keep_menu_open = false,
+            callback = function()
+                self:onShowReadingLast30DaysPopup()
+            end,
+        },
+        {
             text = _("Show Reading heatmap"),
             keep_menu_open = false,
             callback = function()

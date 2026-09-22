@@ -341,6 +341,27 @@ local function formatDateFromTS(ts, no_trailing_dot)
     return formatYMD(t.year, t.month, t.day, no_trailing_dot)
 end
 
+-- Compact "D.M" / "M.D" day-and-month label, no leading zeros and no year -
+-- for places that list many dates in a row (e.g. the streak history bar
+-- list) where a full formatDate() would take up too much space. Follows the
+-- same day/month order as the configured full date format (Settings ▸
+-- Advanced settings ▸ Date & time ▸ "Date format"): day-first for
+-- DD/MM/YYYY, month-first for the other three (including Hungarian's default
+-- YYYY.MM.DD.) - so a Hungarian user sees "9.22" and everyone else sees
+-- "22.9" for the same day, one rule instead of a separate hardcoded-by-
+-- language pattern per caller.
+local function formatShortDayMonth(date_str)
+    if date_str == nil then return "" end
+    local s = tostring(date_str)
+    local y, m, d = s:match("^(%d%d%d%d)%-(%d%d?)%-(%d%d?)$")
+    if not y then return s end
+    m, d = tonumber(m), tonumber(d)
+    if readDateFormatSetting() == DATE_FORMAT_DMY then
+        return string.format("%d.%d", d, m)
+    end
+    return string.format("%d.%d", m, d)
+end
+
 -- The reverse, for the one place a date is typed in rather than shown (the
 -- manual book list's date field): returns the "YYYY-MM-DD" the store keeps,
 -- or nil if the string isn't a date in any accepted pattern. Only the shape
@@ -506,6 +527,7 @@ return {
     saveDurationDaysSetting    = saveDurationDaysSetting,
     formatDate                 = formatDate,
     formatDateFromTS           = formatDateFromTS,
+    formatShortDayMonth        = formatShortDayMonth,
     formatDateSample           = formatDateSample,
     parseDateInput             = parseDateInput,
     dateFormatHint             = dateFormatHint,

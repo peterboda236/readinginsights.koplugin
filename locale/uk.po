@@ -279,6 +279,9 @@ msgstr "час читання"
 msgid "No streak dates"
 msgstr "Немає дат серії"
 
+msgid "(Last 30 days)"
+msgstr "(Останні 30 днів)"
+
 msgid "CalendarView not available"
 msgstr "CalendarView недоступний"
 
@@ -948,6 +951,15 @@ msgstr "Показати серію читання"
 
 msgid "Reading insights: reading streak"
 msgstr "Аналітика читання: серія читання"
+
+msgid "Show Reading in the Last 30 Days"
+msgstr "Показати читання за останні 30 днів"
+
+msgid "Reading insights: reading in the last 30 days"
+msgstr "Аналітика читання: читання за останні 30 днів"
+
+msgid "Reading in the Last 30 Days"
+msgstr "Читання за останні 30 днів"
 
 msgid "Reading insights: reading heatmap"
 msgstr "Аналітика читання: теплокарта читання"

@@ -273,6 +273,9 @@ msgstr "olvasási idő"
 msgid "No streak dates"
 msgstr "Nincs megjeleníthető dátum"
 
+msgid "(Last 30 days)"
+msgstr "(Utolsó 30 nap)"
+
 msgid "CalendarView not available"
 msgstr "CalendarView nem elérhető"
 
@@ -922,6 +925,15 @@ msgstr "Olvasási sorozat megjelenítése"
 
 msgid "Reading insights: reading streak"
 msgstr "Olvasási áttekintés: olvasási sorozat"
+
+msgid "Show Reading in the Last 30 Days"
+msgstr "Olvasás az elmúlt 30 napban megjelenítése"
+
+msgid "Reading insights: reading in the last 30 days"
+msgstr "Olvasási áttekintés: olvasás az elmúlt 30 napban"
+
+msgid "Reading in the Last 30 Days"
+msgstr "Olvasás az elmúlt 30 napban"
 
 msgid "Reading insights: reading heatmap"
 msgstr "Olvasási áttekintés: olvasási hőtérkép"
