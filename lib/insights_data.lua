@@ -374,6 +374,41 @@ function M.getReadingDaysInRange(start_date, end_date)
     end)
 end
 
+-- Per-day totals ({ seconds = n, pages = n }) for every day in a "YYYY-MM-DD"
+-- date range (inclusive) that had any reading, keyed by date string. Used by
+-- the streak history popup (streak_calendar_view.lua's M.showHistory) to draw
+-- one bar per day, toggled between reading time and pages. Same book/page/day
+-- de-dup as getStreakPeriodStats/getDailyReadingData, just grouped by day
+-- instead of summed over the whole range, and carrying both metrics at once
+-- so switching the toggle never needs a second query.
+function M.getDailyStatsInRange(start_date, end_date)
+    local days = {}
+    if not start_date or not end_date then return days end
+    return StatsDb.withDb(days, function(conn)
+        local sql = string.format([[
+            SELECT day, SUM(dur) AS duration, COUNT(*) AS pages
+            FROM (
+                SELECT id_book, page,
+                       date(start_time, 'unixepoch', 'localtime') AS day,
+                       SUM(duration) AS dur
+                FROM page_stat
+                WHERE date(start_time, 'unixepoch', 'localtime') BETWEEN '%s' AND '%s'
+                GROUP BY id_book, page, day
+            )
+            GROUP BY day
+        ]], start_date, end_date)
+        StatsDb.withStatement(conn, sql, function(stmt)
+            for row in stmt:rows() do
+                days[row[1]] = {
+                    seconds = tonumber(row[2]) or 0,
+                    pages   = tonumber(row[3]) or 0,
+                }
+            end
+        end)
+        return days
+    end)
+end
+
 -- Number of calendar days between two "YYYY-MM-DD" dates, inclusive.
 function M.daysBetweenInclusive(start_date, end_date)
     local sy, sm, sd = M.parseDateYMD(start_date)

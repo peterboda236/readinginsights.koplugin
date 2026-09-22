@@ -196,6 +196,7 @@ msgid "reading time"
 msgstr "阅读时长"
 msgid "No streak dates"
 msgstr "无连续阅读日期"
+
 msgid "CalendarView not available"
 msgstr "日历视图无法使用"
 

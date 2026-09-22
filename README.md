@@ -160,6 +160,7 @@ gestures under *Settings → Taps and gestures*.
 - Statistics based on [quanganhdo/koreader-user-patches](https://github.com/quanganhdo/koreader-user-patches).
 - Colorwheel from [Euphoriyy/KOReader.patches](https://github.com/Euphoriyy/KOReader.patches#-colorwheelwidgetlua).
 - In-plugin updater and settings cleanup adapted from [AndyHazz/bookshelf.koplugin](https://github.com/AndyHazz/bookshelf.koplugin).
+- Last 30 days popup based on [github.com/gennaro-tedesco](https://github.com/gennaro-tedesco/KOReader.patches/#2-reading-stats)
 
 ## License
 
