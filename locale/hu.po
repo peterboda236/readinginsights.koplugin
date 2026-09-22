@@ -499,10 +499,10 @@ msgid "days of reading left"
 msgstr "nap olvasás van hátra"
 
 msgid "day since started"
-msgstr "nappal ezelőtt elkezdve"
+msgstr "napja elkezdve"
 
 msgid "days since started"
-msgstr "nappal ezelőtt elkezdve"
+msgstr "napja elkezdve"
 
 msgid "Colors"
 msgstr "Színek"
