@@ -341,25 +341,28 @@ local function formatDateFromTS(ts, no_trailing_dot)
     return formatYMD(t.year, t.month, t.day, no_trailing_dot)
 end
 
--- Compact "D.M" / "M.D" day-and-month label, no leading zeros and no year -
--- for places that list many dates in a row (e.g. the streak history bar
--- list) where a full formatDate() would take up too much space. Follows the
--- same day/month order as the configured full date format (Settings ▸
--- Advanced settings ▸ Date & time ▸ "Date format"): day-first for
--- DD/MM/YYYY, month-first for the other three (including Hungarian's default
--- YYYY.MM.DD.) - so a Hungarian user sees "9.22" and everyone else sees
--- "22.9" for the same day, one rule instead of a separate hardcoded-by-
--- language pattern per caller.
-local function formatShortDayMonth(date_str)
+-- Translated short month names ("Jan".."Dec"), reusing the same msgids the
+-- rest of the plugin already translates (trend/heatmap/insights views), so
+-- no new .po strings are needed for formatShortMonthDay below.
+local MONTH_NAMES_SHORT_FOR_DATE = {
+    _("Jan"), _("Feb"), _("Mar"), _("Apr"), _("May"), _("Jun"),
+    _("Jul"), _("Aug"), _("Sep"), _("Oct"), _("Nov"), _("Dec"),
+}
+
+-- Compact "Mon D" day-and-month label (e.g. "Sep 22", Hungarian "Szept. 22"),
+-- no leading zeros and no year - for places that list many dates in a row
+-- (e.g. the streak history bar list) where a full formatDate() would take up
+-- too much space and a bare numeric "9.22"/"22.9" reads ambiguously. Always
+-- month-then-day, whatever the configured full date format's day/month order
+-- is, since the translated month name already disambiguates the two.
+local function formatShortMonthDay(date_str)
     if date_str == nil then return "" end
     local s = tostring(date_str)
     local y, m, d = s:match("^(%d%d%d%d)%-(%d%d?)%-(%d%d?)$")
     if not y then return s end
     m, d = tonumber(m), tonumber(d)
-    if readDateFormatSetting() == DATE_FORMAT_DMY then
-        return string.format("%d.%d", d, m)
-    end
-    return string.format("%d.%d", m, d)
+    local mon = MONTH_NAMES_SHORT_FOR_DATE[m] or tostring(m)
+    return mon .. " " .. tostring(d)
 end
 
 -- The reverse, for the one place a date is typed in rather than shown (the
@@ -527,7 +530,7 @@ return {
     saveDurationDaysSetting    = saveDurationDaysSetting,
     formatDate                 = formatDate,
     formatDateFromTS           = formatDateFromTS,
-    formatShortDayMonth        = formatShortDayMonth,
+    formatShortMonthDay        = formatShortMonthDay,
     formatDateSample           = formatDateSample,
     parseDateInput             = parseDateInput,
     dateFormatHint             = dateFormatHint,

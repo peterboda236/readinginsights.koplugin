@@ -363,17 +363,6 @@ function ReadingInsights:onDispatcherRegisterActions()
         title    = _("Reading insights: reading streak"),
         general  = true,
     })
-    -- general = true: the trailing 30-calendar-days view is global, all-time
-    -- data (not tied to any open book or to whether a streak is active), so
-    -- this is assignable everywhere, same as the streak/records/achievements
-    -- actions above. Opens views/streak_calendar_view.lua's showLast30Days
-    -- directly (see onShowReadingLast30DaysPopup below).
-    Dispatcher:registerAction("reading_last30days_popup", {
-        category = "none",
-        event    = "ShowReadingLast30DaysPopup",
-        title    = _("Reading insights: reading in the last 30 days"),
-        general  = true,
-    })
     -- general = true: the heatmap is built from all-time reading data (see
     -- onShowReadingHeatmapPopup below), not tied to any open book, so this
     -- is assignable everywhere too.
@@ -877,16 +866,6 @@ end
 -- cells open (views/insights_view.lua's showStreaksPopup).
 function ReadingInsights:onShowReadingStreakPopup()
     Insights.showStreaks()
-    return true
-end
-
--- General, like onShowReadingStreakPopup above: the trailing 30-calendar-
--- days popup is global, all-time data, not tied to any open book, so it
--- opens in both Reader view and the File manager. Unlike the streak popup,
--- it's not tied to a current/best streak either - it always shows the same
--- fixed 30-day window up to today (StreakCalendar.showLast30Days).
-function ReadingInsights:onShowReadingLast30DaysPopup()
-    StreakCalendar.showLast30Days()
     return true
 end
 

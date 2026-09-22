@@ -264,9 +264,6 @@ msgstr "reading time"
 msgid "No streak dates"
 msgstr "No streak dates"
 
-msgid "(Last 30 days)"
-msgstr "(Last 30 days)"
-
 msgid "CalendarView not available"
 msgstr "CalendarView not available"
 
@@ -910,15 +907,6 @@ msgstr "Show Reading streak"
 
 msgid "Reading insights: reading streak"
 msgstr "Reading insights: reading streak"
-
-msgid "Show Reading in the Last 30 Days"
-msgstr "Show Reading in the Last 30 Days"
-
-msgid "Reading insights: reading in the last 30 days"
-msgstr "Reading insights: reading in the last 30 days"
-
-msgid "Reading in the Last 30 Days"
-msgstr "Reading in the Last 30 Days"
 
 msgid "Reading insights: reading heatmap"
 msgstr "Reading insights: reading heatmap"

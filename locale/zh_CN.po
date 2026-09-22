@@ -197,8 +197,6 @@ msgstr "阅读时长"
 msgid "No streak dates"
 msgstr "无连续阅读日期"
 
-msgid "(Last 30 days)"
-msgstr "（最近 30 天）"
 msgid "CalendarView not available"
 msgstr "日历视图无法使用"
 
@@ -672,15 +670,6 @@ msgstr "查看阅读连续记录"
 
 msgid "Reading insights: reading streak"
 msgstr "阅读统计：阅读连续记录"
-
-msgid "Show Reading in the Last 30 Days"
-msgstr "查看最近30天的阅读"
-
-msgid "Reading insights: reading in the last 30 days"
-msgstr "阅读统计：最近30天的阅读"
-
-msgid "Reading in the Last 30 Days"
-msgstr "最近30天的阅读"
 
 msgid "Reading insights: reading heatmap"
 msgstr "阅读统计：阅读热力图"
