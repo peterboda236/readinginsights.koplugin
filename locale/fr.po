@@ -1745,13 +1745,13 @@ msgstr "Tous les chapitres"
 msgid "Draw every chapter in one row, without paging."
 msgstr "Dessiner tous les chapitres sur une seule ligne, sans pagination."
 
-msgid "Next chapters"
-msgstr ""
+msgid "Next 2 chapters"
+msgstr "2 chapitres suivants"
 
 msgid "Next chapters shown"
 msgstr ""
 
-msgid "How many upcoming chapters the \"Next chapter\" column's reading-time estimate covers. With \"2\", once a second chapter follows the next one, the header switches to \"Next chapters\" and shows both chapters' times, e.g. \"00:10 | 00:28\". Falls back to a single chapter when there is no chapter after the next one, or no next chapter at all."
+msgid "How many upcoming chapters the \"Next chapter\" column's reading-time estimate covers. With \"2\", once a second chapter follows the next one, the header switches to \"Next 2 chapters\" and shows both chapters' times, e.g. \"00:10 | 00:28\". Falls back to a single chapter when there is no chapter after the next one, or no next chapter at all."
 msgstr ""
 
 msgid "1 (default)"

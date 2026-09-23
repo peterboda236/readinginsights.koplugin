@@ -742,7 +742,7 @@ function M.build(self, deps)
     -- exists - otherwise it quietly behaves like "1".
     table.insert(book_progress_sub_item_table, {
         text = _("Next chapters shown"),
-        help_text = _("How many upcoming chapters the \"Next chapter\" column's reading-time estimate covers. With \"2\", once a second chapter follows the next one, the header switches to \"Next chapters\" and shows both chapters' times, e.g. \"00:10 | 00:28\". Falls back to a single chapter when there is no chapter after the next one, or no next chapter at all."),
+        help_text = _("How many upcoming chapters the \"Next chapter\" column's reading-time estimate covers. With \"2\", once a second chapter follows the next one, the header switches to \"Next 2 chapters\" and shows both chapters' times, e.g. \"00:10 | 00:28\". Falls back to a single chapter when there is no chapter after the next one, or no next chapter at all."),
         separator = true,
         sub_item_table = {
             {

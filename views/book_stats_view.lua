@@ -248,7 +248,7 @@ local function buildChapterHeaders(font_section, layout, left_text, right_text)
     })
 end
 
--- "Next chapters" combined cell (see show_two_next below): instead of one
+-- "Next 2 chapters" combined cell (see show_two_next below): instead of one
 -- text string with a "|" character between the two chapters' reading
 -- times, split the cell in half with a proper vertical divider line - the
 -- same style buildTwoColRow/buildColumnSeparator use for the popup's other
@@ -280,7 +280,7 @@ local function buildSections(stats, fonts, layout, popup)
     -- popup): 1 (default) keeps the single "Next chapter" column exactly as
     -- before; 2 combines the next chapter's and the one after it's reading
     -- times into that same column, e.g. "00:10 | 00:28", with the header
-    -- switching to "Next chapters" (see buildChapterHeaders call below).
+    -- switching to "Next 2 chapters" (see buildChapterHeaders call below).
     -- Only applies to the reading-time view, and only once a chapter after
     -- the next one actually exists - otherwise this silently behaves like 1
     -- (last-but-one chapter still shows a plain single "Next chapter").
@@ -387,10 +387,10 @@ local function buildSections(stats, fonts, layout, popup)
     local show_cur  = Opt.readShowChapterCurrent()
     local show_next = Opt.readShowChapterNext() and stats.has_next_chapter
     if show_cur or show_next then
-        -- N_ picks the plural form once the combined two-chapter value is
-        -- actually being shown (see show_two_next above); otherwise this is
-        -- exactly the old singular "Next chapter" label.
-        local next_header_text = N_("Next chapter", "Next chapters", show_two_next and 2 or 1)
+        -- "Next 2 chapters" once the combined two-chapter value is actually
+        -- being shown (see show_two_next above); otherwise this is exactly
+        -- the old singular "Next chapter" label.
+        local next_header_text = show_two_next and _("Next 2 chapters") or _("Next chapter")
         local left_text, right_text, left_val, right_val
         if show_cur and show_next then
             left_text, right_text = _("This chapter"), next_header_text

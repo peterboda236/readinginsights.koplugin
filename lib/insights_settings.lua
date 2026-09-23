@@ -228,7 +228,7 @@ M.Opt = {
     -- Book progress popup: how many upcoming chapters the "Next chapter"
     -- column's reading-time estimate covers - 1 (default, unchanged
     -- behaviour: just the immediately-following chapter) or 2 (the header
-    -- becomes "Next chapters" and the value shows both chapters' times,
+    -- becomes "Next 2 chapters" and the value shows both chapters' times,
     -- e.g. "00:10 | 00:28"). Only affects the reading-time view of that
     -- column; falls back to 1 whenever there is no chapter after the next
     -- one (last-but-one chapter) or no next chapter at all (last chapter).
