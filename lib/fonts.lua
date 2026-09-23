@@ -251,77 +251,65 @@ local labelFor
 
 -- Font-file discovery, so the menu can offer a pick-from-list option
 -- instead of forcing the user to type an exact file name/alias.
-local FONT_EXTENSIONS = { ttf = true, otf = true, ttc = true, otc = true }
-
--- The plugin lives at <koreader_root>/plugins/<name>.koplugin/, so two
--- levels up is KOReader's own bundled "fonts" directory.
-local function koreaderFontsDir()
-    return PluginUtil.dir .. "../../fonts/"
-end
-
--- Scans KOReader's bundled fonts dir plus the user data dir's "fonts"
--- folder (where sideloaded/custom fonts usually live) for font files.
--- Never errors: if lfs or a directory isn't available, just returns
--- whatever was found up to that point (possibly nothing).
-local function scanDirForFonts(lfs, dir, found, seen)
-    -- lfs.dir() itself normally doesn't error even for a missing directory -
-    -- the error only surfaces once the returned iterator is actually
-    -- called - so the whole loop (not just the initial lfs.dir() call)
-    -- has to run inside pcall.
-    pcall(function()
-        for entry in lfs.dir(dir) do
-            local ext = entry:match("%.([%a]+)$")
-            if ext and FONT_EXTENSIONS[ext:lower()] and not seen[entry] then
-                seen[entry] = true
-                table.insert(found, entry)
-            end
-        end
-    end)
-end
-
+--
+-- Delegates to KOReader's own "fontlist" module instead of scanning
+-- directories by hand: fontlist already knows every path KOReader itself
+-- treats as a font source (its bundle, the platform's external font dir,
+-- and any extra folders the user has added in KOReader's own font
+-- settings), so this sees exactly what KOReader and the other plugins
+-- (e.g. Book card) see -- no separate, narrower directory list to keep in
+-- sync.
 local function scanFontFiles()
-    local ok_lfs, lfs = pcall(require, "libs/libkoreader-lfs")
-    if not ok_lfs then ok_lfs, lfs = pcall(require, "lfs") end
-    if not ok_lfs then return {} end
+    local ok_fl, FontList = pcall(require, "fontlist")
+    if not ok_fl or not FontList then return {} end
+    local ok_list, list = pcall(FontList.getFontList, FontList)
+    if not ok_list or not list then return {} end
+    return list
+end
 
-    local dirs = { koreaderFontsDir() }
-    local ok_ds, DataStorage = pcall(require, "datastorage")
-    if ok_ds and DataStorage.getDataDir then
-        table.insert(dirs, DataStorage:getDataDir() .. "/fonts/")
-    end
-
-    local found, seen = {}, {}
-    for _, dir in ipairs(dirs) do
-        -- Skip directories that don't exist/aren't readable, so we never
-        -- even attempt to iterate them.
-        local ok_attr, attr = pcall(lfs.attributes, dir, "mode")
-        if ok_attr and attr == "directory" then
-            scanDirForFonts(lfs, dir, found, seen)
-        end
-    end
-    table.sort(found, function(a, b) return a:lower() < b:lower() end)
-    return found
+-- Last path component of a font entry (the entries KOReader's fontlist
+-- returns may be full paths; this plugin's own defaults are bare file
+-- names).
+local function baseName(path)
+    return (tostring(path):match("([^/\\]+)$")) or tostring(path)
 end
 
 -- Builds the list of selectable names for one role's picker menu: this
 -- role's own default file first, then every font file found on disk -
--- de-duplicated, in that priority order. KOReader's internal font-alias
--- keys (Font.fontmap, e.g. "tfont", "cfont") are deliberately left out of
--- this list - they're only used as silent fallbacks in buildFace, not
--- meant to be picked directly, and would just clutter/confuse the top of
--- the list with cryptic short names.
+-- de-duplicated BY FILE NAME (case-insensitive), so the same font file
+-- living in several folders (bundle, external fonts dir, user-added
+-- folders...) shows up only once. The first occurrence wins; the rest are
+-- sorted alphabetically after the role's default. KOReader's internal
+-- font-alias keys (Font.fontmap, e.g. "tfont", "cfont") are deliberately
+-- left out of this list - they're only used as silent fallbacks in
+-- buildFace, not meant to be picked directly.
+--
+-- Returns a list of { name = <value to persist>, label = <shown in menu> }.
 local function getPickerEntries(key)
     local entries, seen = {}, {}
 
     local default_file = M.getDefaultName(key)
-    table.insert(entries, default_file)
-    seen[default_file] = true
+    table.insert(entries, { name = default_file, label = default_file })
+    seen[baseName(default_file):lower()] = true
 
+    local found = {}
     for _, file in ipairs(scanFontFiles()) do
-        if not seen[file] then
-            seen[file] = true
-            table.insert(entries, file)
+        if type(file) == "string" and file ~= "" then
+            local base = baseName(file)
+            local id = base:lower()
+            if not seen[id] then
+                seen[id] = true
+                table.insert(found, { name = file, label = base })
+            end
         end
+    end
+    table.sort(found, function(a, b)
+        local la, lb = a.label:lower(), b.label:lower()
+        if la == lb then return a.label < b.label end
+        return la < lb
+    end)
+    for _, e in ipairs(found) do
+        table.insert(entries, e)
     end
 
     return entries
@@ -336,11 +324,13 @@ end
 local function showFontPickerMenu(key, touchmenu_instance, on_change)
     local entries = getPickerEntries(key)
     local item_table = {}
-    for _, name in ipairs(entries) do
+    for _, entry in ipairs(entries) do
         table.insert(item_table, {
-            text = name,
+            text = entry.label,
+            font_name = entry.name,
             checked_func = function()
-                return (M.getName(key) or M.getDefaultName(key)) == name
+                local current = M.getName(key) or M.getDefaultName(key)
+                return baseName(current):lower() == entry.label:lower()
             end,
         })
     end
@@ -353,7 +343,7 @@ local function showFontPickerMenu(key, touchmenu_instance, on_change)
         is_popout = false,
         is_borderless = true,
         onMenuSelect = function(_, item)
-            M.setName(key, item.text)
+            M.setName(key, item.font_name or item.text)
             UIManager:close(picker)
             if touchmenu_instance then touchmenu_instance:updateItems() end
             if on_change then on_change() end
