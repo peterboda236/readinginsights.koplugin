@@ -1741,3 +1741,18 @@ msgstr "Összes fejezet"
 
 msgid "Draw every chapter in one row, without paging."
 msgstr "Minden fejezet kirajzolása egyetlen sorban, lapozás nélkül."
+
+msgid "Next chapters"
+msgstr "Következő fejezetek"
+
+msgid "Next chapters shown"
+msgstr "Mutatott következő fejezetek"
+
+msgid "How many upcoming chapters the \"Next chapter\" column's reading-time estimate covers. With \"2\", once a second chapter follows the next one, the header switches to \"Next chapters\" and shows both chapters' times, e.g. \"00:10 | 00:28\". Falls back to a single chapter when there is no chapter after the next one, or no next chapter at all."
+msgstr "Hány következő fejezet olvasási idejét mutassa a „Következő fejezet” oszlop. „2” esetén, ha a következő után van még egy fejezet, a fejléc „Következő fejezetek”-re vált, és mindkét fejezet ideje megjelenik, pl. „00:10 | 00:28”. Ha nincs a következő utáni fejezet, vagy egyáltalán nincs következő fejezet, marad az egy fejezetes megjelenítés."
+
+msgid "1 (default)"
+msgstr "1 (alapértelmezett)"
+
+msgid "2"
+msgstr "2"

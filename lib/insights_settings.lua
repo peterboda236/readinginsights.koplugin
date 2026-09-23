@@ -224,6 +224,15 @@ M.Opt = {
     --   "Pace":          the "read today / avg per day" row
     SHOW_CHAPTER_CURRENT_KEY = "reading_insights_book_show_chapter_current",
     SHOW_CHAPTER_NEXT_KEY    = "reading_insights_book_show_chapter_next",
+
+    -- Book progress popup: how many upcoming chapters the "Next chapter"
+    -- column's reading-time estimate covers - 1 (default, unchanged
+    -- behaviour: just the immediately-following chapter) or 2 (the header
+    -- becomes "Next chapters" and the value shows both chapters' times,
+    -- e.g. "00:10 | 00:28"). Only affects the reading-time view of that
+    -- column; falls back to 1 whenever there is no chapter after the next
+    -- one (last-but-one chapter) or no next chapter at all (last chapter).
+    NEXT_CHAPTER_COUNT_KEY   = "reading_insights_book_next_chapter_count",
     SHOW_BOOK_READ_ROW_KEY   = "reading_insights_book_show_read_row",
     SHOW_BOOK_TIME_ROW_KEY   = "reading_insights_book_show_time_row",
     SHOW_PACE_TODAY_KEY      = "reading_insights_book_show_pace_today",
@@ -550,6 +559,16 @@ function M.Opt.readShowChapterCurrent() return M.readBoolSetting(M.Opt.SHOW_CHAP
 function M.Opt.saveShowChapterCurrent(v)  M.saveBoolSetting(M.Opt.SHOW_CHAPTER_CURRENT_KEY, v) end
 function M.Opt.readShowChapterNext()    return M.readBoolSetting(M.Opt.SHOW_CHAPTER_NEXT_KEY, true) end
 function M.Opt.saveShowChapterNext(v)     M.saveBoolSetting(M.Opt.SHOW_CHAPTER_NEXT_KEY, v) end
+
+function M.Opt.readNextChapterCount()
+    local v = M.readNumSetting(M.Opt.NEXT_CHAPTER_COUNT_KEY, 1)
+    if v == 2 then return 2 end
+    return 1
+end
+
+function M.Opt.saveNextChapterCount(value)
+    M.saveNumSetting(M.Opt.NEXT_CHAPTER_COUNT_KEY, value)
+end
 function M.Opt.readShowBookReadRow()    return M.readBoolSetting(M.Opt.SHOW_BOOK_READ_ROW_KEY, true) end
 function M.Opt.saveShowBookReadRow(v)     M.saveBoolSetting(M.Opt.SHOW_BOOK_READ_ROW_KEY, v) end
 function M.Opt.readShowBookTimeRow()    return M.readBoolSetting(M.Opt.SHOW_BOOK_TIME_ROW_KEY, true) end

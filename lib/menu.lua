@@ -730,11 +730,36 @@ function M.build(self, deps)
         text = _("Next chapter"),
         help_text = _("Show the \"Next chapter\" column. If this and \"This chapter\" are both off, the whole chapter section is hidden."),
         keep_menu_open = true,
-        separator = true,
         checked_func = function() return deps.ViewSettings.Opt.readShowChapterNext() end,
         callback = function()
             deps.ViewSettings.Opt.saveShowChapterNext(not deps.ViewSettings.Opt.readShowChapterNext())
         end,
+    })
+
+    -- How many upcoming chapters that column's reading-time estimate covers.
+    -- Only changes anything in the reading-time view (not the tap-to-toggle
+    -- pages view), and only when a chapter after the next one actually
+    -- exists - otherwise it quietly behaves like "1".
+    table.insert(book_progress_sub_item_table, {
+        text = _("Next chapters shown"),
+        help_text = _("How many upcoming chapters the \"Next chapter\" column's reading-time estimate covers. With \"2\", once a second chapter follows the next one, the header switches to \"Next chapters\" and shows both chapters' times, e.g. \"00:10 | 00:28\". Falls back to a single chapter when there is no chapter after the next one, or no next chapter at all."),
+        separator = true,
+        sub_item_table = {
+            {
+                text = _("1 (default)"),
+                keep_menu_open = true,
+                radio = true,
+                checked_func = function() return deps.ViewSettings.Opt.readNextChapterCount() == 1 end,
+                callback = function() deps.ViewSettings.Opt.saveNextChapterCount(1) end,
+            },
+            {
+                text = _("2"),
+                keep_menu_open = true,
+                radio = true,
+                checked_func = function() return deps.ViewSettings.Opt.readNextChapterCount() == 2 end,
+                callback = function() deps.ViewSettings.Opt.saveNextChapterCount(2) end,
+            },
+        },
     })
 
     table.insert(book_progress_sub_item_table, {

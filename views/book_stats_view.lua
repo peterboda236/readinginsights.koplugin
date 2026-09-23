@@ -21,7 +21,11 @@ Sections shown:
   - This chapter / Next chapter   estimated time left and time to read next
                                    chapter (tap to switch to pages left /
                                    next chapter's page count; tap again to
-                                   switch back)
+                                   switch back). "Next chapters shown"
+                                   (Settings > Advanced settings > Book
+                                   progress popup) can combine the next two
+                                   chapters' reading times into that column
+                                   instead of just the one immediately next.
   - This book                     progress percentage, pages read, time spent, time left
   - Chapter bar                   visual bar chart of all chapters (tappable, swipeable)
   - Pace                          today's reading time and pages-per-minute rate
@@ -244,6 +248,22 @@ local function buildChapterHeaders(font_section, layout, left_text, right_text)
     })
 end
 
+-- "Next chapters" combined cell (see show_two_next below): instead of one
+-- text string with a "|" character between the two chapters' reading
+-- times, split the cell in half with a proper vertical divider line - the
+-- same style buildTwoColRow/buildColumnSeparator use for the popup's other
+-- column splits, just nested one level deeper (half of an already-halved
+-- column) with a narrower gap so the extra divider doesn't crowd the cell.
+local function buildSplitTimeCell(font_value, layout, value1_text, value2_text)
+    local sub_gap = math.max(math.floor(layout.column_gap / 2), Size.padding.small)
+    local sub_separator_width = 2 * sub_gap + Size.line.medium
+    local half_width = math.floor((layout.col_width - sub_separator_width) / 2)
+    local sub_layout = { col_width = half_width, column_gap = sub_gap }
+    local value1 = TextWidget:new{ text = value1_text, face = font_value, fgcolor = Colors.value() }
+    local value2 = TextWidget:new{ text = value2_text, face = font_value, fgcolor = Colors.value() }
+    return UI.buildTwoColRow(value1, value2, sub_layout)
+end
+
 -- Main section builder.
 local function buildSections(stats, fonts, layout, popup)
     local function valueLine(time_data, label)
@@ -256,6 +276,17 @@ local function buildSections(stats, fonts, layout, popup)
     -- nil/"time" by default; "pages" once toggled. Tapping again switches
     -- back (see onTapClose).
     local chapter_view_mode = (popup and popup._chapter_view_mode) or "time"
+    -- "Next chapters shown" (Settings > Advanced settings > Book progress
+    -- popup): 1 (default) keeps the single "Next chapter" column exactly as
+    -- before; 2 combines the next chapter's and the one after it's reading
+    -- times into that same column, e.g. "00:10 | 00:28", with the header
+    -- switching to "Next chapters" (see buildChapterHeaders call below).
+    -- Only applies to the reading-time view, and only once a chapter after
+    -- the next one actually exists - otherwise this silently behaves like 1
+    -- (last-but-one chapter still shows a plain single "Next chapter").
+    local show_two_next = chapter_view_mode ~= "pages"
+        and VS.Opt.readNextChapterCount() == 2
+        and stats.has_chapter_after_next
     local chapter_val1, chapter_val2
     if chapter_view_mode == "pages" then
         local na_pages   = { value = "—", unit = "" }
@@ -270,7 +301,14 @@ local function buildSections(stats, fonts, layout, popup)
         chapter_val2 = valueLine(next_data, next_label)
     else
         chapter_val1 = valueLine(stats.chapter_time_left_hhmm, _("reading time left"))
-        chapter_val2 = valueLine(stats.next_chapter_time_hhmm, _("reading time"))
+        if show_two_next then
+            chapter_val2 = buildSplitTimeCell(
+                fonts.value, layout,
+                stats.next_chapter_time_hhmm.value, stats.chapter_after_next_time_hhmm.value
+            )
+        else
+            chapter_val2 = valueLine(stats.next_chapter_time_hhmm, _("reading time"))
+        end
     end
     local progress_label  = stats.book_progress.value ~= "" and _("read") or ""
     local book_progress   = valueLine(stats.book_progress, progress_label)
@@ -349,15 +387,19 @@ local function buildSections(stats, fonts, layout, popup)
     local show_cur  = Opt.readShowChapterCurrent()
     local show_next = Opt.readShowChapterNext() and stats.has_next_chapter
     if show_cur or show_next then
+        -- N_ picks the plural form once the combined two-chapter value is
+        -- actually being shown (see show_two_next above); otherwise this is
+        -- exactly the old singular "Next chapter" label.
+        local next_header_text = N_("Next chapter", "Next chapters", show_two_next and 2 or 1)
         local left_text, right_text, left_val, right_val
         if show_cur and show_next then
-            left_text, right_text = _("This chapter"), _("Next chapter")
+            left_text, right_text = _("This chapter"), next_header_text
             left_val,  right_val  = chapter_val1, chapter_val2
         elseif show_cur then
             left_text, right_text = _("This chapter"), ""
             left_val,  right_val  = chapter_val1, valueLine(UI.emptyValue(), "")
         else
-            left_text, right_text = _("Next chapter"), ""
+            left_text, right_text = next_header_text, ""
             left_val,  right_val  = chapter_val2, valueLine(UI.emptyValue(), "")
         end
         local chapter_headers_content = buildChapterHeaders(fonts.section, layout, left_text, right_text)
@@ -752,6 +794,9 @@ function ReadingStatsPopup:gatherStats()
         has_next_chapter       = false,
         chapter_pages_left_count = nil,
         next_chapter_pages_count = nil,
+        has_chapter_after_next        = false,
+        chapter_after_next_time_hhmm  = UI.emptyValue(),
+        chapter_after_next_pages_count = nil,
     }
 
     local ui = self.ui
@@ -842,6 +887,31 @@ function ReadingStatsPopup:gatherStats()
             if has_stats then
                 local nc_secs = next_chapter_pages * avg_time
                 stats.next_chapter_time_hhmm = Locale.formatTimeHHMM(nc_secs)
+            end
+
+            -- One chapter further still (for the "Next chapters shown" = 2
+            -- option): same maths, one chapter start further along. Only
+            -- computed/shown when it actually exists - see buildSections,
+            -- which falls back to the single "Next chapter" column
+            -- otherwise (last-but-one chapter, or setting left at 1).
+            if chapter_after_next then
+                stats.has_chapter_after_next       = true
+                stats.chapter_after_next_time_hhmm = na_hhmm
+
+                local chapter_after_that = toc:getNextChapter(chapter_after_next)
+                local chapter_after_next_pages
+                if chapter_after_that then
+                    chapter_after_next_pages = chapter_after_that - chapter_after_next
+                else
+                    chapter_after_next_pages = pages - chapter_after_next + 1
+                end
+                chapter_after_next_pages = chapter_after_next_pages - 1
+                if chapter_after_next_pages < 0 then chapter_after_next_pages = 0 end
+                stats.chapter_after_next_pages_count = chapter_after_next_pages
+                if has_stats then
+                    local can_secs = chapter_after_next_pages * avg_time
+                    stats.chapter_after_next_time_hhmm = Locale.formatTimeHHMM(can_secs)
+                end
             end
         end
     end
