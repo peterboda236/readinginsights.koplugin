@@ -205,16 +205,16 @@ msgid "Reloading data..."
 msgstr "Adatok újraolvasása..."
 
 msgid "Reading insights"
-msgstr "Olvasási áttekintés"
+msgstr "Reading insights"
 
 msgid "Reading insights: all time statistics"
-msgstr "Olvasási áttekintés: összesített statisztika"
+msgstr "Reading insights: összesített statisztika"
 
 msgid "Reading insights: current book progress"
-msgstr "Olvasási áttekintés: aktuális könyv haladása"
+msgstr "Reading insights: aktuális könyv haladása"
 
 msgid "Reading insights: book progress calendar"
-msgstr "Olvasási áttekintés: könyv haladás naptár"
+msgstr "Reading insights: könyv haladás naptár"
 
 msgid "All books read %1"
 msgstr "Összesen: %1 könyv olvasva"
@@ -304,7 +304,7 @@ msgid "pages read today"
 msgstr "oldal olvasva ma"
 
 msgid "Show Reading insights"
-msgstr "Olvasási áttekintés megnyitása"
+msgstr "Reading insights megnyitása"
 
 msgid "Full-screen refresh on open/close"
 msgstr "Teljes képernyő frissítés megnyitáskor/bezáráskor"
@@ -654,7 +654,7 @@ msgid "Use as sleep screen"
 msgstr "Használat alvó képernyőként"
 
 msgid "Reading insights sleep screen"
-msgstr "Olvasási áttekintés alvó képernyő"
+msgstr "Reading insights alvó képernyő"
 
 msgid "Sleep-screen indicator"
 msgstr "Alvó képernyő jelzés"
@@ -735,10 +735,10 @@ msgid "Installed: v"
 msgstr "Telepítve: v"
 
 msgid "This will clear the development branch setting and install the latest stable release of Reading insights, then restart KOReader. Continue?"
-msgstr "Ez törli a fejlesztői ág beállítást, telepíti az Olvasási áttekintés legújabb stabil kiadását, majd újraindítja a KOReadert. Folytatod?"
+msgstr "Ez törli a fejlesztői ág beállítást, telepíti a Reading insights legújabb stabil kiadását, majd újraindítja a KOReadert. Folytatod?"
 
 msgid "Reading insights update available: v"
-msgstr "Olvasási áttekintés frissítés elérhető: v"
+msgstr "Reading insights frissítés elérhető: v"
 
 msgid "Open the releases page in a browser?"
 msgstr "Megnyitod a kiadások oldalát böngészőben?"
@@ -753,7 +753,7 @@ msgid "Could not check for updates."
 msgstr "Nem sikerült ellenőrizni a frissítéseket."
 
 msgid "Reading insights is up to date."
-msgstr "Az Olvasási áttekintés naprakész."
+msgstr "A Reading insights naprakész."
 
 msgid "Version: "
 msgstr "Verzió: "
@@ -786,7 +786,7 @@ msgid "Installation failed: "
 msgstr "A telepítés sikertelen: "
 
 msgid "Reading insights updated to v"
-msgstr "Az Olvasási áttekintés frissítve erre: v"
+msgstr "A Reading insights frissítve erre: v"
 
 msgid "Restart KOReader now?"
 msgstr "Újraindítod most a KOReadert?"
@@ -879,7 +879,7 @@ msgid "About"
 msgstr "Névjegy"
 
 msgid "Reading insight"
-msgstr "Olvasási áttekintés"
+msgstr "Reading insights"
 
 msgid "A full-screen overlay with a comprehensive overview of your reading history, powered by KOReader's statistics database."
 msgstr "Egy teljes képernyős áttekintés az olvasási előzményeidről, a KOReader statisztikai adatbázisára építve."
@@ -912,7 +912,7 @@ msgid "%d hours left"
 msgstr "%d óra van hátra"
 
 msgid "Reading insights: records"
-msgstr "Olvasási áttekintés: rekordok"
+msgstr "Reading insights: rekordok"
 
 msgid "Show Records"
 msgstr "Rekordok megjelenítése"
@@ -921,10 +921,10 @@ msgid "Show Reading streak"
 msgstr "Olvasási sorozat megjelenítése"
 
 msgid "Reading insights: reading streak"
-msgstr "Olvasási áttekintés: olvasási sorozat"
+msgstr "Reading insights: olvasási sorozat"
 
 msgid "Reading insights: reading heatmap"
-msgstr "Olvasási áttekintés: olvasási hőtérkép"
+msgstr "Reading insights: olvasási hőtérkép"
 
 msgid "Show Reading heatmap"
 msgstr "Olvasási hőtérkép megjelenítése"
@@ -960,7 +960,7 @@ msgid "Automatic"
 msgstr "Automatikus"
 
 msgid "Sizes the Reading insights bar charts so the page fits the screen without a scroll bar."
-msgstr "Az Olvasási áttekintés oszlopdiagramjait úgy méretezi, hogy az oldal görgetősáv nélkül elférjen a képernyőn."
+msgstr "A Reading insights oszlopdiagramjait úgy méretezi, hogy az oldal görgetősáv nélkül elférjen a képernyőn."
 
 msgid "Last read (newest first)"
 msgstr "Utolsó olvasás szerint (legújabb elöl)"
@@ -1023,7 +1023,7 @@ msgid "Date & time"
 msgstr "Dátum és idő"
 
 msgid "Reading insight popup"
-msgstr "Olvasási áttekintés ablak"
+msgstr "Reading insights ablak"
 
 msgid "Last week chapter bar order"
 msgstr "Múlt heti oszlopok sorrendje"
@@ -1074,7 +1074,7 @@ msgid "Show Achievements"
 msgstr "Teljesítmények megnyitása"
 
 msgid "Reading insights: achievements"
-msgstr "Olvasási áttekintés: teljesítmények"
+msgstr "Reading insights: teljesítmények"
 
 msgid "earned"
 msgstr "megszerezve"
@@ -1605,7 +1605,7 @@ msgid "Show locked only"
 msgstr "Csak a hátralévők"
 
 msgid "Shows the reading goal and achievements section of the Reading insights popup."
-msgstr "Az Olvasási áttekintés popup olvasási cél és teljesítmények szekcióját mutatja."
+msgstr "A Reading insights popup olvasási cél és teljesítmények szekcióját mutatja."
 
 msgid "Reading goal & achievements"
 msgstr "Olvasási cél és teljesítmények"
