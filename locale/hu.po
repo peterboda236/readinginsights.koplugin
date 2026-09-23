@@ -313,7 +313,7 @@ msgid "8-week chart order"
 msgstr "8 hetes grafikon sorrendje"
 
 msgid "Advanced settings"
-msgstr "Speciális beállítások"
+msgstr "További beállítások"
 
 msgid "Reading heatmap range"
 msgstr "Heatmap időtartama"
