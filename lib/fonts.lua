@@ -58,14 +58,11 @@ Exposes:
 ]]--
 
 local Screen          = require("device").screen
-local CenterContainer = require("ui/widget/container/centercontainer")
-local CheckMark       = require("ui/widget/checkmark")
+local CheckButton     = require("ui/widget/checkbutton")
 local ConfirmBox      = require("ui/widget/confirmbox")
 local Font            = require("ui/font")
 local FrameContainer  = require("ui/widget/container/framecontainer")
 local Geom            = require("ui/geometry")
-local GestureRange    = require("ui/gesturerange")
-local HorizontalGroup = require("ui/widget/horizontalgroup")
 local HorizontalSpan  = require("ui/widget/horizontalspan")
 local InfoMessage     = require("ui/widget/infomessage")
 local InputContainer  = require("ui/widget/container/inputcontainer")
@@ -74,7 +71,6 @@ local LeftContainer   = require("ui/widget/container/leftcontainer")
 local Size            = require("ui/size")
 local SortWidget      = require("ui/widget/sortwidget")
 local SpinWidget      = require("ui/widget/spinwidget")
-local TextWidget      = require("ui/widget/textwidget")
 local UIManager       = require("ui/uimanager")
 local VerticalSpan    = require("ui/widget/verticalspan")
 local gettext         = require("gettext")
@@ -401,7 +397,10 @@ local function sampleFace(font_name, size)
     return Font:getFace("smallinfofont")
 end
 
--- One row: checkbox column, then the font's name drawn in that font.
+-- One row: KOReader's own radio button (ui/widget/checkbutton in "radio"
+-- mode: the standard "◉ " / "◯ " mark on the left, then the label) - the
+-- same widget KOReader's radio-button dialogs are built from - with the
+-- font's name drawn in that font.
 local FontPickerItem = InputContainer:extend{
     item        = nil,
     width       = nil,
@@ -412,33 +411,24 @@ local FontPickerItem = InputContainer:extend{
 
 function FontPickerItem:init()
     self.dimen = Geom:new{ x = 0, y = 0, w = self.width, h = self.height }
-    self.ges_events.Tap = {
-        GestureRange:new{ ges = "tap", range = self.dimen },
-    }
 
-    local checkable = self.item.checked_func ~= nil
-    local checkmark = CheckMark:new{
-        checkable = checkable,
-        checked   = checkable and self.item.checked_func() or false,
-    }
-    -- Sized against a ticked box so rows line up whether ticked or not.
-    local check_w = CheckMark:new{ checked = true }:getSize().w
-    local text_w  = self.width - check_w - Size.padding.default
-
-    local row = HorizontalGroup:new{
-        align = "center",
-        CenterContainer:new{
-            dimen = Geom:new{ w = check_w, h = self.height },
-            checkmark,
-        },
-        LeftContainer:new{
-            dimen = Geom:new{ w = text_w, h = self.height },
-            TextWidget:new{
-                text      = self.item.text,
-                max_width = text_w,
-                face      = self.face or Font:getFace("smallinfofont"),
-            },
-        },
+    local button = CheckButton:new{
+        text        = self.item.text,
+        radio       = true,
+        checked     = (self.item.checked_func and self.item.checked_func()) and true or false,
+        face        = self.face or Font:getFace("smallinfofont"),
+        width       = self.width - Size.padding.default,
+        single_line = true,
+        bordersize  = 0,
+        margin      = 0,
+        padding     = 0,
+        show_parent = self.show_parent or self,
+        parent      = self.show_parent or self,
+        callback    = function()
+            if self.item.callback then
+                self.item.callback()
+            end
+        end,
     }
 
     self[1] = FrameContainer:new{
@@ -448,16 +438,9 @@ function FontPickerItem:init()
         focus_border_size = Size.border.thin,
         LeftContainer:new{
             dimen = Geom:new{ w = self.width, h = self.height },
-            row,
+            button,
         },
     }
-end
-
-function FontPickerItem:onTap()
-    if self.item.callback then
-        self.item.callback()
-    end
-    return true
 end
 
 local FontPickerWidget = SortWidget:extend{
