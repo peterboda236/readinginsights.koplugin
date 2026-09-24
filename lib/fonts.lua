@@ -57,13 +57,29 @@ Exposes:
                          or reset, so the caller can refresh open popups
 ]]--
 
-local ConfirmBox  = require("ui/widget/confirmbox")
-local Font        = require("ui/font")
-local InfoMessage = require("ui/widget/infomessage")
-local InputDialog = require("ui/widget/inputdialog")
-local Menu        = require("ui/widget/menu")
-local SpinWidget  = require("ui/widget/spinwidget")
-local UIManager   = require("ui/uimanager")
+local Screen          = require("device").screen
+local CenterContainer = require("ui/widget/container/centercontainer")
+local CheckMark       = require("ui/widget/checkmark")
+local ConfirmBox      = require("ui/widget/confirmbox")
+local Font            = require("ui/font")
+local FrameContainer  = require("ui/widget/container/framecontainer")
+local Geom            = require("ui/geometry")
+local GestureRange    = require("ui/gesturerange")
+local HorizontalGroup = require("ui/widget/horizontalgroup")
+local HorizontalSpan  = require("ui/widget/horizontalspan")
+local InfoMessage     = require("ui/widget/infomessage")
+local InputContainer  = require("ui/widget/container/inputcontainer")
+local InputDialog     = require("ui/widget/inputdialog")
+local LeftContainer   = require("ui/widget/container/leftcontainer")
+local Size            = require("ui/size")
+local SortWidget      = require("ui/widget/sortwidget")
+local SpinWidget      = require("ui/widget/spinwidget")
+local TextWidget      = require("ui/widget/textwidget")
+local UIManager       = require("ui/uimanager")
+local VerticalSpan    = require("ui/widget/verticalspan")
+local gettext         = require("gettext")
+local C_              = gettext.pgettext
+local Tmpl            = require("ffi/util").template
 
 -- Shared modules passed in by main.lua: Locale (translations), PluginUtil
 -- (plugin dir + loader) and Prefs (G_reader_settings wrappers).
@@ -353,39 +369,214 @@ local function getPickerEntries(key)
     return entries
 end
 
--- Pick-from-list font chooser: shows every discoverable font file
--- (this role's default plus every font file found on disk) as a
--- checkable Menu, so the user usually never has to type a font name by
--- hand. The free-text InputDialog (showNameInputDialog below) is kept as
--- a separate "Custom" entry for names this scan can't find (e.g. unusual
+-- Pick-from-list font chooser ------------------------------------------
+--
+-- Shows every discoverable font file (this role's default plus every font
+-- file found on disk) as a full-screen paged list with as many fonts on
+-- each page as fit on the screen, and every font's name is drawn in that
+-- font's own typeface, so the reader sees what a font looks like before
+-- choosing it. Tapping a row selects that font and closes the list.
+--
+-- Built the same way as widgets/booklistwidget.lua: a thin subclass of
+-- KOReader's own SortWidget (title bar, page navigation footer, close
+-- button, swipe/Back handling) with reordering switched off and our own
+-- row widget.
+--
+-- The free-text InputDialog (showNameInputDialog below) is kept as a
+-- separate "Custom" entry for names this scan can't find (e.g. unusual
 -- install locations, or a KOReader font alias like "tfont"/"cfont").
+
+-- Size the font names are drawn at: KOReader's own list-item size
+-- ("smallinfofont"), i.e. the same size the plain font list used before.
+local function sampleSizeDefault()
+    local sizemap = Font.sizemap
+    return (sizemap and sizemap.smallinfofont) or 22
+end
+
+-- Sample face for one picker row. Never errors: a font file that can't be
+-- loaded simply shows its name in KOReader's default UI font.
+local function sampleFace(font_name, size)
+    local ok, face = pcall(Font.getFace, Font, font_name, size)
+    if ok and face then return face end
+    return Font:getFace("smallinfofont")
+end
+
+-- One row: checkbox column, then the font's name drawn in that font.
+local FontPickerItem = InputContainer:extend{
+    item        = nil,
+    width       = nil,
+    height      = nil,
+    face        = nil,
+    show_parent = nil,
+}
+
+function FontPickerItem:init()
+    self.dimen = Geom:new{ x = 0, y = 0, w = self.width, h = self.height }
+    self.ges_events.Tap = {
+        GestureRange:new{ ges = "tap", range = self.dimen },
+    }
+
+    local checkable = self.item.checked_func ~= nil
+    local checkmark = CheckMark:new{
+        checkable = checkable,
+        checked   = checkable and self.item.checked_func() or false,
+    }
+    -- Sized against a ticked box so rows line up whether ticked or not.
+    local check_w = CheckMark:new{ checked = true }:getSize().w
+    local text_w  = self.width - check_w - Size.padding.default
+
+    local row = HorizontalGroup:new{
+        align = "center",
+        CenterContainer:new{
+            dimen = Geom:new{ w = check_w, h = self.height },
+            checkmark,
+        },
+        LeftContainer:new{
+            dimen = Geom:new{ w = text_w, h = self.height },
+            TextWidget:new{
+                text      = self.item.text,
+                max_width = text_w,
+                face      = self.face or Font:getFace("smallinfofont"),
+            },
+        },
+    }
+
+    self[1] = FrameContainer:new{
+        padding           = 0,
+        bordersize        = 0,
+        focusable         = true,
+        focus_border_size = Size.border.thin,
+        LeftContainer:new{
+            dimen = Geom:new{ w = self.width, h = self.height },
+            row,
+        },
+    }
+end
+
+function FontPickerItem:onTap()
+    if self.item.callback then
+        self.item.callback()
+    end
+    return true
+end
+
+local FontPickerWidget = SortWidget:extend{
+    modal             = true,
+    covers_fullscreen = true,
+    sort_disabled     = true,
+}
+
+function FontPickerWidget:init()
+    self.show_page = self.show_page or 1
+    SortWidget.init(self)
+
+    -- No cancel / accept buttons in the footer: same-width spacers instead,
+    -- so the page navigation stays centred (see BookListWidget:init).
+    self.page_info[1] = HorizontalSpan:new{ width = self.footer_button_width }
+    self.page_info[#self.page_info] = HorizontalSpan:new{ width = self.footer_button_width }
+    local footer_row = self.layout and self.layout[#self.layout]
+    if footer_row and #footer_row > 2 then
+        table.remove(footer_row, 1)
+        table.remove(footer_row)
+    end
+
+    self:_fitRows()
+end
+
+-- SortWidget works out for itself how many rows fit on a page; keep that
+-- as it is and just open on the page that holds the currently selected font.
+function FontPickerWidget:_fitRows()
+    local per_page = math.max(1, self.items_per_page or 1)
+    self.pages = math.max(1, math.ceil(#self.item_table / per_page))
+
+    for idx, item in ipairs(self.item_table) do
+        if item.checked_func and item.checked_func() then
+            self.show_page = math.ceil(idx / per_page)
+            break
+        end
+    end
+    if self.show_page > self.pages then self.show_page = self.pages end
+    if self.show_page < 1 then self.show_page = 1 end
+
+    self:_populateItems()
+end
+
+function FontPickerWidget:_close()
+    UIManager:close(self)
+    UIManager:setDirty(nil, "ui")
+    return true
+end
+
+function FontPickerWidget:onClose()         return self:_close() end
+function FontPickerWidget:onReturn()        return self:_close() end
+function FontPickerWidget:onCancelOrClose() return self:_close() end
+
+-- Lays out one page of rows (a copy of SortWidget's own, without the
+-- item-moving parts, with FontPickerItem in place of SortItemWidget).
+function FontPickerWidget:_populateItems()
+    self.main_content:clear()
+    self.layout = { self.layout[#self.layout] } -- keep the footer row
+
+    local size       = sampleSizeDefault()
+    local idx_offset = (self.show_page - 1) * self.items_per_page
+    local page_last  = math.min(idx_offset + self.items_per_page, #self.item_table)
+    for idx = idx_offset + 1, page_last do
+        local item = self.item_table[idx]
+        table.insert(self.main_content, VerticalSpan:new{ width = self.item_margin })
+        local row = FontPickerItem:new{
+            height      = self.item_height,
+            width       = self.item_width,
+            item        = item,
+            face        = sampleFace(item.font_name or item.text, size),
+            show_parent = self,
+        }
+        table.insert(self.layout, #self.layout, { row })
+        table.insert(self.main_content, row)
+    end
+    self:moveFocusTo(1, 1)
+
+    self.footer_page:setText(
+        Tmpl(C_("Pagination", "%1 / %2"), self.show_page, self.pages),
+        self.footer_center_width)
+    if self.pages > 1 then
+        self.footer_page:enable()
+    else
+        self.footer_page:disableWithoutDimming()
+    end
+    self.footer_left:enableDisable(self.show_page > 1)
+    self.footer_right:enableDisable(self.show_page < self.pages)
+    self.footer_first_up:enableDisable(self.show_page > 1)
+    self.footer_last_down:enableDisable(self.show_page < self.pages)
+
+    UIManager:setDirty(self, function()
+        return "ui", self.dimen
+    end)
+end
+
 local function showFontPickerMenu(key, touchmenu_instance, on_change)
     local entries = getPickerEntries(key)
     local item_table = {}
-    for _, entry in ipairs(entries) do
+    local picker
+    for _idx, entry in ipairs(entries) do
         table.insert(item_table, {
-            text = entry.label,
+            text      = entry.label,
             font_name = entry.name,
             checked_func = function()
                 local current = M.getName(key) or M.getDefaultName(key)
                 return displayStem(current):lower() == entry.label:lower()
             end,
+            callback = function()
+                M.setName(key, entry.name)
+                picker:_close()
+                if touchmenu_instance then touchmenu_instance:updateItems() end
+                if on_change then on_change() end
+            end,
         })
     end
 
-    local picker
-    picker = Menu:new{
-        title = labelFor(key) .. ": " .. _("Choose a font"),
+    picker = FontPickerWidget:new{
+        title      = labelFor(key) .. ": " .. _("Choose a font"),
         item_table = item_table,
-        single_line = true,
-        is_popout = false,
-        is_borderless = true,
-        onMenuSelect = function(_, item)
-            M.setName(key, item.font_name or item.text)
-            UIManager:close(picker)
-            if touchmenu_instance then touchmenu_instance:updateItems() end
-            if on_change then on_change() end
-        end,
     }
     UIManager:show(picker)
 end
