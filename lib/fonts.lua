@@ -274,34 +274,72 @@ local function baseName(path)
     return (tostring(path):match("([^/\\]+)$")) or tostring(path)
 end
 
+-- Splits a file name into its extension-less "stem" and its extension
+-- (lowercased, no dot). Used to recognize that e.g. "NotoSans-Regular.ttf"
+-- and "NotoSans-Regular.woff2" are the *same* font shipped in different
+-- formats, not two different fonts.
+local function splitExt(name)
+    local stem, ext = name:match("^(.*)%.([^.]+)$")
+    if not stem then return name, "" end
+    return stem, ext:lower()
+end
+
+-- What to actually show the user for a stored name/path: just the font's
+-- own file-name stem, no folder path and no extension (e.g. a stored value
+-- of "/mnt/onboard/fonts/NotoSans-Bold.ttf" displays as "NotoSans-Bold").
+-- The real value (with path/extension, whatever buildFace/persist needs)
+-- is never changed by this - it's a display-only helper.
+local function displayStem(name)
+    return (splitExt(baseName(name)))
+end
+
+-- Preference order when the same font stem is found in more than one
+-- format: pick the single "best" one to show/use, instead of listing every
+-- format as a separate entry. Anything not listed here sorts after woff2.
+local EXT_RANK = { ttf = 1, ttc = 2, otf = 3, woff2 = 4, woff = 5 }
+local function extRank(ext)
+    return EXT_RANK[ext] or 99
+end
+
 -- Builds the list of selectable names for one role's picker menu: this
 -- role's own default file first, then every font file found on disk -
--- de-duplicated BY FILE NAME (case-insensitive), so the same font file
--- living in several folders (bundle, external fonts dir, user-added
--- folders...) shows up only once. The first occurrence wins; the rest are
--- sorted alphabetically after the role's default. KOReader's internal
--- font-alias keys (Font.fontmap, e.g. "tfont", "cfont") are deliberately
--- left out of this list - they're only used as silent fallbacks in
--- buildFace, not meant to be picked directly.
+-- de-duplicated BY FONT STEM (file name without extension, case-
+-- insensitive), so the same font shipped as e.g. .ttf/.otf/.woff/.woff2,
+-- or living in several folders (bundle, external fonts dir, user-added
+-- folders...), shows up only once - preferring .ttf, then .ttc, .otf,
+-- .woff2, .woff (EXT_RANK above), then whatever's left. KOReader's
+-- internal font-alias keys (Font.fontmap, e.g. "tfont", "cfont") are
+-- deliberately left out of this list - they're only used as silent
+-- fallbacks in buildFace, not meant to be picked directly.
 --
 -- Returns a list of { name = <value to persist>, label = <shown in menu> }.
 local function getPickerEntries(key)
     local entries, seen = {}, {}
 
     local default_file = M.getDefaultName(key)
-    table.insert(entries, { name = default_file, label = default_file })
-    seen[baseName(default_file):lower()] = true
+    table.insert(entries, { name = default_file, label = displayStem(default_file) })
+    seen[displayStem(default_file):lower()] = true
 
-    local found = {}
+    -- best[stem] = { name = file, label = <display stem>, rank = extRank(ext) }
+    local best = {}
     for _, file in ipairs(scanFontFiles()) do
         if type(file) == "string" and file ~= "" then
             local base = baseName(file)
-            local id = base:lower()
-            if not seen[id] then
-                seen[id] = true
-                table.insert(found, { name = file, label = base })
+            local stem_disp, ext = splitExt(base)
+            local stem_key = stem_disp:lower()
+            if not seen[stem_key] then
+                local rank = extRank(ext)
+                local current = best[stem_key]
+                if not current or rank < current.rank then
+                    best[stem_key] = { name = file, label = stem_disp, rank = rank }
+                end
             end
         end
+    end
+
+    local found = {}
+    for _, e in pairs(best) do
+        table.insert(found, e)
     end
     table.sort(found, function(a, b)
         local la, lb = a.label:lower(), b.label:lower()
@@ -309,7 +347,7 @@ local function getPickerEntries(key)
         return la < lb
     end)
     for _, e in ipairs(found) do
-        table.insert(entries, e)
+        table.insert(entries, { name = e.name, label = e.label })
     end
 
     return entries
@@ -330,7 +368,7 @@ local function showFontPickerMenu(key, touchmenu_instance, on_change)
             font_name = entry.name,
             checked_func = function()
                 local current = M.getName(key) or M.getDefaultName(key)
-                return baseName(current):lower() == entry.label:lower()
+                return displayStem(current):lower() == entry.label:lower()
             end,
         })
     end
@@ -442,7 +480,7 @@ local function roleSubItemTable(key, on_change)
     return {
         {
             text_func = function()
-                return _("Font") .. ": " .. (M.getName(key) or M.getDefaultName(key))
+                return _("Font") .. ": " .. displayStem(M.getName(key) or M.getDefaultName(key))
             end,
             keep_menu_open = true,
             callback = function(touchmenu_instance)
@@ -485,7 +523,7 @@ local function groupSubItemTable(keys, on_change)
             text_func = function()
                 local name = M.getName(key) or M.getDefaultName(key)
                 local size = M.getSize(key) or M.getDefaultSize(key)
-                return labelFor(key) .. ": " .. name .. " @ " .. tostring(size)
+                return labelFor(key) .. ": " .. displayStem(name) .. " @ " .. tostring(size)
             end,
             keep_menu_open = true,
             sub_item_table = roleSubItemTable(key, on_change),
