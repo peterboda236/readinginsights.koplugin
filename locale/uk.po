@@ -725,9 +725,6 @@ msgstr "Сповіщати при пробудженні, якщо є оновл
 msgid "Update available"
 msgstr "Доступне оновлення"
 
-msgid "Installed version"
-msgstr "Встановлена версія"
-
 msgid "Developer updates"
 msgstr "Оновлення для розробників"
 

@@ -701,9 +701,6 @@ msgstr "Notificar ao reativar se houver atualização disponível"
 msgid "Update available"
 msgstr "Atualização disponível"
 
-msgid "Installed version"
-msgstr "Versão instalada"
-
 msgid "Developer updates"
 msgstr "Atualizações de programador"
 

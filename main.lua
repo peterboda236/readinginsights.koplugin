@@ -728,15 +728,17 @@ function ReadingInsights:_updateSubItems()
                 local available = Updater.getAvailableUpdate()
                 local source    = readLastInstallSource()
                 local source_suffix = ""
+                local branch_inner  = ""
                 if source ~= "release" then
                     local branch = source:match("^branch:(.+)$") or source
                     source_suffix = " (branch: " .. branch .. ")"
+                    branch_inner  = ", branch: " .. branch
                 end
                 if available then
                     return _("Update available") .. ": v" .. current .. source_suffix
                         .. " \xE2\x86\x92 v" .. available
                 end
-                return _("Installed version") .. ": v" .. current .. source_suffix
+                return _("Check for updates") .. " (v" .. current .. branch_inner .. ")"
             end,
             keep_menu_open = true,
             callback = function() outer:checkForUpdates() end,

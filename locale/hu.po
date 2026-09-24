@@ -710,9 +710,6 @@ msgstr "Értesítés ébredéskor, ha van elérhető frissítés"
 msgid "Update available"
 msgstr "Elérhető frissítés"
 
-msgid "Installed version"
-msgstr "Telepített verzió"
-
 msgid "Developer updates"
 msgstr "Fejlesztői frissítések"
 

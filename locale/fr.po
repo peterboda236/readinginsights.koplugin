@@ -701,9 +701,6 @@ msgstr "Notifier au réveil si une mise à jour est disponible"
 msgid "Update available"
 msgstr "Mise à jour disponible"
 
-msgid "Installed version"
-msgstr "Version installée"
-
 msgid "Developer updates"
 msgstr "Mises à jour développeur"
 

@@ -695,9 +695,6 @@ msgstr "Notify on wake when update available"
 msgid "Update available"
 msgstr "Update available"
 
-msgid "Installed version"
-msgstr "Installed version"
-
 msgid "Developer updates"
 msgstr "Developer updates"
 
