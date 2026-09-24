@@ -400,7 +400,7 @@ msgid "read time"
 msgstr "olvasás"
 
 msgid "read today"
-msgstr "olvasott idő ma"
+msgstr "olvasás ma"
 
 msgid "per day"
 msgstr "naponta"
