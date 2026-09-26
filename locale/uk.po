@@ -477,6 +477,9 @@ msgstr "сторінка залишилась"
 msgid "pages left"
 msgstr "сторінок залишилось"
 
+msgid "p"
+msgstr "стор."
+
 msgid "page per minute"
 msgstr "сторінка на хвилину"
 

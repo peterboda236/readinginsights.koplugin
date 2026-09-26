@@ -248,20 +248,42 @@ local function buildChapterHeaders(font_section, layout, left_text, right_text)
     })
 end
 
+-- One side of the "Next 2 chapters" combined cell (see buildSplitTimeCell
+-- below): the bold value (font_value/Colors.value(), same as every other
+-- number in this popup) optionally followed by a short unit suffix (e.g.
+-- "o.", "p.") rendered in font_label/Colors.label() - the same lighter,
+-- non-bold font/color used for the "hátralévő oldal"-style descriptive
+-- labels elsewhere (see buildValueLine) - rather than in the bold value
+-- font, so the abbreviation doesn't look like part of the number. Passing
+-- unit_text as nil/"" (the time view) just returns the bare bold value.
+local function buildSplitCellValue(font_value, font_label, value_text, unit_text)
+    local value_widget = TextWidget:new{ text = value_text, face = font_value, fgcolor = Colors.value() }
+    if not unit_text or unit_text == "" then
+        return value_widget
+    end
+    return HorizontalGroup:new{
+        align = "bottom",
+        value_widget,
+        HorizontalSpan:new{ width = Size.padding.small },
+        TextWidget:new{ text = unit_text, face = font_label, fgcolor = Colors.label() },
+    }
+end
+
 -- "Next 2 chapters" combined cell (see show_two_next below): instead of one
 -- text string with a "|" character between the two chapters' reading
--- times, split the cell in half with a proper vertical divider line - the
--- same style buildTwoColRow/buildColumnSeparator use for the popup's other
--- column splits, just nested one level deeper (half of an already-halved
--- column) with a narrower gap so the extra divider doesn't crowd the cell.
-local function buildSplitTimeCell(font_value, layout, value1_text, value2_text)
+-- times (or page counts), split the cell in half with a proper vertical
+-- divider line - the same style buildTwoColRow/buildColumnSeparator use
+-- for the popup's other column splits, just nested one level deeper (half
+-- of an already-halved column) with a narrower gap so the extra divider
+-- doesn't crowd the cell. side1/side2 are pre-built widgets (see
+-- buildSplitCellValue above), used for both the time view (plain "hh:mm"
+-- value, no unit) and the pages view (value + short unit).
+local function buildSplitTimeCell(layout, side1, side2)
     local sub_gap = math.max(math.floor(layout.column_gap / 2), Size.padding.small)
     local sub_separator_width = 2 * sub_gap + Size.line.medium
     local half_width = math.floor((layout.col_width - sub_separator_width) / 2)
     local sub_layout = { col_width = half_width, column_gap = sub_gap }
-    local value1 = TextWidget:new{ text = value1_text, face = font_value, fgcolor = Colors.value() }
-    local value2 = TextWidget:new{ text = value2_text, face = font_value, fgcolor = Colors.value() }
-    return UI.buildTwoColRow(value1, value2, sub_layout)
+    return UI.buildTwoColRow(side1, side2, sub_layout)
 end
 
 -- Main section builder.
@@ -279,14 +301,26 @@ local function buildSections(stats, fonts, layout, popup)
     -- "Next chapters shown" (Settings > Advanced settings > Book progress
     -- popup): 1 (default) keeps the single "Next chapter" column exactly as
     -- before; 2 combines the next chapter's and the one after it's reading
-    -- times into that same column, e.g. "00:10 | 00:28", with the header
-    -- switching to "Next 2 chapters" (see buildChapterHeaders call below).
-    -- Only applies to the reading-time view, and only once a chapter after
-    -- the next one actually exists - otherwise this silently behaves like 1
-    -- (last-but-one chapter still shows a plain single "Next chapter").
-    local show_two_next = chapter_view_mode ~= "pages"
-        and VS.Opt.readNextChapterCount() == 2
+    -- times (or page counts) into that same column via buildSplitTimeCell,
+    -- with the header switching to "Next 2 chapters" (see
+    -- buildChapterHeaders call below). Applies to both the reading-time
+    -- view and the pages view - previously this only ever combined the
+    -- time view, so switching to the pages view while "2" was selected
+    -- silently fell back to a single column; see chapter_view_mode branch
+    -- below for how each view fills the combined cell. Only takes effect
+    -- once a chapter after the next one actually exists - otherwise this
+    -- silently behaves like 1 (last-but-one chapter still shows a plain
+    -- single "Next chapter").
+    local show_two_next = VS.Opt.readNextChapterCount() == 2
         and stats.has_chapter_after_next
+    -- Short, single-line unit used only inside the halved "Next 2
+    -- chapters" pages cell (e.g. "42 p." / "42 o."), where a TextWidget
+    -- has no room to wrap and the full "page"/"pages" label would overflow
+    -- its half of the column. The un-halved single-column pages view below
+    -- keeps using the full N_("page", "pages", n) label as before.
+    local function shortPageUnit(count)
+        return N_("p", "p", count or 0)
+    end
     local chapter_val1, chapter_val2
     if chapter_view_mode == "pages" then
         local na_pages   = { value = "—", unit = "" }
@@ -295,16 +329,31 @@ local function buildSections(stats, fonts, layout, popup)
         local left_label = N_("page left", "pages left", left_count or 0)
         chapter_val1 = valueLine(left_data, left_label)
 
-        local next_count = stats.next_chapter_pages_count
-        local next_data  = next_count and { value = formatCount(next_count), unit = "" } or UI.emptyValue()
-        local next_label = next_count and N_("page", "pages", next_count) or ""
-        chapter_val2 = valueLine(next_data, next_label)
+        if show_two_next then
+            local function pagesWidget(count)
+                if not count then
+                    return buildSplitCellValue(fonts.value, fonts.label, "—", nil)
+                end
+                return buildSplitCellValue(fonts.value, fonts.label, formatCount(count), shortPageUnit(count))
+            end
+            chapter_val2 = buildSplitTimeCell(
+                layout,
+                pagesWidget(stats.next_chapter_pages_count),
+                pagesWidget(stats.chapter_after_next_pages_count)
+            )
+        else
+            local next_count = stats.next_chapter_pages_count
+            local next_data  = next_count and { value = formatCount(next_count), unit = "" } or UI.emptyValue()
+            local next_label = next_count and N_("page", "pages", next_count) or ""
+            chapter_val2 = valueLine(next_data, next_label)
+        end
     else
         chapter_val1 = valueLine(stats.chapter_time_left_hhmm, _("reading time left"))
         if show_two_next then
             chapter_val2 = buildSplitTimeCell(
-                fonts.value, layout,
-                stats.next_chapter_time_hhmm.value, stats.chapter_after_next_time_hhmm.value
+                layout,
+                buildSplitCellValue(fonts.value, fonts.label, stats.next_chapter_time_hhmm.value, nil),
+                buildSplitCellValue(fonts.value, fonts.label, stats.chapter_after_next_time_hhmm.value, nil)
             )
         else
             chapter_val2 = valueLine(stats.next_chapter_time_hhmm, _("reading time"))

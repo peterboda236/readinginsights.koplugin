@@ -462,6 +462,9 @@ msgstr "Seite verbleibend"
 msgid "pages left"
 msgstr "Seiten verbleibend"
 
+msgid "p"
+msgstr "S."
+
 msgid "page per minute"
 msgstr "Seite pro Minute"
 
