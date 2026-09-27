@@ -472,7 +472,7 @@ msgid "pages left"
 msgstr "hátralévő oldal"
 
 msgid "p"
-msgstr "o."
+msgstr "old."
 
 msgid "page per minute"
 msgstr "oldal percenként"

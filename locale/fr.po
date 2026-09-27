@@ -463,7 +463,7 @@ msgid "pages left"
 msgstr "pages restantes"
 
 msgid "p"
-msgstr "p"
+msgstr "p."
 
 msgid "page per minute"
 msgstr "page par minute"

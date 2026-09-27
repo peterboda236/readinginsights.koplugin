@@ -248,13 +248,25 @@ local function buildChapterHeaders(font_section, layout, left_text, right_text)
     })
 end
 
+-- Width available to one side of the halved "Next 2 chapters" cell (see
+-- buildSplitTimeCell below), worked out ahead of building that side's
+-- content so buildPagesSplitValue can decide whether the full "page"/
+-- "pages" word still fits before the row is actually assembled.
+local function splitHalfWidth(layout)
+    local sub_gap = math.max(math.floor(layout.column_gap / 2), Size.padding.small)
+    local sub_separator_width = 2 * sub_gap + Size.line.medium
+    return math.floor((layout.col_width - sub_separator_width) / 2)
+end
+
 -- One side of the "Next 2 chapters" combined cell (see buildSplitTimeCell
 -- below): the bold value (font_value/Colors.value(), same as every other
--- number in this popup) optionally followed by a short unit suffix (e.g.
--- "o.", "p.") rendered in font_label/Colors.label() - the same lighter,
--- non-bold font/color used for the "hátralévő oldal"-style descriptive
--- labels elsewhere (see buildValueLine) - rather than in the bold value
--- font, so the abbreviation doesn't look like part of the number. Passing
+-- number in this popup) optionally followed by a unit suffix rendered in
+-- font_label/Colors.label() - the same lighter, non-bold font/color used
+-- for the descriptive labels elsewhere (see buildValueLine) - rather than
+-- in the bold value font, so the unit doesn't look like part of the
+-- number. Aligned "center" (not "bottom"), matching buildValueLine's own
+-- value+label row, so the unit text sits level with the value instead of
+-- sinking to the bottom of the taller value widget's box. Passing
 -- unit_text as nil/"" (the time view) just returns the bare bold value.
 local function buildSplitCellValue(font_value, font_label, value_text, unit_text)
     local value_widget = TextWidget:new{ text = value_text, face = font_value, fgcolor = Colors.value() }
@@ -262,10 +274,34 @@ local function buildSplitCellValue(font_value, font_label, value_text, unit_text
         return value_widget
     end
     return HorizontalGroup:new{
-        align = "bottom",
+        align = "center",
         value_widget,
-        HorizontalSpan:new{ width = Size.padding.small },
+        HorizontalSpan:new{ width = Size.padding.large },
         TextWidget:new{ text = unit_text, face = font_label, fgcolor = Colors.label() },
+    }
+end
+
+-- Pages side of the "Next 2 chapters" cell: prefers the full N_("page",
+-- "pages", n) word, same as the un-halved single-column pages view, and
+-- only drops to the short abbreviation (N_("p", "p", n), e.g. "pgs."/
+-- "old.") when the full word actually doesn't fit max_width alongside the
+-- value and the usual value/unit gap (Size.padding.large) - so a language
+-- whose word is short enough (most of them) always shows it in full, and
+-- only a genuinely long translation wraps to the abbreviation.
+local function buildPagesSplitValue(font_value, font_label, value_text, count, max_width)
+    local value_widget = TextWidget:new{ text = value_text, face = font_value, fgcolor = Colors.value() }
+    local gap = Size.padding.large
+    local unit_text   = N_("page", "pages", count)
+    local unit_widget = TextWidget:new{ text = unit_text, face = font_label, fgcolor = Colors.label() }
+    if value_widget:getSize().w + gap + unit_widget:getSize().w > max_width then
+        unit_text   = N_("p", "p", count)
+        unit_widget = TextWidget:new{ text = unit_text, face = font_label, fgcolor = Colors.label() }
+    end
+    return HorizontalGroup:new{
+        align = "center",
+        value_widget,
+        HorizontalSpan:new{ width = gap },
+        unit_widget,
     }
 end
 
@@ -276,12 +312,11 @@ end
 -- for the popup's other column splits, just nested one level deeper (half
 -- of an already-halved column) with a narrower gap so the extra divider
 -- doesn't crowd the cell. side1/side2 are pre-built widgets (see
--- buildSplitCellValue above), used for both the time view (plain "hh:mm"
--- value, no unit) and the pages view (value + short unit).
+-- buildSplitCellValue/buildPagesSplitValue above), used for both the time
+-- view (plain "hh:mm" value, no unit) and the pages view (value + unit).
 local function buildSplitTimeCell(layout, side1, side2)
     local sub_gap = math.max(math.floor(layout.column_gap / 2), Size.padding.small)
-    local sub_separator_width = 2 * sub_gap + Size.line.medium
-    local half_width = math.floor((layout.col_width - sub_separator_width) / 2)
+    local half_width = splitHalfWidth(layout)
     local sub_layout = { col_width = half_width, column_gap = sub_gap }
     return UI.buildTwoColRow(side1, side2, sub_layout)
 end
@@ -313,14 +348,6 @@ local function buildSections(stats, fonts, layout, popup)
     -- single "Next chapter").
     local show_two_next = VS.Opt.readNextChapterCount() == 2
         and stats.has_chapter_after_next
-    -- Short, single-line unit used only inside the halved "Next 2
-    -- chapters" pages cell (e.g. "42 p." / "42 o."), where a TextWidget
-    -- has no room to wrap and the full "page"/"pages" label would overflow
-    -- its half of the column. The un-halved single-column pages view below
-    -- keeps using the full N_("page", "pages", n) label as before.
-    local function shortPageUnit(count)
-        return N_("p", "p", count or 0)
-    end
     local chapter_val1, chapter_val2
     if chapter_view_mode == "pages" then
         local na_pages   = { value = "—", unit = "" }
@@ -330,11 +357,15 @@ local function buildSections(stats, fonts, layout, popup)
         chapter_val1 = valueLine(left_data, left_label)
 
         if show_two_next then
+            -- Each side of the halved cell tries the full "page"/"pages"
+            -- word first and only drops to the short abbreviation if it
+            -- doesn't fit (see buildPagesSplitValue).
+            local half_width = splitHalfWidth(layout)
             local function pagesWidget(count)
                 if not count then
                     return buildSplitCellValue(fonts.value, fonts.label, "—", nil)
                 end
-                return buildSplitCellValue(fonts.value, fonts.label, formatCount(count), shortPageUnit(count))
+                return buildPagesSplitValue(fonts.value, fonts.label, formatCount(count), count, half_width)
             end
             chapter_val2 = buildSplitTimeCell(
                 layout,
