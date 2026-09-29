@@ -586,15 +586,39 @@ local function buildSections(stats, fonts, layout, popup)
     local show_chapter_bar = chapter_bar and Opt.readShowChapterBar()
     local has_book_rows = show_read_row or show_time_row
 
-    if has_book_rows or progress_bar_widget or show_chapter_bar then
+    -- ===== Chapters =====================================================
+    -- The chapter bar chart has its own "Chapters" section, placed directly
+    -- under the This chapter / Next chapter row. The skim-style bar gets no
+    -- such section: it is the first element of the "This book" section.
+    local skim_in_book = (show_chapter_bar and skim_bar ~= nil) and true or false
+    local function storeChapterBarOnPopup()
+        if not popup then return end
+        popup._chapter_bar = chapter_bar
+        -- Store the arrow widgets unconditionally so onTapClose can still
+        -- recognise (and swallow) a tap on a greyed-out arrow.
+        popup._chapter_bar_prev_arrow = chapter_left_arrow
+        popup._chapter_bar_next_arrow = chapter_right_arrow
+        popup._chapter_bar_can_prev   = chapter_can_go_left
+        popup._chapter_bar_can_next   = chapter_can_go_right
+        popup._chapter_bar_on_prev    = chapter_on_prev
+        popup._chapter_bar_on_next    = chapter_on_next
+    end
+    if show_chapter_bar and not skim_in_book then
+        sectionSeparator()
+        local chapters_header = UI.padded(layout.padding_h,
+            UI.buildSectionHeader(fonts.section, _("Chapters"), layout.content_width, 0, Colors.headerBg()))
+        table.insert(sections, chapters_header)
+        table.insert(sections, VerticalSpan:new{ height = Size.padding.default })
+        table.insert(sections, UI.padded(layout.padding_h,
+            Colors.newBar(layout.content_width, Size.line.thin, Colors.separator())))
+        storeChapterBarOnPopup()
+        table.insert(sections, chapter_bar)
+    end
+
+    if has_book_rows or progress_bar_widget or skim_in_book then
         sectionSeparator()
 
-        -- When the chapter bar is the only thing enabled in this section
-        -- (read row, time row and progress bar all off), "This book" as a
-        -- header reads oddly above a bar of chapters and nothing else, so
-        -- use "Chapters" instead. Any other combination keeps "This book".
-        local this_book_title = (show_chapter_bar and not has_book_rows and not progress_bar_widget)
-            and _("Chapters") or _("This book")
+        local this_book_title = _("This book")
         local this_book_header_content = UI.padded(layout.padding_h,
             UI.buildSectionHeader(fonts.section, this_book_title, layout.content_width, 0, Colors.headerBg()))
         -- Wrapped in tappableWrap (fixed dimen), same reasoning as
@@ -606,8 +630,9 @@ local function buildSections(stats, fonts, layout, popup)
             popup._this_book_header = this_book_header
         end
 
+        local this_book_rows = nil
         if has_book_rows then
-            local this_book_rows = VerticalGroup:new{ align = "center" }
+            this_book_rows = VerticalGroup:new{ align = "center" }
             -- Row order depends on the progress bar: with the bar on, the
             -- "read" row (percent + pages) sits under the reading-time row,
             -- right above the bar; with the bar off, it moves to the top.
@@ -630,18 +655,32 @@ local function buildSections(stats, fonts, layout, popup)
                 table.insert(this_book_rows, VerticalSpan:new{ height = Size.padding.default })
             end
             if second_row then second_row() end
+        end
+
+        if skim_in_book then
+            -- Skim bar first, directly under the header and its divider,
+            -- then the reading rows (if any).
+            storeChapterBarOnPopup()
+            table.insert(sections, this_book_header)
+            table.insert(sections, VerticalSpan:new{ height = Size.padding.default })
+            table.insert(sections, UI.padded(layout.padding_h,
+                Colors.newBar(layout.content_width, Size.line.thin, Colors.separator())))
+            table.insert(sections, skim_bar)
+            if this_book_rows then
+                table.insert(sections, UI.padded(layout.padding_h, this_book_rows))
+                table.insert(sections, VerticalSpan:new{ height = Size.padding.large })
+            end
+        elseif this_book_rows then
             UI.addSectionWithRow(
                 sections,
                 this_book_header,
                 this_book_rows,
                 layout,
-                -- Same look as before the shared uikit: header, thin divider, row,
-                -- and no closing line (the chapter bar follows right below).
                 { no_bottom_line = true }
             )
         else
-            -- Only bars in this section: header and its thin divider, then
-            -- the bars directly below.
+            -- Only the progress bar in this section: header and its thin
+            -- divider, then the bar directly below.
             table.insert(sections, this_book_header)
             table.insert(sections, VerticalSpan:new{ height = Size.padding.default })
             table.insert(sections, UI.padded(layout.padding_h,
@@ -657,32 +696,18 @@ local function buildSections(stats, fonts, layout, popup)
             -- in the off state nothing sits between the divider line and the
             -- chapter bar either, so adding one here made the bar's bottom
             -- spacing bigger than the line's.
-            table.insert(sections, UI.padded(layout.padding_h, progress_bar_widget))
-        end
-
-        if show_chapter_bar then
-            if popup then
-                popup._chapter_bar = chapter_bar
-                -- Store the arrow widgets unconditionally (not just when they can
-                -- page) so onTapClose can still recognise a tap on a greyed-out
-                -- arrow and swallow it - tapping a dead-end arrow does nothing
-                -- rather than falling through and closing the popup. The
-                -- can_prev/can_next flags say whether the tap should actually page.
-                popup._chapter_bar_prev_arrow = chapter_left_arrow
-                popup._chapter_bar_next_arrow = chapter_right_arrow
-                popup._chapter_bar_can_prev   = chapter_can_go_left
-                popup._chapter_bar_can_next   = chapter_can_go_right
-                popup._chapter_bar_on_prev    = chapter_on_prev
-                popup._chapter_bar_on_next    = chapter_on_next
-            end
-            -- Thin line above the chapter bar only when it directly follows
-            -- the rows: the progress bar (or the header's own divider, when
-            -- there are no rows) already separates it otherwise.
-            if has_book_rows and not progress_bar_widget then
-                table.insert(sections, UI.padded(layout.padding_h,
-                    Colors.newBar(layout.full_width - 2 * layout.padding_h, Size.line.thin, Colors.separator())))
-            end
-            table.insert(sections, chapter_bar)
+            -- Default padding below the bar, same as the skim bar gets. Done
+            -- via FrameContainer padding_bottom, not VerticalSpan: a
+            -- VerticalSpan's size property is "width" ("height" is ignored
+            -- and reserves no space).
+            table.insert(sections, FrameContainer:new{
+                bordersize     = 0,
+                padding        = 0,
+                padding_bottom = Size.padding.default,
+                margin         = 0,
+                background     = Blitbuffer.COLOR_WHITE,
+                UI.padded(layout.padding_h, progress_bar_widget),
+            })
         end
     end
 
