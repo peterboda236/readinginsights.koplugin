@@ -1468,13 +1468,34 @@ msgid "Next 2 chapters"
 msgstr "接下来2章"
 
 msgid "Next chapters shown"
-msgstr ""
+msgstr "显示的后续章节数"
 
 msgid "How many upcoming chapters the \"Next chapter\" column's reading-time estimate covers. With \"2\", once a second chapter follows the next one, the header switches to \"Next 2 chapters\" and shows both chapters' times, e.g. \"00:10 | 00:28\". Falls back to a single chapter when there is no chapter after the next one, or no next chapter at all."
-msgstr ""
+msgstr "“下一章”列的阅读时间估算涵盖多少个后续章节。选择“2”时，如果下一章之后还有一章，标题会切换为“接下来2章”，并同时显示两章的时间，例如“00:10 | 00:28”。若下一章之后没有章节，或根本没有下一章，则只显示单个章节。"
 
 msgid "1 (default)"
-msgstr ""
+msgstr "1（默认）"
 
 msgid "2"
-msgstr ""
+msgstr "2"
+
+msgid "Chapter bar style"
+msgstr "章节条样式"
+
+msgid "Chapter bars"
+msgstr "逐章条形"
+
+msgid "Skim bar"
+msgstr "跳转条"
+
+msgid "Skim bar height"
+msgstr "跳转条高度"
+
+msgid "Choose how the chapter bar is drawn: one bar per chapter, or a single bar like the one in KOReader's \"Skim to\" dialog."
+msgstr "选择章节条的绘制方式：每章一根条，或像 KOReader“Skim to”对话框那样的单一条。"
+
+msgid "One bar per chapter, as tall as the chapter is long."
+msgstr "每章一根条，条的高度与章节长度成正比。"
+
+msgid "A single bar like KOReader's \"Skim to\" dialog: filled up to the current page, chapter separators and the position marker. Uses the active and inactive bar colors."
+msgstr "单一条，如同 KOReader“Skim to”对话框：填充至当前页，带有章节分隔线和位置标记。使用活动与非活动条形颜色。"

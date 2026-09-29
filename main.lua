@@ -214,6 +214,11 @@ local ChapterBar = loadModule("widgets/chapterbarwidget.lua",
 local ProgressBar = loadModule("widgets/progressbarwidget.lua",
     { Colors = Colors })
 
+-- The single-bar "skim" alternative to the chapter bar chart, drawn like
+-- KOReader's own Skim dialog but in the plugin's colors.
+local SkimBar = loadModule("widgets/skimbarwidget.lua",
+    { Colors = Colors })
+
 -- The insights popup's figures: streaks, yearly/monthly aggregates, the
 -- last-week and 8-week series, all-time totals and the reading-goal count.
 -- Kept apart from the popup that draws them (see lib/insights_data.lua).
@@ -286,7 +291,8 @@ local BookCalendar = loadModule("views/book_calendar_view.lua", {
 local StatsPopup = loadModule("views/book_stats_view.lua", {
     Locale = Locale, Colors = Colors, Fonts = Fonts, Prefs = Prefs,
     BookProgress = BookProgress, BookCalendar = BookCalendar,
-    ChapterInfo = ChapterInfo, ChapterBar = ChapterBar, ProgressBar = ProgressBar, UI = UI,
+    ChapterInfo = ChapterInfo, ChapterBar = ChapterBar, ProgressBar = ProgressBar,
+    SkimBar = SkimBar, UI = UI,
     BookStatsData = BookStatsData, VS = ViewSettings,
 })
 local Updater = loadModule("lib/updater.lua", { Locale = Locale })
@@ -1017,6 +1023,7 @@ function ReadingInsights:_menuDeps()
         ViewSettings                = ViewSettings,
         ChapterBar                  = ChapterBar,
         ProgressBar                 = ProgressBar,
+        SkimBar                     = SkimBar,
         SCREENSAVER_TYPE_VALUE      = SCREENSAVER_TYPE_VALUE,
         patchScreensaverMenuBuilder = patchScreensaverMenuBuilder,
         readScreensaverLabelMode    = readScreensaverLabelMode,

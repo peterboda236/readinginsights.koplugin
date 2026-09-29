@@ -792,6 +792,51 @@ function M.build(self, deps)
         end,
     })
 
+    -- Chapter bar style: the per-chapter bar chart (default), or a single
+    -- bar drawn like KOReader's "Skim to" dialog (widgets/skimbarwidget.lua),
+    -- in the plugin's active / inactive colors.
+    do
+        local function styleEntry(text, help, style)
+            return {
+                text = text,
+                help_text = help,
+                keep_menu_open = true,
+                radio = true,
+                checked_func = function()
+                    return deps.ViewSettings.Opt.readChapterBarStyle() == style
+                end,
+                callback = function()
+                    deps.ViewSettings.Opt.saveChapterBarStyle(style)
+                end,
+            }
+        end
+        local Opt = deps.ViewSettings.Opt
+        table.insert(book_progress_sub_item_table, {
+            text_func = function()
+                local name = (Opt.readChapterBarStyle() == Opt.CHAPTER_BAR_STYLE_SKIM)
+                    and _("Skim bar") or _("Chapter bars")
+                return _("Chapter bar style") .. ": " .. name
+            end,
+            help_text = _("Choose how the chapter bar is drawn: one bar per chapter, or a single bar like the one in KOReader's \"Skim to\" dialog."),
+            keep_menu_open = true,
+            sub_item_table = {
+                styleEntry(_("Chapter bars"),
+                    _("One bar per chapter, as tall as the chapter is long."),
+                    Opt.CHAPTER_BAR_STYLE_BARS),
+                styleEntry(_("Skim bar"),
+                    _("A single bar like KOReader's \"Skim to\" dialog: filled up to the current page, chapter separators and the position marker. Uses the active and inactive bar colors."),
+                    Opt.CHAPTER_BAR_STYLE_SKIM),
+                buildBarHeightMenuEntry(
+                    _("Skim bar height"),
+                    deps.SkimBar.readHeightSetting,
+                    deps.SkimBar.saveHeightSetting,
+                    deps.SkimBar.DEFAULT_HEIGHT,
+                    deps.SkimBar.MIN_HEIGHT, deps.SkimBar.MAX_HEIGHT
+                ),
+            },
+        })
+    end
+
     -- Chapters per page: how many chapter columns the chapter bar shows at
     -- once before the arrows/swipe page to the next batch (ChapterBar.PAGE_SIZE
     -- was hardcoded to 25). "All chapters" (no paging), four preset radio

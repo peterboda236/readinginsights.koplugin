@@ -1756,3 +1756,24 @@ msgstr "1 (alapértelmezett)"
 
 msgid "2"
 msgstr "2"
+
+msgid "Chapter bar style"
+msgstr "Fejezetsáv stílusa"
+
+msgid "Chapter bars"
+msgstr "Fejezetoszlopok"
+
+msgid "Skim bar"
+msgstr "Ugrósáv"
+
+msgid "Skim bar height"
+msgstr "Ugrósáv magassága"
+
+msgid "Choose how the chapter bar is drawn: one bar per chapter, or a single bar like the one in KOReader's \"Skim to\" dialog."
+msgstr "Válaszd ki, hogyan jelenjen meg a fejezetsáv: fejezetenként egy oszlop, vagy egyetlen sáv, mint a KOReader „Ugrás” (Skim to) ablakában."
+
+msgid "One bar per chapter, as tall as the chapter is long."
+msgstr "Fejezetenként egy oszlop, olyan magas, amilyen hosszú a fejezet."
+
+msgid "A single bar like KOReader's \"Skim to\" dialog: filled up to the current page, chapter separators and the position marker. Uses the active and inactive bar colors."
+msgstr "Egyetlen sáv, mint a KOReader „Ugrás” (Skim to) ablakában: az aktuális oldalig kitöltve, fejezetelválasztókkal és a pozíciójelölővel. Az aktív és inaktív sávszínt használja."

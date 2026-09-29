@@ -1749,13 +1749,34 @@ msgid "Next 2 chapters"
 msgstr "Nächste 2 Kapitel"
 
 msgid "Next chapters shown"
-msgstr ""
+msgstr "Angezeigte nächste Kapitel"
 
 msgid "How many upcoming chapters the \"Next chapter\" column's reading-time estimate covers. With \"2\", once a second chapter follows the next one, the header switches to \"Next 2 chapters\" and shows both chapters' times, e.g. \"00:10 | 00:28\". Falls back to a single chapter when there is no chapter after the next one, or no next chapter at all."
-msgstr ""
+msgstr "Wie viele kommende Kapitel die Lesezeitschätzung der Spalte „Nächstes Kapitel“ abdeckt. Bei „2“ wechselt die Kopfzeile zu „Nächste 2 Kapitel“ und zeigt die Zeiten beider Kapitel, sobald auf das nächste noch ein weiteres Kapitel folgt, z. B. „00:10 | 00:28“. Fällt auf ein einzelnes Kapitel zurück, wenn nach dem nächsten kein weiteres Kapitel folgt oder es gar kein nächstes Kapitel gibt."
 
 msgid "1 (default)"
-msgstr ""
+msgstr "1 (Standard)"
 
 msgid "2"
-msgstr ""
+msgstr "2"
+
+msgid "Chapter bar style"
+msgstr "Stil der Kapitelleiste"
+
+msgid "Chapter bars"
+msgstr "Kapitelbalken"
+
+msgid "Skim bar"
+msgstr "Sprungleiste"
+
+msgid "Skim bar height"
+msgstr "Höhe der Sprungleiste"
+
+msgid "Choose how the chapter bar is drawn: one bar per chapter, or a single bar like the one in KOReader's \"Skim to\" dialog."
+msgstr "Wähle, wie die Kapitelleiste gezeichnet wird: ein Balken pro Kapitel oder ein einzelner Balken wie im „Skim to“-Dialog von KOReader."
+
+msgid "One bar per chapter, as tall as the chapter is long."
+msgstr "Ein Balken pro Kapitel, so hoch wie das Kapitel lang ist."
+
+msgid "A single bar like KOReader's \"Skim to\" dialog: filled up to the current page, chapter separators and the position marker. Uses the active and inactive bar colors."
+msgstr "Ein einzelner Balken wie im „Skim to“-Dialog von KOReader: bis zur aktuellen Seite gefüllt, mit Kapiteltrennern und Positionsmarke. Verwendet die aktive und die inaktive Balkenfarbe."

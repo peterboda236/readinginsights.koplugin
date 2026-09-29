@@ -205,6 +205,15 @@ M.Opt = {
     SHOW_CHAPTER_BAR_KEY     = "reading_insights_book_show_chapter_bar",
     SHOW_CHAPTER_BAR_DEFAULT = true,
 
+    -- Book progress popup: how that chapter bar is drawn. "bars" (default,
+    -- unchanged look) is the per-chapter bar chart; "skim" is a single bar
+    -- like the one in KOReader's "Skim to" dialog - filled up to the current
+    -- page, a separator at every chapter start and the position marker (see
+    -- widgets/skimbarwidget.lua).
+    CHAPTER_BAR_STYLE_KEY  = "reading_insights_book_chapter_bar_style",
+    CHAPTER_BAR_STYLE_BARS = "bars",
+    CHAPTER_BAR_STYLE_SKIM = "skim",
+
     -- Book progress popup: whether the "started … / expected finish" date
     -- row at the bottom of the "Pace" section is shown. On by default.
     SHOW_PACE_DATES_KEY      = "reading_insights_book_show_pace_dates",
@@ -545,6 +554,16 @@ end
 
 function M.Opt.saveShowChapterBar(value)
     M.saveBoolSetting(M.Opt.SHOW_CHAPTER_BAR_KEY, value)
+end
+
+function M.Opt.readChapterBarStyle()
+    local v = Prefs.read(M.Opt.CHAPTER_BAR_STYLE_KEY, nil)
+    if v == M.Opt.CHAPTER_BAR_STYLE_SKIM then return M.Opt.CHAPTER_BAR_STYLE_SKIM end
+    return M.Opt.CHAPTER_BAR_STYLE_BARS
+end
+
+function M.Opt.saveChapterBarStyle(value)
+    Prefs.save(M.Opt.CHAPTER_BAR_STYLE_KEY, value)
 end
 
 function M.Opt.readShowPaceDates()

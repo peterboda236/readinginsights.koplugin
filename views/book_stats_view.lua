@@ -62,9 +62,9 @@ local Screen = Device.screen
 -- header comment above).
 -- Shared modules, passed in as one named table by main.lua (see there).
 local deps = ...
-local Locale, Colors, Fonts, Prefs, BookProgress, BookCalendar, ChapterInfo, ChapterBar, ProgressBar, UI, BookStatsData, VS =
+local Locale, Colors, Fonts, Prefs, BookProgress, BookCalendar, ChapterInfo, ChapterBar, ProgressBar, SkimBar, UI, BookStatsData, VS =
     deps.Locale, deps.Colors, deps.Fonts, deps.Prefs, deps.BookProgress,
-    deps.BookCalendar, deps.ChapterInfo, deps.ChapterBar, deps.ProgressBar, deps.UI,
+    deps.BookCalendar, deps.ChapterInfo, deps.ChapterBar, deps.ProgressBar, deps.SkimBar, deps.UI,
     deps.BookStatsData, deps.VS
 local _            = Locale._
 local N_           = Locale.N_
@@ -548,6 +548,41 @@ local function buildSections(stats, fonts, layout, popup)
     if ProgressBar and Opt.readShowProgressBar() then
         progress_bar_widget = ProgressBar.build(stats.book_progress_ratio, layout.content_width)
     end
+    -- Chapter bar style (Settings > Advanced settings > Book progress popup):
+    -- the per-chapter bar chart, or one KOReader-Skim-style bar with chapter
+    -- separators and the position marker. The skim bar needs no TOC (without
+    -- one it simply has no separators), so it also shows for books where the
+    -- chapter bar chart has nothing to draw. Both share the on/off toggle.
+    local skim_bar = nil
+    if SkimBar and stats.skim and Opt.readChapterBarStyle() == Opt.CHAPTER_BAR_STYLE_SKIM then
+        local skim_widget = SkimBar.build(stats.skim, layout.content_width)
+        if skim_widget then
+            -- Vertical breathing room above and below the bar, via
+            -- FrameContainer padding rather than VerticalSpan: a
+            -- VerticalSpan's size property is "width" (its getSize() returns
+            -- h = self.width) and "height" is silently ignored, so
+            -- VerticalSpan{ height = ... } reserves no space at all - which
+            -- is why the bar used to sit flush against the divider under it.
+            -- padding.default above and below, the same gap the chapter bar
+            -- chart's row has in practice.
+            local skim_v_pad = Size.padding.default
+            skim_bar = FrameContainer:new{
+                bordersize     = 0,
+                padding        = 0,
+                padding_top    = skim_v_pad,
+                padding_bottom = skim_v_pad,
+                margin         = 0,
+                background     = Blitbuffer.COLOR_WHITE,
+                UI.padded(layout.padding_h, skim_widget),
+            }
+        end
+    end
+    if skim_bar then
+        -- No arrows to page with, so nothing of the chapter bar chart's
+        -- paging applies.
+        chapter_bar, chapter_left_arrow, chapter_right_arrow = skim_bar, nil, nil
+        chapter_can_go_left, chapter_can_go_right = false, false
+    end
     local show_chapter_bar = chapter_bar and Opt.readShowChapterBar()
     local has_book_rows = show_read_row or show_time_row
 
@@ -891,6 +926,7 @@ function ReadingStatsPopup:gatherStats()
         today_pages            = UI.emptyValue(),
         today_time_hhmm        = zero_hhmm,
         chapter_info           = nil,
+        skim                   = nil,
         has_next_chapter       = false,
         chapter_pages_left_count = nil,
         next_chapter_pages_count = nil,
@@ -1117,6 +1153,23 @@ function ReadingStatsPopup:gatherStats()
     if toc then
         local book_id = stats_plugin and stats_plugin.id_curr_book
         stats.chapter_info = ChapterInfo.getCachedChapterInfo(book_id, toc, pages, pageno)
+    end
+
+    -- Numbers for the skim-style chapter bar: the same ones KOReader's Skim
+    -- dialog draws its bar from (current page / page count, plus the
+    -- flattened list of chapter start pages as separators).
+    if doc and ui.getCurrentPage then
+        local ok, skim = pcall(function()
+            local page_count = doc:getPageCount()
+            local current    = ui:getCurrentPage()
+            if not page_count or page_count <= 0 or not current then return nil end
+            local ticks = nil
+            if toc and toc.getTocTicksFlattened then
+                ticks = toc:getTocTicksFlattened()
+            end
+            return { percentage = current / page_count, ticks = ticks, last = page_count }
+        end)
+        if ok then stats.skim = skim end
     end
 
     return stats

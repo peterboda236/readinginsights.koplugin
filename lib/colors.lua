@@ -159,6 +159,11 @@ local STREAK_KEY_ORDER = { "streak_read", "streak_gap" }
 -- ALL_KEY_ORDER so "Reset all colors to default" covers them too.
 local PROGRESS_BAR_KEY_ORDER = { "progress_bar_read", "progress_bar_unread" }
 
+-- The skim bar's two colors (the KOReader-Skim-style chapter bar, see
+-- widgets/skimbarwidget.lua), grouped under their own "Skim bar" submenu.
+-- Separate from the two pairs above so the bar can be colored on its own.
+local SKIM_BAR_KEY_ORDER = { "skim_bar_read", "skim_bar_unread" }
+
 -- Every color key that exists, flat + heatmap + streak + progress bar
 -- combined - used wherever the code needs to touch *all* colors (e.g.
 -- "reset all colors to default").
@@ -167,6 +172,7 @@ for _, key in ipairs(KEY_ORDER) do table.insert(ALL_KEY_ORDER, key) end
 for _, key in ipairs(HEATMAP_KEY_ORDER) do table.insert(ALL_KEY_ORDER, key) end
 for _, key in ipairs(STREAK_KEY_ORDER) do table.insert(ALL_KEY_ORDER, key) end
 for _, key in ipairs(PROGRESS_BAR_KEY_ORDER) do table.insert(ALL_KEY_ORDER, key) end
+for _, key in ipairs(SKIM_BAR_KEY_ORDER) do table.insert(ALL_KEY_ORDER, key) end
 
 -- These match what was previously hard-coded directly in the two view
 -- files (Blitbuffer.COLOR_BLACK = "#000000", Blitbuffer.COLOR_GRAY = "#AAAAAA"),
@@ -208,6 +214,12 @@ local DEFAULTS = {
     -- inactive_bar above so the two bars can be colored independently.
     progress_bar_read   = "#000000",
     progress_bar_unread = "#E0E0E0",
+    -- Book progress popup: the skim-style chapter bar (see
+    -- widgets/skimbarwidget.lua). skim_bar_read fills the bar up to the
+    -- current page, skim_bar_unread the rest. Chapter separators are drawn
+    -- black or white on top, whichever contrasts with the color under them.
+    skim_bar_read   = "#000000",
+    skim_bar_unread = "#E0E0E0",
 }
 
 local SETTINGS_PREFIX = "reading_insights_color_"
@@ -335,6 +347,8 @@ function M.streakRead()  return M.getColor("streak_read")  end
 function M.streakGap()   return M.getColor("streak_gap")   end
 function M.progressBarRead()   return M.getColor("progress_bar_read")   end
 function M.progressBarUnread() return M.getColor("progress_bar_unread") end
+function M.skimBarRead()   return M.getColor("skim_bar_read")   end
+function M.skimBarUnread() return M.getColor("skim_bar_unread") end
 
 -- Menu ---------------------------------------------------------------
 
@@ -358,6 +372,8 @@ local function labelFor(key)
         streak_gap   = _("Weekly streak gap day"),
         progress_bar_read   = _("Read portion color"),
         progress_bar_unread = _("Unread portion color"),
+        skim_bar_read       = _("Read portion color"),
+        skim_bar_unread     = _("Unread portion color"),
     }
     return labels[key] or key
 end
@@ -499,6 +515,16 @@ function M.buildMenu(on_change)
         text = _("Book progress bar"),
         keep_menu_open = true,
         sub_item_table = progress_bar_sub_item_table,
+    })
+
+    local skim_bar_sub_item_table = {}
+    for _, key in ipairs(SKIM_BAR_KEY_ORDER) do
+        table.insert(skim_bar_sub_item_table, colorItem(key, on_change))
+    end
+    table.insert(sub_item_table, {
+        text = _("Skim bar"),
+        keep_menu_open = true,
+        sub_item_table = skim_bar_sub_item_table,
     })
 
     table.insert(sub_item_table, {

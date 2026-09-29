@@ -1749,13 +1749,34 @@ msgid "Next 2 chapters"
 msgstr "2 chapitres suivants"
 
 msgid "Next chapters shown"
-msgstr ""
+msgstr "Chapitres suivants affichés"
 
 msgid "How many upcoming chapters the \"Next chapter\" column's reading-time estimate covers. With \"2\", once a second chapter follows the next one, the header switches to \"Next 2 chapters\" and shows both chapters' times, e.g. \"00:10 | 00:28\". Falls back to a single chapter when there is no chapter after the next one, or no next chapter at all."
-msgstr ""
+msgstr "Nombre de chapitres à venir couverts par l'estimation du temps de lecture de la colonne « Chapitre suivant ». Avec « 2 », dès qu'un deuxième chapitre suit le prochain, l'en-tête passe à « 2 chapitres suivants » et affiche le temps des deux chapitres, p. ex. « 00:10 | 00:28 ». Revient à un seul chapitre s'il n'y a pas de chapitre après le suivant, ou pas de chapitre suivant du tout."
 
 msgid "1 (default)"
-msgstr ""
+msgstr "1 (par défaut)"
 
 msgid "2"
-msgstr ""
+msgstr "2"
+
+msgid "Chapter bar style"
+msgstr "Style de la barre de chapitres"
+
+msgid "Chapter bars"
+msgstr "Barres de chapitres"
+
+msgid "Skim bar"
+msgstr "Barre de saut"
+
+msgid "Skim bar height"
+msgstr "Hauteur de la barre de saut"
+
+msgid "Choose how the chapter bar is drawn: one bar per chapter, or a single bar like the one in KOReader's \"Skim to\" dialog."
+msgstr "Choisissez comment la barre de chapitres est dessinée : une barre par chapitre, ou une barre unique comme dans la boîte de dialogue « Skim to » de KOReader."
+
+msgid "One bar per chapter, as tall as the chapter is long."
+msgstr "Une barre par chapitre, aussi haute que le chapitre est long."
+
+msgid "A single bar like KOReader's \"Skim to\" dialog: filled up to the current page, chapter separators and the position marker. Uses the active and inactive bar colors."
+msgstr "Une barre unique comme dans la boîte de dialogue « Skim to » de KOReader : remplie jusqu'à la page actuelle, avec les séparateurs de chapitres et le marqueur de position. Utilise les couleurs de barre active et inactive."

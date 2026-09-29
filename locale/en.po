@@ -1729,3 +1729,54 @@ msgstr "1 (default)"
 
 msgid "2"
 msgstr "2"
+
+msgid "Chapter bar style"
+msgstr "Chapter bar style"
+
+msgid "Chapter bars"
+msgstr "Chapter bars"
+
+msgid "Skim bar"
+msgstr "Skim bar"
+
+msgid "Skim bar height"
+msgstr "Skim bar height"
+
+msgid "Choose how the chapter bar is drawn: one bar per chapter, or a single bar like the one in KOReader's \"Skim to\" dialog."
+msgstr "Choose how the chapter bar is drawn: one bar per chapter, or a single bar like the one in KOReader's \"Skim to\" dialog."
+
+msgid "One bar per chapter, as tall as the chapter is long."
+msgstr "One bar per chapter, as tall as the chapter is long."
+
+msgid "A single bar like KOReader's \"Skim to\" dialog: filled up to the current page, chapter separators and the position marker. Uses the active and inactive bar colors."
+msgstr "A single bar like KOReader's \"Skim to\" dialog: filled up to the current page, chapter separators and the position marker. Uses the active and inactive bar colors."
+
+msgid "Morning"
+msgstr "Morning"
+
+msgid "Chart"
+msgstr "Chart"
+
+msgid "Heatmap"
+msgstr "Heatmap"
+
+msgid "Evening"
+msgstr "Evening"
+
+msgid "Afternoon"
+msgstr "Afternoon"
+
+msgid "Time of day"
+msgstr "Time of day"
+
+msgid "Night"
+msgstr "Night"
+
+msgid "Time of day view"
+msgstr "Time of day view"
+
+msgid "seconds"
+msgstr "seconds"
+
+msgid "second"
+msgstr "second"
