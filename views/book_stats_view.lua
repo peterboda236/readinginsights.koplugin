@@ -26,7 +26,7 @@ Sections shown:
                                    progress popup) can combine the next two
                                    chapters' reading times into that column
                                    instead of just the one immediately next.
-  - This book                     progress percentage, pages read, time spent, time left
+  - This book                     time spent, time left, progress percentage, pages read
   - Chapter bar                   visual bar chart of all chapters (tappable, swipeable)
   - Pace                          today's reading time and pages-per-minute rate
                                    (tap the title to open the Book progress
@@ -449,6 +449,13 @@ local function buildSections(stats, fonts, layout, popup)
     local sections = VerticalGroup:new{
         align = "left",
     }
+    -- Zero-height strut as wide as the whole popup. Every row here is padded
+    -- on the left only (content ends padding_h short of the right edge); the
+    -- chapter bar, which pads both sides, was the one widget that spanned the
+    -- full width and so set the width of the (centered) frame. With that bar
+    -- off the frame shrank by padding_h and the progress bar ended flush
+    -- against the right border. The strut keeps the width fixed either way.
+    table.insert(sections, HorizontalSpan:new{ width = layout.full_width })
 
     -- Dividers go between two *visible* sections only.
     local any_section_shown = false
@@ -527,7 +534,7 @@ local function buildSections(stats, fonts, layout, popup)
         )
 
     -- ===== This book ====================================================
-    -- Parts: the "read" row (percent + pages), the reading-time row, the
+    -- Parts: the reading-time row, the "read" row (percent + pages), the
     -- progress bar and the chapter bar.
     local show_read_row = Opt.readShowBookReadRow()
     local show_time_row = Opt.readShowBookTimeRow()
@@ -566,14 +573,14 @@ local function buildSections(stats, fonts, layout, popup)
 
         if has_book_rows then
             local this_book_rows = VerticalGroup:new{ align = "center" }
-            if show_read_row then
-                table.insert(this_book_rows, UI.buildTwoColRow(book_progress, book_pages_read, layout))
+            if show_time_row then
+                table.insert(this_book_rows, UI.buildTwoColRow(book_col1, book_col2, layout))
             end
             if show_read_row and show_time_row then
                 table.insert(this_book_rows, VerticalSpan:new{ height = Size.padding.default })
             end
-            if show_time_row then
-                table.insert(this_book_rows, UI.buildTwoColRow(book_col1, book_col2, layout))
+            if show_read_row then
+                table.insert(this_book_rows, UI.buildTwoColRow(book_progress, book_pages_read, layout))
             end
             UI.addSectionWithRow(
                 sections,

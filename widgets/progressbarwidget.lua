@@ -34,7 +34,7 @@ local Colors = deps.Colors
 local M = {}
 
 local SETTINGS_KEY_HEIGHT = "reading_insights_progress_bar_height"
-M.DEFAULT_HEIGHT = 1
+M.DEFAULT_HEIGHT = 3
 
 function M.readHeightSetting()
     if G_reader_settings and G_reader_settings.readSetting then
