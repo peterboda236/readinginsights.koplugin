@@ -573,15 +573,28 @@ local function buildSections(stats, fonts, layout, popup)
 
         if has_book_rows then
             local this_book_rows = VerticalGroup:new{ align = "center" }
-            if show_time_row then
+            -- Row order depends on the progress bar: with the bar on, the
+            -- "read" row (percent + pages) sits under the reading-time row,
+            -- right above the bar; with the bar off, it moves to the top.
+            local function addTimeRow()
                 table.insert(this_book_rows, UI.buildTwoColRow(book_col1, book_col2, layout))
             end
-            if show_read_row and show_time_row then
-                table.insert(this_book_rows, VerticalSpan:new{ height = Size.padding.default })
-            end
-            if show_read_row then
+            local function addReadRow()
                 table.insert(this_book_rows, UI.buildTwoColRow(book_progress, book_pages_read, layout))
             end
+            local first_row, second_row
+            if progress_bar_widget then
+                first_row  = show_time_row and addTimeRow or nil
+                second_row = show_read_row and addReadRow or nil
+            else
+                first_row  = show_read_row and addReadRow or nil
+                second_row = show_time_row and addTimeRow or nil
+            end
+            if first_row then first_row() end
+            if first_row and second_row then
+                table.insert(this_book_rows, VerticalSpan:new{ height = Size.padding.default })
+            end
+            if second_row then second_row() end
             UI.addSectionWithRow(
                 sections,
                 this_book_header,
