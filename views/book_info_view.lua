@@ -26,7 +26,9 @@ What is shown, and in which fonts, is set under Settings > Book info and
 Settings > Fonts > Book info (font roles bookinfo_title / bookinfo_author /
 bookinfo_series in lib/fonts.lua - defaulting to the Book card plugin's own
 fonts). The text lines are wrapped (and cut with an ellipsis when very long)
-so a long title or a long author list never stretches the box.
+so a long title or a long author list never stretches the box. The box is
+at most 94% of the (portrait) width, and narrower when the title, the
+author(s) and the series each fit on a single line.
 ]]--
 
 local Blitbuffer = require("ffi/blitbuffer")
@@ -40,6 +42,7 @@ local HorizontalSpan = require("ui/widget/horizontalspan")
 local ImageWidget = require("ui/widget/imagewidget")
 local InputContainer = require("ui/widget/container/inputcontainer")
 local OverlapGroup = require("ui/widget/overlapgroup")
+local RenderText = require("ui/rendertext")
 local Size = require("ui/size")
 local TextBoxWidget = require("ui/widget/textboxwidget")
 local UIManager = require("ui/uimanager")
@@ -63,6 +66,15 @@ end
 -- by size * 1.3, the same maths the Book card uses for its title box).
 local function linesHeight(face, lines)
     return lines * math.floor((1 + 0.3) * face.size + 0.5)
+end
+
+-- Width of `txt` set on a single line in `face` (0 for empty text).
+local function naturalWidth(txt, face)
+    if not txt or txt == "" then return 0 end
+    local ok, size = pcall(RenderText.sizeUtf8Text, RenderText, 0, math.huge,
+        face, txt, true, false)
+    if ok and size and size.x then return size.x end
+    return math.huge
 end
 
 -- A wrapped, height-capped text block (ellipsis when it does not fit).
@@ -225,24 +237,42 @@ function BookInfoPopup:_buildUI()
         text_w = math.max(S(80), content_w - cover_w - gap)
     end
 
-    local text_col = VerticalGroup:new{ align = "left" }
-    table.insert(text_col, textBlock(
-        self.info.title or "", Fonts.getFace("bookinfo_title"),
-        Colors.value(), text_w, 4))
+    local title_face  = Fonts.getFace("bookinfo_title")
+    local author_face = Fonts.getFace("bookinfo_author")
+    local series_face = Fonts.getFace("bookinfo_series")
+    local show_author = Opt.readBookInfo("author") and self.info.authors
+    local series_line = Opt.readBookInfo("series") and Data.seriesLine(self.info) or nil
 
-    if Opt.readBookInfo("author") and self.info.authors then
-        table.insert(text_col, VerticalSpan:new{ width = S(6) })
-        table.insert(text_col, textBlock(
-            self.info.authors, Fonts.getFace("bookinfo_author"),
-            Colors.label(), text_w, 3))
+    -- The box is only as wide as it has to be: if the title, the author(s)
+    -- and the series all fit on one line each, the text column shrinks to
+    -- the widest of them; otherwise it keeps the full (maximum) width and
+    -- the long lines wrap as before.
+    local needed = naturalWidth(self.info.title, title_face)
+    if show_author then
+        needed = math.max(needed, naturalWidth(self.info.authors, author_face))
+    end
+    if series_line then
+        needed = math.max(needed, naturalWidth(series_line, series_face))
+    end
+    if needed < text_w then
+        -- a few pixels of slack so a line that just fits never wraps
+        text_w = math.max(S(80), math.ceil(needed) + S(4))
     end
 
-    local series_line = Opt.readBookInfo("series") and Data.seriesLine(self.info) or nil
+    local text_col = VerticalGroup:new{ align = "left" }
+    table.insert(text_col, textBlock(
+        self.info.title or "", title_face, Colors.value(), text_w, 4))
+
+    if show_author then
+        table.insert(text_col, VerticalSpan:new{ width = S(6) })
+        table.insert(text_col, textBlock(
+            self.info.authors, author_face, Colors.label(), text_w, 3))
+    end
+
     if series_line then
         table.insert(text_col, VerticalSpan:new{ width = S(4) })
         table.insert(text_col, textBlock(
-            series_line, Fonts.getFace("bookinfo_series"),
-            Colors.label(), text_w, 2))
+            series_line, series_face, Colors.label(), text_w, 2))
     end
     table.insert(row, text_col)
 

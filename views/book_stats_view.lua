@@ -1373,32 +1373,14 @@ function ReadingStatsPopup:openBookCalendar()
     end)
 end
 
--- Opens the Book info popup (main.lua's onShowBookInfoPopup). Closes this
--- popup first (only one modal popup shows cleanly at a time) and hands the
--- Book info popup an on_close that reopens this one, on the same chapter-bar
--- page - the same close/reopen round trip as openBookCalendar above, so
--- closing Book info lands back on Book progress.
+-- Opens the Book info popup (main.lua's onShowBookInfoPopup) on top of this
+-- one. This popup is NOT closed: it stays open (and visible) behind Book
+-- info, so dismissing Book info simply uncovers Book progress again - no
+-- close/reopen round trip (unlike openBookCalendar above), which also keeps
+-- the chapter-bar page and the pages/time toggles exactly as they were.
 function ReadingStatsPopup:openBookInfo()
-    local saved_ui                 = self.ui
-    local saved_chapter_bar_offset = self.chapter_bar_offset
-    if not saved_ui then return end
-
-    UIManager:close(self)
-
-    UIManager:scheduleIn(0, function()
-        local reopened = false
-        local function reopen_once()
-            if reopened then return end
-            reopened = true
-            UIManager:scheduleIn(0, function()
-                UIManager:show(ReadingStatsPopup:new{
-                    ui                 = saved_ui,
-                    chapter_bar_offset = saved_chapter_bar_offset,
-                })
-            end)
-        end
-        saved_ui:handleEvent(require("ui/event"):new("ShowBookInfoPopup", reopen_once))
-    end)
+    if not self.ui then return end
+    self.ui:handleEvent(require("ui/event"):new("ShowBookInfoPopup"))
 end
 
 function ReadingStatsPopup:onTapClose(arg, ges_ev)
