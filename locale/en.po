@@ -1792,3 +1792,72 @@ msgstr "Donut chart"
 
 msgid "How the \"This book\" section looks. \"Classic\" keeps the rows and the progress bar. \"Donut chart\" shows a large donut with the read percentage on the left and the pages, the time read and the reading time left stacked on the right (the progress bar is replaced by the donut)."
 msgstr "How the \"This book\" section looks. \"Classic\" keeps the rows and the progress bar. \"Donut chart\" shows a large donut with the read percentage on the left and the pages, the time read and the reading time left stacked on the right (the progress bar is replaced by the donut)."
+
+msgid "Show Book info"
+msgstr "Show Book info"
+
+msgid "Reading insights: book info"
+msgstr "Reading insights: book info"
+
+msgid "Book info"
+msgstr "Book info"
+
+msgid "Show cover"
+msgstr "Show cover"
+
+msgid "Show the book's cover on the left."
+msgstr "Show the book's cover on the left."
+
+msgid "Rounded corners"
+msgstr "Rounded corners"
+
+msgid "Round the corners of the cover."
+msgstr "Round the corners of the cover."
+
+msgid "Cover shadow"
+msgstr "Cover shadow"
+
+msgid "Draw a drop shadow behind the cover."
+msgstr "Draw a drop shadow behind the cover."
+
+msgid "Cover border"
+msgstr "Cover border"
+
+msgid "Draw a thin frame around the cover."
+msgstr "Draw a thin frame around the cover."
+
+msgid "Cover size"
+msgstr "Cover size"
+
+msgid "Small"
+msgstr "Small"
+
+msgid "Medium"
+msgstr "Medium"
+
+msgid "Large"
+msgstr "Large"
+
+msgid "Size of the cover in the Book info popup. Medium is the default size; Small is half of it and Large is one and a half times it."
+msgstr "Size of the cover in the Book info popup. Medium is the default size; Small is half of it and Large is one and a half times it."
+
+msgid "Show author"
+msgstr "Show author"
+
+msgid "Show the author line. Several authors are joined with a language-appropriate \"and\"."
+msgstr "Show the author line. Several authors are joined with a language-appropriate \"and\"."
+
+msgid "Show series"
+msgstr "Show series"
+
+msgid "Show the series line (series name and the book's number in it) when the book is part of a series."
+msgstr "Show the series line (series name and the book's number in it) when the book is part of a series."
+
+msgid "Series"
+msgstr "Series"
+
+msgid "and"
+msgstr "and"
+
+msgid "{series} / #{index}"
+msgstr "{series} / #{index}"

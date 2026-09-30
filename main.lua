@@ -16,6 +16,12 @@ This plugin adds two views, each implemented in its own file:
     reading, and its gesture/dispatcher action only shows up for assignment
     under Reader gestures (not File manager gestures).
 
+  book_info_view.lua
+    "Book info" - small centered popup with the open book's cover (framed,
+    rounded, with a shadow), title, author(s) and series. Book-view only,
+    like the overlay above; also opened by tapping the "This book" header
+    of that overlay.
+
 This file itself only does the wiring: it loads the shared translation
 module (locale.lua) and both view modules, registers the two dispatcher
 actions (for gesture/shortcut assignment), builds the Tools menu entries,
@@ -300,6 +306,16 @@ local StatsPopup = loadModule("views/book_stats_view.lua", {
     Donut = Donut, SkimBar = SkimBar, UI = UI,
     BookStatsData = BookStatsData, VS = ViewSettings,
 })
+-- The Book info popup: cover + title / author / series. Its data (authors
+-- joined with a language-appropriate "and", the series line, the cover
+-- image) lives in lib/bookinfo_data.lua; the cover's rounded, shadowed
+-- frame is drawn by widgets/coverframe.lua (the Book card plugin's widget).
+local BookInfoData = loadModule("lib/bookinfo_data.lua", { Locale = Locale })
+local CoverFrame   = loadModule("widgets/coverframe.lua")
+local BookInfo = loadModule("views/book_info_view.lua", {
+    Locale = Locale, Colors = Colors, Fonts = Fonts, VS = ViewSettings,
+    Data = BookInfoData, CoverFrame = CoverFrame,
+})
 local Updater = loadModule("lib/updater.lua", { Locale = Locale })
 local About   = loadModule("views/about.lua",
     { Locale = Locale, Updater = Updater, PopupUtil = PopupUtil })
@@ -342,6 +358,15 @@ function ReadingInsights:onDispatcherRegisterActions()
         category = "none",
         event    = "ShowBookCalendarPopup",
         title    = _("Reading insights: book progress calendar"),
+        reader   = true,
+    })
+    -- reader = true: the Book info popup (cover, title, author, series)
+    -- needs the open book, so - like the two actions above - it is only
+    -- assignable in book view.
+    Dispatcher:registerAction("reading_book_info_popup", {
+        category = "none",
+        event    = "ShowBookInfoPopup",
+        title    = _("Reading insights: book info"),
         reader   = true,
     })
     -- general = true (not reader): records are personal, all-time data
@@ -984,6 +1009,20 @@ function ReadingInsights:onShowReadingStatsPopup()
     if not self:_hasOpenDocument() then return true end
     local popup = StatsPopup:new{ ui = self.ui }
     UIManager:show(popup)
+    return true
+end
+
+-- Book-view only, like the popups around it: the small Book info popup
+-- (cover, title, author, series). Also what tapping the "This book" header
+-- of the Book progress popup sends (see book_stats_view.lua).
+-- `on_close` (optional, passed along by the Book progress popup) runs when
+-- the popup is closed, so that popup can reopen itself.
+function ReadingInsights:onShowBookInfoPopup(on_close)
+    if not self:_hasOpenDocument() then return true end
+    UIManager:show(BookInfo:new{
+        ui       = self.ui,
+        on_close = type(on_close) == "function" and on_close or nil,
+    })
     return true
 end
 

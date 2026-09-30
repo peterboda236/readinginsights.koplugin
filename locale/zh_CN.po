@@ -1511,3 +1511,72 @@ msgstr "环形图"
 
 msgid "How the \"This book\" section looks. \"Classic\" keeps the rows and the progress bar. \"Donut chart\" shows a large donut with the read percentage on the left and the pages, the time read and the reading time left stacked on the right (the progress bar is replaced by the donut)."
 msgstr "“本书”区域的显示样式。“经典”保留原有的行和进度条。“环形图”在左侧显示带有已读百分比的大号环形图，右侧自上而下依次显示页数、已读时间和剩余阅读时间（进度条由环形图取代）。"
+
+msgid "Show Book info"
+msgstr "显示图书信息"
+
+msgid "Reading insights: book info"
+msgstr "阅读统计：图书信息"
+
+msgid "Book info"
+msgstr "图书信息"
+
+msgid "Show cover"
+msgstr "显示封面"
+
+msgid "Show the book's cover on the left."
+msgstr "在左侧显示书籍封面。"
+
+msgid "Rounded corners"
+msgstr "圆角"
+
+msgid "Round the corners of the cover."
+msgstr "将封面的四角变为圆角。"
+
+msgid "Cover shadow"
+msgstr "封面阴影"
+
+msgid "Draw a drop shadow behind the cover."
+msgstr "在封面后绘制投影。"
+
+msgid "Cover border"
+msgstr "封面边框"
+
+msgid "Draw a thin frame around the cover."
+msgstr "在封面周围绘制细边框。"
+
+msgid "Cover size"
+msgstr "封面大小"
+
+msgid "Small"
+msgstr "小"
+
+msgid "Medium"
+msgstr "中"
+
+msgid "Large"
+msgstr "大"
+
+msgid "Size of the cover in the Book info popup. Medium is the default size; Small is half of it and Large is one and a half times it."
+msgstr "图书信息弹窗中封面的大小。“中”为默认大小；“小”为其一半，“大”为其 1.5 倍。"
+
+msgid "Show author"
+msgstr "显示作者"
+
+msgid "Show the author line. Several authors are joined with a language-appropriate \"and\"."
+msgstr "显示作者行。多位作者会用符合当前语言的“和”连接。"
+
+msgid "Show series"
+msgstr "显示系列"
+
+msgid "Show the series line (series name and the book's number in it) when the book is part of a series."
+msgstr "当书籍属于某个系列时，显示系列行（系列名称及本书序号）。"
+
+msgid "Series"
+msgstr "系列"
+
+msgid "and"
+msgstr "和"
+
+msgid "{series} / #{index}"
+msgstr "{series} / 第{index}本"

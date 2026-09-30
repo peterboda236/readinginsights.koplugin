@@ -19,6 +19,10 @@ Centralises the font choices used by every popup, so there is exactly one
   records_label     "Records" popup row labels (left-hand side of each row)
   records_small     "Records" popup sub-values (date / book title under a value)
 
+  bookinfo_title    "Book info" popup: book title
+  bookinfo_author   "Book info" popup: author line
+  bookinfo_series   "Book info" popup: series / #index line
+
 Each role has its own font *name* and *size*, independently configurable -
 unlike Colors (colors.lua), section/value/label/small are NOT shared
 between the two popups here, since the full-screen insights popup and the
@@ -89,10 +93,12 @@ local _ = Locale._
 local INSIGHTS_KEYS = { "insights_section", "insights_value", "insights_label", "insights_small" }
 local STATS_KEYS     = { "stats_section", "stats_value", "stats_label", "stats_arrow" }
 local RECORDS_KEYS   = { "records_value", "records_label", "records_small" }
+local BOOKINFO_KEYS  = { "bookinfo_title", "bookinfo_author", "bookinfo_series" }
 local KEY_ORDER = {}
 for _, k in ipairs(INSIGHTS_KEYS) do table.insert(KEY_ORDER, k) end
 for _, k in ipairs(STATS_KEYS)     do table.insert(KEY_ORDER, k) end
 for _, k in ipairs(RECORDS_KEYS)   do table.insert(KEY_ORDER, k) end
+for _, k in ipairs(BOOKINFO_KEYS)  do table.insert(KEY_ORDER, k) end
 
 -- These match what was previously hard-coded directly in insights_view.lua
 -- (its own local getSerifFace(file, fallback_key, size) helper), so
@@ -117,6 +123,14 @@ local DEFAULTS = {
     records_value    = { file = "NotoSans-Bold.ttf",    fallback = "tfont",             size = 22 },
     records_label    = { file = "NotoSans-Regular.ttf", fallback = "x_smallinfofont",   size = 20 },
     records_small    = { file = "NotoSans-Regular.ttf", fallback = "xx_smallinfofont",  size = 15 },
+
+    -- Book info popup. The font files are the Book card plugin's own
+    -- defaults for its title / author / series lines (bold, italic, bold);
+    -- the sizes are set for this popup, where the text sits beside a small
+    -- cover instead of under a big one.
+    bookinfo_title   = { file = "NotoSans-Bold.ttf",    fallback = "tfont",             size = 24 },
+    bookinfo_author  = { file = "NotoSans-Italic.ttf",  fallback = "x_smallinfofont",   size = 18 },
+    bookinfo_series  = { file = "NotoSans-Bold.ttf",    fallback = "x_smallinfofont",   size = 18 },
 }
 
 local SETTINGS_NAME_PREFIX = "reading_insights_font_name_"
@@ -579,6 +593,10 @@ function labelFor(key)
         records_value    = _("Values (big numbers)"),
         records_label    = _("Labels"),
         records_small    = _("Sub-values (date / book title)"),
+
+        bookinfo_title   = _("Title"),
+        bookinfo_author  = _("Author"),
+        bookinfo_series  = _("Series"),
     }
     return labels[key] or key
 end
@@ -726,6 +744,11 @@ function M.buildMenu(on_change)
             text = _("Records"),
             keep_menu_open = true,
             sub_item_table = groupSubItemTable(RECORDS_KEYS, on_change),
+        },
+        {
+            text = _("Book info"),
+            keep_menu_open = true,
+            sub_item_table = groupSubItemTable(BOOKINFO_KEYS, on_change),
         },
     }
     table.insert(sub_item_table, {

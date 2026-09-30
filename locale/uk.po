@@ -1841,3 +1841,72 @@ msgstr "Кільцева діаграма"
 
 msgid "How the \"This book\" section looks. \"Classic\" keeps the rows and the progress bar. \"Donut chart\" shows a large donut with the read percentage on the left and the pages, the time read and the reading time left stacked on the right (the progress bar is replaced by the donut)."
 msgstr "Вигляд розділу «Ця книга». «Класичний» зберігає рядки та смугу прогресу. «Кільцева діаграма» показує ліворуч велику кільцеву діаграму з відсотком прочитаного, а праворуч одне під одним — сторінки, час читання та час читання, що залишився (смугу прогресу замінює діаграма)."
+
+msgid "Show Book info"
+msgstr "Показати відомості про книгу"
+
+msgid "Reading insights: book info"
+msgstr "Аналітика читання: відомості про книгу"
+
+msgid "Book info"
+msgstr "Відомості про книгу"
+
+msgid "Show cover"
+msgstr "Показати обкладинку"
+
+msgid "Show the book's cover on the left."
+msgstr "Показує обкладинку книги ліворуч."
+
+msgid "Rounded corners"
+msgstr "Округлені кути"
+
+msgid "Round the corners of the cover."
+msgstr "Округлює кути обкладинки."
+
+msgid "Cover shadow"
+msgstr "Тінь обкладинки"
+
+msgid "Draw a drop shadow behind the cover."
+msgstr "Малює тінь позаду обкладинки."
+
+msgid "Cover border"
+msgstr "Рамка обкладинки"
+
+msgid "Draw a thin frame around the cover."
+msgstr "Малює тонку рамку навколо обкладинки."
+
+msgid "Cover size"
+msgstr "Розмір обкладинки"
+
+msgid "Small"
+msgstr "Малий"
+
+msgid "Medium"
+msgstr "Середній"
+
+msgid "Large"
+msgstr "Великий"
+
+msgid "Size of the cover in the Book info popup. Medium is the default size; Small is half of it and Large is one and a half times it."
+msgstr "Розмір обкладинки у вікні відомостей про книгу. Середній — розмір за замовчуванням; малий удвічі менший, а великий у півтора раза більший."
+
+msgid "Show author"
+msgstr "Показати автора"
+
+msgid "Show the author line. Several authors are joined with a language-appropriate \"and\"."
+msgstr "Показує рядок автора. Кількох авторів з'єднує «та» відповідно до мови."
+
+msgid "Show series"
+msgstr "Показати серію"
+
+msgid "Show the series line (series name and the book's number in it) when the book is part of a series."
+msgstr "Показує рядок серії (назва серії та номер книги), якщо книга є її частиною."
+
+msgid "Series"
+msgstr "Серія"
+
+msgid "and"
+msgstr "та"
+
+msgid "{series} / #{index}"
+msgstr "{series} / №{index}"

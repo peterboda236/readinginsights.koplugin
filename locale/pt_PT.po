@@ -1792,3 +1792,72 @@ msgstr "Gráfico em anel"
 
 msgid "How the \"This book\" section looks. \"Classic\" keeps the rows and the progress bar. \"Donut chart\" shows a large donut with the read percentage on the left and the pages, the time read and the reading time left stacked on the right (the progress bar is replaced by the donut)."
 msgstr "Aspeto da secção \"Este livro\". \"Clássico\" mantém as linhas e a barra de progresso. \"Gráfico em anel\" mostra, à esquerda, um anel grande com a percentagem lida e, à direita, uma por baixo da outra, as páginas, o tempo lido e o tempo de leitura restante (a barra de progresso é substituída pelo anel)."
+
+msgid "Show Book info"
+msgstr "Mostrar informações do livro"
+
+msgid "Reading insights: book info"
+msgstr "Reading Insights: informações do livro"
+
+msgid "Book info"
+msgstr "Informações do livro"
+
+msgid "Show cover"
+msgstr "Mostrar capa"
+
+msgid "Show the book's cover on the left."
+msgstr "Mostra a capa do livro à esquerda."
+
+msgid "Rounded corners"
+msgstr "Cantos arredondados"
+
+msgid "Round the corners of the cover."
+msgstr "Arredonda os cantos da capa."
+
+msgid "Cover shadow"
+msgstr "Sombra da capa"
+
+msgid "Draw a drop shadow behind the cover."
+msgstr "Desenha uma sombra atrás da capa."
+
+msgid "Cover border"
+msgstr "Moldura da capa"
+
+msgid "Draw a thin frame around the cover."
+msgstr "Desenha uma moldura fina à volta da capa."
+
+msgid "Cover size"
+msgstr "Tamanho da capa"
+
+msgid "Small"
+msgstr "Pequeno"
+
+msgid "Medium"
+msgstr "Médio"
+
+msgid "Large"
+msgstr "Grande"
+
+msgid "Size of the cover in the Book info popup. Medium is the default size; Small is half of it and Large is one and a half times it."
+msgstr "Tamanho da capa na janela Informações do livro. Médio é o tamanho predefinido; Pequeno é metade desse tamanho e Grande é uma vez e meia."
+
+msgid "Show author"
+msgstr "Mostrar autor"
+
+msgid "Show the author line. Several authors are joined with a language-appropriate \"and\"."
+msgstr "Mostra a linha do autor. Vários autores são unidos por um «e» adequado ao idioma."
+
+msgid "Show series"
+msgstr "Mostrar série"
+
+msgid "Show the series line (series name and the book's number in it) when the book is part of a series."
+msgstr "Mostra a linha da série (nome da série e número do livro) quando o livro faz parte de uma série."
+
+msgid "Series"
+msgstr "Série"
+
+msgid "and"
+msgstr "e"
+
+msgid "{series} / #{index}"
+msgstr "{series} / n.º {index}"

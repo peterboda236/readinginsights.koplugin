@@ -647,6 +647,61 @@ function M.Opt.saveShowHamburgerMenu(value)
     M.saveBoolSetting(M.Opt.SHOW_HAMBURGER_MENU_KEY, value)
 end
 
+-- Book info popup (Settings > Book info). Every option is an on/off toggle
+-- that defaults to on; the keys are listed once here so the popup
+-- (views/book_info_view.lua) and the menu (lib/menu.lua) share them.
+--   cover    show the cover on the left
+--   rounded  rounded cover corners
+--   shadow   drop shadow behind the cover
+--   border   thin frame around the cover
+--   author   author line
+--   series   series line
+M.Opt.BOOK_INFO_KEYS = {
+    cover   = "reading_insights_book_info_cover",
+    rounded = "reading_insights_book_info_rounded",
+    shadow  = "reading_insights_book_info_shadow",
+    border  = "reading_insights_book_info_border",
+    author  = "reading_insights_book_info_author",
+    series  = "reading_insights_book_info_series",
+}
+
+function M.Opt.readBookInfo(name)
+    local key = M.Opt.BOOK_INFO_KEYS[name]
+    if not key then return true end
+    return M.readBoolSetting(key, true)
+end
+
+function M.Opt.saveBookInfo(name, value)
+    local key = M.Opt.BOOK_INFO_KEYS[name]
+    if not key then return end
+    M.saveBoolSetting(key, value and true or false)
+end
+
+-- Book info popup cover size (Settings > Book info > "Cover size"). "medium"
+-- is the original size (the default); "small" is half of it and "large" is
+-- one and a half times it. The popup (views/book_info_view.lua) multiplies
+-- its cover box by BOOK_INFO_COVER_SCALE[size].
+M.Opt.BOOK_INFO_COVER_SIZE_KEY    = "reading_insights_book_info_cover_size"
+M.Opt.BOOK_INFO_COVER_SIZE_SMALL  = "small"
+M.Opt.BOOK_INFO_COVER_SIZE_MEDIUM = "medium"
+M.Opt.BOOK_INFO_COVER_SIZE_LARGE  = "large"
+M.Opt.BOOK_INFO_COVER_SCALE = {
+    small  = 0.5,
+    medium = 1.0,
+    large  = 1.5,
+}
+
+function M.Opt.readBookInfoCoverSize()
+    local v = Prefs.read(M.Opt.BOOK_INFO_COVER_SIZE_KEY, nil)
+    if M.Opt.BOOK_INFO_COVER_SCALE[v] then return v end
+    return M.Opt.BOOK_INFO_COVER_SIZE_MEDIUM
+end
+
+function M.Opt.saveBookInfoCoverSize(value)
+    if not M.Opt.BOOK_INFO_COVER_SCALE[value] then return end
+    Prefs.save(M.Opt.BOOK_INFO_COVER_SIZE_KEY, value)
+end
+
 function M.Opt.readAchievementRefresh()
     local v = Prefs.read(M.Opt.ACH_REFRESH_KEY, nil)
     if v == M.Opt.ACH_REFRESH_EVERY then return M.Opt.ACH_REFRESH_EVERY end

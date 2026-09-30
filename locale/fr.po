@@ -1792,3 +1792,72 @@ msgstr "Graphique en anneau"
 
 msgid "How the \"This book\" section looks. \"Classic\" keeps the rows and the progress bar. \"Donut chart\" shows a large donut with the read percentage on the left and the pages, the time read and the reading time left stacked on the right (the progress bar is replaced by the donut)."
 msgstr "Apparence de la section « Ce livre ». « Classique » conserve les lignes et la barre de progression. « Graphique en anneau » affiche à gauche un grand anneau avec le pourcentage lu et, à droite, les uns sous les autres, les pages, le temps de lecture écoulé et le temps de lecture restant (la barre de progression est remplacée par l'anneau)."
+
+msgid "Show Book info"
+msgstr "Afficher les infos du livre"
+
+msgid "Reading insights: book info"
+msgstr "Statistiques de lecture : infos du livre"
+
+msgid "Book info"
+msgstr "Infos du livre"
+
+msgid "Show cover"
+msgstr "Afficher la couverture"
+
+msgid "Show the book's cover on the left."
+msgstr "Affiche la couverture du livre à gauche."
+
+msgid "Rounded corners"
+msgstr "Coins arrondis"
+
+msgid "Round the corners of the cover."
+msgstr "Arrondit les coins de la couverture."
+
+msgid "Cover shadow"
+msgstr "Ombre de la couverture"
+
+msgid "Draw a drop shadow behind the cover."
+msgstr "Dessine une ombre portée derrière la couverture."
+
+msgid "Cover border"
+msgstr "Cadre de la couverture"
+
+msgid "Draw a thin frame around the cover."
+msgstr "Dessine un fin cadre autour de la couverture."
+
+msgid "Cover size"
+msgstr "Taille de la couverture"
+
+msgid "Small"
+msgstr "Petite"
+
+msgid "Medium"
+msgstr "Moyenne"
+
+msgid "Large"
+msgstr "Grande"
+
+msgid "Size of the cover in the Book info popup. Medium is the default size; Small is half of it and Large is one and a half times it."
+msgstr "Taille de la couverture dans la fenêtre Infos du livre. Moyenne est la taille par défaut ; Petite en est la moitié et Grande une fois et demie."
+
+msgid "Show author"
+msgstr "Afficher l'auteur"
+
+msgid "Show the author line. Several authors are joined with a language-appropriate \"and\"."
+msgstr "Affiche la ligne de l'auteur. Plusieurs auteurs sont reliés par un « et » adapté à la langue."
+
+msgid "Show series"
+msgstr "Afficher la série"
+
+msgid "Show the series line (series name and the book's number in it) when the book is part of a series."
+msgstr "Affiche la ligne de la série (nom de la série et numéro du livre) lorsque le livre en fait partie."
+
+msgid "Series"
+msgstr "Série"
+
+msgid "and"
+msgstr "et"
+
+msgid "{series} / #{index}"
+msgstr "{series} / n°{index}"

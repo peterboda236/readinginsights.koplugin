@@ -27,6 +27,8 @@ Sections shown:
                                    chapters' reading times into that column
                                    instead of just the one immediately next.
   - This book                     time spent, time left, progress percentage, pages read
+                                   (tap the title to open the Book info popup:
+                                   cover, title, author, series)
   - Chapter bar                   visual bar chart of all chapters (tappable, swipeable)
   - Pace                          today's reading time and pages-per-minute rate
                                    (tap the title to open the Book progress
@@ -1371,6 +1373,34 @@ function ReadingStatsPopup:openBookCalendar()
     end)
 end
 
+-- Opens the Book info popup (main.lua's onShowBookInfoPopup). Closes this
+-- popup first (only one modal popup shows cleanly at a time) and hands the
+-- Book info popup an on_close that reopens this one, on the same chapter-bar
+-- page - the same close/reopen round trip as openBookCalendar above, so
+-- closing Book info lands back on Book progress.
+function ReadingStatsPopup:openBookInfo()
+    local saved_ui                 = self.ui
+    local saved_chapter_bar_offset = self.chapter_bar_offset
+    if not saved_ui then return end
+
+    UIManager:close(self)
+
+    UIManager:scheduleIn(0, function()
+        local reopened = false
+        local function reopen_once()
+            if reopened then return end
+            reopened = true
+            UIManager:scheduleIn(0, function()
+                UIManager:show(ReadingStatsPopup:new{
+                    ui                 = saved_ui,
+                    chapter_bar_offset = saved_chapter_bar_offset,
+                })
+            end)
+        end
+        saved_ui:handleEvent(require("ui/event"):new("ShowBookInfoPopup", reopen_once))
+    end)
+end
+
 function ReadingStatsPopup:onTapClose(arg, ges_ev)
     if ges_ev then
         local x, y = ges_ev.pos.x, ges_ev.pos.y
@@ -1382,10 +1412,7 @@ function ReadingStatsPopup:onTapClose(arg, ges_ev)
         end
 
         if UI.hitTest(self._this_book_header, x, y) then
-            UIManager:close(self)
-            if self.ui then
-                self.ui:handleEvent(require("ui/event"):new("ShowBookStats"))
-            end
+            self:openBookInfo()
             return true
         end
 

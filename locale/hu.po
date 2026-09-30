@@ -1789,3 +1789,72 @@ msgstr "Kördiagram"
 
 msgid "How the \"This book\" section looks. \"Classic\" keeps the rows and the progress bar. \"Donut chart\" shows a large donut with the read percentage on the left and the pages, the time read and the reading time left stacked on the right (the progress bar is replaced by the donut)."
 msgstr "A „Könyv” szekció megjelenése. A „Klasszikus” megtartja a sorokat és a folyamatjelző sávot. A „Kördiagram” bal oldalt egy nagy kördiagramot mutat az elolvasott százalékkal, jobb oldalt egymás alatt az oldalszámot, az eddigi olvasási időt és a hátralévő időt (a folyamatjelző sávot a kördiagram váltja fel)."
+
+msgid "Show Book info"
+msgstr "Könyvinformáció megnyitása"
+
+msgid "Reading insights: book info"
+msgstr "Reading insights: könyvinformáció"
+
+msgid "Book info"
+msgstr "Könyvinformáció"
+
+msgid "Show cover"
+msgstr "Borító megjelenítése"
+
+msgid "Show the book's cover on the left."
+msgstr "A könyv borítójának megjelenítése bal oldalt."
+
+msgid "Rounded corners"
+msgstr "Lekerekített sarkok"
+
+msgid "Round the corners of the cover."
+msgstr "A borító sarkainak lekerekítése."
+
+msgid "Cover shadow"
+msgstr "Borító árnyéka"
+
+msgid "Draw a drop shadow behind the cover."
+msgstr "Árnyék rajzolása a borító mögé."
+
+msgid "Cover border"
+msgstr "Borító kerete"
+
+msgid "Draw a thin frame around the cover."
+msgstr "Vékony keret rajzolása a borító köré."
+
+msgid "Cover size"
+msgstr "Borító mérete"
+
+msgid "Small"
+msgstr "Kicsi"
+
+msgid "Medium"
+msgstr "Közepes"
+
+msgid "Large"
+msgstr "Nagy"
+
+msgid "Size of the cover in the Book info popup. Medium is the default size; Small is half of it and Large is one and a half times it."
+msgstr "A borító mérete a Könyvinformáció ablakban. A közepes az alapértelmezett méret, a kicsi ennek a fele, a nagy pedig másfélszerese."
+
+msgid "Show author"
+msgstr "Szerző megjelenítése"
+
+msgid "Show the author line. Several authors are joined with a language-appropriate \"and\"."
+msgstr "A szerző sorának megjelenítése. Több szerzőt a nyelvnek megfelelő „és” köt össze."
+
+msgid "Show series"
+msgstr "Sorozat megjelenítése"
+
+msgid "Show the series line (series name and the book's number in it) when the book is part of a series."
+msgstr "A sorozat sorának megjelenítése (a sorozat neve és a könyv sorszáma), ha a könyv sorozat része."
+
+msgid "Series"
+msgstr "Sorozat"
+
+msgid "and"
+msgstr "és"
+
+msgid "{series} / #{index}"
+msgstr "{series} / #{index}"

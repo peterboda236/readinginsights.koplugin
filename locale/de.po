@@ -1792,3 +1792,72 @@ msgstr "Ringdiagramm"
 
 msgid "How the \"This book\" section looks. \"Classic\" keeps the rows and the progress bar. \"Donut chart\" shows a large donut with the read percentage on the left and the pages, the time read and the reading time left stacked on the right (the progress bar is replaced by the donut)."
 msgstr "Wie der Bereich „Dieses Buch“ aussieht. „Klassisch“ behält die Zeilen und den Fortschrittsbalken bei. „Ringdiagramm“ zeigt links ein großes Ringdiagramm mit dem gelesenen Prozentsatz und rechts untereinander die Seiten, die gelesene Zeit und die verbleibende Lesezeit (der Fortschrittsbalken wird durch das Ringdiagramm ersetzt)."
+
+msgid "Show Book info"
+msgstr "Buchinfo anzeigen"
+
+msgid "Reading insights: book info"
+msgstr "Leseeinblicke: Buchinfo"
+
+msgid "Book info"
+msgstr "Buchinfo"
+
+msgid "Show cover"
+msgstr "Cover anzeigen"
+
+msgid "Show the book's cover on the left."
+msgstr "Zeigt das Cover links an."
+
+msgid "Rounded corners"
+msgstr "Abgerundete Ecken"
+
+msgid "Round the corners of the cover."
+msgstr "Rundet die Ecken des Covers ab."
+
+msgid "Cover shadow"
+msgstr "Cover-Schatten"
+
+msgid "Draw a drop shadow behind the cover."
+msgstr "Zeichnet einen Schlagschatten hinter das Cover."
+
+msgid "Cover border"
+msgstr "Cover-Rahmen"
+
+msgid "Draw a thin frame around the cover."
+msgstr "Zeichnet einen dünnen Rahmen um das Cover."
+
+msgid "Cover size"
+msgstr "Cover-Größe"
+
+msgid "Small"
+msgstr "Klein"
+
+msgid "Medium"
+msgstr "Mittel"
+
+msgid "Large"
+msgstr "Groß"
+
+msgid "Size of the cover in the Book info popup. Medium is the default size; Small is half of it and Large is one and a half times it."
+msgstr "Größe des Covers im Buchinfo-Popup. Mittel ist die Standardgröße; Klein ist halb so groß und Groß anderthalbmal so groß."
+
+msgid "Show author"
+msgstr "Autor anzeigen"
+
+msgid "Show the author line. Several authors are joined with a language-appropriate \"and\"."
+msgstr "Zeigt die Autorenzeile an. Mehrere Autoren werden mit einem passenden „und“ verbunden."
+
+msgid "Show series"
+msgstr "Reihe anzeigen"
+
+msgid "Show the series line (series name and the book's number in it) when the book is part of a series."
+msgstr "Zeigt die Reihenzeile (Name der Reihe und Nummer des Buches) an, wenn das Buch zu einer Reihe gehört."
+
+msgid "Series"
+msgstr "Reihe"
+
+msgid "and"
+msgstr "und"
+
+msgid "{series} / #{index}"
+msgstr "{series} / #{index}"

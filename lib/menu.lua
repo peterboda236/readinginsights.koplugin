@@ -82,6 +82,13 @@ function M.build(self, deps)
             end,
         })
         table.insert(sub_item_table, {
+            text = _("Show Book info"),
+            keep_menu_open = false,
+            callback = function()
+                self:onShowBookInfoPopup()
+            end,
+        })
+        table.insert(sub_item_table, {
             text = _("Show Book progress calendar"),
             keep_menu_open = false,
             callback = function()
@@ -1027,6 +1034,85 @@ function M.build(self, deps)
         text = _("Book progress popup"),
         keep_menu_open = true,
         sub_item_table = book_progress_sub_item_table,
+    })
+
+    -- "Book info" popup: which parts of the small cover + title / author /
+    -- series popup are shown. Cover frame options (rounded corners, shadow,
+    -- border) only matter while the cover itself is on, so they grey out
+    -- with it. Fonts live under Settings > Fonts > Book info.
+    local function bookInfoToggle(name, text, help_text, depends_on_cover, separator)
+        return {
+            text = text,
+            help_text = help_text,
+            keep_menu_open = true,
+            separator = separator,
+            enabled_func = depends_on_cover and function()
+                return deps.ViewSettings.Opt.readBookInfo("cover")
+            end or nil,
+            checked_func = function()
+                return deps.ViewSettings.Opt.readBookInfo(name)
+            end,
+            callback = function()
+                deps.ViewSettings.Opt.saveBookInfo(name, not deps.ViewSettings.Opt.readBookInfo(name))
+            end,
+        }
+    end
+    -- Cover size: small (50%) / medium (100%, default) / large (150%).
+    -- Greyed out together with the cover itself.
+    local function coverSizeRadio(size, text)
+        return {
+            text = text,
+            keep_menu_open = true,
+            radio = true,
+            checked_func = function()
+                return deps.ViewSettings.Opt.readBookInfoCoverSize() == size
+            end,
+            callback = function()
+                deps.ViewSettings.Opt.saveBookInfoCoverSize(size)
+            end,
+        }
+    end
+    local coverSizeItem = {
+        text_func = function()
+            local Opt = deps.ViewSettings.Opt
+            local size = Opt.readBookInfoCoverSize()
+            local label = (size == Opt.BOOK_INFO_COVER_SIZE_SMALL and _("Small"))
+                or (size == Opt.BOOK_INFO_COVER_SIZE_LARGE and _("Large"))
+                or _("Medium")
+            return _("Cover size") .. ": " .. label
+        end,
+        help_text = _("Size of the cover in the Book info popup. Medium is the default size; Small is half of it and Large is one and a half times it."),
+        keep_menu_open = true,
+        enabled_func = function()
+            return deps.ViewSettings.Opt.readBookInfo("cover")
+        end,
+        sub_item_table = {
+            coverSizeRadio(deps.ViewSettings.Opt.BOOK_INFO_COVER_SIZE_SMALL, _("Small")),
+            coverSizeRadio(deps.ViewSettings.Opt.BOOK_INFO_COVER_SIZE_MEDIUM, _("Medium")),
+            coverSizeRadio(deps.ViewSettings.Opt.BOOK_INFO_COVER_SIZE_LARGE, _("Large")),
+        },
+    }
+    local book_info_sub_item_table = {
+        bookInfoToggle("cover", _("Show cover"),
+            _("Show the book's cover on the left."),
+            false, true),
+        coverSizeItem,
+        bookInfoToggle("rounded", _("Rounded corners"),
+            _("Round the corners of the cover."), true),
+        bookInfoToggle("shadow", _("Cover shadow"),
+            _("Draw a drop shadow behind the cover."), true),
+        bookInfoToggle("border", _("Cover border"),
+            _("Draw a thin frame around the cover."), true, true),
+        bookInfoToggle("author", _("Show author"),
+            _("Show the author line. Several authors are joined with a language-appropriate \"and\"."), false),
+        bookInfoToggle("series", _("Show series"),
+            _("Show the series line (series name and the book's number in it) when the book is part of a series."), false),
+    }
+
+    table.insert(settings_sub_item_table, {
+        text = _("Book info"),
+        keep_menu_open = true,
+        sub_item_table = book_info_sub_item_table,
     })
 
     local book_calendar_sub_item_table = {}
