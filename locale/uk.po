@@ -946,6 +946,15 @@ msgstr "Показати рекорди"
 msgid "Show Reading streak"
 msgstr "Показати серію читання"
 
+msgid "Menu items"
+msgstr "Пункти меню"
+
+msgid "Reading streak"
+msgstr "Серія читання"
+
+msgid "Tick the popups that should be listed under Tools > Reading insights. The book popups only appear while a book is open."
+msgstr "Позначте вікна, які мають відображатися в меню Інструменти > Reading insights. Вікна книги з’являються лише коли відкрито книгу."
+
 msgid "Reading insights: reading streak"
 msgstr "Аналітика читання: серія читання"
 

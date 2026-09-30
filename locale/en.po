@@ -905,6 +905,15 @@ msgstr "Show Records"
 msgid "Show Reading streak"
 msgstr "Show Reading streak"
 
+msgid "Menu items"
+msgstr "Menu items"
+
+msgid "Reading streak"
+msgstr "Reading streak"
+
+msgid "Tick the popups that should be listed under Tools > Reading insights. The book popups only appear while a book is open."
+msgstr "Tick the popups that should be listed under Tools > Reading insights. The book popups only appear while a book is open."
+
 msgid "Reading insights: reading streak"
 msgstr "Reading insights: reading streak"
 

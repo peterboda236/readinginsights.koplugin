@@ -920,6 +920,15 @@ msgstr "Rekordok megjelenítése"
 msgid "Show Reading streak"
 msgstr "Olvasási sorozat megjelenítése"
 
+msgid "Menu items"
+msgstr "Menüelemek"
+
+msgid "Reading streak"
+msgstr "Olvasási sorozat"
+
+msgid "Tick the popups that should be listed under Tools > Reading insights. The book popups only appear while a book is open."
+msgstr "Pipáld be, mely ablakok jelenjenek meg az Eszközök > Reading insights menüben. A könyves ablakok csak megnyitott könyvnél jelennek meg."
+
 msgid "Reading insights: reading streak"
 msgstr "Reading insights: olvasási sorozat"
 

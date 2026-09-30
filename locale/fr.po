@@ -911,6 +911,15 @@ msgstr "Afficher les records"
 msgid "Show Reading streak"
 msgstr "Afficher la série de lecture"
 
+msgid "Menu items"
+msgstr "Éléments du menu"
+
+msgid "Reading streak"
+msgstr "Série de lecture"
+
+msgid "Tick the popups that should be listed under Tools > Reading insights. The book popups only appear while a book is open."
+msgstr "Cochez les fenêtres à afficher dans Outils > Reading insights. Les fenêtres du livre n'apparaissent que lorsqu'un livre est ouvert."
+
 msgid "Reading insights: reading streak"
 msgstr "Statistiques de lecture : série de lecture"
 

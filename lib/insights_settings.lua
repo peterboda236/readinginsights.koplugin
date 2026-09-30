@@ -702,6 +702,22 @@ function M.Opt.saveBookInfoCoverSize(value)
     Prefs.save(M.Opt.BOOK_INFO_COVER_SIZE_KEY, value)
 end
 
+-- Tools > Reading insights: which "Show ..." entries are listed (Settings >
+-- Advanced settings > "Menu items"). All on by default; this only affects
+-- the menu, the gesture / dispatcher actions keep working either way.
+M.Opt.MENU_ITEM_ORDER = {
+    "insights", "streak", "heatmap", "records", "achievements",
+    "book_progress", "book_info", "book_calendar",
+}
+
+function M.Opt.readMenuItem(name)
+    return M.readBoolSetting("reading_insights_menu_item_" .. name, true)
+end
+
+function M.Opt.saveMenuItem(name, value)
+    M.saveBoolSetting("reading_insights_menu_item_" .. name, value and true or false)
+end
+
 function M.Opt.readAchievementRefresh()
     local v = Prefs.read(M.Opt.ACH_REFRESH_KEY, nil)
     if v == M.Opt.ACH_REFRESH_EVERY then return M.Opt.ACH_REFRESH_EVERY end

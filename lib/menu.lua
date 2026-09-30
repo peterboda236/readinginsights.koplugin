@@ -34,72 +34,58 @@ local _ = Locale._
 local M = {}
 
 function M.build(self, deps)
-    local sub_item_table = {
-        {
-            text = _("Show Reading insights"),
-            keep_menu_open = false,
-            callback = function()
-                self:onShowReadingInsightsPopup()
-            end,
-        },
-        {
-            text = _("Show Reading streak"),
-            keep_menu_open = false,
-            callback = function()
-                self:onShowReadingStreakPopup()
-            end,
-        },
-        {
-            text = _("Show Reading heatmap"),
-            keep_menu_open = false,
-            callback = function()
-                self:onShowReadingHeatmapPopup()
-            end,
-        },
-        {
-            text = _("Show Records"),
-            keep_menu_open = false,
-            callback = function()
-                self:onShowReadingRecordsPopup()
-            end,
-        },
-        {
-            text = _("Show Achievements"),
-            keep_menu_open = false,
-            callback = function()
-                self:onShowReadingAchievements()
-            end,
-        },
+    -- The "Show ..." entries. Which of them are listed is set under
+    -- Settings > Advanced settings > "Menu items"; the list is rebuilt each
+    -- time the menu opens (sub_item_table_func at the bottom), so a change
+    -- shows up right away. The three book entries also need an open book.
+    local popup_entries = {
+        { key = "insights",      label = _("Reading insights"),
+          text = _("Show Reading insights"),
+          open = function() self:onShowReadingInsightsPopup() end },
+        { key = "streak",        label = _("Reading streak"),
+          text = _("Show Reading streak"),
+          open = function() self:onShowReadingStreakPopup() end },
+        { key = "heatmap",       label = _("Reading heatmap"),
+          text = _("Show Reading heatmap"),
+          open = function() self:onShowReadingHeatmapPopup() end },
+        { key = "records",       label = _("Records"),
+          text = _("Show Records"),
+          open = function() self:onShowReadingRecordsPopup() end },
+        { key = "achievements",  label = _("Achievements"),
+          text = _("Show Achievements"),
+          open = function() self:onShowReadingAchievements() end },
+        { key = "book_progress", label = _("Book progress"), book = true,
+          text = _("Show Book progress"),
+          open = function() self:onShowReadingStatsPopup() end },
+        { key = "book_info",     label = _("Book info"), book = true,
+          text = _("Show Book info"),
+          open = function() self:onShowBookInfoPopup() end },
+        { key = "book_calendar", label = _("Book progress calendar"), book = true,
+          text = _("Show Book progress calendar"),
+          open = function() self:onShowBookCalendarPopup() end },
     }
 
-    local has_open_document = self:_hasOpenDocument()
-    if has_open_document then
-        table.insert(sub_item_table, {
-            text = _("Show Book progress"),
-            keep_menu_open = false,
-            callback = function()
-                self:onShowReadingStatsPopup()
-            end,
-        })
-        table.insert(sub_item_table, {
-            text = _("Show Book info"),
-            keep_menu_open = false,
-            callback = function()
-                self:onShowBookInfoPopup()
-            end,
-        })
-        table.insert(sub_item_table, {
-            text = _("Show Book progress calendar"),
-            keep_menu_open = false,
-            callback = function()
-                self:onShowBookCalendarPopup()
-            end,
-        })
+    local function buildPopupEntries()
+        local items = {}
+        local has_open_document = self:_hasOpenDocument()
+        for _idx, e in ipairs(popup_entries) do
+            if deps.ViewSettings.Opt.readMenuItem(e.key)
+                and (has_open_document or not e.book) then
+                table.insert(items, {
+                    text = e.text,
+                    keep_menu_open = false,
+                    callback = e.open,
+                })
+            end
+        end
+        -- Separator after the "open a popup" entries, before the
+        -- settings submenu below.
+        if #items > 0 then items[#items].separator = true end
+        return items
     end
 
-    -- Separator after the two "open a popup" entries, before the
-    -- settings submenu below.
-    sub_item_table[#sub_item_table].separator = true
+    -- Everything below the popup entries (Settings, Updates, About).
+    local sub_item_table = {}
 
     local settings_sub_item_table = {}
 
@@ -257,6 +243,29 @@ function M.build(self, deps)
     -- divider above the per-view block is the one set on the "Fonts"
     -- entry; the divider under it is set on "Book progress calendar".
     local advanced_settings_sub_item_table = {}
+
+    -- "Menu items": tick the popups that should be listed under Tools >
+    -- Reading insights (all of them by default).
+    local menu_items_sub_item_table = {}
+    for _idx, e in ipairs(popup_entries) do
+        table.insert(menu_items_sub_item_table, {
+            text = e.label,
+            keep_menu_open = true,
+            checked_func = function()
+                return deps.ViewSettings.Opt.readMenuItem(e.key)
+            end,
+            callback = function()
+                deps.ViewSettings.Opt.saveMenuItem(e.key, not deps.ViewSettings.Opt.readMenuItem(e.key))
+            end,
+        })
+    end
+    table.insert(advanced_settings_sub_item_table, {
+        text = _("Menu items"),
+        help_text = _("Tick the popups that should be listed under Tools > Reading insights. The book popups only appear while a book is open."),
+        keep_menu_open = true,
+        separator = true,
+        sub_item_table = menu_items_sub_item_table,
+    })
 
     table.insert(advanced_settings_sub_item_table, {
         text = _("Bar chart height"),
@@ -1203,7 +1212,13 @@ function M.build(self, deps)
     return {
         text = _("Reading insights"),
         sorting_hint = "tools",
-        sub_item_table = sub_item_table,
+        sub_item_table_func = function()
+            local items = buildPopupEntries()
+            for _idx, item in ipairs(sub_item_table) do
+                table.insert(items, item)
+            end
+            return items
+        end,
     }
 
     --[[

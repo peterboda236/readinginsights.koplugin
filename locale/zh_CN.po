@@ -669,6 +669,15 @@ msgstr "查看阅读记录"
 msgid "Show Reading streak"
 msgstr "查看阅读连续记录"
 
+msgid "Menu items"
+msgstr "菜单项"
+
+msgid "Reading streak"
+msgstr "连续阅读"
+
+msgid "Tick the popups that should be listed under Tools > Reading insights. The book popups only appear while a book is open."
+msgstr "勾选要在“工具 > Reading insights”下列出的弹窗。与图书相关的弹窗仅在打开图书时显示。"
+
 msgid "Reading insights: reading streak"
 msgstr "阅读统计：阅读连续记录"
 
