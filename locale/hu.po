@@ -502,10 +502,10 @@ msgid "days of reading left"
 msgstr "nap van hátra"
 
 msgid "day since started"
-msgstr "napja elkezdve"
+msgstr "napja elkezdett"
 
 msgid "days since started"
-msgstr "napja elkezdve"
+msgstr "napja elkezdett"
 
 msgid "Colors"
 msgstr "Színek"
