@@ -1777,3 +1777,15 @@ msgstr "Fejezetenként egy oszlop, olyan magas, amilyen hosszú a fejezet."
 
 msgid "A single bar like KOReader's \"Skim to\" dialog: filled up to the current page, chapter separators and the position marker. Uses the active and inactive bar colors."
 msgstr "Egyetlen sáv, mint a KOReader „Ugrás” (Skim to) ablakában: az aktuális oldalig kitöltve, fejezetelválasztókkal és a pozíciójelölővel. Az aktív és inaktív sávszínt használja."
+
+msgid "Book section style"
+msgstr "Könyv szekció stílusa"
+
+msgid "Classic"
+msgstr "Klasszikus"
+
+msgid "Donut chart"
+msgstr "Kördiagram"
+
+msgid "How the \"This book\" section looks. \"Classic\" keeps the rows and the progress bar. \"Donut chart\" shows a large donut with the read percentage on the left and the pages, the time read and the reading time left stacked on the right (the progress bar is replaced by the donut)."
+msgstr "A „Könyv” szekció megjelenése. A „Klasszikus” megtartja a sorokat és a folyamatjelző sávot. A „Kördiagram” bal oldalt egy nagy kördiagramot mutat az elolvasott százalékkal, jobb oldalt egymás alatt az oldalszámot, az eddigi olvasási időt és a hátralévő időt (a folyamatjelző sávot a kördiagram váltja fel)."

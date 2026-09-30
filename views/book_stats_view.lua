@@ -22,7 +22,7 @@ Sections shown:
                                    chapter (tap to switch to pages left /
                                    next chapter's page count; tap again to
                                    switch back). "Next chapters shown"
-                                   (Settings > Advanced settings > Book
+                                   (Settings > Book
                                    progress popup) can combine the next two
                                    chapters' reading times into that column
                                    instead of just the one immediately next.
@@ -62,10 +62,10 @@ local Screen = Device.screen
 -- header comment above).
 -- Shared modules, passed in as one named table by main.lua (see there).
 local deps = ...
-local Locale, Colors, Fonts, Prefs, BookProgress, BookCalendar, ChapterInfo, ChapterBar, ProgressBar, SkimBar, UI, BookStatsData, VS =
+local Locale, Colors, Fonts, Prefs, BookProgress, BookCalendar, ChapterInfo, ChapterBar, ProgressBar, SkimBar, UI, BookStatsData, VS, Donut =
     deps.Locale, deps.Colors, deps.Fonts, deps.Prefs, deps.BookProgress,
     deps.BookCalendar, deps.ChapterInfo, deps.ChapterBar, deps.ProgressBar, deps.SkimBar, deps.UI,
-    deps.BookStatsData, deps.VS
+    deps.BookStatsData, deps.VS, deps.Donut
 local _            = Locale._
 local N_           = Locale.N_
 local getLangBase  = Locale.getLangBase
@@ -321,6 +321,87 @@ local function buildSplitTimeCell(layout, side1, side2)
     return UI.buildTwoColRow(side1, side2, sub_layout)
 end
 
+-- "This book" row in the "Donut chart" section style (Settings > Advanced
+-- settings > Book progress popup > "Book section style"): on the left one
+-- large donut chart with the read percentage in its middle and the word
+-- "read" beside it (outside the ring); after the usual column divider, on
+-- the right, the page position, the time read so far and the reading time
+-- left stacked under each other. The donut is as tall as the right-hand
+-- stack (capped to about half the column width). `show_pages` /
+-- `show_times` follow the "Read row" / "Reading time row" toggles.
+local function buildDonutBookRow(stats, fonts, layout, show_pages, show_times)
+    local function valueLine(time_data, label)
+        return buildValueLine(fonts.value, fonts.label, layout.col_width, time_data, label)
+    end
+
+    local right = VerticalGroup:new{ align = "left" }
+    -- No extra gap between the lines: consecutive rows then sit exactly as
+    -- far apart as the rows of the "Pace" section do (there the spacer
+    -- between rows reserves no space either), and the donut - which is as
+    -- tall as this stack - shrinks accordingly.
+    local function addRight(widget)
+        table.insert(right, widget)
+    end
+    if show_pages then
+        addRight(valueLine(stats.book_pages_read, ""))
+    end
+    if show_times then
+        addRight(valueLine(stats.book_time_spent_hhmm, _("read so far")))
+        addRight(valueLine(stats.book_time_left_hhmm, _("reading time left")))
+    end
+    if #right == 0 then
+        addRight(valueLine(UI.emptyValue(), ""))
+    end
+
+    -- Default padding above and below the ring, so it keeps the same
+    -- distance from the lines around the row (and from the ends of the
+    -- column divider) as the text has. The ring plus that padding is as
+    -- tall as the right-hand stack.
+    local v_pad    = Size.padding.default
+    local diameter = math.min(right:getSize().h - 2 * v_pad, math.floor(layout.col_width * 0.52))
+    diameter = math.max(diameter, Screen:scaleBySize(48))
+
+    local donut = Donut and Donut.build{
+        ratio      = stats.book_progress_ratio,
+        diameter   = diameter,
+        text       = stats.book_progress.value,
+        face       = Fonts.getBoldFace("stats_value"),
+        text_color = Colors.value(),
+    }
+
+    local left
+    if donut then
+        left = HorizontalGroup:new{ align = "center", donut }
+        -- "read" beside the ring, only if the whole word fits in what is
+        -- left of the column (a wrapped or clipped word looks worse than
+        -- none; the percentage is in the ring either way).
+        local gap     = Size.padding.large
+        local label_w = layout.col_width - diameter - gap
+        local label   = TextWidget:new{ text = _("read"), face = fonts.label, fgcolor = Colors.label() }
+        if label:getSize().w <= label_w then
+            table.insert(left, HorizontalSpan:new{ width = gap })
+            table.insert(left, label)
+        end
+    else
+        left = buildValueLine(fonts.value, fonts.label, layout.col_width, stats.book_progress, _("read"))
+    end
+
+    -- The padding is FrameContainer padding, not a VerticalSpan: a
+    -- VerticalSpan's size property is "width" and "height" is ignored, so a
+    -- VerticalSpan{ height = ... } would reserve no space at all.
+    left = FrameContainer:new{
+        background     = Blitbuffer.COLOR_WHITE,
+        bordersize     = 0,
+        padding        = 0,
+        padding_top    = v_pad,
+        padding_bottom = v_pad,
+        margin         = 0,
+        left,
+    }
+
+    return UI.buildTwoColRow(left, right, layout)
+end
+
 -- Main section builder.
 local function buildSections(stats, fonts, layout, popup)
     local function valueLine(time_data, label)
@@ -333,7 +414,7 @@ local function buildSections(stats, fonts, layout, popup)
     -- nil/"time" by default; "pages" once toggled. Tapping again switches
     -- back (see onTapClose).
     local chapter_view_mode = (popup and popup._chapter_view_mode) or "time"
-    -- "Next chapters shown" (Settings > Advanced settings > Book progress
+    -- "Next chapters shown" (Settings > Book progress
     -- popup): 1 (default) keeps the single "Next chapter" column exactly as
     -- before; 2 combines the next chapter's and the one after it's reading
     -- times (or page counts) into that same column via buildSplitTimeCell,
@@ -429,7 +510,7 @@ local function buildSections(stats, fonts, layout, popup)
     end
 
     -- Which parts of each section are shown. Every toggle lives under
-    -- Settings > Advanced settings > Book progress popup. A section whose
+    -- Settings > Book progress popup. A section whose
     -- parts are all off (or have nothing to show) is left out completely -
     -- header, dividers and all - instead of leaving an empty header behind.
     local Opt = VS.Opt
@@ -536,19 +617,28 @@ local function buildSections(stats, fonts, layout, popup)
     -- ===== This book ====================================================
     -- Parts: the reading-time row, the "read" row (percent + pages), the
     -- progress bar and the chapter bar.
-    local show_read_row = Opt.readShowBookReadRow()
-    local show_time_row = Opt.readShowBookTimeRow()
+    -- "Donut chart" section style: the pages and the times are always
+    -- shown (the menu toggles are greyed out); the saved toggles only
+    -- apply to the "Classic" style.
+    local donut_forced = Donut ~= nil
+        and Opt.readBookSectionStyle() == Opt.BOOK_SECTION_STYLE_DONUT
+    local show_read_row = donut_forced or Opt.readShowBookReadRow()
+    local show_time_row = donut_forced or Opt.readShowBookTimeRow()
 
     -- Progress bar: a black/gray (by default) filled bar showing how far
     -- into the book the reader is. Toggle + colors + height are all user
-    -- settings (Settings > Advanced settings > Book progress popup >
+    -- settings (Settings > Book progress popup >
     -- Progress bar); skipped entirely when off or when there's no width to
     -- draw it in.
     local progress_bar_widget = nil
-    if ProgressBar and Opt.readShowProgressBar() then
+    -- "Donut chart" section style: the donut row replaces the read / time
+    -- rows and the linear progress bar (it shows the same progress).
+    local donut_style = Donut ~= nil
+        and Opt.readBookSectionStyle() == Opt.BOOK_SECTION_STYLE_DONUT
+    if ProgressBar and Opt.readShowProgressBar() and not donut_style then
         progress_bar_widget = ProgressBar.build(stats.book_progress_ratio, layout.content_width)
     end
-    -- Chapter bar style (Settings > Advanced settings > Book progress popup):
+    -- Chapter bar style (Settings > Book progress popup):
     -- the per-chapter bar chart, or one KOReader-Skim-style bar with chapter
     -- separators and the position marker. The skim bar needs no TOC (without
     -- one it simply has no separators), so it also shows for books where the
@@ -631,7 +721,11 @@ local function buildSections(stats, fonts, layout, popup)
         end
 
         local this_book_rows = nil
-        if has_book_rows then
+        if has_book_rows and donut_style then
+            this_book_rows = VerticalGroup:new{ align = "center" }
+            table.insert(this_book_rows,
+                buildDonutBookRow(stats, fonts, layout, show_read_row, show_time_row))
+        elseif has_book_rows then
             this_book_rows = VerticalGroup:new{ align = "center" }
             -- Row order depends on the progress bar: with the bar on, the
             -- "read" row (percent + pages) sits under the reading-time row,
@@ -835,7 +929,7 @@ function ReadingStatsPopup:init()
     self:_buildUI()
 end
 
--- Two placements (Settings > Advanced settings > Book progress popup >
+-- Two placements (Settings > Book progress popup >
 -- "Popup position"):
 --   top     full-width sheet hanging from the top edge (bordersize=0,
 --           radius=0, VerticalGroup wrapper) - the original look

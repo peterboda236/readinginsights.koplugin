@@ -19,7 +19,7 @@ the rest of the book-progress settings in the view).
 
   ChapterBar.PAGE_SIZE       default chapter columns per page of the bar
   ChapterBar.readPageSizeSetting() / ChapterBar.savePageSizeSetting(v) / ChapterBar.DEFAULT_PAGE_SIZE
-      how many chapter columns one page shows (Settings > Advanced settings >
+      how many chapter columns one page shows (Settings > 
       Book progress popup > "Chapters per page"), read on every build
   ChapterBar.readHeightSetting() / ChapterBar.saveHeightSetting(v) / ChapterBar.DEFAULT_HEIGHT
       the bar's height in "points" (Settings > Advanced settings > Bar

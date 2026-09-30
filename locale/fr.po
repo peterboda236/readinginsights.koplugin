@@ -1780,3 +1780,15 @@ msgstr "Une barre par chapitre, aussi haute que le chapitre est long."
 
 msgid "A single bar like KOReader's \"Skim to\" dialog: filled up to the current page, chapter separators and the position marker. Uses the active and inactive bar colors."
 msgstr "Une barre unique comme dans la boîte de dialogue « Skim to » de KOReader : remplie jusqu'à la page actuelle, avec les séparateurs de chapitres et le marqueur de position. Utilise les couleurs de barre active et inactive."
+
+msgid "Book section style"
+msgstr "Style de la section du livre"
+
+msgid "Classic"
+msgstr "Classique"
+
+msgid "Donut chart"
+msgstr "Graphique en anneau"
+
+msgid "How the \"This book\" section looks. \"Classic\" keeps the rows and the progress bar. \"Donut chart\" shows a large donut with the read percentage on the left and the pages, the time read and the reading time left stacked on the right (the progress bar is replaced by the donut)."
+msgstr "Apparence de la section « Ce livre ». « Classique » conserve les lignes et la barre de progression. « Graphique en anneau » affiche à gauche un grand anneau avec le pourcentage lu et, à droite, les uns sous les autres, les pages, le temps de lecture écoulé et le temps de lecture restant (la barre de progression est remplacée par l'anneau)."

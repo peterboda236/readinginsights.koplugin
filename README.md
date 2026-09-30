@@ -139,9 +139,13 @@ unticked keeps everything, so a later reinstall picks up where you left off.
 - **Colors** — a hex colour (or a touch colour wheel) for every bar, line and
   label the popups draw.
 - **Fonts** — your own font and size for each text role.
-- **Advanced settings** — chart heights, date/time and week-start formats,
-  which sections the insights popup shows, the heatmap range, achievement
-  refresh frequency, and the Book progress calendar's cell content.
+- **Reading insight popup / Book progress popup / Book progress calendar** —
+  one submenu per view: which sections each shows, the heatmap range,
+  achievement refresh frequency, the Book progress popup's position and
+  "This book" style (classic rows or a donut chart), and the calendar's
+  cell content.
+- **Advanced settings** — chart heights, long durations as days, and the
+  date/time and week-start formats.
 
 The popups are also registered with `Dispatcher`, so you can assign them to
 gestures under *Settings → Taps and gestures*.

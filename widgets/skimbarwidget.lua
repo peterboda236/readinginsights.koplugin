@@ -2,7 +2,7 @@
 Reading Insights - "skim bar" widget for the book progress view.
 
 An alternative to the per-chapter bar chart (widgets/chapterbarwidget.lua),
-picked in Settings > Advanced settings > Book progress popup > "Chapter bar
+picked in Settings > Book progress popup > "Chapter bar
 style". It is drawn exactly like the progress bar in KOReader's own "Skim
 to" dialog (frontend/ui/widget/skimtowidget.lua, which uses
 frontend/ui/widget/progresswidget.lua): a rounded, black-bordered bar filled
@@ -24,8 +24,8 @@ What differs from the stock widget is the colors:
     at the top and bottom, the bar showing through them).
 
   SkimBar.readHeightSetting() / SkimBar.saveHeightSetting(v) / SkimBar.DEFAULT_HEIGHT
-      the bar's height in "points" (Settings > Advanced settings > Book
-      progress popup > Chapter bar style > "Skim bar height"), read on
+      the bar's height in "points" (Settings > Advanced
+      settings > Bar chart height > "Book progress: Skim bar"), read on
       every build
   SkimBar.build(skim, full_width)
       skim         { percentage = 0..1, ticks = { page, ... }, last = page count }

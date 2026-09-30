@@ -68,7 +68,7 @@ local MONTH_FULL_HU_LC = {
 }
 
 -- ---------------------------------------------------------------------
--- Book-calendar cell content setting (Settings > Advanced settings > Book
+-- Book-calendar cell content setting (Settings > Book
 -- progress calendar > "Book progress calendar cell content"). Controls the
 -- small text line under each day number - see buildBookCalendarCellText
 -- below:
@@ -76,7 +76,7 @@ local MONTH_FULL_HU_LC = {
 --   "pages"             - that day's own page count, e.g. "+101o"
 --   "time"              - that day's own time spent (honors the global
 --                          "Duration format" setting)
--- Exposed on the module so main.lua's Advanced settings submenu can
+-- Exposed on the module so the Settings menu can
 -- read/write it.
 -- ---------------------------------------------------------------------
 local SETTINGS_KEY_CALENDAR_CELL_MODE = "reading_insights_calendar_cell_mode"

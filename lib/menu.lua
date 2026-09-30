@@ -235,18 +235,20 @@ function M.build(self, deps)
         sub_item_table = deps.Fonts.buildMenu(),
     })
 
-    -- "Advanced settings": less commonly touched settings, tucked away in
-    -- their own submenu. A separator is placed above this entry itself (set
-    -- on the preceding "Fonts" entry) to set it apart from the rest of the
-    -- Settings menu.
+    -- Settings menu layout, top to bottom:
+    --   Sleep-screen indicator, Full-screen refresh      (behaviour)
+    --   Colors, Fonts                                    (appearance)
+    --   ---------------------------------------------
+    --   Reading insight popup, Book progress popup,
+    --   Book progress calendar                           (one submenu per view)
+    --   ---------------------------------------------
+    --   Advanced settings                                (less commonly touched)
     --
-    -- Two settings that apply to everything the plugin draws sit at the top
-    -- (bar chart height, long durations as days), then the rest grouped by
-    -- what it affects, one submenu each: "Date & time" (how dates and times
-    -- are spelled out anywhere), "Reading insight popup" and "Book progress
-    -- calendar". Dividers separate the three blocks: under the pair at the
-    -- top, and under "Date & time" (the only group that reaches outside the
-    -- two popups below it).
+    -- "Advanced settings" holds what applies to everything the plugin
+    -- draws: bar chart height, long durations as days, and the "Date &
+    -- time" group (how dates and times are spelled out anywhere). The
+    -- divider above the per-view block is the one set on the "Fonts"
+    -- entry; the divider under it is set on "Book progress calendar".
     local advanced_settings_sub_item_table = {}
 
     table.insert(advanced_settings_sub_item_table, {
@@ -300,6 +302,16 @@ function M.build(self, deps)
                 deps.ChapterBar.saveHeightSetting,
                 deps.ChapterBar.DEFAULT_HEIGHT,
                 10, 200
+            ),
+            -- The skim-style chapter bar's height lives here with the other
+            -- chart heights (it used to sit under Book progress popup >
+            -- Chapter bar style).
+            buildBarHeightMenuEntry(
+                _("Book progress") .. ": " .. _("Skim bar"),
+                deps.SkimBar.readHeightSetting,
+                deps.SkimBar.saveHeightSetting,
+                deps.SkimBar.DEFAULT_HEIGHT,
+                deps.SkimBar.MIN_HEIGHT, deps.SkimBar.MAX_HEIGHT
             ),
         },
     })
@@ -650,16 +662,15 @@ function M.build(self, deps)
         })
     end
 
-    -- The three groups, in the order they appear under Advanced settings.
-    -- Both tables above are complete by now.
+    -- "Date & time" closes off Advanced settings; the three per-view groups
+    -- go directly into the Settings menu, under Fonts.
     table.insert(advanced_settings_sub_item_table, {
         text = _("Date & time"),
         keep_menu_open = true,
-        separator = true,
         sub_item_table = date_time_sub_item_table,
     })
 
-    table.insert(advanced_settings_sub_item_table, {
+    table.insert(settings_sub_item_table, {
         text = _("Reading insight popup"),
         keep_menu_open = true,
         sub_item_table = insights_popup_sub_item_table,
@@ -714,6 +725,49 @@ function M.build(self, deps)
         },
     })
 
+    -- "This book" section style: the original rows, or a donut (default)
+    -- chart with the read percentage on the left and pages / time read /
+    -- time left stacked on the right (widgets/donutwidget.lua).
+    table.insert(book_progress_sub_item_table, {
+        text_func = function()
+            local Opt = deps.ViewSettings.Opt
+            local style = (Opt.readBookSectionStyle() == Opt.BOOK_SECTION_STYLE_DONUT)
+                and _("Donut chart") or _("Classic")
+            return _("Book section style") .. ": " .. style
+        end,
+        help_text = _("How the \"This book\" section looks. \"Classic\" keeps the rows and the progress bar. \"Donut chart\" shows a large donut with the read percentage on the left and the pages, the time read and the reading time left stacked on the right (the progress bar is replaced by the donut)."),
+        keep_menu_open = true,
+        separator = true,
+        sub_item_table = {
+            {
+                text = _("Classic"),
+                keep_menu_open = true,
+                radio = true,
+                checked_func = function()
+                    local Opt = deps.ViewSettings.Opt
+                    return Opt.readBookSectionStyle() == Opt.BOOK_SECTION_STYLE_CLASSIC
+                end,
+                callback = function()
+                    local Opt = deps.ViewSettings.Opt
+                    Opt.saveBookSectionStyle(Opt.BOOK_SECTION_STYLE_CLASSIC)
+                end,
+            },
+            {
+                text = _("Donut chart"),
+                keep_menu_open = true,
+                radio = true,
+                checked_func = function()
+                    local Opt = deps.ViewSettings.Opt
+                    return Opt.readBookSectionStyle() == Opt.BOOK_SECTION_STYLE_DONUT
+                end,
+                callback = function()
+                    local Opt = deps.ViewSettings.Opt
+                    Opt.saveBookSectionStyle(Opt.BOOK_SECTION_STYLE_DONUT)
+                end,
+            },
+        },
+    })
+
     -- Which parts of each section are shown. When every part of a section is
     -- off, its header disappears too (chapter section, "This book", "Pace").
     table.insert(book_progress_sub_item_table, {
@@ -762,11 +816,22 @@ function M.build(self, deps)
         },
     })
 
+
+    -- With the "Donut chart" Book section style the donut row always shows
+    -- the pages and the times, so the two toggles below are greyed out and
+    -- displayed as checked. The saved values are left untouched: switching
+    -- back to "Classic" restores whatever was set there.
+    local function isDonutStyle()
+        local Opt = deps.ViewSettings.Opt
+        return Opt.readBookSectionStyle() == Opt.BOOK_SECTION_STYLE_DONUT
+    end
+
     table.insert(book_progress_sub_item_table, {
         text = _("Read row"),
         help_text = _("Show the row with the read percentage and page count in the \"This book\" section. If every part of the section is off, its header is hidden too."),
         keep_menu_open = true,
-        checked_func = function() return deps.ViewSettings.Opt.readShowBookReadRow() end,
+        enabled_func = function() return not isDonutStyle() end,
+        checked_func = function() return isDonutStyle() or deps.ViewSettings.Opt.readShowBookReadRow() end,
         callback = function()
             deps.ViewSettings.Opt.saveShowBookReadRow(not deps.ViewSettings.Opt.readShowBookReadRow())
         end,
@@ -776,7 +841,8 @@ function M.build(self, deps)
         text = _("Reading time row"),
         help_text = _("Show the row with the time read so far and the reading time left in the \"This book\" section. If every part of the section is off, its header is hidden too."),
         keep_menu_open = true,
-        checked_func = function() return deps.ViewSettings.Opt.readShowBookTimeRow() end,
+        enabled_func = function() return not isDonutStyle() end,
+        checked_func = function() return isDonutStyle() or deps.ViewSettings.Opt.readShowBookTimeRow() end,
         callback = function()
             deps.ViewSettings.Opt.saveShowBookTimeRow(not deps.ViewSettings.Opt.readShowBookTimeRow())
         end,
@@ -826,13 +892,6 @@ function M.build(self, deps)
                 styleEntry(_("Skim bar"),
                     _("A single bar like KOReader's \"Skim to\" dialog: filled up to the current page, chapter separators and the position marker. Uses the active and inactive bar colors."),
                     Opt.CHAPTER_BAR_STYLE_SKIM),
-                buildBarHeightMenuEntry(
-                    _("Skim bar height"),
-                    deps.SkimBar.readHeightSetting,
-                    deps.SkimBar.saveHeightSetting,
-                    deps.SkimBar.DEFAULT_HEIGHT,
-                    deps.SkimBar.MIN_HEIGHT, deps.SkimBar.MAX_HEIGHT
-                ),
             },
         })
     end
@@ -931,9 +990,15 @@ function M.build(self, deps)
             1, 200
         ))
 
+        -- Greyed out with the "Donut chart" section style: the donut
+        -- replaces the linear progress bar, so its settings have no effect.
         table.insert(book_progress_sub_item_table, {
             text = _("Progress bar"),
             keep_menu_open = true,
+            enabled_func = function()
+                local Opt = deps.ViewSettings.Opt
+                return Opt.readBookSectionStyle() ~= Opt.BOOK_SECTION_STYLE_DONUT
+            end,
             sub_item_table = progress_bar_sub_item_table,
         })
     end
@@ -958,7 +1023,7 @@ function M.build(self, deps)
         end,
     })
 
-    table.insert(advanced_settings_sub_item_table, {
+    table.insert(settings_sub_item_table, {
         text = _("Book progress popup"),
         keep_menu_open = true,
         sub_item_table = book_progress_sub_item_table,
@@ -1011,9 +1076,10 @@ function M.build(self, deps)
         },
     })
 
-    table.insert(advanced_settings_sub_item_table, {
+    table.insert(settings_sub_item_table, {
         text = _("Book progress calendar"),
         keep_menu_open = true,
+        separator = true,
         sub_item_table = book_calendar_sub_item_table,
     })
 

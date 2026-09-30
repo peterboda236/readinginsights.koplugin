@@ -1780,3 +1780,15 @@ msgstr "seconds"
 
 msgid "second"
 msgstr "second"
+
+msgid "Book section style"
+msgstr "Book section style"
+
+msgid "Classic"
+msgstr "Classic"
+
+msgid "Donut chart"
+msgstr "Donut chart"
+
+msgid "How the \"This book\" section looks. \"Classic\" keeps the rows and the progress bar. \"Donut chart\" shows a large donut with the read percentage on the left and the pages, the time read and the reading time left stacked on the right (the progress bar is replaced by the donut)."
+msgstr "How the \"This book\" section looks. \"Classic\" keeps the rows and the progress bar. \"Donut chart\" shows a large donut with the read percentage on the left and the pages, the time read and the reading time left stacked on the right (the progress bar is replaced by the donut)."

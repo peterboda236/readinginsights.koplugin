@@ -102,7 +102,7 @@ end
 -- Inclusive [start_t, end_t] timestamps (both at hour=12) for the
 -- heatmap period `periods_back` periods before the current one, where a
 -- period is VS.readHeatmapMonthsSetting() months long (3, 4 or 6 - see
--- Settings ▸ Advanced settings ▸ Reading insight popup ▸ "Reading heatmap range"): period 0 is
+-- Settings ▸ Reading insight popup ▸ "Reading heatmap range"): period 0 is
 -- that many months ending today, period 1 the same span before that,
 -- and so on.
 function M.getHeatmapPeriodRange(periods_back)
