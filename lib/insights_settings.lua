@@ -169,7 +169,7 @@ M.Opt = {
     SHOW_GOAL_KEY     = "reading_insights_show_reading_goal",
     SHOW_GOAL_DEFAULT = true,
 
-    -- What the reading-goal section shows (Settings > Advanced settings >
+    -- What the reading-goal section shows (Settings > 
     -- Reading insight popup > "Reading goal section"):
     --   "both"      (default) finished/target figure + achievements count
     --   "goal_only" the old two-cell view: finished count | yearly target
@@ -180,7 +180,7 @@ M.Opt = {
     GOAL_MODE_OFF  = "off",
 
     -- What the right-hand cell of the "Reading goal" section counts
-    -- (Settings > Advanced settings > Reading insight popup > "Reading goal
+    -- (Settings > Reading insight popup > "Reading goal
     -- display"). "total" (default) shows the year's goal itself - "30 books
     -- to read"; "remaining" shows how many of it are still left after the
     -- finished books on the left - "18 books left". Either way it is the
@@ -191,7 +191,7 @@ M.Opt = {
     GOAL_DISPLAY_REMAINING = "remaining",
 
     -- How often the achievements re-evaluate in the background (Settings >
-    -- Advanced settings > Reading insight popup > "Achievement refresh").
+    -- Reading insight popup > "Achievement refresh").
     -- "daily" (default): at most once per calendar day; "every_open": on
     -- every insights popup open. Either way the heavy re-scan only actually
     -- runs when the reading data changed since the last evaluation; a
@@ -249,15 +249,25 @@ M.Opt = {
     -- Book progress popup: where it is placed on screen. "top" (default) is
     -- the original full-width sheet hanging from the top edge; "center" is a
     -- bordered box in the middle of the screen, as wide as the Book progress
-    -- calendar (94% of the screen width). Settings > Advanced settings >
+    -- calendar (94% of the screen width). Settings > 
     -- Book progress popup > "Popup position".
     BOOK_POPUP_POSITION_KEY    = "reading_insights_book_popup_position",
     BOOK_POPUP_POSITION_TOP    = "top",
     BOOK_POPUP_POSITION_CENTER = "center",
 
+    -- Book progress popup, "This book" section: "classic" is the original
+    -- rows (percent + pages, time read + time left, optional progress bar);
+    -- "donut" replaces them with one large donut chart (percentage in the
+    -- middle, "read" beside it) on the left and, after the column divider,
+    -- pages / time read / time left stacked on the right. Settings >
+    -- Book progress popup > "Book section style".
+    BOOK_SECTION_STYLE_KEY     = "reading_insights_book_section_style",
+    BOOK_SECTION_STYLE_CLASSIC = "classic",
+    BOOK_SECTION_STYLE_DONUT   = "donut",
+
     -- Reading insights popup: whether the title bar's hamburger menu (top
     -- left - quick access to the streak/heatmap/records/achievements
-    -- popups) is shown at all (Settings > Advanced settings > Reading
+    -- popups) is shown at all (Settings > Reading
     -- insight popup > "Hamburger menu"). On by default.
     SHOW_HAMBURGER_MENU_KEY     = "reading_insights_show_hamburger_menu",
     SHOW_HAMBURGER_MENU_DEFAULT = false,
@@ -603,6 +613,18 @@ end
 
 function M.Opt.saveBookPopupPosition(value)
     Prefs.save(M.Opt.BOOK_POPUP_POSITION_KEY, value)
+end
+
+function M.Opt.readBookSectionStyle()
+    local v = Prefs.read(M.Opt.BOOK_SECTION_STYLE_KEY, nil)
+    -- Default (nothing saved yet) is the donut chart; an explicit "classic"
+    -- choice is saved and kept.
+    if v == M.Opt.BOOK_SECTION_STYLE_CLASSIC then return M.Opt.BOOK_SECTION_STYLE_CLASSIC end
+    return M.Opt.BOOK_SECTION_STYLE_DONUT
+end
+
+function M.Opt.saveBookSectionStyle(value)
+    Prefs.save(M.Opt.BOOK_SECTION_STYLE_KEY, value)
 end
 
 function M.Opt.readShowProgressBar()

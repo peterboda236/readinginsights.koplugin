@@ -214,6 +214,11 @@ local ChapterBar = loadModule("widgets/chapterbarwidget.lua",
 local ProgressBar = loadModule("widgets/progressbarwidget.lua",
     { Colors = Colors })
 
+-- The donut (ring) chart shown in the "This book" section when the "Donut
+-- chart" book section style is selected.
+local Donut = loadModule("widgets/donutwidget.lua",
+    { Colors = Colors })
+
 -- The single-bar "skim" alternative to the chapter bar chart, drawn like
 -- KOReader's own Skim dialog but in the plugin's colors.
 local SkimBar = loadModule("widgets/skimbarwidget.lua",
@@ -292,7 +297,7 @@ local StatsPopup = loadModule("views/book_stats_view.lua", {
     Locale = Locale, Colors = Colors, Fonts = Fonts, Prefs = Prefs,
     BookProgress = BookProgress, BookCalendar = BookCalendar,
     ChapterInfo = ChapterInfo, ChapterBar = ChapterBar, ProgressBar = ProgressBar,
-    SkimBar = SkimBar, UI = UI,
+    Donut = Donut, SkimBar = SkimBar, UI = UI,
     BookStatsData = BookStatsData, VS = ViewSettings,
 })
 local Updater = loadModule("lib/updater.lua", { Locale = Locale })

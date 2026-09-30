@@ -1780,3 +1780,15 @@ msgstr "Ein Balken pro Kapitel, so hoch wie das Kapitel lang ist."
 
 msgid "A single bar like KOReader's \"Skim to\" dialog: filled up to the current page, chapter separators and the position marker. Uses the active and inactive bar colors."
 msgstr "Ein einzelner Balken wie im „Skim to“-Dialog von KOReader: bis zur aktuellen Seite gefüllt, mit Kapiteltrennern und Positionsmarke. Verwendet die aktive und die inaktive Balkenfarbe."
+
+msgid "Book section style"
+msgstr "Stil des Buchbereichs"
+
+msgid "Classic"
+msgstr "Klassisch"
+
+msgid "Donut chart"
+msgstr "Ringdiagramm"
+
+msgid "How the \"This book\" section looks. \"Classic\" keeps the rows and the progress bar. \"Donut chart\" shows a large donut with the read percentage on the left and the pages, the time read and the reading time left stacked on the right (the progress bar is replaced by the donut)."
+msgstr "Wie der Bereich „Dieses Buch“ aussieht. „Klassisch“ behält die Zeilen und den Fortschrittsbalken bei. „Ringdiagramm“ zeigt links ein großes Ringdiagramm mit dem gelesenen Prozentsatz und rechts untereinander die Seiten, die gelesene Zeit und die verbleibende Lesezeit (der Fortschrittsbalken wird durch das Ringdiagramm ersetzt)."

@@ -1829,3 +1829,15 @@ msgstr "Один стовпець на главу, висота якого ві�
 
 msgid "A single bar like KOReader's \"Skim to\" dialog: filled up to the current page, chapter separators and the position marker. Uses the active and inactive bar colors."
 msgstr "Одна смуга, як у діалозі «Skim to» KOReader: заповнена до поточної сторінки, з роздільниками глав і маркером позиції. Використовує кольори активної та неактивної панелі."
+
+msgid "Book section style"
+msgstr "Стиль розділу книги"
+
+msgid "Classic"
+msgstr "Класичний"
+
+msgid "Donut chart"
+msgstr "Кільцева діаграма"
+
+msgid "How the \"This book\" section looks. \"Classic\" keeps the rows and the progress bar. \"Donut chart\" shows a large donut with the read percentage on the left and the pages, the time read and the reading time left stacked on the right (the progress bar is replaced by the donut)."
+msgstr "Вигляд розділу «Ця книга». «Класичний» зберігає рядки та смугу прогресу. «Кільцева діаграма» показує ліворуч велику кільцеву діаграму з відсотком прочитаного, а праворуч одне під одним — сторінки, час читання та час читання, що залишився (смугу прогресу замінює діаграма)."

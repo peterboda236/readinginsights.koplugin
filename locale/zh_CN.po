@@ -1499,3 +1499,15 @@ msgstr "每章一根条，条的高度与章节长度成正比。"
 
 msgid "A single bar like KOReader's \"Skim to\" dialog: filled up to the current page, chapter separators and the position marker. Uses the active and inactive bar colors."
 msgstr "单一条，如同 KOReader“Skim to”对话框：填充至当前页，带有章节分隔线和位置标记。使用活动与非活动条形颜色。"
+
+msgid "Book section style"
+msgstr "本书区域样式"
+
+msgid "Classic"
+msgstr "经典"
+
+msgid "Donut chart"
+msgstr "环形图"
+
+msgid "How the \"This book\" section looks. \"Classic\" keeps the rows and the progress bar. \"Donut chart\" shows a large donut with the read percentage on the left and the pages, the time read and the reading time left stacked on the right (the progress bar is replaced by the donut)."
+msgstr "“本书”区域的显示样式。“经典”保留原有的行和进度条。“环形图”在左侧显示带有已读百分比的大号环形图，右侧自上而下依次显示页数、已读时间和剩余阅读时间（进度条由环形图取代）。"
