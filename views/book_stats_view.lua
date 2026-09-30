@@ -845,7 +845,7 @@ local function buildSections(stats, fonts, layout, popup)
 
             if started_widget and stats.finish_days_left then
                 local finish_widget = valueLine(
-                    { value = formatCount(stats.finish_days_left),
+                    { value = "~" .. formatCount(stats.finish_days_left),
                       unit  = N_("day of reading left", "days of reading left", stats.finish_days_left) },
                     ""
                 )
@@ -871,7 +871,7 @@ local function buildSections(stats, fonts, layout, popup)
             elseif stats.finish_days_left then
                 local finish_widget = buildValueLine(
                     fonts.value, fonts.label, layout.full_width - 2 * layout.padding_h,
-                    { value = formatCount(stats.finish_days_left),
+                    { value = "~" .. formatCount(stats.finish_days_left),
                       unit  = N_("day of reading left", "days of reading left", stats.finish_days_left) },
                     ""
                 )
