@@ -1116,6 +1116,8 @@ function M.build(self, deps)
             _("Show the author line. Several authors are joined with a language-appropriate \"and\"."), false),
         bookInfoToggle("series", _("Show series"),
             _("Show the series line (series name and the book's number in it) when the book is part of a series."), false),
+        bookInfoToggle("description", _("Show description"),
+            _("Show the book's description under the author / series, as far down as the bottom of the cover, cut with an ellipsis when it does not fit. Tap it to read the full description. While this is on, the popup is as wide as it can be."), false),
     }
 
     table.insert(settings_sub_item_table, {

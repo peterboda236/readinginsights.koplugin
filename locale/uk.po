@@ -1919,3 +1919,12 @@ msgstr "та"
 
 msgid "{series} / #{index}"
 msgstr "{series} / №{index}"
+
+msgid "Show description"
+msgstr "Показувати опис"
+
+msgid "Show the book's description under the author / series, as far down as the bottom of the cover, cut with an ellipsis when it does not fit. Tap it to read the full description. While this is on, the popup is as wide as it can be."
+msgstr "Показує опис книги під автором / серією аж до нижнього краю обкладинки; якщо він не вміщується, обрізається з трьома крапками. Торкніться його, щоб прочитати повний опис. Поки цей параметр увімкнено, вікно має максимальну ширину."
+
+msgid "Description"
+msgstr "Опис"

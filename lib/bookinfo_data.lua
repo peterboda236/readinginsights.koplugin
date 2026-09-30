@@ -11,6 +11,8 @@ plugin's card data (bookcard.koplugin, lib/bookdata.lua):
                 (hu: "A és B" / "A, B és C"), nil when there is none
   series        series name, nil when the book is not part of one
   series_index  its number, as text ("2", "2.5"), nil when unknown
+  description   plain-text description (paragraphs kept as line breaks),
+                nil when the book has none
 
   BookInfoData.gather(ui)      -> the table above (nil without a document)
   BookInfoData.getCover(ui)    -> a fresh cover BlitBuffer (the caller owns
@@ -88,6 +90,29 @@ local function cleanSeries(props)
     return series, idx
 end
 
+-- The book's description as plain text: publishers ship it as HTML, so the
+-- tags are turned into paragraph breaks / dropped (KOReader's own helper
+-- when it has one, a crude fallback otherwise). nil when there is none.
+local function cleanDescription(desc)
+    if type(desc) ~= "string" or desc == "" then return nil end
+    local ok, util = pcall(require, "util")
+    local done = false
+    if ok and util and util.htmlToPlainTextIfHtml then
+        local ok2, res = pcall(util.htmlToPlainTextIfHtml, desc)
+        if ok2 and type(res) == "string" then desc = res; done = true end
+    end
+    if not done and desc:find("<[%a/!][^>]*>") then
+        desc = desc:gsub("</p>", "\n\n"):gsub("<br%s*/?>", "\n")
+        desc = desc:gsub("<[^>]+>", "")
+        desc = desc:gsub("&nbsp;", " "):gsub("&lt;", "<"):gsub("&gt;", ">")
+            :gsub("&quot;", '"'):gsub("&amp;", "&")
+    end
+    desc = desc:gsub("\r\n?", "\n"):gsub("[ \t]+\n", "\n"):gsub("\n\n\n+", "\n\n")
+    desc = desc:match("^%s*(.-)%s*$")
+    if desc == "" then return nil end
+    return desc
+end
+
 function M.gather(ui)
     if not ui or not ui.document then return nil end
     local props = ui.doc_props or {}
@@ -95,6 +120,7 @@ function M.gather(ui)
     info.title = props.display_title or props.title or filenameTitle(ui.document.file)
     info.authors = cleanAuthors(props.authors)
     info.series, info.series_index = cleanSeries(props)
+    info.description = cleanDescription(props.description)
     return info
 end
 

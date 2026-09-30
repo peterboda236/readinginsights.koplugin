@@ -656,6 +656,8 @@ end
 --   border   thin frame around the cover
 --   author   author line
 --   series   series line
+--   description  the book's description under the author / series, down to
+--                the bottom of the cover (tap it for the full text)
 M.Opt.BOOK_INFO_KEYS = {
     cover   = "reading_insights_book_info_cover",
     rounded = "reading_insights_book_info_rounded",
@@ -663,6 +665,7 @@ M.Opt.BOOK_INFO_KEYS = {
     border  = "reading_insights_book_info_border",
     author  = "reading_insights_book_info_author",
     series  = "reading_insights_book_info_series",
+    description = "reading_insights_book_info_description",
 }
 
 function M.Opt.readBookInfo(name)

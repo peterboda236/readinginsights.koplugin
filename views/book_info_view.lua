@@ -17,7 +17,14 @@ progress popup uses it to reopen itself, so closing the Book info popup
 lands back where it was opened from.
 
 Controls:
-  - Tap anywhere / swipe       dismiss
+  - Tap the description        full description in a viewer window
+  - Tap anywhere else / swipe  dismiss
+
+With Settings > Book info > "Show description" on (the default) the book's
+description is set under the author / series, one large padding below them,
+down to the bottom of the cover (shadow included). It is cut at a word
+boundary with an ellipsis when it does not fit, and the popup then always
+takes its maximum width.
 
 The cover comes in three sizes (Settings > Book info > Cover size): small
 (50%), medium (100%, the default) and large (150%).
@@ -45,6 +52,7 @@ local OverlapGroup = require("ui/widget/overlapgroup")
 local RenderText = require("ui/rendertext")
 local Size = require("ui/size")
 local TextBoxWidget = require("ui/widget/textboxwidget")
+local TextWidget = require("ui/widget/textwidget")
 local UIManager = require("ui/uimanager")
 local VerticalGroup = require("ui/widget/verticalgroup")
 local VerticalSpan = require("ui/widget/verticalspan")
@@ -75,6 +83,48 @@ local function naturalWidth(txt, face)
         face, txt, true, false)
     if ok and size and size.x then return size.x end
     return math.huge
+end
+
+-- Greedy word-wrap of `text` (whitespace collapsed) into at most `max_lines`
+-- lines of at most `width` pixels in `face`. When words are left over, the
+-- last line is cut back to whole words and closed with an ellipsis right
+-- after its final word (a trailing comma / colon etc. is dropped first).
+-- Returns the list of lines.
+local function wrapPreview(text, face, width, max_lines)
+    local words = {}
+    for w in tostring(text or ""):gmatch("%S+") do words[#words + 1] = w end
+    local n = #words
+    local lines = {}
+    local i = 1
+    while i <= n and #lines < max_lines do
+        local line = words[i]
+        i = i + 1
+        while i <= n do
+            local cand = line .. " " .. words[i]
+            if naturalWidth(cand, face) <= width then
+                line = cand
+                i = i + 1
+            else
+                break
+            end
+        end
+        lines[#lines + 1] = line
+    end
+
+    if i <= n and #lines > 0 then
+        local lw = {}
+        for w in lines[#lines]:gmatch("%S+") do lw[#lw + 1] = w end
+        while true do
+            local base = table.concat(lw, " "):gsub("[,;:%-]+$", "")
+            local cand = base .. "\226\128\166" -- U+2026 ellipsis
+            if #lw <= 1 or naturalWidth(cand, face) <= width then
+                lines[#lines] = cand
+                break
+            end
+            lw[#lw] = nil
+        end
+    end
+    return lines
 end
 
 -- A wrapped, height-capped text block (ellipsis when it does not fit).
@@ -228,7 +278,7 @@ function BookInfoPopup:_buildUI()
     -- "medium" size (Settings > Book info > Cover size); "small" is half
     -- and "large" one and a half times that.
     local scale = Opt.BOOK_INFO_COVER_SCALE[Opt.readBookInfoCoverSize()] or 1
-    local cover, cover_w = self:_buildCover(
+    local cover, cover_w, cover_h = self:_buildCover(
         math.floor(content_w * 0.34 * scale),
         math.floor(screen_h * 0.30 * scale))
     if cover then
@@ -254,7 +304,10 @@ function BookInfoPopup:_buildUI()
     if series_line then
         needed = math.max(needed, naturalWidth(series_line, series_face))
     end
-    if needed < text_w then
+    -- With the description on, the box always keeps its maximum width so the
+    -- description has room to breathe.
+    local show_desc = Opt.readBookInfo("description")
+    if not show_desc and needed < text_w then
         -- a few pixels of slack so a line that just fits never wraps
         text_w = math.max(S(80), math.ceil(needed) + S(4))
     end
@@ -274,6 +327,50 @@ function BookInfoPopup:_buildUI()
         table.insert(text_col, textBlock(
             series_line, series_face, Colors.label(), text_w, 2))
     end
+
+    -- Description: starts one "large padding" below the author / series and
+    -- runs down to the bottom of the cover (its shadow included, when on),
+    -- as many whole lines as fit. Tapping it opens the full text.
+    self.desc_frame = nil
+    self.desc_full = nil
+    if show_desc and self.info.description then
+        local region_h = cover_h or math.floor(screen_h * 0.30 * scale)
+        local desc_face = Fonts.getFace("bookinfo_description")
+        local probe = TextWidget:new{ text = "Ag", face = desc_face }
+        local line_h = probe:getSize().h
+        probe:free()
+        -- Sum the children by hand: VerticalGroup:getSize() caches its size
+        -- and offsets, which would go stale once the description is added.
+        local used_h = 0
+        for _idx, child in ipairs(text_col) do
+            used_h = used_h + child:getSize().h
+        end
+        local avail = region_h - used_h - pad
+        local max_lines = line_h > 0 and math.floor(avail / line_h) or 0
+        if max_lines >= 1 then
+            local lines = wrapPreview(self.info.description, desc_face, text_w, max_lines)
+            local desc_col = VerticalGroup:new{ align = "left" }
+            for _idx, line in ipairs(lines) do
+                table.insert(desc_col, TextWidget:new{
+                    text = line,
+                    face = desc_face,
+                    max_width = text_w,
+                    fgcolor = Colors.label(),
+                })
+            end
+            table.insert(text_col, VerticalSpan:new{ width = pad })
+            self.desc_frame = FrameContainer:new{
+                bordersize = 0, padding = 0, margin = 0,
+                background = Blitbuffer.COLOR_WHITE,
+                width = text_w,
+                height = max_lines * line_h,
+                desc_col,
+            }
+            table.insert(text_col, self.desc_frame)
+            self.desc_full = self.info.description
+        end
+    end
+    if text_col.resetLayout then text_col:resetLayout() end
     table.insert(row, text_col)
 
     self.popup_frame = FrameContainer:new{
@@ -304,7 +401,45 @@ function BookInfoPopup:onCloseWidget()
     if cb then cb() end
 end
 
-function BookInfoPopup:onTapClose()
+-- Full description in a scrollable viewer on top of this popup.
+-- This popup (and the Book progress popup under it) is modal, and modal
+-- widgets are stacked above non-modal ones. So the viewer itself is made
+-- modal, and so is every dialog it opens (its hamburger menu, the search /
+-- font dialogs ...): while the viewer is open, UIManager:show is wrapped to
+-- flag whatever gets shown as modal; the wrapper is removed when it closes.
+function BookInfoPopup:_showFullDescription()
+    local TextViewer = require("ui/widget/textviewer")
+    local viewer = TextViewer:new{
+        title = _("Description"),
+        text = self.desc_full,
+        justified = false,
+        modal = true,
+    }
+
+    local orig_show = UIManager.show
+    local function modal_show(um, widget, ...)
+        if widget then widget.modal = true end
+        return orig_show(um, widget, ...)
+    end
+    UIManager.show = modal_show
+
+    local orig_close = viewer.onCloseWidget
+    function viewer:onCloseWidget(...)
+        if UIManager.show == modal_show then
+            UIManager.show = orig_show
+        end
+        if orig_close then return orig_close(self, ...) end
+    end
+
+    UIManager:show(viewer)
+end
+
+function BookInfoPopup:onTapClose(arg, ges)
+    local d = self.desc_frame and self.desc_frame.dimen
+    if d and self.desc_full and ges and ges.pos and ges.pos:intersectWith(d) then
+        self:_showFullDescription()
+        return true
+    end
     UIManager:close(self)
     return true
 end

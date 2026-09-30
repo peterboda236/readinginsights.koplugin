@@ -1870,3 +1870,12 @@ msgstr "e"
 
 msgid "{series} / #{index}"
 msgstr "{series} / n.º {index}"
+
+msgid "Show description"
+msgstr "Mostrar descrição"
+
+msgid "Show the book's description under the author / series, as far down as the bottom of the cover, cut with an ellipsis when it does not fit. Tap it to read the full description. While this is on, the popup is as wide as it can be."
+msgstr "Mostra a descrição do livro abaixo do autor / série, até à base da capa; se não couber, é cortada com reticências. Toque nela para ler a descrição completa. Enquanto esta opção estiver ativa, a janela tem a largura máxima."
+
+msgid "Description"
+msgstr "Descrição"
