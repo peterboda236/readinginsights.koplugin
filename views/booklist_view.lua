@@ -202,6 +202,7 @@ function M.showBookList(title, books, on_close, stats_plugin, opts)
                 end)
             end,
         }
+        ListWidget.fitTitle(kv)
         UIManager:show(kv)
     end
 

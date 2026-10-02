@@ -356,6 +356,21 @@ function BookListItem:onHoldTouch()
     return false
 end
 
+-- KOReader's KeyValuePage and SortWidget build their title bar so that a
+-- title too wide for it is cut off with an ellipsis ("September 2026: 5 bo...").
+-- TitleBar can instead shrink the font until the whole title fits
+-- (title_shrink_font_to_fit); neither page switches that on, so do it here
+-- once the widget exists. Safe on older KOReader versions without the
+-- option: the property is just ignored, and any error leaves the bar as it was.
+function M.fitTitle(widget)
+    local tb = widget and widget.title_bar
+    if not tb or not tb.setTitle or tb.title_shrink_font_to_fit then return end
+    pcall(function()
+        tb.title_shrink_font_to_fit = true
+        tb:setTitle(tb.title, true)
+    end)
+end
+
 local BookListWidget = SortWidget:extend{
     -- Full-screen and modal: these lists are opened on top of the insights
     -- popup, which would otherwise keep receiving the taps that land
@@ -402,6 +417,7 @@ function BookListWidget:init()
     self.sort_disabled = false
     SortWidget.init(self)
     self.sort_disabled = disabled
+    M.fitTitle(self)
 
     if not self.show_ok_cancel then
         -- Same-width spacers rather than removing the buttons: the page
