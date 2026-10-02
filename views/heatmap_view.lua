@@ -1019,23 +1019,22 @@ function M.buildHeatmapBoxContent(popup_self, periods_back, force_fresh)
     local st, et = os.date("*t", start_t), os.date("*t", end_t)
     local period_title
     local T = require("ffi/util").template
-    if st.year == et.year then
-        period_title = T(_("%1 – %2 %3"),
-            MONTH_NAMES_SHORT[st.month], MONTH_NAMES_SHORT[et.month], tostring(et.year))
-    else
-        -- Some languages (Hungarian: "2025. dec. – 2026. jan.") write the
-        -- month abbreviations in lower case and put the year first.
-        local m1, m2 = MONTH_NAMES_SHORT[st.month], MONTH_NAMES_SHORT[et.month]
-        if _("range months lowercase") == "yes" then
-            local function lowerFirst(w)
-                local map = { ["Á"]="á", ["É"]="é", ["Í"]="í", ["Ó"]="ó",
-                              ["Ö"]="ö", ["Ő"]="ő", ["Ú"]="ú", ["Ü"]="ü", ["Ű"]="ű" }
-                local c2 = w:sub(1, 2)
-                if map[c2] then return map[c2] .. w:sub(3) end
-                return w:sub(1, 1):lower() .. w:sub(2)
-            end
-            m1, m2 = lowerFirst(m1), lowerFirst(m2)
+    -- Some languages (Hungarian: "2026. okt.–nov.", "2025. dec. – 2026. jan.")
+    -- write the month abbreviations in lower case and put the year first.
+    local m1, m2 = MONTH_NAMES_SHORT[st.month], MONTH_NAMES_SHORT[et.month]
+    if _("range months lowercase") == "yes" then
+        local function lowerFirst(w)
+            local map = { ["Á"]="á", ["É"]="é", ["Í"]="í", ["Ó"]="ó",
+                          ["Ö"]="ö", ["Ő"]="ő", ["Ú"]="ú", ["Ü"]="ü", ["Ű"]="ű" }
+            local c2 = w:sub(1, 2)
+            if map[c2] then return map[c2] .. w:sub(3) end
+            return w:sub(1, 1):lower() .. w:sub(2)
         end
+        m1, m2 = lowerFirst(m1), lowerFirst(m2)
+    end
+    if st.year == et.year then
+        period_title = T(_("%1 – %2 %3"), m1, m2, tostring(et.year))
+    else
         period_title = T(_("%1 %2 – %3 %4"),
             m1, tostring(st.year), m2, tostring(et.year))
     end

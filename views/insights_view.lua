@@ -131,6 +131,15 @@ local MONTH_NAMES_SHORT = {
     _("Jan"), _("Feb"), _("Mar"), _("Apr"), _("May"), _("Jun"),
     _("Jul"), _("Aug"), _("Sep"), _("Oct"), _("Nov"), _("Dec"),
 }
+-- Hungarian month abbreviations for the monthly bar chart only: lower case
+-- ("jan.", "febr.", ...), the way they are normally written in running
+-- text. A lookup table rather than string.lower(), which can't lower-case
+-- accented capitals like "Á". Everywhere else the shared, capitalised
+-- _("Jan") ... _("Dec") strings stay as they were.
+local MONTH_NAMES_SHORT_HU_LC = {
+    "jan.", "febr.", "márc.", "ápr.", "máj.", "jún.",
+    "júl.", "aug.", "szept.", "okt.", "nov.", "dec.",
+}
 local ReadingInsightsPopup
 
 -- Format seconds as a clock-style duration for book list display, honouring
@@ -553,6 +562,11 @@ local function buildMonthlyChart(popup_self, monthly_data, layout, fonts)
             }
             local month_data       = m
             local month_year_label = m.label_full .. " " .. popup_self.selected_year
+            if getLangBase() == "hu" then
+                -- Hungarian: "2026. január" (year first, lower-case month),
+                -- matching the calendar headers.
+                month_year_label = tostring(popup_self.selected_year) .. ". " .. m.label_full
+            end
             tappable_bar.ges_events = {
                 Tap  = { GestureRange:new{ ges = "tap",  range = tappable_bar.dimen } },
             }
@@ -566,7 +580,12 @@ local function buildMonthlyChart(popup_self, monthly_data, layout, fonts)
 
             table.insert(bars_row, tappable_bar)
 
-            local month_label_widget = TextWidget:new{ text = m.label, face = font_small, fgcolor = Colors.small() }
+            local month_label_text = m.label
+            if getLangBase() == "hu" then
+                local mn = tonumber(tostring(m.month):match("%-(%d%d)$"))
+                month_label_text = MONTH_NAMES_SHORT_HU_LC[mn] or m.label
+            end
+            local month_label_widget = TextWidget:new{ text = month_label_text, face = font_small, fgcolor = Colors.small() }
             table.insert(month_labels_row, CenterContainer:new{
                 dimen = Geom:new{ w = bar_width, h = month_label_widget:getSize().h },
                 month_label_widget,

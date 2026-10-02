@@ -89,7 +89,7 @@ end
 -- Weekday names (os.date("*t").wday: 1=Sunday .. 7=Saturday) a "kezdve" /
 -- "várható befejezés" felugró dátumsorokhoz. Nem magyar nyelveknél _()-n
 -- keresztül fordítva; magyarnál a lenti kisbetűs alakok kellenek, mert a
--- teljes dátum után a nap neve kisbetűvel áll ("2026.06.24. szerda").
+-- teljes dátum után a nap neve kisbetűvel áll ("2026. 06. 24., szerda").
 local WEEKDAY_NAMES = {
     "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday",
 }
@@ -126,10 +126,17 @@ local function formatEventDateTime(timestamp)
     -- The date itself follows the configured date format (Settings ▸
     -- Advanced settings ▸ Date & time ▸ "Date format"); only where the
     -- weekday goes stays language-bound, since Hungarian wants it after
-    -- the date and in lower case ("2026.06.24. szerda").
+    -- the date and in lower case ("2026. 06. 24., szerda").
     local date_str = Locale.formatDateFromTS(timestamp)
     if is_hu then
-        return date_str .. " " .. WEEKDAY_NAMES_HU_LC[t.wday]
+        -- Hungarian orthography: "2026. 10. 05., hétfő" (spaces after the
+        -- dots, comma before the weekday). Only the dotted pattern needs
+        -- the extra spaces; other configured formats just get the comma.
+        local y, m, d = date_str:match("^(%d%d%d%d)%.(%d%d)%.(%d%d)%.$")
+        if y then
+            date_str = string.format("%s. %s. %s.", y, m, d)
+        end
+        return date_str .. ", " .. WEEKDAY_NAMES_HU_LC[t.wday]
     end
     return _(WEEKDAY_NAMES[t.wday]) .. ", " .. date_str
 end

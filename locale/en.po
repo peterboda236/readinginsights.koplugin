@@ -163,10 +163,10 @@ msgid "No books read in "
 msgstr "No books read in "
 
 msgid "%1 - book read %2"
-msgstr "%1 - book read %2"
+msgstr "%1: %2 book read"
 
 msgid "%1 - books read %2"
-msgstr "%1 - books read %2"
+msgstr "%1: %2 books read"
 
 msgid "Reading goal"
 msgstr "Reading goal"
@@ -187,10 +187,10 @@ msgid "books goal"
 msgstr "books goal"
 
 msgid "%1 - book finished %2"
-msgstr "%1 - book finished %2"
+msgstr "%1: %2 book finished"
 
 msgid "%1 - books finished %2"
-msgstr "%1 - books finished %2"
+msgstr "%1: %2 books finished"
 
 msgid "No books finished in %1"
 msgstr "No books finished in %1"

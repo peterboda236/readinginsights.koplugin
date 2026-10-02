@@ -65,7 +65,7 @@ local MONTH_NAMES_SHORT = {
     _("Jul"), _("Aug"), _("Sep"), _("Oct"), _("Nov"), _("Dec"),
 }
 local MONTH_NAMES_FULL = {
-    _("January"), _("February"), _("March"), _("April"), _("May"), _("June"),
+    _("January"), _("February"), _("March"), _("April"), _("May "), _("June"),
     _("July"), _("August"), _("September"), _("October"), _("November"), _("December"),
 }
 
