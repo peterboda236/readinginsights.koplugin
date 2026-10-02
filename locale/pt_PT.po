@@ -939,10 +939,10 @@ msgid "Shows the number of books finished this year next to your yearly goal. Lo
 msgstr "Mostra o número de livros concluídos este ano ao lado da sua meta anual. Prima continuamente o valor da meta para o alterar."
 
 msgid "book to read"
-msgstr "livro para ler"
+msgstr "livro como meta"
 
 msgid "books to read"
-msgstr "livros para ler"
+msgstr "livros como meta"
 
 msgid "* = changed by you"
 msgstr "* = alterado por si"

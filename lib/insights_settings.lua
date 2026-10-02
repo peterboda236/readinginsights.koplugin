@@ -617,10 +617,10 @@ end
 
 function M.Opt.readBookSectionStyle()
     local v = Prefs.read(M.Opt.BOOK_SECTION_STYLE_KEY, nil)
-    -- Default (nothing saved yet) is the donut chart; an explicit "classic"
+    -- Default (nothing saved yet) is the classic style; an explicit "donut"
     -- choice is saved and kept.
-    if v == M.Opt.BOOK_SECTION_STYLE_CLASSIC then return M.Opt.BOOK_SECTION_STYLE_CLASSIC end
-    return M.Opt.BOOK_SECTION_STYLE_DONUT
+    if v == M.Opt.BOOK_SECTION_STYLE_DONUT then return M.Opt.BOOK_SECTION_STYLE_DONUT end
+    return M.Opt.BOOK_SECTION_STYLE_CLASSIC
 end
 
 function M.Opt.saveBookSectionStyle(value)

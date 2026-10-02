@@ -933,10 +933,10 @@ msgid "Shows the number of books finished this year next to your yearly goal. Lo
 msgstr "Shows the number of books finished this year next to your yearly goal. Long press the goal value to change it."
 
 msgid "book to read"
-msgstr "book to read"
+msgstr "book goal"
 
 msgid "books to read"
-msgstr "books to read"
+msgstr "book goal"
 
 msgid "* = changed by you"
 msgstr "* = changed by you"

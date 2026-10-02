@@ -981,10 +981,10 @@ msgstr ""
 "значення цілі, щоб змінити його."
 
 msgid "book to read"
-msgstr "книга до прочитання"
+msgstr "цільова книга"
 
 msgid "books to read"
-msgstr "книг до прочитання"
+msgstr "цільових книг"
 
 msgid "* = changed by you"
 msgstr "* = змінено вами"

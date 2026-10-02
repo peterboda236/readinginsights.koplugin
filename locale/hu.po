@@ -133,13 +133,13 @@ msgid "weeks"
 msgstr "hét"
 
 msgid "No streak"
-msgstr "Nincs sorozat"
+msgstr "Nincs széria"
 
 msgid "Current streak"
-msgstr "Aktuális sorozat"
+msgstr "Aktuális széria"
 
 msgid "Best streak"
-msgstr "Leghosszabb sorozat"
+msgstr "Leghosszabb széria"
 
 msgid "Days read per month"
 msgstr "Havonta olvasott napok"
@@ -220,7 +220,7 @@ msgid "All books read %1"
 msgstr "Összesen: %1 könyv olvasva"
 
 msgid "Total read"
-msgstr "Összes olvasás"
+msgstr "Összesen olvasva"
 
 msgid "Last week"
 msgstr "Legutóbbi hét"
@@ -235,7 +235,7 @@ msgid "Set"
 msgstr "Beállítás"
 
 msgid "avg/day"
-msgstr "átlag oldal/nap"
+msgstr "napi átlagos oldal"
 
 msgid "Today"
 msgstr "Ma"
@@ -265,7 +265,7 @@ msgid "Sun"
 msgstr "Vas."
 
 msgid "read time avg/day"
-msgstr "átlag idő/nap"
+msgstr "napi átlagos idő"
 
 msgid "reading time"
 msgstr "olvasási idő"
@@ -292,10 +292,10 @@ msgid "No reading data in the last 8 weeks"
 msgstr "Nincs olvasási adat az elmúlt 8 héten"
 
 msgid "avg time/day"
-msgstr "átlag idő/nap"
+msgstr "napi átlagos idő"
 
 msgid "avg pages/day"
-msgstr "átlag oldal/nap"
+msgstr "napi átlagos oldal"
 
 msgid "page read today"
 msgstr "oldal olvasva ma"
@@ -837,13 +837,13 @@ msgid "Peak activity (100%)"
 msgstr "Csúcsaktivitás (100%)"
 
 msgid "Reading streak calendar"
-msgstr "Olvasási sorozat naptár"
+msgstr "Olvasási széria naptár"
 
 msgid "Daily streak day"
-msgstr "Napi sorozat napja"
+msgstr "Napi széria napja"
 
 msgid "Weekly streak gap day"
-msgstr "Heti sorozat kihagyott napja"
+msgstr "Heti széria kihagyott napja"
 
 msgid "Book progress bar"
 msgstr "Könyv előrehaladás-sáv"
@@ -891,7 +891,7 @@ msgid "Most pages in a day"
 msgstr "Legtöbb oldal egy nap alatt"
 
 msgid "Best daily streak"
-msgstr "Leghosszabb napi sorozat"
+msgstr "Leghosszabb napi széria"
 
 msgid "Fastest book finished"
 msgstr "Leggyorsabban kiolvasott könyv"
@@ -918,19 +918,19 @@ msgid "Show Records"
 msgstr "Rekordok megjelenítése"
 
 msgid "Show Reading streak"
-msgstr "Olvasási sorozat megjelenítése"
+msgstr "Olvasási széria megjelenítése"
 
 msgid "Menu items"
 msgstr "Menüelemek"
 
 msgid "Reading streak"
-msgstr "Olvasási sorozat"
+msgstr "Olvasási széria"
 
 msgid "Tick the popups that should be listed under Tools > Reading insights. The book popups only appear while a book is open."
 msgstr "Pipáld be, mely ablakok jelenjenek meg az Eszközök > Reading insights menüben. A könyves ablakok csak megnyitott könyvnél jelennek meg."
 
 msgid "Reading insights: reading streak"
-msgstr "Reading insights: olvasási sorozat"
+msgstr "Reading insights: olvasási széria"
 
 msgid "Reading insights: reading heatmap"
 msgstr "Reading insights: olvasási hőtérkép"
@@ -948,10 +948,10 @@ msgid "Shows the number of books finished this year next to your yearly goal. Lo
 msgstr "Az idén befejezett könyvek számát mutatja az éves cél mellett. A cél értékét hosszan nyomva módosíthatod."
 
 msgid "book to read"
-msgstr "könyv a cél"
+msgstr "könyves cél"
 
 msgid "books to read"
-msgstr "könyv a cél"
+msgstr "könyves cél"
 
 msgid "* = changed by you"
 msgstr "* = általad módosítva"
@@ -1125,13 +1125,13 @@ msgid "Read for 1000 hours in total"
 msgstr "Olvass összesen 1000 órát"
 
 msgid "Weekly streak"
-msgstr "Heti sorozat"
+msgstr "Heti széria"
 
 msgid "Read on 7 days in a row"
 msgstr "Olvass 7 egymást követő napon"
 
 msgid "Monthly streak"
-msgstr "Havi sorozat"
+msgstr "Havi széria"
 
 msgid "Read on 30 days in a row"
 msgstr "Olvass 30 egymást követő napon"
@@ -1425,10 +1425,10 @@ msgid "Read on 365 days in a row"
 msgstr "Olvass 365 egymást követő napon"
 
 msgid "A 4-week reading streak"
-msgstr "4 hetes olvasási sorozat"
+msgstr "4 hetes olvasási széria"
 
 msgid "A 12-week reading streak"
-msgstr "12 hetes olvasási sorozat"
+msgstr "12 hetes olvasási széria"
 
 msgid "Read on every day of a calendar month"
 msgstr "Olvass egy naptári hónap minden napján"
@@ -1695,7 +1695,7 @@ msgid "Hamburger menu"
 msgstr "Hamburger menü"
 
 msgid "Show the hamburger menu (top left of the title bar) with quick access to the streak, heatmap, records and achievements popups."
-msgstr "A hamburger menü (a fejléc bal oldalán) megjelenítése, amely gyors elérést biztosít az olvasási sorozat, a hőtérkép, a rekordok és a teljesítmények popupokhoz."
+msgstr "A hamburger menü (a fejléc bal oldalán) megjelenítése, amely gyors elérést biztosít az olvasási széria, a hőtérkép, a rekordok és a teljesítmények popupokhoz."
 
 msgid "Couldn't open Records: "
 msgstr "Nem sikerült megnyitni a Rekordokat: "
@@ -1707,7 +1707,7 @@ msgid "Show week numbers"
 msgstr "Hetek számának megjelenítése"
 
 msgid "Add a \"Week\" column with each row's week number to the reading streak and Book progress calendars."
-msgstr "„Hét” oszlop hozzáadása, amely soronként a hét számát mutatja az olvasási sorozat és a könyvhaladási naptárakon."
+msgstr "„Hét” oszlop hozzáadása, amely soronként a hét számát mutatja az olvasási széria és a könyvhaladási naptárakon."
 
 msgid "Popup position"
 msgstr "Ablak helyzete"
@@ -1876,3 +1876,12 @@ msgstr "A könyv leírásának megjelenítése a szerző / sorozat alatt, a bor�
 
 msgid "Description"
 msgstr "Leírás"
+
+msgid "%1 – %2 %3"
+msgstr "%1-%2 %3"
+
+msgid "%1 %2 – %3 %4"
+msgstr "%2. %1 – %4. %3"
+
+msgid "range months lowercase"
+msgstr "yes"
