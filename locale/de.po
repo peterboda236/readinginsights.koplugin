@@ -207,6 +207,9 @@ msgstr "Daten werden neu geladen..."
 msgid "Reading insights"
 msgstr "Leseeinblicke"
 
+msgid "Reading insights popup title"
+msgstr "Leseeinblicke"
+
 msgid "Reading insights: all time statistics"
 msgstr "Leseeinblicke: Gesamtstatistik"
 

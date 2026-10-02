@@ -207,6 +207,9 @@ msgstr "Adatok újraolvasása..."
 msgid "Reading insights"
 msgstr "Reading insights"
 
+msgid "Reading insights popup title"
+msgstr "Olvasási áttekintés"
+
 msgid "Reading insights: all time statistics"
 msgstr "Reading insights: összesített statisztika"
 
@@ -304,7 +307,7 @@ msgid "pages read today"
 msgstr "oldal olvasva ma"
 
 msgid "Show Reading insights"
-msgstr "Reading insights megnyitása"
+msgstr "Olvasási áttekintés megnyitása"
 
 msgid "Full-screen refresh on open/close"
 msgstr "Teljes képernyő frissítés megnyitáskor/bezáráskor"

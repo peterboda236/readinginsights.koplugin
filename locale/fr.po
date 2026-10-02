@@ -207,6 +207,9 @@ msgstr "Rechargement des données..."
 msgid "Reading insights"
 msgstr "Statistiques de lecture"
 
+msgid "Reading insights popup title"
+msgstr "Statistiques de lecture"
+
 msgid "Reading insights: all time statistics"
 msgstr "Statistiques de lecture : statistiques de toujours"
 

@@ -207,6 +207,9 @@ msgstr "Reloading data..."
 msgid "Reading insights"
 msgstr "Reading insights"
 
+msgid "Reading insights popup title"
+msgstr "Reading insights"
+
 msgid "Reading insights: all time statistics"
 msgstr "Reading insights: all time statistics"
 

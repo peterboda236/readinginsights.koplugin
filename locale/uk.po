@@ -222,6 +222,9 @@ msgstr "Перезавантаження даних..."
 msgid "Reading insights"
 msgstr "Аналітика читання"
 
+msgid "Reading insights popup title"
+msgstr "Аналітика читання"
+
 msgid "Reading insights: all time statistics"
 msgstr "Аналітика читання: статистика за весь час"
 
@@ -310,7 +313,7 @@ msgid "pages read today"
 msgstr "сторінок прочитано сьогодні"
 
 msgid "Show Reading insights"
-msgstr "Показати Аналітику читання"
+msgstr "Показати аналітику читання"
 
 msgid "Full-screen refresh on open/close"
 msgstr "Повноекранне оновлення при відкритті/закритті"
