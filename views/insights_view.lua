@@ -1923,7 +1923,13 @@ end
 -- with a text indicator configured, appends it, e.g. "Reading insights
 -- (sleeping…)".
 function ReadingInsightsPopup:_titleBarText()
-    local title = _("Reading insights")
+    -- Popup header has its own translation key, so the Tools menu entry can
+    -- stay "Reading insights" while the popup shows the localised title.
+    -- Falls back to "Reading insights" if a language lacks the key.
+    local title = _("Reading insights popup title")
+    if title == "Reading insights popup title" then
+        title = _("Reading insights")
+    end
     if self.readonly and self.screensaver_label and self.screensaver_label ~= "" then
         title = title .. " (" .. self.screensaver_label .. ")"
     end

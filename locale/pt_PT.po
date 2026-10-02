@@ -207,6 +207,9 @@ msgstr "A recarregar dados..."
 msgid "Reading insights"
 msgstr "Reading Insights"
 
+msgid "Reading insights popup title"
+msgstr "Estatísticas de leitura"
+
 msgid "Reading insights: all time statistics"
 msgstr "Reading Insights: estatísticas globais"
 
@@ -295,7 +298,7 @@ msgid "pages read today"
 msgstr "páginas lidas hoje"
 
 msgid "Show Reading insights"
-msgstr "Mostrar Reading Insights"
+msgstr "Mostrar estatísticas de leitura"
 
 msgid "Full-screen refresh on open/close"
 msgstr "Atualização de ecrã inteiro ao abrir/fechar"
