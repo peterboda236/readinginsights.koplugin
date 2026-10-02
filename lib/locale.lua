@@ -244,13 +244,13 @@ end
 -- Places that don't print a numeric date - weekday names, month names, the
 -- 8-week chart's axis labels - are deliberately left alone.
 --
--- No stored value means "what this plugin always did": YYYY.MM.DD. for
+-- No stored value means "what this plugin always did": YYYY. MM. DD. for
 -- Hungarian, DD/MM/YYYY everywhere else, so nobody's dates change shape
 -- until they pick a format themselves.
 local SETTINGS_KEY_DATE_FORMAT = "reading_insights_date_format"
 
 local DATE_FORMAT_YMD_DASH = "ymd_dash"   -- 2026-07-20
-local DATE_FORMAT_YMD_DOT  = "ymd_dot"    -- 2026.07.20.
+local DATE_FORMAT_YMD_DOT  = "ymd_dot"    -- 2026. 07. 20.
 local DATE_FORMAT_DMY      = "dmy_slash"  -- 20/07/2026
 local DATE_FORMAT_MDY      = "mdy_slash"  -- 07/20/2026
 
@@ -265,7 +265,7 @@ local VALID_DATE_FORMATS = {
 -- book list's date field hints it.
 local DATE_FORMAT_HINTS = {
     [DATE_FORMAT_YMD_DASH] = "YYYY-MM-DD",
-    [DATE_FORMAT_YMD_DOT]  = "YYYY.MM.DD.",
+    [DATE_FORMAT_YMD_DOT]  = "YYYY. MM. DD.",
     [DATE_FORMAT_DMY]      = "DD/MM/YYYY",
     [DATE_FORMAT_MDY]      = "MM/DD/YYYY",
 }
@@ -294,14 +294,15 @@ local function dateFormatHint()
     return DATE_FORMAT_HINTS[readDateFormatSetting()]
 end
 
--- no_trailing_dot drops the closing dot of the "2026.07.20." pattern, so
--- the first date of a range reads "2026.07.13 - 2026.07.20."; the other
--- three patterns have no trailing dot to drop and ignore it.
+-- The Hungarian pattern is written "2026. 07. 20." (a space after each dot,
+-- and a closing dot, also on the first date of a range: "2026. 07. 13. -
+-- 2026. 07. 20."). no_trailing_dot is therefore accepted but ignored; it is
+-- kept only so existing callers keep working.
 local function formatYMDAs(fmt, y, m, d, no_trailing_dot)
     if fmt == DATE_FORMAT_YMD_DASH then
         return string.format("%04d-%02d-%02d", y, m, d)
     elseif fmt == DATE_FORMAT_YMD_DOT then
-        return string.format("%04d.%02d.%02d%s", y, m, d, no_trailing_dot and "" or ".")
+        return string.format("%04d. %02d. %02d.", y, m, d)
     elseif fmt == DATE_FORMAT_MDY then
         return string.format("%02d/%02d/%04d", m, d, y)
     end
@@ -341,15 +342,35 @@ local function formatDateFromTS(ts, no_trailing_dot)
     return formatYMD(t.year, t.month, t.day, no_trailing_dot)
 end
 
+-- Lower-cases the first letter, including accented capitals ("Á" -> "á"),
+-- which string.lower() can't handle.
+local LOWER_ACCENT = {
+    ["Á"] = "á", ["É"] = "é", ["Í"] = "í", ["Ó"] = "ó", ["Ö"] = "ö",
+    ["Ő"] = "ő", ["Ú"] = "ú", ["Ü"] = "ü", ["Ű"] = "ű",
+}
+local function lowerFirst(w)
+    local c2 = w:sub(1, 2)
+    if LOWER_ACCENT[c2] then return LOWER_ACCENT[c2] .. w:sub(3) end
+    return w:sub(1, 1):lower() .. w:sub(2)
+end
+
 -- Translated short month names ("Jan".."Dec"), reusing the same msgids the
--- rest of the plugin already translates (trend/heatmap/insights views), so
--- no new .po strings are needed for formatShortMonthDay below.
+-- rest of the plugin already translates, so no new .po strings are needed.
+-- Languages that write month abbreviations in lower case (Hungarian: "jan.",
+-- "febr.", "márc.") opt in by translating "range months lowercase" to "yes".
+-- Shared with the heatmap and trend views (Locale.shortMonthNames), so every
+-- short month label comes out the same.
 local MONTH_NAMES_SHORT_FOR_DATE = {
     _("Jan"), _("Feb"), _("Mar"), _("Apr"), _("May"), _("Jun"),
     _("Jul"), _("Aug"), _("Sep"), _("Oct"), _("Nov"), _("Dec"),
 }
+if _("range months lowercase") == "yes" then
+    for i, name in ipairs(MONTH_NAMES_SHORT_FOR_DATE) do
+        MONTH_NAMES_SHORT_FOR_DATE[i] = lowerFirst(name)
+    end
+end
 
--- Compact "Mon D" day-and-month label (e.g. "Sep 22", Hungarian "Szept. 22"),
+-- Compact "Mon D" day-and-month label (e.g. "Sep 22", Hungarian "szept. 22."),
 -- no leading zeros and no year - for places that list many dates in a row
 -- (e.g. the streak history bar list) where a full formatDate() would take up
 -- too much space and a bare numeric "9.22"/"22.9" reads ambiguously. Always
@@ -362,6 +383,10 @@ local function formatShortMonthDay(date_str)
     if not y then return s end
     m, d = tonumber(m), tonumber(d)
     local mon = MONTH_NAMES_SHORT_FOR_DATE[m] or tostring(m)
+    -- Hungarian writes the ordinal day with a closing dot: "szept. 22."
+    if getLangBase() == "hu" then
+        return mon .. " " .. tostring(d) .. "."
+    end
     return mon .. " " .. tostring(d)
 end
 
@@ -378,7 +403,7 @@ local function parseDateInput(str)
     local s = tostring(str or ""):gsub("^%s+", ""):gsub("%s+$", "")
     local y, m, d = s:match("^(%d%d%d%d)%-(%d%d?)%-(%d%d?)$")
     if not y then
-        y, m, d = s:match("^(%d%d%d%d)%.(%d%d?)%.(%d%d?)%.?$")
+        y, m, d = s:match("^(%d%d%d%d)%.%s*(%d%d?)%.%s*(%d%d?)%.?$")
     end
     if not y then
         local a, b, c = s:match("^(%d%d?)/(%d%d?)/(%d%d%d%d)$")
@@ -531,6 +556,8 @@ return {
     formatDate                 = formatDate,
     formatDateFromTS           = formatDateFromTS,
     formatShortMonthDay        = formatShortMonthDay,
+    shortMonthNames            = MONTH_NAMES_SHORT_FOR_DATE,
+    lowerFirst                 = lowerFirst,
     formatDateSample           = formatDateSample,
     parseDateInput             = parseDateInput,
     dateFormatHint             = dateFormatHint,

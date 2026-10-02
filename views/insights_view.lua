@@ -120,8 +120,8 @@ local formatCount  = Locale.formatCount
 -- Format a YYYY-MM-DD string in the configured date format (Settings ▸
 -- Advanced settings ▸ Date & time ▸ "Date format" - see
 -- Locale.formatDate).
--- no_trailing_dot: the "2026.07.20." pattern only - omit the final dot
--- (used for the first date in a range).
+-- no_trailing_dot: ignored (kept for compatibility); every date keeps its
+-- final dot, also the first date of a range.
 local function formatDateForDisplay(date_str, no_trailing_dot)
     if not date_str then return "?" end
     return Locale.formatDate(date_str, no_trailing_dot)

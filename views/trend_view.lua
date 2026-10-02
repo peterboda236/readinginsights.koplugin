@@ -47,10 +47,7 @@ local formatCount  = Locale.formatCount
 local getLangBase  = Locale.getLangBase
 
 -- Same short month names the insights view uses for its own axis labels.
-local MONTH_NAMES_SHORT = {
-    _("Jan"), _("Feb"), _("Mar"), _("Apr"), _("May"), _("Jun"),
-    _("Jul"), _("Aug"), _("Sep"), _("Oct"), _("Nov"), _("Dec"),
-}
+local MONTH_NAMES_SHORT = Locale.shortMonthNames
 
 local M = {}
 
@@ -125,7 +122,7 @@ end
 
 -- Builds the chart: one dot per week, connected by straight segments,
 -- with the per-week value printed above each dot and a baseline below.
--- "Máj 6" / "May 6" style label using the same month names as the monthly chart.
+-- "máj. 6." / "May 6" style label using the same month names as the monthly chart.
 local function formatShortDate(date_str)
     local y, m, d = date_str:match("^(%d+)-(%d+)-(%d+)$")
     if not y then return date_str end

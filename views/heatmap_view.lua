@@ -83,10 +83,9 @@ function M.bind(hooks)
     parseDateYMD   = hooks.parseDateYMD
 end
 
-local MONTH_NAMES_SHORT = {
-    _("Jan"), _("Feb"), _("Mar"), _("Apr"), _("May"), _("Jun"),
-    _("Jul"), _("Aug"), _("Sep"), _("Oct"), _("Nov"), _("Dec"),
-}
+-- Short month names, lower-cased where the language wants it (Hungarian) -
+-- built once in locale.lua so all views share them.
+local MONTH_NAMES_SHORT = Locale.shortMonthNames
 
 -- Adds/subtracts whole calendar months from a Y/M/D triple (relying on
 -- os.time's normalisation of out-of-range month values - e.g. month=13
@@ -1019,19 +1018,9 @@ function M.buildHeatmapBoxContent(popup_self, periods_back, force_fresh)
     local st, et = os.date("*t", start_t), os.date("*t", end_t)
     local period_title
     local T = require("ffi/util").template
-    -- Some languages (Hungarian: "2026. okt.–nov.", "2025. dec. – 2026. jan.")
-    -- write the month abbreviations in lower case and put the year first.
+    -- Month abbreviations are already lower-cased where the language
+    -- wants it (see MONTH_NAMES_SHORT above).
     local m1, m2 = MONTH_NAMES_SHORT[st.month], MONTH_NAMES_SHORT[et.month]
-    if _("range months lowercase") == "yes" then
-        local function lowerFirst(w)
-            local map = { ["Á"]="á", ["É"]="é", ["Í"]="í", ["Ó"]="ó",
-                          ["Ö"]="ö", ["Ő"]="ő", ["Ú"]="ú", ["Ü"]="ü", ["Ű"]="ű" }
-            local c2 = w:sub(1, 2)
-            if map[c2] then return map[c2] .. w:sub(3) end
-            return w:sub(1, 1):lower() .. w:sub(2)
-        end
-        m1, m2 = lowerFirst(m1), lowerFirst(m2)
-    end
     if st.year == et.year then
         period_title = T(_("%1 – %2 %3"), m1, m2, tostring(et.year))
     else

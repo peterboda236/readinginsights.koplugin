@@ -129,13 +129,8 @@ local function formatEventDateTime(timestamp)
     -- the date and in lower case ("2026. 06. 24., szerda").
     local date_str = Locale.formatDateFromTS(timestamp)
     if is_hu then
-        -- Hungarian orthography: "2026. 10. 05., hétfő" (spaces after the
-        -- dots, comma before the weekday). Only the dotted pattern needs
-        -- the extra spaces; other configured formats just get the comma.
-        local y, m, d = date_str:match("^(%d%d%d%d)%.(%d%d)%.(%d%d)%.$")
-        if y then
-            date_str = string.format("%s. %s. %s.", y, m, d)
-        end
+        -- Hungarian: "2026. 10. 05., hétfő" - formatDate already writes the
+        -- spaced "2026. 10. 05." form, so only the comma and weekday follow.
         return date_str .. ", " .. WEEKDAY_NAMES_HU_LC[t.wday]
     end
     return _(WEEKDAY_NAMES[t.wday]) .. ", " .. date_str
