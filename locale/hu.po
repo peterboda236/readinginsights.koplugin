@@ -1746,7 +1746,7 @@ msgid "Show the row with the time read so far and the reading time left in the \
 msgstr "Az eddig olvasott és a hátralévő olvasási időt mutató sor megjelenítése a „Könyv” szekcióban. Ha a szekció minden eleme ki van kapcsolva, a fejléc is eltűnik."
 
 msgid "Show the row with today's reading time and the average time per day in the \"Pace\" section. If this and the started / expected finish row are both off, the whole \"Pace\" section is hidden."
-msgstr "A mai olvasási időt és a napi átlagot mutató sor megjelenítése a „Tempó” szakaszban. Ha ez és a „kezdve / várható befejezés” sor is ki van kapcsolva, a teljes „Haladás” szekció eltűnik."
+msgstr "A mai olvasási időt és a napi átlagot mutató sor megjelenítése a „Tempó” szakaszban. Ha ez és a „kezdve / várható befejezés” sor is ki van kapcsolva, a teljes „Tempó” szekció eltűnik."
 
 msgid "All chapters"
 msgstr "Összes fejezet"
