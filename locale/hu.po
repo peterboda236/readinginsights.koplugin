@@ -217,7 +217,7 @@ msgid "Reading insights: current book progress"
 msgstr "Reading insights: aktuális könyv haladása"
 
 msgid "Reading insights: book progress calendar"
-msgstr "Reading insights: könyv haladás naptár"
+msgstr "Reading insights: könyv haladási naptár"
 
 msgid "All books read %1"
 msgstr "Összesen: %1 könyv olvasva"
@@ -358,16 +358,16 @@ msgid "Loading data…"
 msgstr "Adatok betöltése…"
 
 msgid "Book progress"
-msgstr "Könyv haladás"
+msgstr "Könyv haladása"
 
 msgid "Show Book progress"
-msgstr "Könyv haladás megnyitása"
+msgstr "Könyv haladása megnyitása"
 
 msgid "Show Book progress calendar"
-msgstr "Könyv haladás naptár megnyitása"
+msgstr "Könyv haladása naptár megnyitása"
 
 msgid "Book progress calendar"
-msgstr "Könyv haladás naptár"
+msgstr "Könyv haladási naptára"
 
 msgid "No reading data for this book yet."
 msgstr "Ehhez a könyvhöz még nincs olvasási adat."
@@ -382,7 +382,7 @@ msgid "This book"
 msgstr "Könyv"
 
 msgid "Pace"
-msgstr "Haladás"
+msgstr "Tempó"
 
 msgid "Chapters"
 msgstr "Fejezetek"
@@ -858,7 +858,7 @@ msgid "Date format"
 msgstr "Dátumformátum"
 
 msgid "Book progress calendar cell content"
-msgstr "Könyv haladás naptár cella tartalma"
+msgstr "Könyv haladási naptár cella tartalma"
 
 msgid "Percent"
 msgstr "Százalék"
@@ -1653,7 +1653,7 @@ msgid "Reading time by time of day"
 msgstr "Olvasási idő napszakonként"
 
 msgid "Book progress popup"
-msgstr "Könyv haladás ablak"
+msgstr "Könyv haladása ablak"
 
 msgid "Chapter bar"
 msgstr "Fejezetsáv"
@@ -1692,7 +1692,7 @@ msgid "Started / expected finish row"
 msgstr "„Kezdve / várható befejezés” sor"
 
 msgid "Show the \"started …\" and \"expected finish\" date row in the \"Pace\" section."
-msgstr "A „kezdve…” és „várható befejezés” dátumsor megjelenítése a „Haladás” szakaszban."
+msgstr "A „kezdve…” és „várható befejezés” dátumsor megjelenítése a „Tempó” szakaszban."
 
 msgid "Hamburger menu"
 msgstr "Hamburger menü"
@@ -1710,7 +1710,7 @@ msgid "Show week numbers"
 msgstr "Hetek számának megjelenítése"
 
 msgid "Add a \"Week\" column with each row's week number to the reading streak and Book progress calendars."
-msgstr "„Hét” oszlop hozzáadása, amely soronként a hét számát mutatja az olvasási széria és a könyvhaladási naptárakon."
+msgstr "„Hét” oszlop hozzáadása, amely soronként a hét számát mutatja az olvasási széria és a könyv haladási naptárakon."
 
 msgid "Popup position"
 msgstr "Ablak helyzete"
@@ -1722,7 +1722,7 @@ msgid "Centered"
 msgstr "Középen"
 
 msgid "A bordered box in the middle of the screen, as wide as the Book progress calendar."
-msgstr "Keretes ablak a képernyő közepén, olyan széles, mint a könyvhaladási naptár."
+msgstr "Keretes ablak a képernyő közepén, olyan széles, mint a könyv haladási naptár."
 
 msgid "Read row"
 msgstr "„Elolvasva” sor"
@@ -1746,7 +1746,7 @@ msgid "Show the row with the time read so far and the reading time left in the \
 msgstr "Az eddig olvasott és a hátralévő olvasási időt mutató sor megjelenítése a „Könyv” szekcióban. Ha a szekció minden eleme ki van kapcsolva, a fejléc is eltűnik."
 
 msgid "Show the row with today's reading time and the average time per day in the \"Pace\" section. If this and the started / expected finish row are both off, the whole \"Pace\" section is hidden."
-msgstr "A mai olvasási időt és a napi átlagot mutató sor megjelenítése a „Haladás” szakaszban. Ha ez és a „kezdve / várható befejezés” sor is ki van kapcsolva, a teljes „Haladás” szekció eltűnik."
+msgstr "A mai olvasási időt és a napi átlagot mutató sor megjelenítése a „Tempó” szakaszban. Ha ez és a „kezdve / várható befejezés” sor is ki van kapcsolva, a teljes „Haladás” szekció eltűnik."
 
 msgid "All chapters"
 msgstr "Összes fejezet"
