@@ -1601,3 +1601,6 @@ msgstr "在作者/系列下方显示书籍简介，直至封面底部；放不�
 
 msgid "Description"
 msgstr "简介"
+
+msgid "No reading on %1"
+msgstr "%1 没有阅读记录"

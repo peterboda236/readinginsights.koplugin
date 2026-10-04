@@ -98,6 +98,9 @@ end
 --
 -- opts.show_dates puts the finished-on date in the value column instead of
 -- the reading time; used by the reading goal's finished-books list only.
+-- opts.modal marks the list (and the book stats page a row opens) as modal,
+-- so it stacks above modal popups such as the streak calendar and the
+-- insights popup instead of opening behind them.
 function M.showBookList(title, books, on_close, stats_plugin, opts)
     local KeyValuePage = require("ui/widget/keyvaluepage")
 
@@ -143,6 +146,10 @@ function M.showBookList(title, books, on_close, stats_plugin, opts)
                         end,
                         close_callback  = function() kv2 = nil end,
                     }
+                    -- opts.modal: opened from a modal popup (the streak
+                    -- calendar), so this page has to be modal too or the
+                    -- UIManager would slot it in *behind* that popup.
+                    if opts and opts.modal then kv2.modal = true end
                     UIManager:show(kv2)
                 end
             end
@@ -203,6 +210,7 @@ function M.showBookList(title, books, on_close, stats_plugin, opts)
             end,
         }
         ListWidget.fitTitle(kv)
+        if opts and opts.modal then kv.modal = true end
         UIManager:show(kv)
     end
 

@@ -1931,3 +1931,6 @@ msgstr "Показує опис книги під автором / серією 
 
 msgid "Description"
 msgstr "Опис"
+
+msgid "No reading on %1"
+msgstr "За %1 читання немає"

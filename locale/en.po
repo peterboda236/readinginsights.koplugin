@@ -1882,3 +1882,6 @@ msgstr "Show the book's description under the author / series, as far down as th
 
 msgid "Description"
 msgstr "Description"
+
+msgid "No reading on %1"
+msgstr "No reading on %1"

@@ -1888,3 +1888,6 @@ msgstr "%2. %1 – %4. %3"
 
 msgid "range months lowercase"
 msgstr "yes"
+
+msgid "No reading on %1"
+msgstr "Nincs olvasás ezen a napon: %1"

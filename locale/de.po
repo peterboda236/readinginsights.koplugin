@@ -1882,3 +1882,6 @@ msgstr "Zeigt die Beschreibung des Buches unter Autor / Reihe an, bis zum untere
 
 msgid "Description"
 msgstr "Beschreibung"
+
+msgid "No reading on %1"
+msgstr "Am %1 wurde nicht gelesen"

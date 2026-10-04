@@ -275,6 +275,7 @@ local AchievementsView = loadModule("views/achievements_view.lua",
 local StreakCalendar = loadModule("views/streak_calendar_view.lua", {
     Locale = Locale, Colors = Colors, Fonts = Fonts, UI = UI,
     Data = InsightsData, Prefs = Prefs, VS = ViewSettings,
+    BookList = BookList,
 })
 
 -- Records: the queries and their cache (lib/records_data.lua, loaded above
