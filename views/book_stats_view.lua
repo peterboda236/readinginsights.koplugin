@@ -97,7 +97,7 @@ local WEEKDAY_NAMES_HU_LC = {
     "vasárnap", "hétfő", "kedd", "szerda", "csütörtök", "péntek", "szombat",
 }
 
-local function formatEventDateTime(timestamp)
+local function formatEventDateTime(timestamp, always_full)
     if not timestamp then return "" end
     local t   = os.date("*t", timestamp)
     local now = os.date("*t")
@@ -107,16 +107,20 @@ local function formatEventDateTime(timestamp)
     end
     local day_diff = math.floor((midnight(t) - midnight(now)) / 86400 + 0.5)
 
-    if day_diff == 0  then return _("Today") end
-    if day_diff == -1 then return _("Yesterday") end
-    if day_diff == 1  then return _("Tomorrow") end
+    -- always_full: skip the relative shortcuts (Today / Yesterday /
+    -- Tomorrow / bare weekday) and always give "weekday + full date".
+    if not always_full then
+        if day_diff == 0  then return _("Today") end
+        if day_diff == -1 then return _("Yesterday") end
+        if day_diff == 1  then return _("Tomorrow") end
+    end
 
     local function mondayOf(tt)
         local days_since_monday = (tt.wday + 5) % 7  -- tt.wday: 1=Sun..7=Sat
         return os.time{ year = tt.year, month = tt.month, day = tt.day - days_since_monday,
                         hour = 0, min = 0, sec = 0 }
     end
-    local same_week = mondayOf(t) == mondayOf(now)
+    local same_week = (not always_full) and mondayOf(t) == mondayOf(now)
     local is_hu = (getLangBase() == "hu")
 
     if same_week then
@@ -1426,7 +1430,7 @@ function ReadingStatsPopup:onTapClose(arg, ges_ev)
 
         if UI.hitTest(self._started_widget, x, y) and self._stats and self._stats.started_timestamp then
             UIManager:show(InfoMessage:new{
-                text = _("Started:") .. " " .. formatEventDateTime(self._stats.started_timestamp),
+                text = _("Started:") .. " " .. formatEventDateTime(self._stats.started_timestamp, true),
             })
             return true
         end
