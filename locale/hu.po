@@ -403,7 +403,7 @@ msgid "read time"
 msgstr "olvasás"
 
 msgid "read today"
-msgstr "olvasás ma"
+msgstr "mai olvasás"
 
 msgid "per day"
 msgstr "naponta"
@@ -505,10 +505,10 @@ msgid "days of reading left"
 msgstr "nap van hátra"
 
 msgid "day since started"
-msgstr "napja elkezdett"
+msgstr "napja kezdve"
 
 msgid "days since started"
-msgstr "napja elkezdett"
+msgstr "napja kezdve"
 
 msgid "Colors"
 msgstr "Színek"
