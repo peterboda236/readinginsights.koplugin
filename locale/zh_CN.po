@@ -1604,3 +1604,9 @@ msgstr "简介"
 
 msgid "No reading on %1"
 msgstr "%1 没有阅读记录"
+
+msgid "of annual goal"
+msgstr "年度目标"
+
+msgid "Latest"
+msgstr "最新"

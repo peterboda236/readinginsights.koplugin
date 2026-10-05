@@ -368,6 +368,21 @@ function M.totalCount()
     return #M.CATALOGUE
 end
 
+-- The most recently earned achievement (catalogue entry), or nil when none
+-- has been earned yet. Ties on the earn time resolve like M.list() does
+-- (lowest id first), so the cell and the top of the list always agree.
+function M.latest()
+    local earned = M.getEarned()
+    local best, best_ts
+    for _idx, a in ipairs(M.CATALOGUE) do
+        local ts = earned[a.id]
+        if ts and (not best_ts or ts > best_ts or (ts == best_ts and a.id < best.id)) then
+            best, best_ts = a, ts
+        end
+    end
+    return best
+end
+
 -- The set of "new" (not yet acknowledged) achievements: the ones earned
 -- SINCE the last time the list was opened. recompute() adds newly earned
 -- ones to it, markAllSeen() (called when the list opens) clears it.

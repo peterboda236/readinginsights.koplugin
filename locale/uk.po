@@ -1934,3 +1934,9 @@ msgstr "Опис"
 
 msgid "No reading on %1"
 msgstr "За %1 читання немає"
+
+msgid "of annual goal"
+msgstr "від річної мети"
+
+msgid "Latest"
+msgstr "Останнє"

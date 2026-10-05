@@ -1035,23 +1035,17 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
             popup_self:cycleInsightsMode()
             return true
         end
-        -- The divider below the chart depends on what comes right after it:
-        --   - GOAL_MODE_BOTH: the "Reading goal | Achievements" header/row
-        --     follows, with its own gray header background - keep the
-        --     regular thick line to separate it clearly.
-        --   - GOAL_MODE_GOAL: the goal row now follows with no header of
-        --     its own (see the goal-only branch below) - thin line, so
-        --     the row still reads as visually separated from the chart.
-        --   - GOAL_MODE_OFF: "Total read" follows instead (its own thin
-        --     top line included) - since nothing else sits between them,
-        --     use the regular thick line, same as any other section end.
+        -- The divider below the chart depends on what follows it:
+        --   - reading goal on: its row follows with no header of its own,
+        --     so a thin line keeps it visually tied to the chart section.
+        --   - otherwise (achievements header, or "Total read" when both
+        --     sections are off): the regular thick line.
         -- no_top_line: no divider directly under the chart header - it now
         -- reads as a plain caption for the chart rather than a section
         -- title with its own separator line.
-        local goal_mode = VS.Opt.readGoalSectionMode()
         UI.addSectionWithRow(sections, tappable_chart_header, chart, layout,
-            { add_divider = true, no_top_line = true,
-              no_bottom_line = false, bottom_line_thin = goal_mode == VS.Opt.GOAL_MODE_GOAL })
+            { add_divider = true, no_top_line = true, no_bottom_line = false,
+              bottom_line_thin = VS.Opt.readShowReadingGoal() })
     end
 
     -- Long-press targets for the reading-goal section (its headers and
@@ -1060,8 +1054,14 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
     -- { w = widget, fn = function }.
     popup_self._goal_hold_targets = {}
 
-    if VS.Opt.readShowReadingGoal() then
-        local mode           = VS.Opt.readGoalSectionMode()
+    -- The reading-goal and achievements sections are switched on/off
+    -- independently (Settings > Reading insight popup). With the goal on it
+    -- comes first (a headerless row); the achievements section follows below
+    -- it, with a header of its own. With both off nothing is drawn.
+    local show_goal = VS.Opt.readShowReadingGoal()
+    local show_ach  = VS.Opt.readShowAchievements() and Achievements ~= nil
+
+    if show_goal or show_ach then
         local goal_year      = popup_self.selected_year
         local finished_count = goal_finished_count or 0
         local goal_value     = VS.readReadingGoal(goal_year)
@@ -1169,68 +1169,68 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
             }
         end
 
-        if mode == VS.Opt.GOAL_MODE_GOAL then
-            -- Old two-cell view: finished-book count | this year's target.
-            local left_line = buildValueLine(fonts.value, fonts.label, layout.col_width,
-                formatCount(finished_count), N_("book finished", "books finished", finished_count))
+        if show_goal then
+            -- No header of its own: "24/30 books finished" | "80% of
+            -- annual goal". Tapping either cell opens the finished books,
+            -- long press opens the finished-books menu.
+            local percent = 0
+            if goal_value > 0 then
+                percent = math.floor(finished_count / goal_value * 100 + 0.5)
+            end
+            local left_value = formatCount(finished_count) .. "/" .. formatCount(goal_value)
+            local left_line  = buildValueLine(fonts.value, fonts.label, layout.col_width,
+                left_value, N_("book finished", "books finished", finished_count))
             local right_line = buildValueLine(fonts.value, fonts.label, layout.col_width,
-                formatCount(goal_value), N_("book to read", "books to read", goal_value))
+                formatCount(percent) .. "%", _("of annual goal"))
 
             local left_cell  = dataCell(left_line, openFinished)
             addHold(left_cell, openFinishedMenu)
-            -- The target figure is informational only in this mode - with
-            -- no "Achievements" column next to it to label, tap/hold used
-            -- to open the goal-edit dialog, but that made it too easy to
-            -- trigger by accident while reading the count. Leave it a
-            -- plain, non-interactive cell; the goal can still be changed
-            -- from the settings menu.
-            local right_cell = right_line
+            local right_cell = dataCell(right_line, openFinished)
+            addHold(right_cell, openFinishedMenu)
 
-            -- Reading-goal-only mode drops the "Reading goal" header/title
-            -- row entirely - unlike the combined view below, there's no
-            -- "Achievements" column next to it to label, and tapping/
-            -- holding the finished-book cell still does what the header
-            -- used to (openFinished / openFinishedMenu), so nothing is
-            -- lost by removing the caption. No top divider of its own
-            -- either - the chart section's own (thin) bottom line, right
-            -- above, already separates it from the chart.
             table.insert(sections, VerticalSpan:new{ height = Size.padding.default })
             table.insert(sections, wrapRow(UI.buildTwoColRow(left_cell, right_cell, layout)))
             table.insert(sections, VerticalSpan:new{ height = Size.padding.large })
             table.insert(sections, UI.padded(layout.padding_h,
                 Colors.newBar(layout.content_width, Size.line.thick, Colors.separator())))
-        else
-            -- Combined view: "finished/target" figure + achievements count.
-            local left_value = formatCount(finished_count) .. "/" .. formatCount(goal_value)
-            local left_line  = buildValueLine(fonts.value, fonts.label, layout.col_width,
-                left_value, N_("book finished", "books finished", finished_count))
+        end
 
-            local earned_count = Achievements and Achievements.earnedCount() or 0
-            local ach_total    = Achievements and Achievements.totalCount() or 0
+        if show_ach then
+            -- Header "Achievements | Latest", then: "earned/total earned" |
+            -- name of the most recently earned achievement.
+            local earned_count = Achievements.earnedCount()
+            local ach_total    = Achievements.totalCount()
             -- Trailing star = achievements earned since the list was last
             -- opened (see Achievements.newCount); tapping opens & clears it.
-            local has_new      = Achievements and Achievements.newCount() > 0
-            local right_value  = formatCount(earned_count) .. "/" .. formatCount(ach_total)
+            local has_new      = Achievements.newCount() > 0
+            local left_value   = formatCount(earned_count) .. "/" .. formatCount(ach_total)
                                  .. (has_new and " ★" or "")
-            local right_line   = buildValueLine(fonts.value, fonts.label, layout.col_width,
-                right_value, _("earned"))
+            local left_line    = buildValueLine(fonts.value, fonts.label, layout.col_width,
+                left_value, _("earned"))
 
-            local left_cell  = dataCell(left_line, openFinished)
-            addHold(left_cell, openFinishedMenu)
+            -- The latest achievement's icon + name, in the regular (non-bold)
+            -- explanatory-text face used for the unit labels.
+            local latest = Achievements.latest()
+            local right_line = TextBoxWidget:new{
+                text      = latest and (latest.icon .. "  " .. latest.title) or "–",
+                face      = fonts.label,
+                fgcolor   = Colors.label(),
+                width     = layout.col_width,
+                alignment = "left",
+            }
+
+            local left_cell  = dataCell(left_line, openAchievements)
             local right_cell = dataCell(right_line, openAchievements)
 
-            -- Two-column header: "Reading goal" (behaves like the left cell)
-            -- and "Achievements" (opens the list, like the right cell).
-            local goal_title = headerCell(buildGoalYearLabel(goal_year), openFinished)
-            addHold(goal_title, openFinishedMenu)
-            local ach_title  = headerCell(_("Achievements"), openAchievements)
+            local ach_title    = headerCell(_("Achievements"), openAchievements)
+            local latest_title = headerCell(_("Latest"), openAchievements)
 
             UI.addSectionWithRow(sections,
-                paddedTwoColHeader(goal_title, ach_title, HEADER_BG()),
+                paddedTwoColHeader(ach_title, latest_title, HEADER_BG()),
                 wrapRow(UI.buildTwoColRow(left_cell, right_cell, layout)),
                 layout, { pad_row = false })
         end
-    end -- if VS.Opt.readShowReadingGoal()
+    end -- if show_goal or show_ach
 
     do
         local all_hours = all_time_stats and all_time_stats.hours or 0
@@ -2415,13 +2415,13 @@ end
 -- loop.
 function ReadingInsightsPopup:_scheduleAchievementsRefresh()
     if not Achievements then return end
-    -- Only worth doing when the popup actually shows the achievements count,
-    -- i.e. the goal section is in "both" mode. In "goal_only"/"off" the count
-    -- isn't drawn, so skip even the cheap fingerprint query here - the list
+    -- Only worth doing when the popup actually shows the achievements
+    -- section. When it's switched off the count isn't drawn, so skip even
+    -- the cheap fingerprint query here - the list
     -- (reachable via "Show Achievements") recomputes on its own force-reload,
     -- and a full popup title-bar reload still re-scans regardless (see the
     -- Achievements.recompute call in the reload path).
-    if VS.Opt.readGoalSectionMode() ~= VS.Opt.GOAL_MODE_BOTH then return end
+    if not VS.Opt.readShowAchievements() then return end
     if self._ach_refresh_scheduled then return end
     self._ach_refresh_scheduled = true
     UIManager:scheduleIn(0.1, function()

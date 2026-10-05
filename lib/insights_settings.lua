@@ -179,6 +179,15 @@ M.Opt = {
     GOAL_MODE_GOAL = "goal_only",
     GOAL_MODE_OFF  = "off",
 
+    -- Independent on/off switches for the two sections (Settings > Reading
+    -- insight popup > "Reading goal" / "Achievements"), both on by default.
+    -- They replace the single three-way mode above; when a switch has never
+    -- been touched it falls back to what the old mode implied, so existing
+    -- setups keep looking the same (see readShowReadingGoal /
+    -- readShowAchievements).
+    SHOW_GOAL_ROW_KEY = "reading_insights_goal_row_enabled",
+    SHOW_ACH_ROW_KEY  = "reading_insights_achievements_row_enabled",
+
     -- What the right-hand cell of the "Reading goal" section counts
     -- (Settings > Reading insight popup > "Reading goal
     -- display"). "total" (default) shows the year's goal itself - "30 books
@@ -537,15 +546,30 @@ function M.Opt.saveGoalSectionMode(value)
     Prefs.save(M.Opt.GOAL_MODE_KEY, value)
 end
 
--- Whether the reading-goal section is drawn at all. Kept as its own function
--- because several call sites (the section build, the finished-book query in
--- _loadAndRebuild) gate on it; it's just "mode isn't off" now.
+-- Whether the "Reading goal" section is drawn. Several call sites (the
+-- section build, the finished-book query in _loadAndRebuild) gate on it.
+-- Unset -> derived from the legacy three-way mode (only "off" hides it).
 function M.Opt.readShowReadingGoal()
+    local v = Prefs.read(M.Opt.SHOW_GOAL_ROW_KEY, nil)
+    if v ~= nil then return v == true end
     return M.Opt.readGoalSectionMode() ~= M.Opt.GOAL_MODE_OFF
 end
 
 function M.Opt.saveShowReadingGoal(value)
-    M.saveBoolSetting(M.Opt.SHOW_GOAL_KEY, value)
+    Prefs.save(M.Opt.SHOW_GOAL_ROW_KEY, value and true or false)
+end
+
+-- Whether the "Achievements" section (earned count | latest achievement) is
+-- drawn, independently of the reading goal. Unset -> derived from the legacy
+-- mode (only "both" showed achievements).
+function M.Opt.readShowAchievements()
+    local v = Prefs.read(M.Opt.SHOW_ACH_ROW_KEY, nil)
+    if v ~= nil then return v == true end
+    return M.Opt.readGoalSectionMode() == M.Opt.GOAL_MODE_BOTH
+end
+
+function M.Opt.saveShowAchievements(value)
+    Prefs.save(M.Opt.SHOW_ACH_ROW_KEY, value and true or false)
 end
 
 function M.Opt.readGoalDisplay()

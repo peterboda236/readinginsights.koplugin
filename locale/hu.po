@@ -1035,7 +1035,7 @@ msgid "Date & time"
 msgstr "Dátum és idő"
 
 msgid "Reading insight popup"
-msgstr "Reading insights ablak"
+msgstr "Olvasási áttekintés ablak"
 
 msgid "Last week chapter bar order"
 msgstr "Múlt heti oszlopok sorrendje"
@@ -1891,3 +1891,9 @@ msgstr "yes"
 
 msgid "No reading on %1"
 msgstr "Nincs olvasás ezen a napon: %1"
+
+msgid "of annual goal"
+msgstr "az éves célból"
+
+msgid "Latest"
+msgstr "Legutolsó"

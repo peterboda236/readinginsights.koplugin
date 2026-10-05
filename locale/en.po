@@ -1885,3 +1885,9 @@ msgstr "Description"
 
 msgid "No reading on %1"
 msgstr "No reading on %1"
+
+msgid "of annual goal"
+msgstr "of annual goal"
+
+msgid "Latest"
+msgstr "Latest"

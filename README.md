@@ -31,11 +31,17 @@ A full-screen overview of your whole reading history.
 - **All-time totals** — cumulative hours and pages. Tap the "Total read"
   header for a GitHub-style **heatmap** and a **time-of-day** breakdown of when
   you read (shown as a bar chart or an hour × weekday grid).
-- **Reading goal** — this year's finished books over your target (e.g. 18/30),
-  next to how many **achievements** you've earned. Tap to see the finished
-  books; long-press to mark books finished, add books you read elsewhere, or
-  change the goal. A book counts as finished once its last reading entry
-  reaches 99% of the book.
+- **Reading goal** — this year's finished books over your target (e.g. 24/30)
+  next to the percentage of the yearly goal reached (80%). Tap to see the
+  finished books; long-press to mark books finished, add books you read
+  elsewhere, or change the goal. A book counts as finished once its last
+  reading entry reaches 99% of the book.
+- **Achievements** — below the reading goal: how many achievements you've
+  earned, next to the name of the latest one. Tap to open the list.
+
+  The reading goal and the achievements can each be switched on or off
+  separately (Settings → Advanced settings → Reading insight popup); both
+  are on by default.
 
 **Controls:** swipe to change year, tap headers/bars to drill in, long-press
 the title bar to force a data reload.
@@ -81,7 +87,7 @@ A few examples:
 - **Weekly streak** — read on 7 days in a row
 - **Night owl** — read between midnight and 4 a.m.
 
-Open the list from the Reading goal cell, or via *Tools → Reading insights →
+Open the list from the Achievements cell, or via *Tools → Reading insights →
 Show Achievements*. Newly earned ones are marked with a **★** until you open
 the list. Once unlocked, an achievement is never lost. Available everywhere.
 
