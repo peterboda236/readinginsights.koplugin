@@ -35,6 +35,9 @@ alias would still point at the discarded table afterwards.
   M.getCompletedYearly/getCompletedMonthly/setCompletedYearData
                                frozen year-specific data for past years,
                                served without a DB hit (see below)
+  M.getBookList/setBookList    stamp-validated cache of the tap-through book
+                               lists, mirrored to its own file
+                               (see "Book-list cache" below)
 ]]--
 
 local DataStorage = require("datastorage")
@@ -195,6 +198,115 @@ M._stale_weekday_hour_map = {}
 -- queries for nothing. 0 until the first real fetch.
 M._heatmap_watermark = 0
 
+-- Book-list cache -------------------------------------------------------
+--
+-- The lists behind a tap on a month/year/"all books"/"finished" number are
+-- built by full-history queries (see Data.getBooksForPeriod, getAllBooks and
+-- getFinishedBooksForYear). Unlike the aggregates above they used to run on
+-- every single open. Each entry here is kept together with a "stamp": a few
+-- numbers read off the statistics DB by a cheap probe (row count, summed
+-- duration, newest start_time, ...). While the probe still returns the same
+-- stamp nothing the list is made of can have changed, so the stored list is
+-- served as is; the moment it differs (a page was read, a book removed, the
+-- DB restored from a backup) the entry is simply rebuilt. That is why no
+-- timer or "is it still today" logic is needed here - the data itself says
+-- when it is stale.
+--
+-- Kept in memory and mirrored to reading_insights_booklists.lua so it survives
+-- a restart; capped so a long browsing session can't grow it without bound on
+-- a small device; dropped (file included) by M.clearAllCache() like everything else.
+--   M._booklist_cache[key] = { stamp = "<string>", books = { ... } }
+M._booklist_cache = {}
+
+M._booklist_order = {}   -- keys, oldest first, for the size cap
+
+local BOOKLIST_MAX_ENTRIES = 24
+
+-- Lists are handed out and stored as copies: the views sort and annotate the
+-- rows they are given, and that must never leak back into the cached list.
+local function copyBooks(books)
+    local out = {}
+    for i, b in ipairs(books) do
+        local c = {}
+        for k, v in pairs(b) do c[k] = v end
+        out[i] = c
+    end
+    return out
+end
+
+-- The cached list for `key` if it was stored under exactly this `stamp`,
+-- else nil.
+function M.getBookList(key, stamp)
+    if not M.ENABLE_CACHE or not stamp then return nil end
+    local e = M._booklist_cache[key]
+    if e and e.stamp == stamp then
+        return copyBooks(e.books)
+    end
+    return nil
+end
+
+function M.setBookList(key, stamp, books)
+    if not M.ENABLE_CACHE or not stamp then return end
+    if M._booklist_cache[key] == nil then
+        table.insert(M._booklist_order, key)
+        while #M._booklist_order > BOOKLIST_MAX_ENTRIES do
+            local oldest = table.remove(M._booklist_order, 1)
+            M._booklist_cache[oldest] = nil
+        end
+    end
+    M._booklist_cache[key] = { stamp = stamp, books = copyBooks(books) }
+    M.saveBookListCache()
+end
+
+-- The lists are mirrored to a file of their own, not into the cache file
+-- above: that one is only written when the insights popup loads, whereas a
+-- list is built later, on a tap, and should survive a restart from the
+-- moment it exists. A list is built rarely (only when the stamp moved), so
+-- writing the file then costs nothing noticeable, and the popup's own cache
+-- file isn't rewritten for it. Anything read back is only ever served if its
+-- stamp still matches the database, so a stale or hand-edited file can at
+-- worst cost a rebuild.
+local BOOKLIST_PATH = DataStorage:getSettingsDir() .. "/reading_insights_booklists.lua"
+
+function M.saveBookListCache()
+    if not M.ENABLE_CACHE then return end
+    pcall(function()
+        local LuaSettings = require("luasettings")
+        local settings = LuaSettings:open(BOOKLIST_PATH)
+        settings:saveSetting("lists", M._booklist_cache)
+        settings:saveSetting("order", M._booklist_order)
+        settings:flush()
+    end)
+end
+
+function M.loadBookListCache()
+    local ok, settings = pcall(function()
+        return require("luasettings"):open(BOOKLIST_PATH)
+    end)
+    if not ok or not settings then return end
+    local lists = settings:readSetting("lists")
+    local order = settings:readSetting("order")
+    if type(lists) ~= "table" or type(order) ~= "table" then return end
+    for _idx, key in ipairs(order) do
+        local e = lists[key]
+        -- Only well-formed entries are taken over: a string stamp and a
+        -- list of book tables. Anything else is skipped, never trusted.
+        if type(key) == "string" and type(e) == "table"
+                and type(e.stamp) == "string" and type(e.books) == "table"
+                and M._booklist_cache[key] == nil
+                and #M._booklist_order < BOOKLIST_MAX_ENTRIES then
+            local good = true
+            for _i, b in ipairs(e.books) do
+                if type(b) ~= "table" then good = false break end
+            end
+            if good then
+                M._booklist_cache[key] = { stamp = e.stamp, books = e.books }
+                table.insert(M._booklist_order, key)
+            end
+        end
+    end
+end
+
 function M.clearAllCache()
     M._cache.streaks                 = nil
     M._cache.streaks_date            = nil
@@ -230,6 +342,9 @@ function M.clearAllCache()
     M._stale_yearly          = {}
     M._stale_monthly         = {}
     M._stale_goal_cache      = {}
+    M._booklist_cache        = {}
+    M._booklist_order        = {}
+    M.saveBookListCache()
     M._stale_daily_map        = {}
     M._stale_weekday_hour_map = {}
     M._heatmap_watermark      = 0
@@ -522,5 +637,6 @@ end
 -- last-known data available through the stale-cache fallback instead of
 -- showing the "Loading data..." placeholder.
 M.loadDiskCache()
+M.loadBookListCache()
 
 return M
