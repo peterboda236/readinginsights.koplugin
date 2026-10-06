@@ -1940,3 +1940,33 @@ msgstr "від річної мети"
 
 msgid "Latest"
 msgstr "Останнє"
+
+msgid "Rating"
+msgstr "Оцінка"
+
+msgid "Date"
+msgstr "Дата"
+
+msgid "Reading time"
+msgstr "Час читання"
+
+msgid "Pages read"
+msgstr "Прочитано сторінок"
+
+msgid "Rating (stars)"
+msgstr "Оцінка (зірки)"
+
+msgid "Rating (highest first)"
+msgstr "Оцінка (спочатку найвища)"
+
+msgid "Rating (lowest first)"
+msgstr "Оцінка (спочатку найнижча)"
+
+msgid "Show in the right column"
+msgstr "Показувати в правому стовпці"
+
+msgid "Clear rating"
+msgstr "Очистити оцінку"
+
+msgid "This book has no checksum, so its rating can't be saved"
+msgstr "У цієї книги немає контрольної суми, тому її оцінку не можна зберегти"

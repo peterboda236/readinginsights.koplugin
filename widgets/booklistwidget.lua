@@ -38,8 +38,13 @@ plus three fields this widget reads:
   sort_time    the timestamp last-read-sorting uses
   pinned       kept at the top of the list whatever the sort order is
                (used for the "add a book" row)
+  sort_rating  the star rating (0-5, 0 = none) rating-sorting uses
   mandatory    a value shown right-aligned at the end of the row (the date
                a hand-added book was read)
+  values       optional { date = ..., time = ..., pages = ..., rating = ... }:
+               the texts the right-hand column can show. Which one is shown
+               is picked from the title bar's menu (display_modes); a mode
+               missing here falls back to `mandatory`
 
   BookListWidget.new{ title = ..., item_table = ..., ... }
   widget:updateItems(item_table)   re-sort, re-page and redraw in place
@@ -81,6 +86,22 @@ M.DEFAULT_SORT = "recent_desc"
 -- The four orders offered by the title bar's sort menu, in menu order.
 M.SORT_MODES = { "recent_desc", "recent_asc", "title_asc", "title_desc" }
 
+-- The book lists (as opposed to e.g. the achievements list) also order by
+-- the star rating.
+M.BOOK_SORT_MODES = { "recent_desc", "recent_asc", "title_asc", "title_desc",
+                      "rating_desc", "rating_asc" }
+
+-- What the right-hand column of a book row can show, picked from the same
+-- menu as the sort order (see M.showSortMenu). The first mode a list offers
+-- is its default.
+function M.displayLabel(mode)
+    if mode == "date"   then return _("Date") end
+    if mode == "time"   then return _("Reading time") end
+    if mode == "pages"  then return _("Pages read") end
+    if mode == "rating" then return _("Rating (stars)") end
+    return tostring(mode)
+end
+
 -- `labels` (optional) overrides the wording per mode, so a list that sorts
 -- something other than books (the achievements list, by unlock time / name)
 -- can relabel the same four orders without a second menu.
@@ -89,11 +110,13 @@ local function sortLabel(mode, labels)
     if mode == "recent_desc" then return _("Last read (newest first)") end
     if mode == "recent_asc"  then return _("Last read (oldest first)") end
     if mode == "title_asc"   then return _("Title (A to Z)") end
+    if mode == "rating_desc" then return _("Rating (highest first)") end
+    if mode == "rating_asc"  then return _("Rating (lowest first)") end
     return _("Title (Z to A)")
 end
 
 local function isValidSort(mode)
-    for _idx, m in ipairs(M.SORT_MODES) do
+    for _idx, m in ipairs(M.BOOK_SORT_MODES) do
         if m == mode then return true end
     end
     return false
@@ -121,10 +144,26 @@ end
 -- how to read a title and a timestamp out of whatever is being sorted, so
 -- the same orders work on this widget's items and on plain book records
 -- from the queries (which is what the KeyValuePage lists sort).
-function M.comparator(mode, get_title, get_time)
-    get_title = get_title or function(x) return x.sort_title end
-    get_time  = get_time  or function(x) return x.sort_time end
-    if mode == "title_asc" then
+function M.comparator(mode, get_title, get_time, get_rating)
+    get_title  = get_title  or function(x) return x.sort_title end
+    get_time   = get_time   or function(x) return x.sort_time end
+    get_rating = get_rating or function(x) return x.sort_rating end
+    if mode == "rating_desc" or mode == "rating_asc" then
+        local highest_first = (mode == "rating_desc")
+        return function(x, y)
+            local rx, ry = get_rating(x) or 0, get_rating(y) or 0
+            -- Books without a rating always go last, whichever way round.
+            if (rx > 0) ~= (ry > 0) then return rx > 0 end
+            if rx ~= ry then
+                if highest_first then return rx > ry end
+                return rx < ry
+            end
+            -- Same rating: the most recently read first, then by title.
+            local tx, ty = get_time(x) or 0, get_time(y) or 0
+            if tx ~= ty then return tx > ty end
+            return titleLess(get_title(x), get_title(y))
+        end
+    elseif mode == "title_asc" then
         return function(x, y) return titleLess(get_title(x), get_title(y)) end
     elseif mode == "title_desc" then
         return function(x, y) return titleLess(get_title(y), get_title(x)) end
@@ -154,6 +193,20 @@ function M.saveSortMode(setting_key, mode)
     end
 end
 
+-- The right-hand column's content, remembered per list like the sort order.
+-- `modes` is what the list offers; its first entry is the default.
+function M.readDisplayMode(setting_key, modes)
+    local saved = setting_key and Prefs.read(setting_key, nil) or nil
+    for _idx, m in ipairs(modes or {}) do
+        if m == saved then return saved end
+    end
+    return modes and modes[1] or nil
+end
+
+function M.saveDisplayMode(setting_key, mode)
+    if setting_key and mode then Prefs.save(setting_key, mode) end
+end
+
 -- The sort menu itself: the four orders with the current one ticked, plus
 -- anything the caller wants underneath. Shared by this widget's title bar
 -- icon and by the KeyValuePage book lists, which have the same icon but
@@ -163,10 +216,14 @@ end
 --   opts.callback      called with the chosen order
 --   opts.anchor_widget the title bar button to hang the menu under
 --   opts.extra_buttons { { text = ..., callback = ... }, ... }
+--   opts.modes         the orders to offer (default: M.SORT_MODES)
+--   opts.display       optional { modes = {...}, current = ..., callback = ... }:
+--                      a second group under a separator, for choosing what
+--                      the right-hand column shows
 function M.showSortMenu(opts)
     local dialog
     local buttons = {}
-    for _idx, mode in ipairs(M.SORT_MODES) do
+    for _idx, mode in ipairs(opts.modes or M.SORT_MODES) do
         local this_mode = mode
         table.insert(buttons, {{
             -- U+2713 CHECK MARK in front of the order currently in use.
@@ -178,6 +235,25 @@ function M.showSortMenu(opts)
                 if opts.callback then opts.callback(this_mode) end
             end,
         }})
+    end
+    if opts.display and opts.display.modes and #opts.display.modes > 0 then
+        -- The separator: a greyed-out, non-tappable row naming the group.
+        table.insert(buttons, {{
+            text    = "\xe2\x94\x80\xe2\x94\x80 " .. _("Show in the right column") .. " \xe2\x94\x80\xe2\x94\x80",
+            enabled = false,
+        }})
+        for _idx, mode in ipairs(opts.display.modes) do
+            local this_mode = mode
+            table.insert(buttons, {{
+                text  = (opts.display.current == this_mode and "\xe2\x9c\x93 " or "    ")
+                    .. M.displayLabel(this_mode),
+                align = "left",
+                callback = function()
+                    UIManager:close(dialog)
+                    if opts.display.callback then opts.display.callback(this_mode) end
+                end,
+            }})
+        end
     end
     for _idx, btn in ipairs(opts.extra_buttons or {}) do
         local cb = btn.callback
@@ -267,8 +343,10 @@ function BookListItem:init()
     end
 
     local value_widget, value_w
-    if self.item.mandatory and self.item.mandatory ~= "" then
-        value_widget = TextWidget:new{ text = self.item.mandatory, face = face, fgcolor = fgcolor }
+    local value_text = self.show_parent.itemValue
+        and self.show_parent:itemValue(self.item) or self.item.mandatory
+    if value_text and value_text ~= "" then
+        value_widget = TextWidget:new{ text = value_text, face = face, fgcolor = fgcolor }
         value_w = value_widget:getSize().w + Size.padding.large
     else
         value_w = 0
@@ -389,6 +467,15 @@ local BookListWidget = SortWidget:extend{
     -- so a list sorting something other than books can relabel the four
     -- orders. nil = the default "Last read / Title" wording.
     sort_labels       = nil,
+    -- The orders the sort menu offers (nil = M.SORT_MODES, the four basic
+    -- ones). The book lists pass M.BOOK_SORT_MODES to add the star rating.
+    sort_modes        = nil,
+    -- What the right-hand column can show (nil = just item.mandatory): a
+    -- list of modes (see M.displayLabel), the first one the default. The
+    -- choice is kept under display_setting_key, like the sort order.
+    display_modes     = nil,
+    display_mode      = nil,
+    display_setting_key = nil,
     -- Drop the (blank) checkbox column so rows sit close to the left edge,
     -- for read-only lists that never tick anything (the achievements list).
     no_checkbox       = nil,
@@ -407,6 +494,9 @@ function BookListWidget:init()
     self.show_page = self.show_page or 1
     if not isValidSort(self.sort_mode) then
         self.sort_mode = M.readSortMode(self.sort_setting_key)
+    end
+    if self.display_modes then
+        self.display_mode = M.readDisplayMode(self.display_setting_key, self.display_modes)
     end
     self:applySort()
 
@@ -448,6 +538,23 @@ function BookListWidget:init()
             }
         end
     end
+end
+
+-- The text the right-hand column shows for an item in the current display
+-- mode; the item's own `mandatory` when it has nothing for that mode.
+function BookListWidget:itemValue(item)
+    local values = self.display_mode and item.values
+    if values and values[self.display_mode] ~= nil then
+        return values[self.display_mode]
+    end
+    return item.mandatory
+end
+
+function BookListWidget:setDisplayMode(mode)
+    if not mode or mode == self.display_mode then return end
+    self.display_mode = mode
+    M.saveDisplayMode(self.display_setting_key, mode)
+    self:_populateItems()
 end
 
 function BookListWidget:onTitleHold()
@@ -498,6 +605,12 @@ function BookListWidget:onShowWidgetMenu()
         labels        = self.sort_labels,
         anchor_widget = self.title_bar and self.title_bar.left_button,
         extra_buttons = self.extra_menu_buttons,
+        modes         = self.sort_modes,
+        display       = self.display_modes and {
+            modes    = self.display_modes,
+            current  = self.display_mode,
+            callback = function(mode) self:setDisplayMode(mode) end,
+        } or nil,
         callback      = function(mode) self:setSortMode(mode) end,
     }
     return true

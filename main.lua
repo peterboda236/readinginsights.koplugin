@@ -209,6 +209,13 @@ local InsightsCache = loadModule("lib/insights_cache.lua")
 -- every finished-book figure.
 local ManualBooks   = loadModule("lib/manual_books.lua")
 
+-- Star ratings of the books, read from the books' own sidecar files (the
+-- statistics DB has none) - shown and sorted on in the book lists.
+local Ratings       = loadModule("lib/ratings.lua")
+
+-- The star rating popup (five stars in a row, tap or slide to set).
+local RatingDialog = loadModule("widgets/ratingdialog.lua", { Locale = Locale })
+
 -- The shared list widget every book list popup is drawn with: sort menu in
 -- the title bar, paged rows, optional checkboxes and cancel/accept buttons.
 local ListWidget = loadModule("widgets/booklistwidget.lua",
@@ -250,7 +257,8 @@ local Heatmap = loadModule("views/heatmap_view.lua", {
 local BookList = loadModule("views/booklist_view.lua", {
     Colors = Colors, Locale = Locale, VS = ViewSettings, UI = UI,
     Data = InsightsData, Cache = InsightsCache,
-    ListWidget = ListWidget, Manual = ManualBooks,
+    ListWidget = ListWidget, Manual = ManualBooks, Ratings = Ratings,
+    RatingDialog = RatingDialog,
 })
 
 -- Records data (the queries + their cache) is loaded before the insights

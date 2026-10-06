@@ -1891,3 +1891,33 @@ msgstr "de l'objectif annuel"
 
 msgid "Latest"
 msgstr "Dernier"
+
+msgid "Rating"
+msgstr "Note"
+
+msgid "Date"
+msgstr "Date"
+
+msgid "Reading time"
+msgstr "Temps de lecture"
+
+msgid "Pages read"
+msgstr "Pages lues"
+
+msgid "Rating (stars)"
+msgstr "Note (étoiles)"
+
+msgid "Rating (highest first)"
+msgstr "Note (la plus haute d'abord)"
+
+msgid "Rating (lowest first)"
+msgstr "Note (la plus basse d'abord)"
+
+msgid "Show in the right column"
+msgstr "Afficher dans la colonne de droite"
+
+msgid "Clear rating"
+msgstr "Effacer la note"
+
+msgid "This book has no checksum, so its rating can't be saved"
+msgstr "Ce livre n'a pas de somme de contrôle, sa note ne peut donc pas être enregistrée"

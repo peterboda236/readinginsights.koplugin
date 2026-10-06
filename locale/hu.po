@@ -1897,3 +1897,39 @@ msgstr "az éves célból"
 
 msgid "Latest"
 msgstr "Legutolsó"
+
+msgid "Rating (highest first)"
+msgstr "Értékelés (legjobb elöl)"
+
+msgid "Rating (lowest first)"
+msgstr "Értékelés (legrosszabb elöl)"
+
+msgid "Show in the right column"
+msgstr "Megjelenítés a jobb oldalon"
+
+msgid "Rating (stars)"
+msgstr "Értékelés (csillagok)"
+
+msgid "Rating (0-5 stars)"
+msgstr "Értékelés (0-5 csillag)"
+
+msgid "Please enter a rating from 0 to 5"
+msgstr "Kérlek, 0 és 5 közötti értékelést adj meg"
+
+msgid "Date"
+msgstr "Dátum"
+
+msgid "Reading time"
+msgstr "Olvasási idő"
+
+msgid "Pages read"
+msgstr "Elolvasott oldalak"
+
+msgid "Clear rating"
+msgstr "Értékelés törlése"
+
+msgid "This book has no checksum, so its rating can't be saved"
+msgstr "Ennek a könyvnek nincs ellenőrző összege, ezért az értékelése nem menthető"
+
+msgid "Rating"
+msgstr "Értékelés"

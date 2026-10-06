@@ -1529,6 +1529,8 @@ local function getFinishedBooksForYearCombined(popup_self, year)
             -- as a bare title (see BookList.showBookList's `manual` branch).
             authors   = "",
             duration  = 0,
+            pages     = 0,
+            rating    = e.rating or 0,
             last_read = e.read_ts or e.ts or 0,
             manual    = true,
         })

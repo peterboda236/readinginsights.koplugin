@@ -43,8 +43,9 @@ local UIManager = require("ui/uimanager")
 local T = require("ffi/util").template
 
 local deps = ...
-local Locale, VS, Data, Cache, ListWidget, Manual =
-    deps.Locale, deps.VS, deps.Data, deps.Cache, deps.ListWidget, deps.Manual
+local Locale, VS, Data, Cache, ListWidget, Manual, Ratings, RatingDialog =
+    deps.Locale, deps.VS, deps.Data, deps.Cache, deps.ListWidget, deps.Manual, deps.Ratings,
+    deps.RatingDialog
 local _  = Locale._
 
 local M = {}
@@ -66,6 +67,20 @@ end
 local SORT_KEY_BOOKS     = "reading_insights_booklist_sort"
 local SORT_KEY_CHECKLIST = "reading_insights_checklist_sort"
 local SORT_KEY_MANUAL    = "reading_insights_manuallist_sort"
+
+-- Same for what the right-hand column shows (reading time, pages read, star
+-- rating, or the date): one remembered choice per list.
+local DISPLAY_KEY_BOOKS     = "reading_insights_booklist_display"
+local DISPLAY_KEY_FINISHED  = "reading_insights_finishedlist_display"
+local DISPLAY_KEY_CHECKLIST = "reading_insights_checklist_display"
+local DISPLAY_KEY_MANUAL    = "reading_insights_manuallist_display"
+
+-- Which columns each kind of list can show; the first is the default. The
+-- period lists have always shown the reading time, so that stays the
+-- default there; the lists that are ordered by a date keep showing it.
+local MODES_PERIOD   = { "time", "pages", "rating" }
+local MODES_DATED    = { "date", "time", "pages", "rating" }
+local MODES_MANUAL   = { "date", "rating" }
 
 -- The right-hand column of a finished-books list: the day the book was
 -- finished, rather than the time spent on it. A hand-added book has no
@@ -89,6 +104,71 @@ local function finishedDateText(book)
     return text
 end
 
+-- Looks each book's star rating up (from its sidecar, via the statistics
+-- DB's md5) and stores it on the record. Books added by hand carry their own
+-- rating already.
+local function annotateRatings(books)
+    for _idx, book in ipairs(books) do
+        if not book.manual then
+            book.rating = Ratings.get(book.md5) or 0
+        end
+    end
+end
+
+-- The text for one book in one display mode (see ListWidget.displayLabel).
+-- A hand-added book has no reading time and no pages to report, so those
+-- stay blank for it rather than printing a zero.
+local function valueText(book, mode)
+    if mode == "date" then
+        return finishedDateText(book)
+    elseif mode == "rating" then
+        return Ratings.stars(book.rating)
+    elseif mode == "pages" then
+        if book.manual then return "" end
+        return tostring(book.pages or 0) .. " " .. _("pages")
+    end
+    if book.manual then return "" end
+    if book.duration and book.duration > 0 then
+        return formatHHMMSS(book.duration)
+    end
+    return "00:00:00"
+end
+
+-- All four texts of a book at once, the shape the list widget's rows take.
+local function valueTable(book)
+    return {
+        date   = finishedDateText(book),
+        time   = valueText(book, "time"),
+        pages  = valueText(book, "pages"),
+        rating = valueText(book, "rating"),
+    }
+end
+
+-- Long press on a book's rating: the star rating popup (five stars side by
+-- side, tap or slide to set; see widgets/ratingdialog.lua).
+-- Calls on_pick(n) with the chosen 0..5; the caller stores it.
+local function pickRating(title, current, on_pick)
+    RatingDialog.show{
+        title   = title,
+        rating  = current,
+        on_save = on_pick,
+    }
+end
+
+-- A book from the statistics DB: store the rating by its checksum (hand-added
+-- books carry their own and are handled where they are listed).
+local function rateStatsBook(book, on_done)
+    if not book.md5 or book.md5 == "" then
+        UIManager:show(InfoMessage:new{ text = _("This book has no checksum, so its rating can't be saved") })
+        return
+    end
+    pickRating(book.title or _("Unknown"), book.rating, function(n)
+        Ratings.set(book.md5, n)
+        book.rating = n
+        on_done(n)
+    end)
+end
+
 -- The read-only period lists keep KOReader's KeyValuePage look they always
 -- had: title and author on the left, reading time on the right, tap a row
 -- for that book's statistics. Only the two lists the reader edits (the
@@ -109,6 +189,14 @@ function M.showBookList(title, books, on_close, stats_plugin, opts)
         return
     end
 
+    annotateRatings(books)
+    local display_modes = (opts and opts.show_dates) and MODES_DATED or MODES_PERIOD
+    local display_key   = (opts and opts.show_dates) and DISPLAY_KEY_FINISHED or DISPLAY_KEY_BOOKS
+    local display_mode  = ListWidget.readDisplayMode(display_key, display_modes)
+
+    local openPage          -- defined below; rows reopen the page after a rating edit
+    local kv, resorting
+
     local function buildPairs(sorted_books)
         local kv_pairs = {}
         for _idx, book in ipairs(sorted_books) do
@@ -120,16 +208,7 @@ function M.showBookList(title, books, on_close, stats_plugin, opts)
                 display_text = display_text .. "\n" .. book.authors
             end
 
-            local time_str
-            if opts and opts.show_dates then
-                time_str = finishedDateText(book)
-            elseif book.manual then
-                time_str = ""
-            elseif book.duration and book.duration > 0 then
-                time_str = formatHHMMSS(book.duration)
-            else
-                time_str = "00:00:00"
-            end
+            local time_str = valueText(book, display_mode)
             local book_id = book.id_book
             local book_title = book.title
             local cb = nil
@@ -153,10 +232,23 @@ function M.showBookList(title, books, on_close, stats_plugin, opts)
                     UIManager:show(kv2)
                 end
             end
+            local hold_cb = nil
+            if display_mode == "rating" and not book.manual and book.md5 and book.md5 ~= "" then
+                hold_cb = function()
+                    rateStatsBook(book, function()
+                        local page = kv and kv.show_page or 1
+                        resorting = true
+                        UIManager:close(kv)
+                        resorting = false
+                        openPage(page)
+                    end)
+                end
+            end
             table.insert(kv_pairs, {
                 display_text,
                 time_str,
                 callback = cb,
+                hold_callback = hold_cb,
             })
         end
         return kv_pairs
@@ -169,35 +261,52 @@ function M.showBookList(title, books, on_close, stats_plugin, opts)
     -- mistaken for the reader closing the list, which would reopen the
     -- insights popup underneath it.
     local sort_mode = ListWidget.readSortMode(SORT_KEY_BOOKS)
-    local kv, resorting
 
     local function sortedBooks()
         local sorted = {}
         for _idx, book in ipairs(books) do table.insert(sorted, book) end
         table.sort(sorted, ListWidget.comparator(sort_mode,
             function(b) return b.title or "" end,
-            function(b) return b.last_read or 0 end))
+            function(b) return b.last_read or 0 end,
+            function(b) return b.rating or 0 end))
         return sorted
     end
 
-    local function openPage()
+    openPage = function(page)
         kv = KeyValuePage:new{
+            show_page           = page or 1,
             title               = title,
             kv_pairs            = buildPairs(sortedBooks()),
             value_align         = "right",
             title_bar_left_icon = "appbar.menu",
             title_bar_left_icon_tap_callback = function()
+                -- Re-sorting and switching the right-hand column both rebuild
+                -- the page (see the note above on why).
+                local function reopen()
+                    resorting = true
+                    UIManager:close(kv)
+                    resorting = false
+                    openPage()
+                end
                 ListWidget.showSortMenu{
                     current       = sort_mode,
+                    modes         = ListWidget.BOOK_SORT_MODES,
                     anchor_widget = kv.title_bar and kv.title_bar.left_button,
+                    display       = {
+                        modes    = display_modes,
+                        current  = display_mode,
+                        callback = function(mode)
+                            if mode == display_mode then return end
+                            display_mode = mode
+                            ListWidget.saveDisplayMode(display_key, mode)
+                            reopen()
+                        end,
+                    },
                     callback      = function(mode)
                         if mode == sort_mode then return end
                         sort_mode = mode
                         ListWidget.saveSortMode(SORT_KEY_BOOKS, mode)
-                        resorting = true
-                        UIManager:close(kv)
-                        resorting = false
-                        openPage()
+                        reopen()
                     end,
                 }
             end,
@@ -332,8 +441,10 @@ function M.showFinishedChecklist(insights_popup, year)
         return overridden and (text .. " *") or text
     end
 
+    local widget            -- the list below; the rows' long press asks it for its display mode
     local function buildItems()
       local item_table = {}
+      annotateRatings(books)
       for _idx, book in ipairs(books) do
         local id_str = tostring(book.id_book)
         local item
@@ -343,9 +454,20 @@ function M.showFinishedChecklist(insights_popup, year)
             -- entry - the very thing the "finished" rule is judged on, and
             -- what the list is sorted by out of the box.
             mandatory    = dateText(book.last_read),
+            values       = valueTable(book),
             sort_title   = book.title or "",
             sort_time    = book.last_read or 0,
+            sort_rating  = book.rating or 0,
             checked_func = function() return isFinished(id_str) end,
+            -- Long press while the rating column is shown: edit the rating.
+            hold_callback = function(_item, refresh)
+                if not widget or widget.display_mode ~= "rating" then return end
+                rateStatsBook(book, function(n)
+                    item.values      = valueTable(book)
+                    item.sort_rating = n
+                    if refresh then refresh() end
+                end)
+            end,
             callback     = function()
                 local new_state = not isFinished(id_str)
                 if new_state == (base_finished[id_str] == true) then
@@ -368,11 +490,13 @@ function M.showFinishedChecklist(insights_popup, year)
         return
     end
 
-    local widget
     widget = ListWidget.new{
         title            = T(_("Mark book finished - %1"), tostring(year)),
         item_table       = item_table,
         sort_setting_key = SORT_KEY_CHECKLIST,
+        sort_modes       = ListWidget.BOOK_SORT_MODES,
+        display_modes    = MODES_DATED,
+        display_setting_key = DISPLAY_KEY_CHECKLIST,
         show_ok_cancel   = true,
         -- Offered next to the sort orders in the title bar's menu: re-runs
         -- both queries, so a book finished while this list was open (or
@@ -421,6 +545,28 @@ local function editManualBook(year, entry, on_done)
     local MultiInputDialog = require("ui/widget/multiinputdialog")
     local date_hint = Locale.dateFormatHint()
     local dialog
+    -- The rating is picked in the star popup (five stars side by side, tap
+    -- or slide), opened from the button row below; the button shows the
+    -- stars chosen so far.
+    local rating = Manual.normaliseRating(entry and entry.rating) or 0
+    local function ratingButtonText()
+        return _("Rating") .. "  " .. Ratings.stars(rating)
+    end
+    local function openRating()
+        RatingDialog.show{
+            title   = entry and entry.title or _("Add book"),
+            rating  = rating,
+            on_save = function(n)
+                rating = n
+                local b = dialog and dialog.button_table
+                    and dialog.button_table:getButtonById("rating")
+                if b then
+                    b:setText(ratingButtonText(), b.width)
+                    UIManager:setDirty(dialog, "ui")
+                end
+            end,
+        }
+    end
     dialog = MultiInputDialog:new{
         -- The list this is opened from is modal, and UIManager inserts
         -- non-modal windows below the topmost modal one - without this the
@@ -451,7 +597,15 @@ local function editManualBook(year, entry, on_done)
                 hint        = date_hint,
             },
         },
-        buttons = {{
+        buttons = {
+          {
+            {
+                text     = ratingButtonText(),
+                id       = "rating",
+                callback = openRating,
+            },
+          },
+          {
             {
                 text     = _("Cancel"),
                 id       = "close",
@@ -483,7 +637,7 @@ local function editManualBook(year, entry, on_done)
                         date = iso
                     end
                     UIManager:close(dialog)
-                    local values = { title = title, authors = authors, date = date }
+                    local values = { title = title, authors = authors, date = date, rating = rating }
                     if entry then
                         Manual.update(year, entry.id, values)
                     else
@@ -492,7 +646,8 @@ local function editManualBook(year, entry, on_done)
                     if on_done then on_done() end
                 end,
             },
-        }},
+          },
+        },
     }
     UIManager:show(dialog)
     dialog:onShowKeyboard()
@@ -528,15 +683,31 @@ function M.showManualBooks(insights_popup, year)
         })
         for _idx, entry in ipairs(Manual.list(year)) do
             local this_entry = entry
-            table.insert(items, {
+            local row
+            row = {
                 text       = manualRowText(this_entry),
                 -- Only a date the reader actually gave: entries saved
                 -- without one fall back to their creation time for
                 -- sorting, which isn't a reading date and shouldn't be
                 -- shown as one.
                 mandatory  = (this_entry.date ~= "" and dateText(this_entry.read_ts)) or "",
+                values     = {
+                    rating = Ratings.stars(this_entry.rating),
+                },
                 sort_title = this_entry.title or "",
                 sort_time  = this_entry.read_ts or this_entry.ts or 0,
+                sort_rating = this_entry.rating or 0,
+                -- Long press while the rating column is shown: edit the rating.
+                hold_callback = function(_item, refresh)
+                    if not widget or widget.display_mode ~= "rating" then return end
+                    pickRating(this_entry.title, this_entry.rating, function(n)
+                        Manual.update(year, this_entry.id, { rating = n })
+                        this_entry.rating = n
+                        row.values      = { rating = Ratings.stars(n) }
+                        row.sort_rating = n
+                        if refresh then refresh() end
+                    end)
+                end,
                 callback   = function()
                     local ButtonDialog = require("ui/widget/buttondialog")
                     local dialog
@@ -574,7 +745,8 @@ function M.showManualBooks(insights_popup, year)
                     }
                     UIManager:show(dialog)
                 end,
-            })
+            }
+            table.insert(items, row)
         end
         return items
     end
@@ -583,6 +755,9 @@ function M.showManualBooks(insights_popup, year)
         title            = T(_("Add books manually - %1"), tostring(year)),
         item_table       = buildItems(),
         sort_setting_key = SORT_KEY_MANUAL,
+        sort_modes       = ListWidget.BOOK_SORT_MODES,
+        display_modes    = MODES_MANUAL,
+        display_setting_key = DISPLAY_KEY_MANUAL,
         show_ok_cancel   = false,
         -- No per-row checkboxes here, so drop the blank checkbox column that
         -- otherwise leaves an empty gap on the left (same as the achievements

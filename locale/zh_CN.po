@@ -1610,3 +1610,33 @@ msgstr "年度目标"
 
 msgid "Latest"
 msgstr "最新"
+
+msgid "Rating"
+msgstr "评分"
+
+msgid "Date"
+msgstr "日期"
+
+msgid "Reading time"
+msgstr "阅读时间"
+
+msgid "Pages read"
+msgstr "已读页数"
+
+msgid "Rating (stars)"
+msgstr "评分（星级）"
+
+msgid "Rating (highest first)"
+msgstr "评分（从高到低）"
+
+msgid "Rating (lowest first)"
+msgstr "评分（从低到高）"
+
+msgid "Show in the right column"
+msgstr "在右侧列中显示"
+
+msgid "Clear rating"
+msgstr "清除评分"
+
+msgid "This book has no checksum, so its rating can't be saved"
+msgstr "这本书没有校验和，因此无法保存其评分"

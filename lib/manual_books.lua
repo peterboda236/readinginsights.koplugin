@@ -25,7 +25,7 @@ survives - and can be backed up or copied to another device - on its own.
 
 An entry is { id = <number>, title = <string>, authors = <string>,
 date = "YYYY-MM-DD", read_ts = <that date as a timestamp>, ts = <unix time
-it was added> }. read_ts is what the book lists sort "by last reading entry"
+it was added>, rating = <0-5 stars, 0 = not rated> }. read_ts is what the book lists sort "by last reading entry"
 on - a hand-added book has no reading entries, so the day the reader says
 they read it stands in for one; entries saved before dates existed (or with
 the date left empty) fall back to the time they were added.
@@ -63,6 +63,15 @@ function M.parseDate(str)
     local back = os.date("*t", ts)
     if back.year ~= y or back.month ~= m or back.day ~= d then return nil end
     return ts, string.format("%04d-%02d-%02d", y, m, d)
+end
+
+-- Whatever was typed or stored as a star rating -> an integer 0..5 (0 = not
+-- rated); nil if it isn't a number in that range at all.
+function M.normaliseRating(value)
+    if value == nil or value == "" then return 0 end
+    local n = tonumber(value)
+    if not n or n < 0 or n > 5 or n ~= math.floor(n) then return nil end
+    return n
 end
 
 local function yearKey(year)
@@ -105,6 +114,7 @@ function M.list(year)
                 date    = e.date or "",
                 read_ts = read_ts or added_ts,
                 ts      = added_ts,
+                rating  = M.normaliseRating(e.rating) or 0,
             })
         end
     end
@@ -144,6 +154,7 @@ function M.add(year, fields)
         date    = date or "",
         read_ts = read_ts,
         ts      = os.time(),
+        rating  = M.normaliseRating(fields.rating) or 0,
     }
     table.insert(entries, entry)
     saveYear(year, entries)
@@ -157,6 +168,9 @@ function M.update(year, id, fields)
         if e.id == id then
             if fields.title and fields.title ~= "" then e.title = fields.title end
             if fields.authors ~= nil then e.authors = fields.authors end
+            if fields.rating ~= nil then
+                e.rating = M.normaliseRating(fields.rating) or e.rating or 0
+            end
             if fields.date ~= nil then
                 local read_ts, date = M.parseDate(fields.date)
                 e.date    = date or ""

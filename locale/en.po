@@ -1891,3 +1891,39 @@ msgstr "of annual goal"
 
 msgid "Latest"
 msgstr "Latest"
+
+msgid "Rating (highest first)"
+msgstr "Rating (highest first)"
+
+msgid "Rating (lowest first)"
+msgstr "Rating (lowest first)"
+
+msgid "Show in the right column"
+msgstr "Show in the right column"
+
+msgid "Rating (stars)"
+msgstr "Rating (stars)"
+
+msgid "Rating (0-5 stars)"
+msgstr "Rating (0-5 stars)"
+
+msgid "Please enter a rating from 0 to 5"
+msgstr "Please enter a rating from 0 to 5"
+
+msgid "Date"
+msgstr "Date"
+
+msgid "Reading time"
+msgstr "Reading time"
+
+msgid "Pages read"
+msgstr "Pages read"
+
+msgid "Clear rating"
+msgstr "Clear rating"
+
+msgid "This book has no checksum, so its rating can't be saved"
+msgstr "This book has no checksum, so its rating can't be saved"
+
+msgid "Rating"
+msgstr "Rating"

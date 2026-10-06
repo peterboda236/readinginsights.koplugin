@@ -1380,7 +1380,7 @@ end
 function M.getFinishedBooksForYear(year)
     local books = {}
     return StatsDb.withDb(books, function(conn)
-        local cache_key = "finished:" .. tostring(year)
+        local cache_key = "finished2:" .. tostring(year)
         local stamp     = M._bookListStamp(conn)
         local hit       = Cache.getBookList(cache_key, stamp)
         if hit then return hit end
@@ -1401,14 +1401,18 @@ function M.getFinishedBooksForYear(year)
             SELECT book.title, book.id AS id_book, lp.last_time AS last_time,
                    (SELECT SUM(duration) FROM page_stat
                     WHERE id_book = book.id
-                      AND strftime('%%Y', start_time, 'unixepoch', 'localtime') = '%s') AS duration_sec
+                      AND strftime('%%Y', start_time, 'unixepoch', 'localtime') = '%s') AS duration_sec,
+                   (SELECT COUNT(DISTINCT page) FROM page_stat
+                    WHERE id_book = book.id
+                      AND strftime('%%Y', start_time, 'unixepoch', 'localtime') = '%s') AS pages_read,
+                   book.md5 AS md5
             FROM last_page lp
             JOIN book ON book.id = lp.id_book
             WHERE book.pages > 0
               AND CAST(lp.last_page AS REAL) / book.pages >= 0.99
               AND strftime('%%Y', lp.last_time, 'unixepoch', 'localtime') = '%s'
             ORDER BY lp.last_time DESC
-        ]], tostring(year), tostring(year))
+        ]], tostring(year), tostring(year), tostring(year))
         local _res, ran = StatsDb.withStatement(conn, sql, function(stmt)
             for row in stmt:rows() do
                 table.insert(books, {
@@ -1416,6 +1420,8 @@ function M.getFinishedBooksForYear(year)
                     authors  = "",
                     id_book  = tonumber(row[2]),
                     duration = tonumber(row[4]) or 0,
+                    pages    = tonumber(row[5]) or 0,
+                    md5      = row[6],
                     last_read = tonumber(row[3]) or 0,
                 })
             end
@@ -1717,7 +1723,7 @@ function M.getBooksForPeriod(period_format, period_value)
     local books = {}
     return StatsDb.withDb(books, function(conn)
         -- Same period, same stamp -> same list: skip the query entirely.
-        local cache_key = "period:" .. period_format .. ":" .. tostring(period_value)
+        local cache_key = "period2:" .. period_format .. ":" .. tostring(period_value)
         local lo, hi    = M._periodBounds(period_format, period_value)
         local stamp     = (lo and hi) and M._bookListStamp(conn, lo, hi) or nil
         local hit       = Cache.getBookList(cache_key, stamp)
@@ -1732,7 +1738,8 @@ function M.getBooksForPeriod(period_format, period_value)
                    NULL AS finish_time,
                    MAX(ps_dedup.last_read) AS last_read_time,
                    day_counts.days_read,
-                   book.id AS id_book
+                   book.id AS id_book,
+                   book.md5 AS md5
             FROM (
                 SELECT id_book, page,
                        SUM(duration) AS period_sum,
@@ -1762,6 +1769,7 @@ function M.getBooksForPeriod(period_format, period_value)
                     duration  = tonumber(row[4]) or 0,
                     days_read = tonumber(row[7]) or 0,
                     id_book   = tonumber(row[8]),
+                    md5       = row[9],
                     -- Last reading entry for this book in the period; what
                     -- the book lists sort on by default.
                     last_read = tonumber(row[6]) or 0,
@@ -1777,7 +1785,7 @@ function M.getAllBooks()
     local books = {}
     return StatsDb.withDb(books, function(conn)
         local stamp = M._bookListStamp(conn)
-        local hit   = Cache.getBookList("all", stamp)
+        local hit   = Cache.getBookList("all2", stamp)
         if hit then return hit end
 
         local sql = [[
@@ -1785,7 +1793,8 @@ function M.getAllBooks()
                    COUNT(DISTINCT ps_dedup.page) AS pages_read,
                    SUM(ps_dedup.period_sum) AS duration_sec,
                    MAX(ps_dedup.last_read) AS last_read_time,
-                   book.id AS id_book
+                   book.id AS id_book,
+                   book.md5 AS md5
             FROM (
                 SELECT id_book, page,
                        SUM(duration) AS period_sum,
@@ -1805,11 +1814,12 @@ function M.getAllBooks()
                     pages    = tonumber(row[3]) or 0,
                     duration = tonumber(row[4]) or 0,
                     id_book  = tonumber(row[6]),
+                    md5      = row[7],
                     last_read = tonumber(row[5]) or 0,
                 })
             end
         end)
-        if ran then Cache.setBookList("all", stamp, books) end
+        if ran then Cache.setBookList("all2", stamp, books) end
         return books
     end)
 end

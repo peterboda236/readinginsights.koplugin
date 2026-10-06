@@ -1891,3 +1891,33 @@ msgstr "vom Jahresziel"
 
 msgid "Latest"
 msgstr "Zuletzt"
+
+msgid "Rating"
+msgstr "Bewertung"
+
+msgid "Date"
+msgstr "Datum"
+
+msgid "Reading time"
+msgstr "Lesezeit"
+
+msgid "Pages read"
+msgstr "Gelesene Seiten"
+
+msgid "Rating (stars)"
+msgstr "Bewertung (Sterne)"
+
+msgid "Rating (highest first)"
+msgstr "Bewertung (beste zuerst)"
+
+msgid "Rating (lowest first)"
+msgstr "Bewertung (schlechteste zuerst)"
+
+msgid "Show in the right column"
+msgstr "In der rechten Spalte anzeigen"
+
+msgid "Clear rating"
+msgstr "Bewertung löschen"
+
+msgid "This book has no checksum, so its rating can't be saved"
+msgstr "Dieses Buch hat keine Prüfsumme, daher kann seine Bewertung nicht gespeichert werden"

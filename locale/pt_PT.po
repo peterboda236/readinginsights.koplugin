@@ -1891,3 +1891,33 @@ msgstr "da meta anual"
 
 msgid "Latest"
 msgstr "Mais recente"
+
+msgid "Rating"
+msgstr "Classificação"
+
+msgid "Date"
+msgstr "Data"
+
+msgid "Reading time"
+msgstr "Tempo de leitura"
+
+msgid "Pages read"
+msgstr "Páginas lidas"
+
+msgid "Rating (stars)"
+msgstr "Classificação (estrelas)"
+
+msgid "Rating (highest first)"
+msgstr "Classificação (mais alta primeiro)"
+
+msgid "Rating (lowest first)"
+msgstr "Classificação (mais baixa primeiro)"
+
+msgid "Show in the right column"
+msgstr "Mostrar na coluna da direita"
+
+msgid "Clear rating"
+msgstr "Limpar classificação"
+
+msgid "This book has no checksum, so its rating can't be saved"
+msgstr "Este livro não tem soma de verificação, por isso a classificação não pode ser guardada"
