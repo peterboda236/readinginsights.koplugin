@@ -1927,3 +1927,15 @@ msgstr "This book has no checksum, so its rating can't be saved"
 
 msgid "Rating"
 msgstr "Rating"
+
+msgid "Book number in series"
+msgstr "Book number in series"
+
+msgid "e.g. 2"
+msgstr "e.g. 2"
+
+msgid "Please enter the number in the series as a number (e.g. 2 or 2.5)"
+msgstr "Please enter the number in the series as a number (e.g. 2 or 2.5)"
+
+msgid "Finished"
+msgstr "Finished"

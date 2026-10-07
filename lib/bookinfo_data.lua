@@ -15,14 +15,23 @@ plugin's card data (bookcard.koplugin, lib/bookdata.lua):
                 nil when the book has none
 
   BookInfoData.gather(ui)      -> the table above (nil without a document)
-  BookInfoData.getCover(ui)    -> a fresh cover BlitBuffer (the caller owns
+  BookInfoData.gatherForFile(file, book)
+                               -> the same table for a book that is not the
+                                  open one (a row of a book list): read from
+                                  the book's file when it is known, with the
+                                  statistics DB's title / authors as fallback
+  BookInfoData.totals(ui, id_book)
+                               -> pages read, seconds read (whole history)
+  BookInfoData.md5(ui)         -> the open book's checksum
+  BookInfoData.getCover(ui, file)
+                               -> a fresh cover BlitBuffer (the caller owns
                                   it and must free it - or hand it to a
                                   widget with image_disposable = true), or
                                   nil when the book has no usable cover
 ]]--
 
 local deps = ...
-local Locale = deps.Locale
+local Locale, BookStatsData = deps.Locale, deps.BookStatsData
 local _ = Locale._
 
 local M = {}
@@ -124,6 +133,132 @@ function M.gather(ui)
     return info
 end
 
+-- The properties of a book that is not open: KOReader's own book-info helper
+-- (either calling style, it has changed between versions), then the sidecar.
+local function fileProps(file)
+    local function valid(p)
+        return type(p) == "table"
+            and (p.title or p.display_title or p.authors or p.description) ~= nil
+    end
+    local ok, BI = pcall(require, "apps/filemanager/filemanagerbookinfo")
+    if ok and type(BI) == "table" and type(BI.getDocProps) == "function" then
+        local ok1, p1 = pcall(BI.getDocProps, file)
+        if ok1 and valid(p1) then return p1 end
+        local ok2, p2 = pcall(BI.getDocProps, BI, file)
+        if ok2 and valid(p2) then return p2 end
+    end
+    local ok3, p3 = pcall(function()
+        return require("docsettings"):open(file):readSetting("doc_props")
+    end)
+    if ok3 and valid(p3) then return p3 end
+    return nil
+end
+
+-- Opens a book's document (to read its properties / cover); the caller
+-- closes it. nil when it can't be opened.
+M.last_cover_error = nil
+
+local function openDoc(file)
+    local ok, doc = pcall(function()
+        return require("document/documentregistry"):openDocument(file)
+    end)
+    if ok and doc then return doc end
+    return nil
+end
+
+-- The properties read straight from the book itself: the last resort, and
+-- what supplies a description the cached properties did not carry.
+local function docProps(file)
+    local doc = openDoc(file)
+    if not doc then return nil end
+    local ok, props = pcall(function() return doc:getProps() end)
+    pcall(function() doc:close() end)
+    if ok and type(props) == "table" then return props end
+    return nil
+end
+
+function M.gatherForFile(file, book)
+    local props = (file and fileProps(file)) or {}
+    if file and (type(props) ~= "table" or not props.description or props.description == "") then
+        -- the cached properties have no description (or there are none):
+        -- ask the book itself, and take what is missing from there
+        local dp = docProps(file)
+        if dp then
+            local base = props
+            props = setmetatable({}, { __index = function(_t, k)
+                local v = base[k]
+                if v == nil or v == "" then v = dp[k] end
+                return v
+            end })
+        end
+    end
+    -- No file (or nothing readable in it): the statistics DB still knows the
+    -- title, the author and the series of the book.
+    local row = book and book.id_book and BookStatsData
+        and BookStatsData.getBookRow(book.id_book) or nil
+    if row then
+        if (not props.authors or props.authors == "") and row.authors and row.authors ~= "" and row.authors ~= "N/A" then
+            props = setmetatable({ authors = row.authors }, { __index = props })
+        end
+        if (not props.series or props.series == "") and row.series and row.series ~= "" and row.series ~= "N/A" then
+            props = setmetatable({ series = row.series, series_index = false }, { __index = props })
+        end
+        if not (props.display_title or props.title) and row.title and row.title ~= "" then
+            props = setmetatable({ title = row.title }, { __index = props })
+        end
+    end
+    -- A book the reader added by hand has neither a file nor a statistics
+    -- row; the series they typed in is kept with the entry itself.
+    if book and book.manual and (not props.series or props.series == "")
+        and type(book.series) == "string" and book.series ~= "" then
+        props = setmetatable({ series = book.series, series_index = book.series_index },
+            { __index = props })
+    end
+    local info = {}
+    info.title = props.display_title or props.title
+        or (book and book.title ~= "" and book.title)
+        or (file and filenameTitle(file)) or ""
+    info.authors = cleanAuthors(props.authors) or cleanAuthors(book and book.authors)
+    info.series, info.series_index = cleanSeries(props)
+    info.description = cleanDescription(props.description)
+    return info
+end
+
+-- The open book's checksum (the key its rating is filed under).
+function M.md5(ui)
+    if not ui then return nil end
+    local md5
+    pcall(function()
+        if ui.doc_settings then md5 = ui.doc_settings:readSetting("partial_md5_checksum") end
+        if (not md5 or md5 == "") and ui.document and ui.document.file then
+            md5 = require("util").partialMD5(ui.document.file)
+        end
+    end)
+    if md5 == "" then md5 = nil end
+    return md5
+end
+
+-- Pages and seconds read, over the book's whole history. For the open book
+-- KOReader's statistics plugin is asked first (it knows what has not been
+-- written to the DB yet).
+function M.totals(ui, id_book)
+    local pages, secs
+    local plugin = ui and ui.statistics
+    if plugin and plugin.id_curr_book and tostring(plugin.id_curr_book) == tostring(id_book) then
+        pcall(function() plugin:insertDB() end)
+        if plugin.getPageTimeTotalStats then
+            local ok, p, t = pcall(plugin.getPageTimeTotalStats, plugin, id_book)
+            if ok then pages, secs = tonumber(p), tonumber(t) end
+        end
+    end
+    if (not pages or not secs) and BookStatsData then
+        local p, t = BookStatsData.getBookTotals(id_book)
+        pages = pages or p
+        secs  = secs or t
+    end
+    return pages, secs
+end
+
 -- The "Series / #N" line, in the language's own shape ("{series} / #{index}"
 -- by default; some languages spell the number sign differently).
 function M.seriesLine(info)
@@ -137,9 +272,38 @@ function M.seriesLine(info)
     end))
 end
 
-function M.getCover(ui)
-    if not ui or not ui.document then return nil end
+function M.getCover(ui, file)
     local bb
+    M.last_cover_error = nil
+    if file then
+        -- a book that is not open: the cover is read from the file
+        local ok_bi, bookinfo = pcall(require, "apps/filemanager/filemanagerbookinfo")
+        if ok_bi and bookinfo then
+            local ok_c, err_c = pcall(function() bb = bookinfo:getCoverImage(nil, file) end)
+            if not ok_c then M.last_cover_error = "getCoverImage: " .. tostring(err_c) end
+        end
+        if not bb then
+            -- older KOReader: the helper only takes an open document
+            local doc = openDoc(file)
+            if doc then
+                if ok_bi and bookinfo then
+                    pcall(function() bb = bookinfo:getCoverImage(doc) end)
+                end
+                if not bb then
+                    local ok_p, err_p = pcall(function() bb = doc:getCoverPageImage() end)
+                    if not ok_p then M.last_cover_error = "getCoverPageImage: " .. tostring(err_p) end
+                end
+                pcall(function() doc:close() end)
+                if not bb and not M.last_cover_error then
+                    M.last_cover_error = "the book has no cover image"
+                end
+            else
+                M.last_cover_error = M.last_cover_error or "the book could not be opened"
+            end
+        end
+        return bb
+    end
+    if not ui or not ui.document then return nil end
     pcall(function()
         local bookinfo = ui.bookinfo
         if not bookinfo then

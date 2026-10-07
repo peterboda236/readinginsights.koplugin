@@ -1640,3 +1640,15 @@ msgstr "清除评分"
 
 msgid "This book has no checksum, so its rating can't be saved"
 msgstr "这本书没有校验和，因此无法保存其评分"
+
+msgid "Book number in series"
+msgstr "系列序号"
+
+msgid "e.g. 2"
+msgstr "例如 2"
+
+msgid "Please enter the number in the series as a number (e.g. 2 or 2.5)"
+msgstr "请以数字输入系列序号（例如 2 或 2.5）"
+
+msgid "Finished"
+msgstr "已读完"

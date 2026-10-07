@@ -24,6 +24,8 @@ survives - and can be backed up or copied to another device - on its own.
                                       string (nil if it isn't a valid date)
 
 An entry is { id = <number>, title = <string>, authors = <string>,
+series = <series name, "" = none>, series_index = <its number in the series
+as text such as "2" or "2.5", "" = unknown>,
 date = "YYYY-MM-DD", read_ts = <that date as a timestamp>, ts = <unix time
 it was added>, rating = <0-5 stars, 0 = not rated> }. read_ts is what the book lists sort "by last reading entry"
 on - a hand-added book has no reading entries, so the day the reader says
@@ -74,6 +76,19 @@ function M.normaliseRating(value)
     return n
 end
 
+-- Whatever was typed or stored as the book's number in its series -> a
+-- normalised string ("2", "2.5"); "" when empty; nil when it isn't a
+-- number. A decimal comma is accepted ("2,5").
+function M.normaliseSeriesIndex(value)
+    if value == nil then return "" end
+    local str = tostring(value):gsub("^%s+", ""):gsub("%s+$", "")
+    if str == "" then return "" end
+    local n = tonumber((str:gsub(",", ".")))
+    if not n or n < 0 then return nil end
+    if n == math.floor(n) then return string.format("%d", n) end
+    return string.format("%g", n)
+end
+
 local function yearKey(year)
     return "year_" .. tostring(year)
 end
@@ -111,6 +126,8 @@ function M.list(year)
                 id      = e.id,
                 title   = e.title,
                 authors = e.authors or "",
+                series  = e.series or "",
+                series_index = M.normaliseSeriesIndex(e.series_index) or "",
                 date    = e.date or "",
                 read_ts = read_ts or added_ts,
                 ts      = added_ts,
@@ -151,6 +168,8 @@ function M.add(year, fields)
         id      = nextId(entries),
         title   = title,
         authors = fields.authors or "",
+        series  = fields.series or "",
+        series_index = M.normaliseSeriesIndex(fields.series_index) or "",
         date    = date or "",
         read_ts = read_ts,
         ts      = os.time(),
@@ -168,6 +187,10 @@ function M.update(year, id, fields)
         if e.id == id then
             if fields.title and fields.title ~= "" then e.title = fields.title end
             if fields.authors ~= nil then e.authors = fields.authors end
+            if fields.series ~= nil then e.series = fields.series end
+            if fields.series_index ~= nil then
+                e.series_index = M.normaliseSeriesIndex(fields.series_index) or e.series_index or ""
+            end
             if fields.rating ~= nil then
                 e.rating = M.normaliseRating(fields.rating) or e.rating or 0
             end

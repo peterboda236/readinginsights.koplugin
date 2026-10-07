@@ -1933,3 +1933,15 @@ msgstr "Ennek a könyvnek nincs ellenőrző összege, ezért az értékelése ne
 
 msgid "Rating"
 msgstr "Értékelés"
+
+msgid "Book number in series"
+msgstr "Sorozatbeli sorszám"
+
+msgid "e.g. 2"
+msgstr "pl. 2"
+
+msgid "Please enter the number in the series as a number (e.g. 2 or 2.5)"
+msgstr "Kérlek, a sorozatbeli sorszámot számként add meg (pl. 2 vagy 2,5)"
+
+msgid "Finished"
+msgstr "Befejezve"

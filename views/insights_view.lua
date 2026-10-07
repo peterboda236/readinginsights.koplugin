@@ -1512,6 +1512,36 @@ local function sortByLastRead(books)
     return books
 end
 
+-- The hand-added books of a year (lib/manual_books.lua) as book-shaped
+-- records, no reading time and no pages. Only the finished-books list
+-- shows them.
+local function manualBooksForYear(year)
+    local out = {}
+    for _idx, e in ipairs(Manual.list(year)) do
+        local date = e.date or ""
+        do
+            table.insert(out, {
+                title     = e.title,
+                -- No author and no reading time in these lists: the row is
+                -- shown as a bare title (see BookList.showBookList's
+                -- `manual` branch).
+                authors   = e.authors or "",
+                series       = e.series or "",
+                series_index = e.series_index or "",
+                date_known   = date ~= "",
+                duration  = 0,
+                pages     = 0,
+                rating    = e.rating or 0,
+                manual_id   = e.id,
+                manual_year = year,
+                last_read = e.read_ts or e.ts or 0,
+                manual    = true,
+            })
+        end
+    end
+    return out
+end
+
 local function getFinishedBooksForYearCombined(popup_self, year)
     local base_books = Data.getFinishedBooksForYear(year)
     local overrides = VS.readFinishedOverrides(year)
@@ -1521,20 +1551,7 @@ local function getFinishedBooksForYearCombined(popup_self, year)
     -- are appended here, as book-shaped entries with no reading time, so
     -- this list matches the goal count (which adds them the same way, see
     -- Data.applyFinishedOverrides).
-    local manual_books = {}
-    for _idx, e in ipairs(Manual.list(year)) do
-        table.insert(manual_books, {
-            title     = e.title,
-            -- No author and no reading time in this list: the row is shown
-            -- as a bare title (see BookList.showBookList's `manual` branch).
-            authors   = "",
-            duration  = 0,
-            pages     = 0,
-            rating    = e.rating or 0,
-            last_read = e.read_ts or e.ts or 0,
-            manual    = true,
-        })
-    end
+    local manual_books = manualBooksForYear(year)
 
     if not next(overrides) then
         if #manual_books == 0 then return base_books end

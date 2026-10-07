@@ -1921,3 +1921,15 @@ msgstr "Bewertung löschen"
 
 msgid "This book has no checksum, so its rating can't be saved"
 msgstr "Dieses Buch hat keine Prüfsumme, daher kann seine Bewertung nicht gespeichert werden"
+
+msgid "Book number in series"
+msgstr "Nummer in der Reihe"
+
+msgid "e.g. 2"
+msgstr "z. B. 2"
+
+msgid "Please enter the number in the series as a number (e.g. 2 or 2.5)"
+msgstr "Bitte die Nummer in der Reihe als Zahl eingeben (z. B. 2 oder 2.5)"
+
+msgid "Finished"
+msgstr "Beendet"

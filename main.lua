@@ -258,7 +258,7 @@ local BookList = loadModule("views/booklist_view.lua", {
     Colors = Colors, Locale = Locale, VS = ViewSettings, UI = UI,
     Data = InsightsData, Cache = InsightsCache,
     ListWidget = ListWidget, Manual = ManualBooks, Ratings = Ratings,
-    RatingDialog = RatingDialog,
+    RatingDialog = RatingDialog, BookStatsData = BookStatsData,
 })
 
 -- Records data (the queries + their cache) is loaded before the insights
@@ -319,12 +319,17 @@ local StatsPopup = loadModule("views/book_stats_view.lua", {
 -- joined with a language-appropriate "and", the series line, the cover
 -- image) lives in lib/bookinfo_data.lua; the cover's rounded, shadowed
 -- frame is drawn by widgets/coverframe.lua (the Book card plugin's widget).
-local BookInfoData = loadModule("lib/bookinfo_data.lua", { Locale = Locale })
+local BookInfoData = loadModule("lib/bookinfo_data.lua",
+    { Locale = Locale, BookStatsData = BookStatsData })
 local CoverFrame   = loadModule("widgets/coverframe.lua")
 local BookInfo = loadModule("views/book_info_view.lua", {
     Locale = Locale, Colors = Colors, Fonts = Fonts, VS = ViewSettings,
     Data = BookInfoData, CoverFrame = CoverFrame,
+    Ratings = Ratings, RatingDialog = RatingDialog,
 })
+-- A tap on a row of a book list opens this popup for that book (the lists
+-- are loaded before it, so they get it handed over here).
+BookList.bindBookInfo(BookInfo)
 local Updater = loadModule("lib/updater.lua", { Locale = Locale })
 local About   = loadModule("views/about.lua",
     { Locale = Locale, Updater = Updater, PopupUtil = PopupUtil })

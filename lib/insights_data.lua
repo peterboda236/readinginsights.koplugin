@@ -1431,6 +1431,69 @@ function M.getFinishedBooksForYear(year)
     end)
 end
 
+-- When a book counts as finished, for lists that are not the finished-books
+-- list (month, year, all-books, day): the timestamp of the entry it was
+-- finished on, or nil when it doesn't count as finished. The same rules as
+-- the finished-books list apply - the last entry reached 99% of the book,
+-- in the year that entry falls in, unless the reader unticked it there; or
+-- the reader ticked it by hand for a year the book has activity in (the
+-- date is then the last entry of that year). Overrides are per year, so
+-- every year the book was read in is looked at; the latest date wins.
+function M.getFinishedTimestamp(id_book)
+    id_book = tonumber(id_book)
+    if not id_book then return nil end
+    return StatsDb.withDb(nil, function(conn)
+        local last_time, last_page, pages
+        local sql_last = string.format([[
+            SELECT le.last_time, MAX(ps.page), book.pages
+            FROM (SELECT MAX(start_time) AS last_time
+                  FROM page_stat WHERE id_book = %d) le
+            JOIN page_stat ps ON ps.id_book = %d AND ps.start_time = le.last_time
+            JOIN book ON book.id = %d
+        ]], id_book, id_book, id_book)
+        StatsDb.withStatement(conn, sql_last, function(stmt)
+            for row in stmt:rows() do
+                last_time = tonumber(row[1])
+                last_page = tonumber(row[2])
+                pages     = tonumber(row[3])
+            end
+        end)
+
+        local auto_year
+        local auto = false
+        if last_time then
+            auto_year = os.date("%Y", last_time)
+            auto = (pages or 0) > 0 and (last_page or 0) / pages >= 0.99
+        end
+
+        local per_year = {}
+        local sql_years = string.format([[
+            SELECT strftime('%%Y', start_time, 'unixepoch', 'localtime'),
+                   MAX(start_time)
+            FROM page_stat WHERE id_book = %d
+            GROUP BY 1
+        ]], id_book)
+        StatsDb.withStatement(conn, sql_years, function(stmt)
+            for row in stmt:rows() do
+                if row[1] then per_year[tostring(row[1])] = tonumber(row[2]) end
+            end
+        end)
+
+        local key = tostring(id_book)
+        local best
+        for year, year_last in pairs(per_year) do
+            local v = VS.readFinishedOverrides(year)[key]
+            if auto and year == auto_year and v ~= false then
+                if not best or last_time > best then best = last_time end
+            end
+            if v == true and year_last then
+                if not best or year_last > best then best = year_last end
+            end
+        end
+        return best
+    end)
+end
+
 -- Returns both last-week stats in one DB connection:
 --   last_week:       { avg_seconds, avg_pages }
 --   last_week_daily: array[7] of { hours, seconds, pages, label, midnight_ts }, index 1 = today

@@ -14,6 +14,9 @@ lib/chapterinfo.lua (chapters), which were already separate.
   BookStatsData.getBookAndTodayStats(book_id)
       -> total_days, today_pages, today_time,
          days_since_start, started_timestamp
+  BookStatsData.getBookTotals(book_id)
+      -> pages, seconds   (distinct pages read and the time spent on them,
+                           over the book's whole history; nil when unknown)
 ]]--
 
 local deps = ...
@@ -87,6 +90,52 @@ function M.getBookAndTodayStats(book_id)
     r = r or {}
     return r.total_days, r.today_pages, r.today_time,
            r.days_since_start, r.started_timestamp
+end
+
+function M.getBookTotals(book_id)
+    book_id = tonumber(book_id)
+    if not book_id then return nil, nil end
+    local r = StatsDb.withDb(nil, function(conn)
+        local out = {}
+        StatsDb.withStatement(conn, string.format([[
+            SELECT count(*), sum(duration)
+            FROM (
+                SELECT page, sum(duration) AS duration
+                FROM   page_stat
+                WHERE  id_book = %d
+                GROUP  BY page
+            );
+        ]], book_id), function(stmt)
+            for row in stmt:rows() do
+                out.pages = tonumber(row[1])
+                out.time  = tonumber(row[2])
+                break
+            end
+        end)
+        return out
+    end)
+    r = r or {}
+    return r.pages, r.time
+end
+
+-- title, authors, series and checksum as KOReader's statistics keep them for
+-- a book: what the Book info popup falls back on for a book whose file (and
+-- so its metadata) can't be found.
+function M.getBookRow(book_id)
+    book_id = tonumber(book_id)
+    if not book_id then return nil end
+    return StatsDb.withDb(nil, function(conn)
+        local out
+        StatsDb.withStatement(conn, string.format(
+            "SELECT title, authors, series, md5 FROM book WHERE id = %d", book_id),
+            function(stmt)
+                for row in stmt:rows() do
+                    out = { title = row[1], authors = row[2], series = row[3], md5 = row[4] }
+                    break
+                end
+            end)
+        return out
+    end)
 end
 
 return M

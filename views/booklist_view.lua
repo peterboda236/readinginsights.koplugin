@@ -12,7 +12,8 @@ The list views the insights popup opens on a tap or a long press:
     (read on paper, in another app, on another device), which counts
     towards the reading goal all the same - see lib/manual_books.lua.
 
-The first two are read-only, and keep the KeyValuePage look they have
+The first two are read-only (tap a book for its Book info popup, long-press
+it for its statistics), and keep the KeyValuePage look they have
 always had - with the same sort menu behind the title bar's left icon as
 the editable ones (M.showSortMenu in widgets/booklistwidget.lua is shared
 by both). The last two are the ones the reader edits, and are drawn by
@@ -31,6 +32,7 @@ load time. Calling any of these before bind() is a programming error, not a
 runtime condition, so nothing here guards against it.
 
   BookList.bind(hooks)          wire in the view's popup class and helpers
+  BookList.bindBookInfo(class)  wire in the Book info popup (tap on a row)
   BookList.showBooksForPeriod(popup, books, empty_text, title)
                                 close the insights popup, show a list,
                                 reopen it on close
@@ -46,6 +48,7 @@ local deps = ...
 local Locale, VS, Data, Cache, ListWidget, Manual, Ratings, RatingDialog =
     deps.Locale, deps.VS, deps.Data, deps.Cache, deps.ListWidget, deps.Manual, deps.Ratings,
     deps.RatingDialog
+local BookStatsData = deps.BookStatsData
 local _  = Locale._
 
 local M = {}
@@ -54,6 +57,12 @@ local M = {}
 -- reopen, and the few view-level helpers they share with it (the year's
 -- finished-book query, duration formatting).
 local ReadingInsightsPopup, getFinishedBooksForYear, formatHHMMSS
+
+-- The Book info popup class, handed over by main.lua once it is loaded.
+local BookInfoPopup
+function M.bindBookInfo(class)
+    BookInfoPopup = class
+end
 
 function M.bind(hooks)
     ReadingInsightsPopup    = hooks.popup_class
@@ -97,11 +106,7 @@ local MODES_MANUAL   = { "date", "rating" }
 local dateText = Locale.formatDateFromTS
 
 local function finishedDateText(book)
-    local text = dateText(book.last_read)
-    if book.manual then
-        return text ~= "" and ("* " .. text) or "*"
-    end
-    return text
+    return dateText(book.last_read)
 end
 
 -- Looks each book's star rating up (from its sidecar, via the statistics
@@ -132,6 +137,18 @@ local function valueText(book, mode)
         return formatHHMMSS(book.duration)
     end
     return "00:00:00"
+end
+
+-- "Series / #2" for a hand-added book (just the name when it has no number
+-- yet), in the language's own shape; "" when the book has no series.
+local function seriesText(series, index)
+    if not series or series == "" then return "" end
+    if not index or index == "" then return series end
+    return (_("{series} / #{index}"):gsub("{(%w+)}", function(k)
+        if k == "series" then return series end
+        if k == "index" then return tostring(index) end
+        return "{" .. k .. "}"
+    end))
 end
 
 -- All four texts of a book at once, the shape the list widget's rows take.
@@ -170,8 +187,10 @@ local function rateStatsBook(book, on_done)
 end
 
 -- The read-only period lists keep KOReader's KeyValuePage look they always
--- had: title and author on the left, reading time on the right, tap a row
--- for that book's statistics. Only the two lists the reader edits (the
+-- had: title and author on the left, reading time on the right. Tap a row
+-- for that book's Book info popup (cover, title, stars, pages and time, ...;
+-- long-press its stars to rate the book), long-press a row for that book's
+-- statistics. Only the two lists the reader edits (the
 -- finished-books checklist and the hand-kept list below) use the sortable
 -- widget, where the sort menu and the cancel/accept buttons earn their
 -- place.
@@ -181,6 +200,17 @@ end
 -- opts.modal marks the list (and the book stats page a row opens) as modal,
 -- so it stacks above modal popups such as the streak calendar and the
 -- insights popup instead of opening behind them.
+-- The author of a list book, for finding its file: the rows of the lists
+-- carry none, so it is read from the statistics DB when needed.
+local function authorsOf(book)
+    if book.authors and book.authors ~= "" then return book.authors end
+    if book.id_book and BookStatsData then
+        local ok, row = pcall(BookStatsData.getBookRow, book.id_book)
+        if ok and row and row.authors then return row.authors end
+    end
+    return nil
+end
+
 function M.showBookList(title, books, on_close, stats_plugin, opts)
     local KeyValuePage = require("ui/widget/keyvaluepage")
 
@@ -196,6 +226,7 @@ function M.showBookList(title, books, on_close, stats_plugin, opts)
 
     local openPage          -- defined below; rows reopen the page after a rating edit
     local kv, resorting
+    local ui = (opts and opts.ui) or (stats_plugin and stats_plugin.ui) or nil
 
     local function buildPairs(sorted_books)
         local kv_pairs = {}
@@ -206,14 +237,20 @@ function M.showBookList(title, books, on_close, stats_plugin, opts)
             -- author line would be the only thing filling the row out.
             if not book.manual and book.authors and book.authors ~= "" then
                 display_text = display_text .. "\n" .. book.authors
+            elseif book.manual then
+                -- ... except for the series it was given, when it has one.
+                local line = seriesText(book.series, book.series_index)
+                if line ~= "" then display_text = display_text .. "\n" .. line end
             end
 
             local time_str = valueText(book, display_mode)
             local book_id = book.id_book
             local book_title = book.title
-            local cb = nil
+
+            -- Long press: the book's statistics page.
+            local hold_cb = nil
             if book_id and stats_plugin then
-                cb = function()
+                hold_cb = function()
                     local kv2
                     kv2 = KeyValuePage:new{
                         title           = book_title,
@@ -232,16 +269,56 @@ function M.showBookList(title, books, on_close, stats_plugin, opts)
                     UIManager:show(kv2)
                 end
             end
-            local hold_cb = nil
-            if display_mode == "rating" and not book.manual and book.md5 and book.md5 ~= "" then
-                hold_cb = function()
-                    rateStatsBook(book, function()
-                        local page = kv and kv.show_page or 1
-                        resorting = true
-                        UIManager:close(kv)
-                        resorting = false
-                        openPage(page)
-                    end)
+
+            -- Tap: the Book info popup. A rating set there changes this
+            -- list's rating column / order, so the page is rebuilt (on the
+            -- same page) once the popup is closed.
+            local cb = nil
+            if BookInfoPopup then
+                cb = function()
+                    local rated = false
+                    -- When the book was finished, if it counts as finished:
+                    -- a hand-added book only if the reader gave a date
+                    -- (otherwise last_read is just when it was added); the
+                    -- finished-books list already knows the date of each
+                    -- of its books; any other list (month, year, day...)
+                    -- works it out the same way that list does, manual
+                    -- ticks and unticks included.
+                    local finished_ts = nil
+                    if book.manual then
+                        if book.date_known and (book.last_read or 0) > 0 then
+                            finished_ts = book.last_read
+                        end
+                    elseif opts and opts.show_dates then
+                        if (book.last_read or 0) > 0 then finished_ts = book.last_read end
+                    elseif book.id_book then
+                        local ok, ts = pcall(Data.getFinishedTimestamp, book.id_book)
+                        if ok then finished_ts = ts end
+                    end
+                    UIManager:show(BookInfoPopup:new{
+                        ui      = ui,
+                        book    = book,
+                        finished_ts = finished_ts,
+                        file    = (not book.manual) and Ratings.fileFor(book.md5, book.title, authorsOf(book)) or nil,
+                        -- A hand-added book keeps its rating in the manual list.
+                        save_rating = book.manual and function(n)
+                            if not (book.manual_year and book.manual_id) then return false end
+                            Manual.update(book.manual_year, book.manual_id, { rating = n })
+                            return true
+                        end or nil,
+                        on_rate = function(n)
+                            book.rating = n
+                            rated = true
+                        end,
+                        on_close = function()
+                            if not rated or not kv then return end
+                            local page = kv.show_page or 1
+                            resorting = true
+                            UIManager:close(kv)
+                            resorting = false
+                            openPage(page)
+                        end,
+                    })
                 end
             end
             table.insert(kv_pairs, {
@@ -349,6 +426,11 @@ function M.showBooksForPeriod(popup_self, books, empty_text, title, opts)
     UIManager:close(popup_self)
 
     local stats_plugin = saved_ui and saved_ui.statistics or nil
+    -- The list's rows open the Book info popup, which wants the UI (to know
+    -- the open book): hand it over next to the caller's own options.
+    local list_opts = {}
+    for k, v in pairs(opts or {}) do list_opts[k] = v end
+    list_opts.ui = saved_ui
     M.showBookList(title, books, function()
         local p = ReadingInsightsPopup:new{
             ui               = saved_ui,
@@ -364,7 +446,7 @@ function M.showBooksForPeriod(popup_self, books, empty_text, title, opts)
             _last_week_daily = saved_last_week_daily,
         }
         UIManager:show(p)
-    end, stats_plugin, opts)
+    end, stats_plugin, list_opts)
 end
 
 -- Refreshes the insights popup's reading-goal section in place, so the
@@ -584,6 +666,18 @@ local function editManualBook(year, entry, on_done)
                 text        = entry and entry.authors or "",
                 hint        = _("Author"),
             },
+            -- Optional: which series the book belongs to and its number in
+            -- it ("2", "2.5"). Both may stay empty.
+            {
+                description = _("Series"),
+                text        = entry and entry.series or "",
+                hint        = _("Series"),
+            },
+            {
+                description = _("Book number in series"),
+                text        = entry and entry.series_index or "",
+                hint        = _("e.g. 2"),
+            },
             -- Shown and typed in the configured date format (Settings ▸
             -- Advanced settings ▸ Date & time ▸ "Date format"), while the
             -- store keeps ISO either way - so an entry added under one
@@ -618,11 +712,21 @@ local function editManualBook(year, entry, on_done)
                     local fields = dialog:getFields()
                     local title   = (fields[1] or ""):gsub("^%s+", ""):gsub("%s+$", "")
                     local authors = (fields[2] or ""):gsub("^%s+", ""):gsub("%s+$", "")
-                    local date    = (fields[3] or ""):gsub("^%s+", ""):gsub("%s+$", "")
+                    local series  = (fields[3] or ""):gsub("^%s+", ""):gsub("%s+$", "")
+                    local series_index = (fields[4] or ""):gsub("^%s+", ""):gsub("%s+$", "")
+                    local date    = (fields[5] or ""):gsub("^%s+", ""):gsub("%s+$", "")
                     if title == "" then
                         UIManager:show(InfoMessage:new{ text = _("Please enter a title") })
                         return
                     end
+                    local idx = Manual.normaliseSeriesIndex(series_index)
+                    if not idx then
+                        UIManager:show(InfoMessage:new{
+                            text = _("Please enter the number in the series as a number (e.g. 2 or 2.5)") })
+                        return
+                    end
+                    -- A number without a series name has nothing to belong to.
+                    if series == "" then idx = "" end
                     -- An empty date is fine (the entry then sorts by when it
                     -- was added); a date that isn't one is not, or it would
                     -- be silently dropped on save. What was typed is read
@@ -637,7 +741,8 @@ local function editManualBook(year, entry, on_done)
                         date = iso
                     end
                     UIManager:close(dialog)
-                    local values = { title = title, authors = authors, date = date, rating = rating }
+                    local values = { title = title, authors = authors, series = series,
+                                    series_index = idx, date = date, rating = rating }
                     if entry then
                         Manual.update(year, entry.id, values)
                     else
@@ -658,7 +763,12 @@ end
 -- list and the checklist use. The author is still stored and editable, it
 -- simply isn't what these rows are scanned for.
 local function manualRowText(entry)
-    return entry.title or _("Unknown")
+    local text = entry.title or _("Unknown")
+    -- The row is a single line, so the series follows the title in
+    -- brackets: "Title (Series / #2)".
+    local line = seriesText(entry.series, entry.series_index)
+    if line ~= "" then text = text .. " (" .. line .. ")" end
+    return text
 end
 
 -- The list of hand-added books for one year: a pinned "add a book" row on
