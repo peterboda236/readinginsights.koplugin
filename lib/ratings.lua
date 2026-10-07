@@ -457,6 +457,16 @@ local function writeSummary(doc_settings, n)
     doc_settings:saveSetting("summary", summary)
 end
 
+-- The sidecar-folder walk is cached for SCAN_TTL and only fills the gaps the
+-- reading history leaves. Without this a rating that was just cleared (0)
+-- would come straight back from the stale walk: the history sidecar no longer
+-- has a rating, so the old one from the cached walk would fill the gap.
+local function forgetScanned(md5, n)
+    if not md5 or md5 == "" or not scan_map then return end
+    n = tonumber(n) or 0
+    scan_map[md5] = n >= 1 and n or nil
+end
+
 -- A rating chosen in the Book info popup. Goes into the book's sidecar
 -- (summary.rating) when the file is known - the open book through its live
 -- settings, any other through its sidecar file - so the rating is the book's
@@ -496,11 +506,13 @@ function M.save(md5, n, file)
             st:saveSetting("ratings", t)
             pcall(function() st:flush() end)
         end
+        forgetScanned(md5, n)
         map, built_at = nil, nil
         return true
     end
     if not md5 or md5 == "" then return false end
     local ok = M.set(md5, n)
+    forgetScanned(md5, n)
     map, built_at = nil, nil
     return ok
 end
