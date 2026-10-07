@@ -1910,11 +1910,8 @@ msgstr "Limpar classificação"
 msgid "This book has no checksum, so its rating can't be saved"
 msgstr "Este livro não tem soma de verificação, por isso a classificação não pode ser guardada"
 
-msgid "Book number in series"
-msgstr "Número na série"
-
-msgid "e.g. 2"
-msgstr "p. ex. 2"
+msgid "e.g. Dune #2"
+msgstr "p. ex. Dune #2"
 
 msgid "Please enter the number in the series as a number (e.g. 2 or 2.5)"
 msgstr "Introduza o número na série como um número (p. ex. 2 ou 2.5)"

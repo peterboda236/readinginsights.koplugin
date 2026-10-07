@@ -623,6 +623,29 @@ local function defaultManualDate(year)
     return string.format("%s-12-31", tostring(year))
 end
 
+-- The series field of the book editor: "Name #2" - the number is optional.
+local function seriesFieldText(entry)
+    if not entry or not entry.series or entry.series == "" then return "" end
+    local idx = entry.series_index
+    if idx and idx ~= "" then return entry.series .. " #" .. tostring(idx) end
+    return entry.series
+end
+
+-- Splits what was typed into the series field into name and number.
+-- "Dune #2" -> "Dune", "2"; "Dune" -> "Dune", ""; returns nil for a "#" that
+-- isn't followed by a number. A number alone ("#2") has no series to belong
+-- to, so it is dropped.
+local function parseSeriesField(text)
+    text = (text or ""):gsub("^%s+", ""):gsub("%s+$", "")
+    if not text:find("#", 1, true) then return text, "" end
+    local name, num = text:match("^(.-)%s*#%s*(.-)%s*$")
+    if not name then return nil end
+    local idx = Manual.normaliseSeriesIndex(num)
+    if not idx or idx == "" then return nil end
+    if name == "" then return "", "" end
+    return name, idx
+end
+
 local function editManualBook(year, entry, on_done)
     local MultiInputDialog = require("ui/widget/multiinputdialog")
     local date_hint = Locale.dateFormatHint()
@@ -655,6 +678,9 @@ local function editManualBook(year, entry, on_done)
         -- dialog would open behind the list.
         modal  = true,
         title  = entry and _("Edit book") or _("Add book"),
+        -- Order matters: with the on-screen keyboard up only the top of this
+        -- dialog is visible, so the fields most often edited (title, author,
+        -- date read) come first and the optional series ones last.
         fields = {
             {
                 description = _("Title"),
@@ -665,18 +691,6 @@ local function editManualBook(year, entry, on_done)
                 description = _("Author"),
                 text        = entry and entry.authors or "",
                 hint        = _("Author"),
-            },
-            -- Optional: which series the book belongs to and its number in
-            -- it ("2", "2.5"). Both may stay empty.
-            {
-                description = _("Series"),
-                text        = entry and entry.series or "",
-                hint        = _("Series"),
-            },
-            {
-                description = _("Book number in series"),
-                text        = entry and entry.series_index or "",
-                hint        = _("e.g. 2"),
             },
             -- Shown and typed in the configured date format (Settings ▸
             -- Advanced settings ▸ Date & time ▸ "Date format"), while the
@@ -689,6 +703,13 @@ local function editManualBook(year, entry, on_done)
                     (entry and entry.date ~= "" and entry.date)
                     or defaultManualDate(year)),
                 hint        = date_hint,
+            },
+            -- Optional: the series and the book's number in it, typed in one
+            -- field as "Dune #2" (or "Dune #2.5"). Either part may be left out.
+            {
+                description = _("Series"),
+                text        = seriesFieldText(entry),
+                hint        = _("e.g. Dune #2"),
             },
         },
         buttons = {
@@ -712,21 +733,17 @@ local function editManualBook(year, entry, on_done)
                     local fields = dialog:getFields()
                     local title   = (fields[1] or ""):gsub("^%s+", ""):gsub("%s+$", "")
                     local authors = (fields[2] or ""):gsub("^%s+", ""):gsub("%s+$", "")
-                    local series  = (fields[3] or ""):gsub("^%s+", ""):gsub("%s+$", "")
-                    local series_index = (fields[4] or ""):gsub("^%s+", ""):gsub("%s+$", "")
-                    local date    = (fields[5] or ""):gsub("^%s+", ""):gsub("%s+$", "")
+                    local date    = (fields[3] or ""):gsub("^%s+", ""):gsub("%s+$", "")
+                    local series, idx = parseSeriesField(fields[4])
                     if title == "" then
                         UIManager:show(InfoMessage:new{ text = _("Please enter a title") })
                         return
                     end
-                    local idx = Manual.normaliseSeriesIndex(series_index)
-                    if not idx then
+                    if not series then
                         UIManager:show(InfoMessage:new{
                             text = _("Please enter the number in the series as a number (e.g. 2 or 2.5)") })
                         return
                     end
-                    -- A number without a series name has nothing to belong to.
-                    if series == "" then idx = "" end
                     -- An empty date is fine (the entry then sorts by when it
                     -- was added); a date that isn't one is not, or it would
                     -- be silently dropped on save. What was typed is read
