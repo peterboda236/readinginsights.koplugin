@@ -754,8 +754,9 @@ local function editManualBook(year, entry, on_done)
           },
         },
     }
+    -- No dialog:onShowKeyboard() here: the keyboard only comes up once a
+    -- field is tapped (MultiInputDialog:onSwitchFocus shows it then).
     UIManager:show(dialog)
-    dialog:onShowKeyboard()
 end
 
 -- Just the title; the date it was read is the row's right-hand value (see
@@ -772,8 +773,9 @@ local function manualRowText(entry)
 end
 
 -- The list of hand-added books for one year: a pinned "add a book" row on
--- top, then one row per entry. Tapping an entry offers edit and delete;
+-- top, then one row per entry. Long-pressing an entry offers edit and delete;
 -- both write straight through to the store and rebuild the list in place.
+-- Tapping an entry opens its Book info popup; long-pressing it offers edit and delete.
 -- No cancel/accept buttons at the bottom - there's nothing pending to
 -- accept, every change is already saved.
 function M.showManualBooks(insights_popup, year)
@@ -807,22 +809,12 @@ function M.showManualBooks(insights_popup, year)
                 sort_title = this_entry.title or "",
                 sort_time  = this_entry.read_ts or this_entry.ts or 0,
                 sort_rating = this_entry.rating or 0,
-                -- Long press while the rating column is shown: edit the rating.
-                hold_callback = function(_item, refresh)
-                    if not widget or widget.display_mode ~= "rating" then return end
-                    pickRating(this_entry.title, this_entry.rating, function(n)
-                        Manual.update(year, this_entry.id, { rating = n })
-                        this_entry.rating = n
-                        row.values      = { rating = Ratings.stars(n) }
-                        row.sort_rating = n
-                        if refresh then refresh() end
-                    end)
-                end,
-                callback   = function()
+                -- Long press: edit or delete the entry.
+                hold_callback = function()
                     local ButtonDialog = require("ui/widget/buttondialog")
                     local dialog
                     dialog = ButtonDialog:new{
-                        -- Same as above: modal, or it opens behind the list.
+                        -- Modal, or it opens behind the list.
                         modal       = true,
                         title       = this_entry.title,
                         title_align = "center",
@@ -854,6 +846,43 @@ function M.showManualBooks(insights_popup, year)
                         },
                     }
                     UIManager:show(dialog)
+                end,
+                -- Tap: the Book info popup, like any other book list. A
+                -- rating set there is saved with the entry.
+                callback   = function()
+                    if not BookInfoPopup then return end
+                    local has_date = this_entry.date ~= ""
+                    local book = {
+                        title        = this_entry.title,
+                        authors      = this_entry.authors or "",
+                        series       = this_entry.series or "",
+                        series_index = this_entry.series_index or "",
+                        date_known   = has_date,
+                        duration     = 0,
+                        pages        = 0,
+                        rating       = this_entry.rating or 0,
+                        manual_id    = this_entry.id,
+                        manual_year  = year,
+                        last_read    = this_entry.read_ts or this_entry.ts or 0,
+                        manual       = true,
+                    }
+                    UIManager:show(BookInfoPopup:new{
+                        modal       = true,
+                        book        = book,
+                        finished_ts = (has_date and (book.last_read or 0) > 0) and book.last_read or nil,
+                        save_rating = function(n)
+                            Manual.update(year, this_entry.id, { rating = n })
+                            return true
+                        end,
+                        on_rate = function(n)
+                            this_entry.rating = n
+                            row.values        = { rating = Ratings.stars(n) }
+                            row.sort_rating   = n
+                        end,
+                        on_close = function()
+                            widget:updateItems(buildItems())
+                        end,
+                    })
                 end,
             }
             table.insert(items, row)

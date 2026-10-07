@@ -213,12 +213,6 @@ msgstr "Reading insights: book progress calendar"
 msgid "All books %1"
 msgstr "All books: %1"
 
-msgid "TOTAL READ"
-msgstr "All time"
-
-msgid "LAST WEEK"
-msgstr "Last week"
-
 msgid "daily avg page"
 msgstr "daily avg page"
 

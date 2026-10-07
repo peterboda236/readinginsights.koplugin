@@ -228,12 +228,6 @@ msgstr "Аналітика читання: календар прогресу к�
 msgid "All books %1"
 msgstr "Усі книги: %1"
 
-msgid "TOTAL READ"
-msgstr "ВСЬОГО ПРОЧИТАНО"
-
-msgid "LAST WEEK"
-msgstr "МИНУЛИЙ ТИЖДЕНЬ"
-
 msgid "daily avg page"
 msgstr "сер. сторінок/день"
 

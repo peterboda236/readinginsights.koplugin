@@ -213,12 +213,6 @@ msgstr "Leseeinblicke: Buchfortschrittskalender"
 msgid "All books %1"
 msgstr "Alle Bücher: %1"
 
-msgid "TOTAL READ"
-msgstr "GESAMT GELESEN"
-
-msgid "LAST WEEK"
-msgstr "LETZTE WOCHE"
-
 msgid "daily avg page"
 msgstr "Ø Seiten/Tag"
 

@@ -159,10 +159,6 @@ msgstr "阅读统计：阅读进度日历"
 
 msgid "All books %1"
 msgstr "全部书籍：%1本"
-msgid "TOTAL READ"
-msgstr "总阅读时长"
-msgid "LAST WEEK"
-msgstr "上周"
 msgid "daily avg page"
 msgstr "日均页数"
 

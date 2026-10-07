@@ -213,12 +213,6 @@ msgstr "Statistiques de lecture : calendrier de progression du livre"
 msgid "All books %1"
 msgstr "Tous les livres : %1"
 
-msgid "TOTAL READ"
-msgstr "TOTAL LU"
-
-msgid "LAST WEEK"
-msgstr "SEMAINE DERNIÈRE"
-
 msgid "daily avg page"
 msgstr "pages moy/jour"
 
