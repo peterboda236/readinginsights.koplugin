@@ -950,7 +950,7 @@ end
 -- General, like the Records/Streak popups above: the heatmap is built from
 -- all-time reading data, not tied to any open book, so it opens in both
 -- Reader view and the File manager. Same full-screen popup the insights
--- page's "Total read" header opens (views/insights_view.lua's
+-- page's "All time" header opens (views/insights_view.lua's
 -- showReadingHeatmap) - Heatmap.Popup only ever calls
 -- getDailyReadingDataForRange on the "popup_self" it's given, so a minimal
 -- stand-in table with just that one method (heatmapGetDailyReadingDataForRange

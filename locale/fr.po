@@ -99,12 +99,6 @@ msgstr "jour de lecture"
 msgid "days read"
 msgstr "jours de lecture"
 
-msgid "book read"
-msgstr "livre lu"
-
-msgid "books read"
-msgstr "livres lus"
-
 msgid "book"
 msgstr "livre"
 
@@ -144,29 +138,26 @@ msgstr "Meilleure série"
 msgid "Days read per month"
 msgstr "Jours de lecture par mois"
 
-msgid "Time read per month"
+msgid "Reading time per month"
 msgstr "Temps de lecture par mois"
 
-msgid "Books read per month"
-msgstr "Livres lus par mois"
+msgid "Books per month"
+msgstr "Livres par mois"
 
 msgid "Unknown"
 msgstr "Inconnu"
 
-msgid "No books read"
-msgstr "Pas de livre lu"
+msgid "No books"
+msgstr "Aucun livre"
 
-msgid "No books read in %1"
-msgstr "Pas de livre lu en %1"
+msgid "No books in %1"
+msgstr "Aucun livre en %1"
 
-msgid "No books read in "
-msgstr "Pas de livre lu en "
+msgid "%1 - %2 book"
+msgstr "%1 - %2 livre"
 
-msgid "%1 - book read %2"
-msgstr "%1 - livre lu %2"
-
-msgid "%1 - books read %2"
-msgstr "%1 - livres lus %2"
+msgid "%1 - %2 books"
+msgstr "%1 - %2 livres"
 
 msgid "Reading goal"
 msgstr "Objectif de lecture"
@@ -198,8 +189,8 @@ msgstr "Aucun livre terminé en %1"
 msgid "Mark book finished - %1"
 msgstr "Marquer un livre terminé - %1"
 
-msgid "No books read in this year"
-msgstr "Aucun livre lu cette année"
+msgid "No books this year"
+msgstr "Aucun livre cette année"
 
 msgid "Reloading data..."
 msgstr "Rechargement des données..."
@@ -219,8 +210,8 @@ msgstr "Statistiques de lecture : progression du livre en cours"
 msgid "Reading insights: book progress calendar"
 msgstr "Statistiques de lecture : calendrier de progression du livre"
 
-msgid "All books read %1"
-msgstr "Tous les livres lus %1"
+msgid "All books %1"
+msgstr "Tous les livres : %1"
 
 msgid "TOTAL READ"
 msgstr "TOTAL LU"
@@ -228,8 +219,11 @@ msgstr "TOTAL LU"
 msgid "LAST WEEK"
 msgstr "SEMAINE DERNIÈRE"
 
-msgid "avg/day"
-msgstr "moy/jour"
+msgid "daily avg page"
+msgstr "pages moy/jour"
+
+msgid "daily avg pages"
+msgstr "pages moy/jour"
 
 msgid "Today"
 msgstr "Aujourd'hui"
@@ -258,8 +252,8 @@ msgstr "Sam"
 msgid "Sun"
 msgstr "Dim"
 
-msgid "read time avg/day"
-msgstr "temps de lecture moy/jour"
+msgid "daily avg time"
+msgstr "temps moy/jour"
 
 msgid "reading time"
 msgstr "temps de lecture"
@@ -974,7 +968,7 @@ msgstr "Semaine dernière"
 msgid "Months"
 msgstr "Mois"
 
-msgid "Total read"
+msgid "All time"
 msgstr "Total lu"
 
 msgid "Last read (newest first)"

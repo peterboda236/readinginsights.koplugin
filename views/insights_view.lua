@@ -13,10 +13,10 @@ Sections, top to bottom:
   - Monthly chart per-month bars; the header cycles hours/days/books
   - Reading goal  finished books vs. a per-year target (can be switched off
                   in Settings > Advanced settings)
-  - Total read    all-time totals
+  - All time    all-time totals
 
 Gestures:
-  - Tap "Total read" header            reading heatmap (swipe there to page
+  - Tap "All time" header            reading heatmap (swipe there to page
                                        through older periods)
   - Tap yearly value or monthly bar    book list for that period
   - Tap monthly chart header           cycle hours/days/books
@@ -81,7 +81,7 @@ local WEEKLY_CHART_HIGHLIGHT_TODAY = true
 
 -- Fill used behind a handful of section headers ("Last week", "Current
 -- streak"/"Best streak", the year header, "Achievements" when shown next
--- to "Reading goal", and "Total read") to visually group them with the
+-- to "Reading goal", and "All time") to visually group them with the
 -- section above rather than reading as their own separate block. Backed by
 -- the user-configurable "Section header background color" (white by
 -- default, i.e. no visible fill) - see colors.lua. A function rather than
@@ -295,7 +295,7 @@ local function buildYearHeader(popup_self, font_section, font_label, layout, yea
     -- Year navigation is done via swipe on the whole popup (see
     -- onSwipe/_goToYear) and by tapping the previous/next year slot on either
     -- side of the centre year (the InputContainer wrappers below). The reading
-    -- heatmap opens from the "Total read" header instead of from tapping the
+    -- heatmap opens from the "All time" header instead of from tapping the
     -- year (see showReadingHeatmap and buildInsightsSections).
 
     local function makeSlot(yr, arrow_glyph, left, visible, on_tap)
@@ -414,7 +414,7 @@ local function buildYearlyRow(popup_self, yearly_stats, fonts, layout)
         left_value, left_unit = splitDurationValueUnit(yr_secs, _("reading time"))
     elseif popup_self.mode == VS.INSIGHTS_MODE_BOOKS then
         left_value = formatCount(yearly_stats.books_started)
-        left_unit  = N_("book read", "books read", yearly_stats.books_started)
+        left_unit  = N_("book", "books", yearly_stats.books_started)
     else
         left_value = formatCount(yearly_stats.days)
         left_unit  = N_("day read", "days read", yearly_stats.days)
@@ -761,7 +761,7 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
         if has_week then
 
             local avg_secs = lw.avg_seconds or 0
-            local week_time_val, week_time_unit_full = splitDurationValueUnit(avg_secs, _("read time avg/day"))
+            local week_time_val, week_time_unit_full = splitDurationValueUnit(avg_secs, _("daily avg time"))
 
             local avg_pages_rounded
             if lw.avg_pages >= 10 then
@@ -770,14 +770,7 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
                 avg_pages_rounded = math.floor(lw.avg_pages * 10 + 0.5) / 10
             end
             local week_pages_val  = formatNumber(avg_pages_rounded, avg_pages_rounded ~= math.floor(avg_pages_rounded) and 1 or 0)
-            local pages_unit_base = N_("page read", "pages read", avg_pages_rounded)
-            local avg_day_str = _("avg/day")
-            local week_pages_unit
-            if getLangBase() == "hu" then
-                week_pages_unit = avg_day_str
-            else
-                week_pages_unit = pages_unit_base .. " " .. avg_day_str
-            end
+            local week_pages_unit = N_("daily avg page", "daily avg pages", avg_pages_rounded)
 
             local total_secs = (lw.avg_seconds or 0) * 7
             local total_time_val, total_time_unit = splitDurationValueUnit(total_secs, _("reading time"))
@@ -1001,9 +994,9 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
 
     if chart then
         local chart_header_text = (popup_self.mode == VS.INSIGHTS_MODE_HOURS
-            and _("Time read per month"))
+            and _("Reading time per month"))
             or (popup_self.mode == VS.INSIGHTS_MODE_BOOKS
-            and _("Books read per month"))
+            and _("Books per month"))
             or _("Days read per month")
         chart_header_text = chart_header_text
         --.. " \xe2\x80\xba"
@@ -1038,7 +1031,7 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
         -- The divider below the chart depends on what follows it:
         --   - reading goal on: its row follows with no header of its own,
         --     so a thin line keeps it visually tied to the chart section.
-        --   - otherwise (achievements header, or "Total read" when both
+        --   - otherwise (achievements header, or "All time" when both
         --     sections are off): the regular thick line.
         -- no_top_line: no divider directly under the chart header - it now
         -- reads as a plain caption for the chart rather than a section
@@ -1271,7 +1264,7 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
         local all_time_row = UI.buildTwoColRow(left_cell, right_cell, layout)
 
         local all_book_count = all_time_stats and all_time_stats.book_count or 0
-        local header_text = _("Total read")
+        local header_text = _("All time")
 
         -- Tapping the header opens the reading heatmap popup (moved here
         -- from tapping the year, see showReadingHeatmap / buildYearHeader).
@@ -1337,7 +1330,7 @@ function ReadingInsightsPopup:getDailyReadingDataForRange(start_t, end_t, shared
     return merged
 end
 
--- Opens the "Reading heatmap" popup - tap the "Total read" header (see
+-- Opens the "Reading heatmap" popup - tap the "All time" header (see
 -- buildInsightsSections) to open it, starting on the most recent
 -- half-year; swipe left/right inside the popup to page through older/
 -- newer half-years as far back as there's data.
@@ -1665,10 +1658,10 @@ end
 function ReadingInsightsPopup:showBooksForMonth(year_month, month_label_full)
     local books = self:getBooksForMonth(year_month)
     local total_secs = Data.sumDuration(books)
-    local title = T(N_("%1 - book read %2", "%1 - books read %2", #books), month_label_full, formatCount(#books)) .. " (" .. formatHHMMSS(total_secs) .. ")"
+    local title = T(N_("%1 - %2 book", "%1 - %2 books", #books), month_label_full, formatCount(#books)) .. " (" .. formatHHMMSS(total_secs) .. ")"
     BookList.showBooksForPeriod(
         self, books,
-        T(_("No books read in %1"), month_label_full),
+        T(_("No books in %1"), month_label_full),
         title)
 end
 
@@ -1852,8 +1845,8 @@ function ReadingInsightsPopup:showAllBooks()
     local total_secs = Data.sumDuration(books)
     BookList.showBooksForPeriod(
         self, books,
-        _("No books read"),
-        T(_("All books read %1"), formatCount(#books)) .. " (" .. formatHHMMSS(total_secs) .. ")")
+        _("No books"),
+        T(_("All books %1"), formatCount(#books)) .. " (" .. formatHHMMSS(total_secs) .. ")")
 end
 
 function ReadingInsightsPopup:showBooksForYear(year)
@@ -1861,8 +1854,8 @@ function ReadingInsightsPopup:showBooksForYear(year)
     local total_secs = Data.sumDuration(books)
     BookList.showBooksForPeriod(
         self, books,
-        _("No books read in ") .. year,
-        T(N_("%1 - book read %2", "%1 - books read %2", #books), year, formatCount(#books)) .. " (" .. formatHHMMSS(total_secs) .. ")")
+        T(_("No books in %1"), tostring(year)),
+        T(N_("%1 - %2 book", "%1 - %2 books", #books), year, formatCount(#books)) .. " (" .. formatHHMMSS(total_secs) .. ")")
 end
 
 -- Tap target for the reading-goal section's left cell ("N book(s)

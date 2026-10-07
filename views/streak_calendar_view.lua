@@ -889,7 +889,7 @@ local function showDayBooks(date_str)
     -- "2026. 03. 12." -> "2026. 03. 12" so the title reads "2026. 03. 12: 2 ..."
     -- (the dot would otherwise sit right in front of the colon).
     local title_date = (date_label:gsub("%.$", ""))
-    local title = T(N_("%1 - book read %2", "%1 - books read %2", #books),
+    local title = T(N_("%1 - %2 book", "%1 - %2 books", #books),
             title_date, formatCount(#books))
         .. " (" .. Locale.formatDuration(Data.sumDuration(books), false) .. ")"
     -- The streak popup (and the insights popup under it) are modal, and

@@ -215,7 +215,7 @@ function M.showBookList(title, books, on_close, stats_plugin, opts)
     local KeyValuePage = require("ui/widget/keyvaluepage")
 
     if #books == 0 then
-        UIManager:show(InfoMessage:new{ text = _("No books read") })
+        UIManager:show(InfoMessage:new{ text = _("No books") })
         return
     end
 
@@ -568,7 +568,7 @@ function M.showFinishedChecklist(insights_popup, year)
 
     local item_table = buildItems()
     if #item_table == 0 then
-        UIManager:show(InfoMessage:new{ text = _("No books read in this year") })
+        UIManager:show(InfoMessage:new{ text = _("No books this year") })
         return
     end
 

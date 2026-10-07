@@ -5,7 +5,7 @@ Centralises the font choices used by every popup, so there is exactly one
 "Fonts" menu and one set of settings driving every text role:
 
   insights_section  "Reading insights" section headers (Last week, Streaks,
-                    year header, Monthly chart, Total read, ...)
+                    year header, Monthly chart, All time, ...)
   insights_value    "Reading insights" big numbers (hours/pages/streak values)
   insights_label    "Reading insights" unit/description labels next to a value
   insights_small    "Reading insights" chart axis/value labels, small print

@@ -99,12 +99,6 @@ msgstr "day read"
 msgid "days read"
 msgstr "days read"
 
-msgid "book read"
-msgstr "book read"
-
-msgid "books read"
-msgstr "books read"
-
 msgid "book"
 msgstr "book"
 
@@ -144,29 +138,26 @@ msgstr "Best streak"
 msgid "Days read per month"
 msgstr "Days read per month"
 
-msgid "Time read per month"
-msgstr "Time read per month"
+msgid "Reading time per month"
+msgstr "Reading time per month"
 
-msgid "Books read per month"
-msgstr "Books read per month"
+msgid "Books per month"
+msgstr "Books per month"
 
 msgid "Unknown"
 msgstr "Unknown"
 
-msgid "No books read"
-msgstr "No books read"
+msgid "No books"
+msgstr "No books"
 
-msgid "No books read in %1"
-msgstr "No books read in %1"
+msgid "No books in %1"
+msgstr "No books in %1"
 
-msgid "No books read in "
-msgstr "No books read in "
+msgid "%1 - %2 book"
+msgstr "%1: %2 book"
 
-msgid "%1 - book read %2"
-msgstr "%1: %2 book read"
-
-msgid "%1 - books read %2"
-msgstr "%1: %2 books read"
+msgid "%1 - %2 books"
+msgstr "%1: %2 books"
 
 msgid "Reading goal"
 msgstr "Reading goal"
@@ -198,8 +189,8 @@ msgstr "No books finished in %1"
 msgid "Mark book finished - %1"
 msgstr "Mark book finished - %1"
 
-msgid "No books read in this year"
-msgstr "No books read in this year"
+msgid "No books this year"
+msgstr "No books this year"
 
 msgid "Reloading data..."
 msgstr "Reloading data..."
@@ -219,17 +210,20 @@ msgstr "Reading insights: current book progress"
 msgid "Reading insights: book progress calendar"
 msgstr "Reading insights: book progress calendar"
 
-msgid "All books read %1"
-msgstr "All books read %1"
+msgid "All books %1"
+msgstr "All books: %1"
 
 msgid "TOTAL READ"
-msgstr "Total read"
+msgstr "All time"
 
 msgid "LAST WEEK"
 msgstr "Last week"
 
-msgid "avg/day"
-msgstr "avg/day"
+msgid "daily avg page"
+msgstr "daily avg page"
+
+msgid "daily avg pages"
+msgstr "daily avg pages"
 
 msgid "Today"
 msgstr "Today"
@@ -258,8 +252,8 @@ msgstr "Sat"
 msgid "Sun"
 msgstr "Sun"
 
-msgid "read time avg/day"
-msgstr "read time avg/day"
+msgid "daily avg time"
+msgstr "daily avg time"
 
 msgid "reading time"
 msgstr "reading time"
@@ -968,8 +962,8 @@ msgstr "Last week"
 msgid "Months"
 msgstr "Months"
 
-msgid "Total read"
-msgstr "Total read"
+msgid "All time"
+msgstr "All time"
 
 msgid "Last read (newest first)"
 msgstr "Last read (newest first)"

@@ -28,7 +28,7 @@ A full-screen overview of your whole reading history.
   see the separate [Reading streak](#-reading-streak) popup below).
 - **Yearly & monthly** — hours/days read and pages, navigable by year; a
   monthly bar chart you can tap to see the books behind each month.
-- **All-time totals** — cumulative hours and pages. Tap the "Total read"
+- **All-time totals** — cumulative hours and pages. Tap the "All time"
   header for a GitHub-style **heatmap** and a **time-of-day** breakdown of when
   you read (shown as a bar chart or an hour × weekday grid).
 - **Reading goal** — this year's finished books over your target (e.g. 24/30)

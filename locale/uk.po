@@ -114,12 +114,6 @@ msgstr "день читання"
 msgid "days read"
 msgstr "днів читання"
 
-msgid "book read"
-msgstr "книга прочитана"
-
-msgid "books read"
-msgstr "книг прочитано"
-
 msgid "book"
 msgstr "книга"
 
@@ -159,29 +153,26 @@ msgstr "Найкраща серія"
 msgid "Days read per month"
 msgstr "Днів читання на місяць"
 
-msgid "Time read per month"
+msgid "Reading time per month"
 msgstr "Час читання на місяць"
 
-msgid "Books read per month"
-msgstr "Книг прочитано на місяць"
+msgid "Books per month"
+msgstr "Книг на місяць"
 
 msgid "Unknown"
 msgstr "Невідомо"
 
-msgid "No books read"
-msgstr "Книг не прочитано"
+msgid "No books"
+msgstr "Книг немає"
 
-msgid "No books read in %1"
-msgstr "Книг не прочитано в %1"
+msgid "No books in %1"
+msgstr "Книг немає в %1"
 
-msgid "No books read in "
-msgstr "Книг не прочитано в "
+msgid "%1 - %2 book"
+msgstr "%1 - книг: %2"
 
-msgid "%1 - book read %2"
-msgstr "%1 - прочитано книгу %2"
-
-msgid "%1 - books read %2"
-msgstr "%1 - прочитано книг %2"
+msgid "%1 - %2 books"
+msgstr "%1 - книг: %2"
 
 msgid "Reading goal"
 msgstr "Ціль читання"
@@ -213,8 +204,8 @@ msgstr "Жодної книги не завершено в %1"
 msgid "Mark book finished - %1"
 msgstr "Позначити книгу завершеною - %1"
 
-msgid "No books read in this year"
-msgstr "Цього року книг не прочитано"
+msgid "No books this year"
+msgstr "Цього року книг немає"
 
 msgid "Reloading data..."
 msgstr "Перезавантаження даних..."
@@ -234,8 +225,8 @@ msgstr "Аналітика читання: прогрес поточної кн�
 msgid "Reading insights: book progress calendar"
 msgstr "Аналітика читання: календар прогресу книги"
 
-msgid "All books read %1"
-msgstr "Усі книги прочитано %1"
+msgid "All books %1"
+msgstr "Усі книги: %1"
 
 msgid "TOTAL READ"
 msgstr "ВСЬОГО ПРОЧИТАНО"
@@ -243,8 +234,11 @@ msgstr "ВСЬОГО ПРОЧИТАНО"
 msgid "LAST WEEK"
 msgstr "МИНУЛИЙ ТИЖДЕНЬ"
 
-msgid "avg/day"
-msgstr "сер./день"
+msgid "daily avg page"
+msgstr "сер. сторінок/день"
+
+msgid "daily avg pages"
+msgstr "сер. сторінок/день"
 
 msgid "Today"
 msgstr "Сьогодні"
@@ -273,8 +267,8 @@ msgstr "Сб"
 msgid "Sun"
 msgstr "Нд"
 
-msgid "read time avg/day"
-msgstr "сер. час читання/день"
+msgid "daily avg time"
+msgstr "сер. час/день"
 
 msgid "reading time"
 msgstr "час читання"
@@ -1023,7 +1017,7 @@ msgstr "Минулий тиждень"
 msgid "Months"
 msgstr "Місяці"
 
-msgid "Total read"
+msgid "All time"
 msgstr "Всього прочитано"
 
 msgid "Last read (newest first)"

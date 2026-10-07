@@ -62,7 +62,7 @@ local LineChartWidget = Widget:extend{
     line_color = nil,
 }
 
--- Same rounding rule used for the "avg/day" pages cell in the main popup:
+-- Same rounding rule used for the "daily avg pages" cell in the main popup:
 -- integer above 10, 1 decimal place below.
 local function roundAvgPages(value)
     if value >= 10 then
