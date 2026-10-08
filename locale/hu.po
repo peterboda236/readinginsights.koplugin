@@ -324,6 +324,9 @@ msgstr "4 hónap"
 msgid "6 months"
 msgstr "6 hónap"
 
+msgid "12 months"
+msgstr "12 hónap"
+
 msgid "Time format"
 msgstr "Időformátum"
 
@@ -806,11 +809,8 @@ msgstr "A legújabb kiadáshoz nincs letölthető zip fájl."
 msgid "Reading heatmap"
 msgstr "Olvasási hőtérkép"
 
-msgid "Time of day heatmap"
-msgstr "Napszak szerinti hőtérkép"
-
-msgid "Calendar heatmap"
-msgstr "Naptár hőtérkép"
+msgid "Reading calendar"
+msgstr "Olvasási naptár"
 
 msgid "Less"
 msgstr "Kevesebb"
@@ -1643,8 +1643,14 @@ msgstr "Délután"
 msgid "Evening"
 msgstr "Este"
 
-msgid "Reading time by time of day"
-msgstr "Olvasási idő napszakonként"
+msgid "When you read"
+msgstr "Mikor olvasol"
+
+msgid "Days of the week"
+msgstr "A hét napjai"
+
+msgid "You read most around %1"
+msgstr "Legtöbbet %1 körül olvasol"
 
 msgid "Book progress popup"
 msgstr "Könyv haladása ablak"

@@ -309,6 +309,9 @@ msgstr "4 months"
 msgid "6 months"
 msgstr "6 months"
 
+msgid "12 months"
+msgstr "12 months"
+
 msgid "Time format"
 msgstr "Time format"
 
@@ -785,11 +788,8 @@ msgstr "Latest release has no downloadable zip."
 msgid "Reading heatmap"
 msgstr "Reading heatmap"
 
-msgid "Time of day heatmap"
-msgstr "Time of day heatmap"
-
-msgid "Calendar heatmap"
-msgstr "Calendar heatmap"
+msgid "Reading calendar"
+msgstr "Reading calendar"
 
 msgid "Less"
 msgstr "Less"
@@ -1610,8 +1610,14 @@ msgstr "Reading goal & achievements"
 msgid "Reading goal only"
 msgstr "Reading goal only"
 
-msgid "Reading time by time of day"
-msgstr "Reading time by time of day"
+msgid "When you read"
+msgstr "When you read"
+
+msgid "Days of the week"
+msgstr "Days of the week"
+
+msgid "You read most around %1"
+msgstr "You read most around %1"
 
 msgid "Book progress popup"
 msgstr "Book progress popup"

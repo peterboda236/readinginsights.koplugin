@@ -284,14 +284,14 @@ M.Opt = {
 }
 
 -- Reading heatmap period length (Prefs ▸ Advanced settings ▸ how many
--- months the heatmap grid shows at once - 3, 4 or 6). Read by
+-- months the heatmap grid shows at once - 3, 4, 6 or 12). Read by
 -- getHeatmapPeriodRange below every time a heatmap page is built, so a
 -- change takes effect the next time the popup (re)opens/pages.
 M.SETTINGS_KEY_HEATMAP_MONTHS = "reading_insights_heatmap_months_per_period"
 
 M.DEFAULT_HEATMAP_MONTHS      = 6
 
-M.VALID_HEATMAP_MONTHS        = { [3] = true, [4] = true, [6] = true }
+M.VALID_HEATMAP_MONTHS        = { [3] = true, [4] = true, [6] = true, [12] = true }
 
 function M.readHeatmapMonthsSetting()
     local v = M.readNumSetting(M.SETTINGS_KEY_HEATMAP_MONTHS, M.DEFAULT_HEATMAP_MONTHS)

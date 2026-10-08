@@ -324,6 +324,9 @@ msgstr "4 місяці"
 msgid "6 months"
 msgstr "6 місяців"
 
+msgid "12 months"
+msgstr "12 місяців"
+
 msgid "Time format"
 msgstr "Формат часу"
 
@@ -819,11 +822,8 @@ msgstr "В останньому релізі немає завантажуван
 msgid "Reading heatmap"
 msgstr "Теплокарта читання"
 
-msgid "Time of day heatmap"
-msgstr "Теплокарта часу доби"
-
-msgid "Calendar heatmap"
-msgstr "Теплокарта календаря"
+msgid "Reading calendar"
+msgstr "Календар читання"
 
 msgid "Less"
 msgstr "Менше"
@@ -1689,8 +1689,14 @@ msgstr "День"
 msgid "Evening"
 msgstr "Вечір"
 
-msgid "Reading time by time of day"
-msgstr "Час читання за часом доби"
+msgid "When you read"
+msgstr "Коли ви читаєте"
+
+msgid "Days of the week"
+msgstr "Дні тижня"
+
+msgid "You read most around %1"
+msgstr "Найбільше ви читаєте близько %1"
 
 msgid "Book progress popup"
 msgstr "Спливне вікно прогресу книги"

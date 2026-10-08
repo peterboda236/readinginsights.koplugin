@@ -467,6 +467,7 @@ function M.build(self, deps)
             local label
             if months == 3 then label = _("3 months")
             elseif months == 6 then label = _("6 months")
+            elseif months == 12 then label = _("12 months")
             else label = _("4 months") end
             return _("Reading heatmap range") .. ": " .. label
         end,
@@ -492,6 +493,13 @@ function M.build(self, deps)
                 radio = true,
                 checked_func = function() return deps.ViewSettings.readHeatmapMonthsSetting() == 6 end,
                 callback = function() deps.ViewSettings.saveHeatmapMonthsSetting(6) end,
+            },
+            {
+                text = _("12 months"),
+                keep_menu_open = true,
+                radio = true,
+                checked_func = function() return deps.ViewSettings.readHeatmapMonthsSetting() == 12 end,
+                callback = function() deps.ViewSettings.saveHeatmapMonthsSetting(12) end,
             },
         },
     })

@@ -309,6 +309,9 @@ msgstr "4 mois"
 msgid "6 months"
 msgstr "6 mois"
 
+msgid "12 months"
+msgstr "12 mois"
+
 msgid "Time format"
 msgstr "Format de l'heure"
 
@@ -791,11 +794,8 @@ msgstr "La dernière version n'a pas de zip téléchargeable."
 msgid "Reading heatmap"
 msgstr "Carte thermique de lecture"
 
-msgid "Time of day heatmap"
-msgstr "Carte thermique par heure de la journée"
-
-msgid "Calendar heatmap"
-msgstr "Carte thermique du calendrier"
+msgid "Reading calendar"
+msgstr "Calendrier de lecture"
 
 msgid "Less"
 msgstr "Moins"
@@ -1640,8 +1640,14 @@ msgstr "Après-midi"
 msgid "Evening"
 msgstr "Soir"
 
-msgid "Reading time by time of day"
-msgstr "Temps de lecture par heure de la journée"
+msgid "When you read"
+msgstr "Quand vous lisez"
+
+msgid "Days of the week"
+msgstr "Jours de la semaine"
+
+msgid "You read most around %1"
+msgstr "Vous lisez surtout vers %1"
 
 msgid "Book progress popup"
 msgstr "Popup de progression du livre"

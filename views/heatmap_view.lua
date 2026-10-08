@@ -45,7 +45,9 @@ local HorizontalGroup = require("ui/widget/horizontalgroup")
 local HorizontalSpan = require("ui/widget/horizontalspan")
 local InputContainer = require("ui/widget/container/inputcontainer")
 local LeftContainer = require("ui/widget/container/leftcontainer")
+local RightContainer = require("ui/widget/container/rightcontainer")
 local OverlapGroup = require("ui/widget/overlapgroup")
+local LineWidget = require("ui/widget/linewidget")
 local Size = require("ui/size")
 local TextWidget = require("ui/widget/textwidget")
 local VerticalGroup = require("ui/widget/verticalgroup")
@@ -100,7 +102,7 @@ end
 
 -- Inclusive [start_t, end_t] timestamps (both at hour=12) for the
 -- heatmap period `periods_back` periods before the current one, where a
--- period is VS.readHeatmapMonthsSetting() months long (3, 4 or 6 - see
+-- period is VS.readHeatmapMonthsSetting() months long (3, 4, 6 or 12 - see
 -- Settings ▸ Reading insight popup ▸ "Reading heatmap range"): period 0 is
 -- that many months ending today, period 1 the same span before that,
 -- and so on.
@@ -133,7 +135,7 @@ function M.heatmapMaxPeriodsBack(min_year, min_month)
 end
 
 -- Deterministic upper bound on the number of week-columns a heatmap
--- period of the configured length (VS.readHeatmapMonthsSetting(), 3/4/6
+-- period of the configured length (VS.readHeatmapMonthsSetting(), 3/4/6/12
 -- months) can ever need, independent of which actual calendar months the
 -- period lands on or where "today" is. Every real period, once padded
 -- out to full weeks, uses at most this many columns (worst case: every
@@ -147,8 +149,13 @@ end
 -- See M.buildRangeHeatmapWidget below, which passes this in.
 function M.heatmapFixedNumCols()
     local months_per_period = VS.readHeatmapMonthsSetting()
-    local max_days = 31 * months_per_period + 12
-    return math.ceil(max_days / 7)
+    -- Exact worst case, brute-forced over every possible "today" and 5
+    -- paging levels, for both week-start days (Sun/Mon): the longest
+    -- period is 92 / 123 / 184 / 366 days for 3 / 4 / 6 / 12 months, and
+    -- with up to 6 days of week-alignment padding at each end that needs
+    -- at most 14 / 19 / 28 / 54 week columns.
+    local cols_by_months = { [3] = 14, [4] = 19, [6] = 28, [12] = 54 }
+    return cols_by_months[months_per_period] or math.ceil((31 * months_per_period + 12) / 7)
 end
 
 -- Lays [start_t, end_t] out into week columns starting on the configured
@@ -272,6 +279,26 @@ local function getWeekdayLabelWidth(fonts)
     return wd_label_w
 end
 
+-- One weekday label ("Mon", "Wed", "Fri"), vertically centred on its grid
+-- row. A TextWidget's box includes room for descenders, and these labels
+-- have none, so simply centring the box leaves the letters sitting a bit
+-- high. Instead the visible letters (baseline up to cap height) are
+-- centred on the row, by nudging the text with an overlap offset.
+local function buildWeekdayLabel(text, fonts, w, h)
+    local tw = TextWidget:new{ text = text, face = fonts.small, fgcolor = Colors.small() }
+    local face_px = tonumber(fonts.small and fonts.small.size)
+    local cap_h = face_px and (face_px * 0.72) or (tw:getSize().h * 0.52)
+    local offset_y = math.floor(h / 2 - (tw:getBaseline() - cap_h / 2) + 0.5)
+    -- Left-aligned in the label column, so all labels start at the same
+    -- left edge ("H", "Sze", "P" line up under each other).
+    local offset_x = 0
+    tw.overlap_offset = { offset_x, offset_y }
+    return OverlapGroup:new{
+        dimen = Geom:new{ w = w, h = h },
+        tw,
+    }
+end
+
 -- Builds the month-start label row + the 7-row/num_cols-column grid for
 -- [start_t, end_t]. Returns the combined widget plus the cell_size
 -- actually used (so the legend below can draw matching squares).
@@ -292,12 +319,29 @@ function M.buildRangeHeatmapWidget(daily_map, start_t, end_t, fonts, max_width)
 
     local grid_width = max_width - wd_label_w - gap
     local cell_size = math.floor((grid_width - (num_cols - 1) * gap) / num_cols)
-    local min_cell   = Screen:scaleBySize(8)
+    -- Low floor on purpose: the 12-month view needs 54 columns, which on
+    -- smaller screens lands below the old 8-unit floor and would push the
+    -- grid past the popup's right edge.
+    local min_cell   = Screen:scaleBySize(4)
     -- No upper cap: for shorter heatmap ranges (fewer columns - see
     -- Settings ▸ Advanced settings ▸ Reading insight popup ▸ "Reading heatmap range"), the cells
     -- grow proportionally to use the full available width instead of
     -- leaving empty space to the right of a small fixed-size grid.
     if cell_size < min_cell then cell_size = min_cell end
+
+    -- floor() above leaves up to num_cols-1 spare pixels. Rather than
+    -- leaving them as an empty strip right of the last column (so it
+    -- stopped short of the popup's right padding), they are added to the
+    -- left, to the weekday-label column: all column gaps stay identical and
+    -- the last column ends exactly at max_width.
+    local spare = grid_width - (num_cols * cell_size + (num_cols - 1) * gap)
+    if spare < 0 then spare = 0 end
+    wd_label_w = wd_label_w + spare
+    local function gapAfter(_c) return gap end
+    local col_x = { 0 }          -- col_x[c] = x of column c, relative to grid start
+    for c = 2, num_cols do
+        col_x[c] = col_x[c - 1] + cell_size + gap
+    end
 
     local max_seconds = 0
     for _, col_days in ipairs(cols) do
@@ -345,13 +389,57 @@ function M.buildRangeHeatmapWidget(daily_map, start_t, end_t, fonts, max_width)
         if d then
             if d.month == 1 and prev_month == 12 then
                 local free_cols = col - prev_col - 1
+                local fits = false
                 if free_cols >= 1 then
+                    -- The year only goes between the two labels if it
+                    -- really fits there (after "Dec." has overflowed into
+                    -- the gap); dense views (e.g. 12 months, narrow
+                    -- columns) fall back to the combined "2026 Jan." label.
+                    local span_w = col_x[col - 1] + cell_size - col_x[prev_col + 1]
+                    local yw = TextWidget:new{ text = tostring(d.year), face = fonts.small }
+                    local dw = TextWidget:new{ text = MONTH_NAMES_SHORT[12], face = fonts.small }
+                    local need = yw:getSize().w + math.max(0, dw:getSize().w - cell_size)
+                    yw:free(); dw:free()
+                    fits = need <= span_w
+                end
+                if fits then
                     year_label_span = { start_col = prev_col + 1, end_col = col - 1, text = tostring(d.year) }
                 else
                     d.combined = tostring(d.year) .. " " .. MONTH_NAMES_SHORT[d.month]
                 end
             end
             prev_col, prev_month = col, d.month
+        end
+    end
+
+    -- Overlap guard for dense grids (12 months = ~4 narrow columns per
+    -- month): a month label that would run into the previous label is
+    -- dropped, so text never overprints. The Dec/Jan labels win over their
+    -- neighbours because the year label is laid out around them.
+    do
+        local last_col, last_end = nil, nil
+        for col = 1, num_cols do
+            local d = month_label_col[col]
+            if d then
+                local tw = TextWidget:new{ text = d.combined or MONTH_NAMES_SHORT[d.month], face = fonts.small }
+                local w = tw:getSize().w
+                tw:free()
+                local x = col_x[col]
+                local in_span = year_label_span and col == year_label_span.end_col + 1
+                if last_end and x < last_end + gap and not in_span then
+                    local keep_new = (d.month == 12 or d.month == 1)
+                    local last = month_label_col[last_col]
+                    if keep_new and last and not (last.month == 12 or last.month == 1) then
+                        month_label_col[last_col] = nil
+                        month_label_col[col] = d
+                        last_col, last_end = col, x + w
+                    else
+                        month_label_col[col] = nil
+                    end
+                else
+                    last_col, last_end = col, x + w
+                end
+            end
         end
     end
 
@@ -375,7 +463,7 @@ function M.buildRangeHeatmapWidget(daily_map, start_t, end_t, fonts, max_width)
     while col <= num_cols do
         if year_label_span and col == year_label_span.start_col then
             local span_cols = year_label_span.end_col - year_label_span.start_col + 1
-            local span_w    = span_cols * cell_size + (span_cols - 1) * gap
+            local span_w    = col_x[year_label_span.end_col] + cell_size - col_x[year_label_span.start_col]
 
             -- Plain centering puts the label closer to "Dec." than to
             -- "Jan.": "Dec." is drawn from its own column and overflows
@@ -409,7 +497,7 @@ function M.buildRangeHeatmapWidget(daily_map, start_t, end_t, fonts, max_width)
                     face = fonts.small, fgcolor = Colors.small() }
             end
             if widget then
-                local x_col = wd_label_w + gap + (col - 1) * (cell_size + gap)
+                local x_col = wd_label_w + gap + col_x[col]
                 local text_w = widget:getSize().w
                 if x_col + text_w > max_width then
                     overflow_label = { widget = widget, width = text_w }
@@ -426,7 +514,7 @@ function M.buildRangeHeatmapWidget(daily_map, start_t, end_t, fonts, max_width)
             col = col + 1
         end
         if col <= num_cols then
-            table.insert(labels_row, HorizontalSpan:new{ width = gap })
+            table.insert(labels_row, HorizontalSpan:new{ width = gapAfter(col - 1) })
         end
     end
 
@@ -465,10 +553,7 @@ function M.buildRangeHeatmapWidget(daily_map, start_t, end_t, fonts, max_width)
         local row_group = HorizontalGroup:new{ align = "center" }
         local wd_text = row_labels[row]
         if wd_text then
-            table.insert(row_group, LeftContainer:new{
-                dimen = Geom:new{ w = wd_label_w, h = cell_size },
-                TextWidget:new{ text = wd_text, face = fonts.small, fgcolor = Colors.small() },
-            })
+            table.insert(row_group, buildWeekdayLabel(wd_text, fonts, wd_label_w, cell_size))
         else
             table.insert(row_group, HorizontalSpan:new{ width = wd_label_w })
         end
@@ -483,7 +568,7 @@ function M.buildRangeHeatmapWidget(daily_map, start_t, end_t, fonts, max_width)
                 table.insert(row_group, HorizontalSpan:new{ width = cell_size })
             end
             if col < num_cols then
-                table.insert(row_group, HorizontalSpan:new{ width = gap })
+                table.insert(row_group, HorizontalSpan:new{ width = gapAfter(col) })
             end
         end
         table.insert(widget, row_group)
@@ -604,10 +689,7 @@ function M.buildDayPartHeatmapWidget(weekday_hour_map, fonts, max_width)
         local row_group = HorizontalGroup:new{ align = "center" }
         local wd_text = row_labels[row]
         if wd_text then
-            table.insert(row_group, LeftContainer:new{
-                dimen = Geom:new{ w = wd_label_w, h = cell_size },
-                TextWidget:new{ text = wd_text, face = fonts.small, fgcolor = Colors.small() },
-            })
+            table.insert(row_group, buildWeekdayLabel(wd_text, fonts, wd_label_w, cell_size))
         else
             table.insert(row_group, HorizontalSpan:new{ width = wd_label_w })
         end
@@ -657,6 +739,28 @@ local function daypartRangeLabel(h_start, h_end)
     return string.format("%02d", h_start) .. en_dash .. string.format("%02d", h_end)
 end
 
+-- The two ways the bar charts can label their bars; tapping a chart's
+-- caption switches between them.
+local BAR_MODES = { "time", "percent" }
+
+local function nextBarMode(mode)
+    for i, m in ipairs(BAR_MODES) do
+        if m == mode then return BAR_MODES[i % #BAR_MODES + 1] end
+    end
+    return BAR_MODES[1]
+end
+
+-- Label on top of a bar: its time ("1:17") or its share of all the reading
+-- time in the period ("38%", or "<1%" for a tiny non-zero share).
+local function barValueText(mode, secs, total_secs)
+    if secs <= 0 then return "\xE2\x80\x94" end
+    if mode == "percent" then
+        local pct = math.floor(secs * 100 / total_secs + 0.5)
+        return pct < 1 and "<1%" or string.format("%d%%", pct)
+    end
+    return Locale.formatDuration(secs, true)
+end
+
 -- Builds the "time of day" bar chart: one bar per day-part (Night / Morning
 -- / Afternoon / Evening), each the total reading time in that six-hour band
 -- summed across every weekday in the period. Unlike the weekday x hour grid
@@ -665,14 +769,14 @@ end
 -- name + hour-range label underneath. Same signature and return shape as
 -- M.buildDayPartHeatmapWidget (widget + left offset) so the caller and the
 -- shared legend can treat the two interchangeably.
-function M.buildDayPartChartWidget(weekday_hour_map, fonts, max_width)
+function M.buildDayPartChartWidget(weekday_hour_map, fonts, max_width, mode)
     local gap        = Screen:scaleBySize(2)
     local num_bars   = #DAYPARTS
     local wd_label_w = getWeekdayLabelWidth(fonts)
 
     -- Total reading seconds per day-part, and the busiest one (the bar that
     -- reaches full height; the rest scale against it).
-    local totals, max_secs = {}, 0
+    local totals, max_secs, total_secs = {}, 0, 0
     for i, dp in ipairs(DAYPARTS) do
         local secs = 0
         for wd = 1, 7 do
@@ -684,6 +788,7 @@ function M.buildDayPartChartWidget(weekday_hour_map, fonts, max_width)
             end
         end
         totals[i] = secs
+        total_secs = total_secs + secs
         if secs > max_secs then max_secs = secs end
     end
 
@@ -721,7 +826,7 @@ function M.buildDayPartChartWidget(weekday_hour_map, fonts, max_width)
         end
         local is_peak  = (secs == max_secs and max_secs > 0)
         local bar_color = is_peak and Colors.activeBar() or Colors.inactiveBar()
-        local value_text = secs > 0 and Locale.formatDuration(secs, true) or "\xE2\x80\x94"
+        local value_text = barValueText(mode, totals[i], total_secs)
 
         -- Value label sitting directly on top of the bar. The pair is
         -- bottom-anchored inside a fixed-height cell with a BottomContainer
@@ -767,6 +872,101 @@ function M.buildDayPartChartWidget(weekday_hour_map, fonts, max_width)
     -- Return the same left offset the grid builders report, so the shared
     -- legend below still lines up under the calendar heatmap's first column.
     return widget, wd_label_w + gap
+end
+
+-- Weekday bar chart: total reading time per day of the week, in the
+-- configured week-start order (weekdayRowOrder), summed from the same
+-- weekday x hour data as the day-part chart - no extra query. Same look as
+-- the day-part bars (value on top, busiest bar highlighted), but shorter,
+-- since it sits below that chart and the popup has to stay on screen.
+local WEEKDAY_KEYS = { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" } -- index = weekday_hour_map row
+
+function M.buildWeekdayChartWidget(weekday_hour_map, fonts, max_width, mode)
+    local order = weekdayRowOrder()
+    local num_bars = #order
+
+    local totals, max_secs, total_secs = {}, 0, 0
+    for i, wd in ipairs(order) do
+        local secs = 0
+        local row = weekday_hour_map[wd]
+        if row then
+            for h = 0, 23 do secs = secs + (row[h] or 0) end
+        end
+        totals[i] = secs
+        total_secs = total_secs + secs
+        if secs > max_secs then max_secs = secs end
+    end
+
+    local col_gap = Screen:scaleBySize(6)
+    local col_w   = math.floor((max_width - (num_bars - 1) * col_gap) / num_bars)
+    local chart_h = math.floor(Screen:scaleBySize(VS.Opt.weeklyBarHeight()) * 0.6)
+    local min_bar = Screen:scaleBySize(2)
+
+    local sample_val = TextWidget:new{ text = "0:00", face = fonts.small }
+    local val_h = sample_val:getSize().h
+    sample_val:free()
+    local sample_lbl = TextWidget:new{ text = "00", face = fonts.small }
+    local lbl_h = sample_lbl:getSize().h
+    sample_lbl:free()
+
+    local bars_row   = HorizontalGroup:new{ align = "bottom" }
+    local labels_row = HorizontalGroup:new{ align = "top" }
+    for i, wd in ipairs(order) do
+        local secs = totals[i]
+        local bar_h = 0
+        if secs > 0 and max_secs > 0 then
+            bar_h = math.floor(chart_h * secs / max_secs + 0.5)
+            if bar_h < min_bar then bar_h = min_bar end
+        end
+        local is_peak   = (secs == max_secs and max_secs > 0)
+        local bar_color = is_peak and Colors.activeBar() or Colors.inactiveBar()
+        local value_text = barValueText(mode, totals[i], total_secs)
+
+        table.insert(bars_row, BottomContainer:new{
+            dimen = Geom:new{ w = col_w, h = chart_h + val_h },
+            VerticalGroup:new{
+                align = "center",
+                TextWidget:new{ text = value_text, face = fonts.small, fgcolor = Colors.value() },
+                Colors.newBar(col_w, bar_h, bar_color),
+            },
+        })
+        table.insert(labels_row, CenterContainer:new{
+            dimen = Geom:new{ w = col_w, h = lbl_h },
+            TextWidget:new{ text = _(WEEKDAY_KEYS[wd]), face = fonts.small, fgcolor = Colors.small() },
+        })
+        if i < num_bars then
+            table.insert(bars_row, HorizontalSpan:new{ width = col_gap })
+            table.insert(labels_row, HorizontalSpan:new{ width = col_gap })
+        end
+    end
+
+    return VerticalGroup:new{
+        align = "left",
+        bars_row,
+        VerticalSpan:new{ width = Size.padding.default },
+        labels_row,
+    }
+end
+
+-- The busiest hour of the day across the whole period, e.g. "21:00" or
+-- "9 PM" (per the 12/24-hour setting), or nil if there is no reading at all.
+local function peakHourText(weekday_hour_map)
+    local best_h, best_secs = nil, 0
+    for h = 0, 23 do
+        local secs = 0
+        for wd = 1, 7 do
+            local row = weekday_hour_map[wd]
+            if row then secs = secs + (row[h] or 0) end
+        end
+        if secs > best_secs then best_h, best_secs = h, secs end
+    end
+    if not best_h then return nil end
+    if VS.readHeatmapHourFormatSetting() == "12" then
+        local h12 = best_h % 12
+        if h12 == 0 then h12 = 12 end
+        return string.format("%d %s", h12, best_h < 12 and "AM" or "PM")
+    end
+    return string.format("%02d:00", best_h)
 end
 
 -- Color legend for the reading heatmap: a "Less" label, the same five
@@ -990,19 +1190,60 @@ function M.buildHeatmapBoxContent(popup_self, periods_back, force_fresh)
     local day_part_widget, day_part_left_offset
     if timeofday_is_chart then
         day_part_widget, day_part_left_offset =
-            M.buildDayPartChartWidget(weekday_hour_map, fonts, content_width)
+            M.buildDayPartChartWidget(weekday_hour_map, fonts, content_width, M._when_mode or "time")
     else
         day_part_widget, day_part_left_offset =
             M.buildDayPartHeatmapWidget(weekday_hour_map, fonts, content_width)
     end
 
-    -- One shared legend for both grids, flush-left with the weekday-label
+    -- One shared legend for both grids (right-aligned - see below), formerly flush-left with the weekday-label
     -- column (the "Mon"/"Wed"/"Fri" row labels, e.g. "Pén.") rather than
     -- indented under the grids' first data column - left_offset = 0, not
     -- day_part_left_offset, which is that indented position and was
     -- previously (wrongly) passed here.
+    -- Breathing room above and below the "Less .. More" legend and around the
+    -- thin rule between the calendar section and the time-of-day section:
+    -- the same distance the popup keeps between its content and its frame.
+    -- (VerticalSpan takes its height from `width`; `height = ...` is ignored
+    -- and reserves no space at all.)
+    local LEGEND_GAP = inner_padding
+    local function sectionSeparator()
+        return LineWidget:new{
+            dimen      = Geom:new{ w = content_width, h = Size.line.thin },
+            background = Colors.separator(),
+        }
+    end
+
+    -- Peak hour line (under the time-of-day view) and the weekday bar chart
+    -- (its own section at the very bottom, after a thin rule).
+    local T = require("ffi/util").template
+    local peak_text = peakHourText(weekday_hour_map)
+    local peak_line
+    if peak_text then
+        local w = TextWidget:new{
+            text = T(_("You read most around %1"), peak_text),
+            face = fonts.small, fgcolor = Colors.value(),
+        }
+        peak_line = LeftContainer:new{
+            dimen = Geom:new{ w = content_width, h = w:getSize().h },
+            w,
+        }
+    end
+    local weekday_widget = M.buildWeekdayChartWidget(weekday_hour_map, fonts, content_width, M._week_mode or "time")
+    local week_caption = caption(_("Days of the week"))
+    local function weekdaySection()
+        return {
+            sectionSeparator(),
+            VerticalSpan:new{ width = LEGEND_GAP },
+            week_caption,
+            VerticalSpan:new{ height = Size.padding.small },
+            leftAlign(weekday_widget),
+        }
+    end
+
     local legend_row = M.buildHeatmapLegendWidget(fonts, 0)
-    local legend_widget = LeftContainer:new{
+    -- Right-aligned, so "Less .. More" ends at the grid's right edge.
+    local legend_widget = RightContainer:new{
         dimen = Geom:new{ w = content_width, h = legend_row:getSize().h },
         legend_row,
     }
@@ -1035,29 +1276,49 @@ function M.buildHeatmapBoxContent(popup_self, periods_back, force_fresh)
         align = "center",
         calendar_header,
         VerticalSpan:new{ height = Size.padding.large + Size.padding.default },
-        caption(_("Calendar heatmap")),
+        caption(_("Reading calendar")),
         VerticalSpan:new{ height = Size.padding.small },
         leftAlign(calendar_widget),
     }
 
+    -- Order, zooming in from days to hours: calendar (every day) -> days of
+    -- the week -> time of day (with its peak hour).
+    local when_caption
     if timeofday_is_chart then
         -- The bar chart has no colour scale, so the "Less .. More" legend
         -- belongs with the calendar heatmap: it sits directly under the
-        -- calendar grid, and the day-part chart follows below on its own.
-        table.insert(content, VerticalSpan:new{ height = Size.padding.large + Size.padding.default })
+        -- calendar grid, and the bar charts follow below on their own.
+        table.insert(content, VerticalSpan:new{ width = LEGEND_GAP })
         table.insert(content, legend_widget)
-        table.insert(content, VerticalSpan:new{ height = 2 * Size.padding.large })
-        table.insert(content, caption(_("Reading time by time of day")))
+        table.insert(content, VerticalSpan:new{ width = LEGEND_GAP })
+        for _i, w in ipairs(weekdaySection()) do table.insert(content, w) end
+        table.insert(content, VerticalSpan:new{ width = LEGEND_GAP })
+        table.insert(content, sectionSeparator())
+        table.insert(content, VerticalSpan:new{ width = LEGEND_GAP })
+        when_caption = caption(_("When you read"))
+        table.insert(content, when_caption)
         table.insert(content, VerticalSpan:new{ height = Size.padding.small })
         table.insert(content, leftAlign(day_part_widget))
+        if peak_line then
+            table.insert(content, VerticalSpan:new{ width = Size.padding.default })
+            table.insert(content, peak_line)
+        end
     else
         -- Both grids share the same colour scale, so a single legend at the
         -- very bottom sits under both of them.
-        table.insert(content, VerticalSpan:new{ height = 2 * Size.padding.large })
-        table.insert(content, caption(_("Time of day heatmap")))
+        table.insert(content, VerticalSpan:new{ width = LEGEND_GAP })
+        for _i, w in ipairs(weekdaySection()) do table.insert(content, w) end
+        table.insert(content, VerticalSpan:new{ width = LEGEND_GAP })
+        table.insert(content, sectionSeparator())
+        table.insert(content, VerticalSpan:new{ width = LEGEND_GAP })
+        table.insert(content, caption(_("When you read")))
         table.insert(content, VerticalSpan:new{ height = Size.padding.small })
         table.insert(content, leftAlign(day_part_widget))
-        table.insert(content, VerticalSpan:new{ height = Size.padding.large + Size.padding.default })
+        if peak_line then
+            table.insert(content, VerticalSpan:new{ width = Size.padding.default })
+            table.insert(content, peak_line)
+        end
+        table.insert(content, VerticalSpan:new{ width = LEGEND_GAP })
         table.insert(content, legend_widget)
     end
 
@@ -1072,8 +1333,22 @@ function M.buildHeatmapBoxContent(popup_self, periods_back, force_fresh)
         content,
     }
 
+    -- Where the tappable "When you read" caption sits inside the box (chart
+    -- view only): tapping it swaps the bars' time labels for percentages.
+    local when_zone, week_zone
+    local function zoneOf(target)
+        local y = 0
+        for _i, child in ipairs(content) do
+            if child == target then break end
+            y = y + child:getSize().h
+        end
+        return { y = y, h = target:getSize().h }
+    end
+    if when_caption then when_zone = zoneOf(when_caption) end
+    week_zone = zoneOf(week_caption)
+
     return box, older_available, newer_available,
-        cal_left_frame, cal_right_frame, cal_left_w, cal_right_w, cal_header_h
+        cal_left_frame, cal_right_frame, cal_left_w, cal_right_w, cal_header_h, when_zone, week_zone
 end
 
 -- Full-screen "Reading heatmap" popup, paginated in half-year steps.
@@ -1106,7 +1381,7 @@ function M.Popup:init()
 end
 
 function M.Popup:_rebuild(force_fresh)
-    local box, older_available, newer_available, left_frame, right_frame, left_w, right_w, header_h =
+    local box, older_available, newer_available, left_frame, right_frame, left_w, right_w, header_h, when_zone, week_zone =
         M.buildHeatmapBoxContent(self.popup_self, self.periods_back, force_fresh)
     self.box_content      = box
     self._older_available = older_available
@@ -1153,6 +1428,20 @@ function M.Popup:_rebuild(force_fresh)
             },
             delta = -1, -- newer
         })
+    end
+    for _i, z in ipairs({ { when_zone, "when" }, { week_zone, "week" } }) do
+        local zone, which = z[1], z[2]
+        if zone then
+            table.insert(self._nav_zones, {
+                dimen = Geom:new{
+                    x = header_x - tap_pad,
+                    y = header_y + zone.y - tap_pad,
+                    w = content_width + 2 * tap_pad,
+                    h = zone.h + 2 * tap_pad,
+                },
+                cycle_mode = which,
+            })
+        end
     end
 end
 
@@ -1273,12 +1562,36 @@ function M.Popup:_goToPeriod(delta)
     return true
 end
 
+-- Tapping a chart's caption ("When you read" / "Days of the week") steps
+-- that chart's bar labels between time and percent. Each chart keeps
+-- its own choice until KOReader restarts.
+function M.Popup:_cycleBarMode(which)
+    local old_rect = self:_centeredRect(self.box_content)
+    if which == "when" then
+        M._when_mode = nextBarMode(M._when_mode or "time")
+    else
+        M._week_mode = nextBarMode(M._week_mode or "time")
+    end
+    self:_rebuild()
+    local new_rect = self:_centeredRect(self.box_content)
+    local x1 = math.min(old_rect.x, new_rect.x)
+    local y1 = math.min(old_rect.y, new_rect.y)
+    local x2 = math.max(old_rect.x + old_rect.w, new_rect.x + new_rect.w)
+    local y2 = math.max(old_rect.y + old_rect.h, new_rect.y + new_rect.h)
+    local refresh_region = Geom:new{ x = x1, y = y1, w = x2 - x1, h = y2 - y1 }
+    UIManager:setDirty("all", function()
+        return "ui", refresh_region
+    end)
+    return true
+end
+
 function M.Popup:onTap(arg, ges_ev)
     if ges_ev then
         local x, y = ges_ev.pos.x, ges_ev.pos.y
         for _, zone in ipairs(self._nav_zones or {}) do
             if zone.dimen and x >= zone.dimen.x and x <= zone.dimen.x + zone.dimen.w
                and y >= zone.dimen.y and y <= zone.dimen.y + zone.dimen.h then
+                if zone.cycle_mode then return self:_cycleBarMode(zone.cycle_mode) end
                 return self:_goToPeriod(zone.delta)
             end
         end
