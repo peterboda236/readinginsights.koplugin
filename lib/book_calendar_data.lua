@@ -3,7 +3,7 @@ Reading Insights - the data behind the Book progress calendar.
 
 The queries the calendar popup fills its month grid from: per-day pages and
 time for one book in one month, the cumulative progress through the book as
-of each day, which month to open on, when the book was first opened, and
+of each day, how many percentage points each day added, which month to open on, when the book was first opened, and
 whether a given month has any reading in it at all (which is what decides
 how far the arrows can page).
 
@@ -12,7 +12,8 @@ caching in lib/, widgets in views/. Nothing here builds or measures a
 widget, so it can be exercised without KOReader's UI.
 
   CalendarData.getBookDailyStatsForMonth(book_id, year, month)
-  CalendarData.getBookCumulativeProgressForMonth(book_id, year, month, total_pages)
+  CalendarData.getBookCumulativeProgressForMonth(book_id, year, month, total_pages, live_page)
+  CalendarData.getBookDailyProgressDeltaForMonth(book_id, year, month, total_pages, live_page)
   CalendarData.getBookLastReadYearMonth(book_id)
   CalendarData.getBookStartedTimestamp(book_id)
   CalendarData.bookCalendarMonthHasData(book_id, year, month)
@@ -141,22 +142,21 @@ function M.bookCalendarMonthHasData(book_id, year, month)
     end)
 end
 
--- "How far into the book had I gotten as of the last page reached this day"
--- ratio (0..1), from each day's chronologically LAST page_stat entry /
--- total_pages. Deliberately not MAX(page) (avoids end-of-book glossary
--- jumps spiking it) and not a running ratchet across days. Only fills in
--- days that actually have reading recorded.
-function M.getBookCumulativeProgressForMonth(book_id, year, month, total_pages)
-    local ratios = {}
-    if not book_id or not total_pages or total_pages <= 0 then return ratios end
-
-    local conn = StatsDb.open()
-    if not conn then return ratios end
-
+-- Shared by the two progress queries below: for each day of the month that
+-- has reading recorded, the page of the chronologically LAST page_stat entry
+-- (ASC order, last write per day wins - no window function needed), plus
+-- `baseline`, the last page reached before the month began (nil if the book
+-- was not read before it).
+--
+-- live_page (optional, only meaningful for the current month): the page the
+-- reader is on right now. KOReader's statistics plugin only writes a page to
+-- page_stat once you turn away from it, so today's recorded last page is
+-- always one page behind the live position. When given, it replaces today's
+-- last page (if today has reading recorded), so the numbers agree with the
+-- Book progress popup.
+local function dayLastPages(conn, book_id, year, month, live_page)
     local year_month = string.format("%04d-%02d", year, month)
 
-    -- Ordered ASC so the last write per day wins - each day's value ends up
-    -- being its chronologically last page, no window function needed.
     local day_rows_sql = string.format([[
         SELECT strftime('%%d', start_time, 'unixepoch', 'localtime') AS day, page
         FROM   page_stat
@@ -173,6 +173,46 @@ function M.getBookCumulativeProgressForMonth(book_id, year, month, total_pages)
             if day and page then day_last_page[day] = page end
         end
     end)
+
+    local baseline_sql = string.format([[
+        SELECT page
+        FROM   page_stat
+        WHERE  id_book = %d
+        AND    strftime('%%Y-%%m', start_time, 'unixepoch', 'localtime') < '%s'
+        ORDER  BY start_time DESC
+        LIMIT  1
+    ]], book_id, year_month)
+
+    local baseline
+    StatsDb.withStatement(conn, baseline_sql, function(stmt)
+        for row in stmt:rows() do
+            baseline = tonumber(row[1])
+            break
+        end
+    end)
+
+    if live_page then
+        local now = os.date("*t")
+        if now.year == year and now.month == month and day_last_page[now.day] then
+            day_last_page[now.day] = live_page
+        end
+    end
+
+    return day_last_page, baseline
+end
+
+-- "How far into the book had I gotten as of the last page reached this day"
+-- ratio (0..1), from each day's chronologically LAST page_stat entry /
+-- total_pages. Deliberately not MAX(page) (avoids end-of-book glossary
+-- jumps spiking it) and not a running ratchet across days. Only fills in
+-- days that actually have reading recorded.
+function M.getBookCumulativeProgressForMonth(book_id, year, month, total_pages, live_page)
+    local ratios = {}
+    if not book_id or not total_pages or total_pages <= 0 then return ratios end
+
+    local conn = StatsDb.open()
+    if not conn then return ratios end
+    local day_last_page = dayLastPages(conn, book_id, year, month, live_page)
     conn:close()
 
     for day, page in pairs(day_last_page) do
@@ -183,6 +223,48 @@ function M.getBookCumulativeProgressForMonth(book_id, year, month, total_pages)
     end
 
     return ratios
+end
+
+local function roundPercent(ratio)
+    return math.floor(100 * ratio + 0.5)
+end
+
+-- How many percentage points each day moved the reader forward in the book:
+-- that day's position (last page reached, as a rounded percent of the book)
+-- minus the position at the end of the previous reading day. The first
+-- reading day starts from 0, so it equals the Book progress figure, and the
+-- daily values add up to it. Rounding is done on the running positions
+-- rather than on each day's difference, so the sum never drifts by a point.
+-- Going backwards (re-reading, jumping to an earlier chapter) counts as 0,
+-- never negative. Returns { [day] = integer }, only for days with reading.
+function M.getBookDailyProgressDeltaForMonth(book_id, year, month, total_pages, live_page)
+    local deltas = {}
+    if not book_id or not total_pages or total_pages <= 0 then return deltas end
+
+    local conn = StatsDb.open()
+    if not conn then return deltas end
+    local day_last_page, baseline = dayLastPages(conn, book_id, year, month, live_page)
+    conn:close()
+
+    local function positionPercent(page)
+        local ratio = page / total_pages
+        if ratio > 1 then ratio = 1 end
+        if ratio < 0 then ratio = 0 end
+        return roundPercent(ratio)
+    end
+
+    local prev = baseline and positionPercent(baseline) or 0
+    local days = {}
+    for day in pairs(day_last_page) do days[#days + 1] = day end
+    table.sort(days)
+
+    for _, day in ipairs(days) do
+        local pos = positionPercent(day_last_page[day])
+        deltas[day] = math.max(0, pos - prev)
+        prev = pos
+    end
+
+    return deltas
 end
 
 return M

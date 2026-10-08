@@ -31,7 +31,6 @@ local HorizontalGroup = require("ui/widget/horizontalgroup")
 local HorizontalSpan  = require("ui/widget/horizontalspan")
 local InfoMessage     = require("ui/widget/infomessage")
 local InputContainer  = require("ui/widget/container/inputcontainer")
-local Math            = require("optmath")
 local OverlapGroup    = require("ui/widget/overlapgroup")
 local Size            = require("ui/size")
 local TextWidget      = require("ui/widget/textwidget")
@@ -72,7 +71,7 @@ local MONTH_FULL_HU_LC = {
 -- progress calendar > "Book progress calendar cell content"). Controls the
 -- small text line under each day number - see buildBookCalendarCellText
 -- below:
---   "percent" (default) - cumulative progress, e.g. "+13%"
+--   "percent" (default) - progress gained that day, e.g. "+13%"
 --   "pages"             - that day's own page count, e.g. "+101o"
 --   "time"              - that day's own time spent (honors the global
 --                          "Duration format" setting)
@@ -104,14 +103,18 @@ end
 -- Small text line shown under the day number in the Book progress calendar
 -- (see buildBookCalendarGrid below). Honors the "Book progress calendar
 -- cell content" setting (readCalendarCellModeSetting):
---   "percent" (default) - cumulative "+13%" progress through the whole book
+--   "percent" (default) - how far this day moved you forward in the book,
+--                          e.g. "+13%": the day's position minus the previous
+--                          reading day's, so the days add up to the Book
+--                          progress figure (see
+--                          CalendarData.getBookDailyProgressDeltaForMonth)
 --   "pages"             - that day's own page count, e.g. "+101o"
 --   "time"              - that day's own time spent, e.g. "+0:23" or
 --                          "+23m", whichever clock style KOReader's global
 --                          "Duration format" setting (Prefs ▸ Time and
 --                          date) is set to - see Locale.formatTimeHHMM above.
 -- Returns "" for days with no reading, in any mode.
-local function buildBookCalendarCellText(entry, total_pages)
+local function buildBookCalendarCellText(entry, progress_delta)
     if not entry or not entry.pages or entry.pages <= 0 then return "" end
 
     local mode = readCalendarCellModeSetting()
@@ -126,9 +129,8 @@ local function buildBookCalendarCellText(entry, total_pages)
         return time_td.value .. unit
     end
 
-    if not total_pages or total_pages <= 0 then return "" end
-    local pct = Math.round(100 * entry.pages / total_pages)
-    return "+" .. formatCount(pct) .. "%"
+    if not progress_delta then return "" end
+    return "+" .. formatCount(progress_delta) .. "%"
 end
 
 -- Whether to show week numbers (Prefs ▸ Advanced settings ▸ Date & time ▸
@@ -193,7 +195,7 @@ end
 -- otherwise take (right of the day number). When both would apply to the
 -- same cell, the checkmark wins and the finish_day flag is suppressed for
 -- that cell - see is_book_finished_day below.
-local function buildBookCalendarGrid(daily_map, year, month, day_font, small_font, content_width, total_pages, cumulative_ratios, finish_day, start_day)
+local function buildBookCalendarGrid(daily_map, year, month, day_font, small_font, content_width, total_pages, cumulative_ratios, finish_day, start_day, progress_deltas)
     local week_start_wd = Prefs.weekStartWday() -- 0=Sun, 1=Mon
     local gap    = Screen:scaleBySize(2)
     local cols   = 7
@@ -307,7 +309,7 @@ local function buildBookCalendarGrid(daily_map, year, month, day_font, small_fon
                     face = is_today and day_font_bold or day_font,
                     fgcolor = Colors.value(),
                 }
-                local pct_text = buildBookCalendarCellText(entry, total_pages)
+                local pct_text = buildBookCalendarCellText(entry, progress_deltas and progress_deltas[cell_day])
                 -- Always include the percent line (even blank) so the day
                 -- number sits at the same vertical spot in every cell,
                 -- whether or not that day has a "+%" underneath it.
@@ -646,8 +648,20 @@ function BookCalendarPopup:_rebuild()
     local prev_available = CalendarData.bookCalendarMonthHasData(self.book_id, prev_year, prev_month)
 
     local daily_map = CalendarData.getBookDailyStatsForMonth(self.book_id, self.year, self.month)
+    -- The page the reader is on right now, when this popup is for the book
+    -- that is open: the statistics DB lags one page behind it (the current
+    -- page is only recorded once you leave it), so today's numbers use this
+    -- to match the Book progress popup.
+    local live_page
+    local stats_plugin = self.ui and self.ui.statistics
+    if stats_plugin and stats_plugin.id_curr_book == self.book_id then
+        live_page = (BookProgress.counts(self.ui))
+    end
     local cumulative_ratios = CalendarData.getBookCumulativeProgressForMonth(
-        self.book_id, self.year, self.month, self.total_pages)
+        self.book_id, self.year, self.month, self.total_pages, live_page)
+    local progress_deltas = CalendarData.getBookDailyProgressDeltaForMonth(
+        self.book_id, self.year, self.month, self.total_pages, live_page)
+    self._progress_deltas = progress_deltas
 
     -- Everything below depends on content_width. Built by a local function
     -- so it can be called a second time, at a narrower width, if the first
@@ -659,7 +673,7 @@ function BookCalendarPopup:_rebuild()
 
         local grid, day_cells = buildBookCalendarGrid(
             daily_map, self.year, self.month, day_font, small_font, content_width, self.total_pages, cumulative_ratios,
-            finish_day, start_day)
+            finish_day, start_day, progress_deltas)
 
         local content = VerticalGroup:new{
             align = "center",
@@ -805,11 +819,8 @@ function BookCalendarPopup:_showDayDetail(day, data)
     local pages_line = "+" .. formatCount(data.pages) .. " " .. N_("page", "pages", data.pages)
     local time_td     = Locale.formatTimeHHMM(data.duration)
     local time_line   = time_td.value .. (time_td.unit ~= "" and (" " .. time_td.unit) or "")
-    local percent_line = ""
-    if self.total_pages and self.total_pages > 0 then
-        local percent = Math.round(100 * data.pages / self.total_pages)
-        percent_line = "+" .. formatCount(percent) .. "%"
-    end
+    local delta = self._progress_deltas and self._progress_deltas[day]
+    local percent_line = delta and ("+" .. formatCount(delta) .. "%") or ""
 
     UIManager:show(InfoMessage:new{
         text = date_str .. "\n" .. pages_line .. " · " .. percent_line .. " · " .. time_line,
