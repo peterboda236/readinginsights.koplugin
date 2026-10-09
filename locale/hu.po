@@ -1969,3 +1969,9 @@ msgstr "A fejezetsáv alatt megjeleníti az elolvasott fejezetek számát és az
 
 msgid "chapters left"
 msgstr "fejezet hátra"
+
+msgid "chapter read"
+msgstr "fejezet kész"
+
+msgid "chapter left"
+msgstr "fejezet hátra"

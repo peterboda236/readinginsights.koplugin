@@ -1951,3 +1951,9 @@ msgstr "Zeigt unter dem Kapitelbalken-Diagramm die Zahl der gelesenen Kapitel un
 
 msgid "chapters left"
 msgstr "Kapitel übrig"
+
+msgid "chapter read"
+msgstr "Kapitel gelesen"
+
+msgid "chapter left"
+msgstr "Kapitel übrig"

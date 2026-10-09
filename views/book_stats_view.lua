@@ -728,11 +728,11 @@ local function buildSections(stats, fonts, layout, popup)
             if popup and popup._chapter_read_mode == "left" and not stats.at_book_end then
                 left_cell = valueLine(
                     { value = formatCount(ci.total - read_count), unit = "" },
-                    _("chapters left"))
+                    N_("chapter left", "chapters left", ci.total - read_count))
             else
                 left_cell = valueLine(
                     { value = formatFraction(read_count, ci.total), unit = "" },
-                    _("chapters read"))
+                    N_("chapter read", "chapters read", ci.total))
             end
             local read_cell = tappableWrap(left_cell, left_cell:getSize().w)
             -- On the last page the cell is fixed to "N / N read" and not tappable.

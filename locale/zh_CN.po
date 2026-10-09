@@ -1672,3 +1672,9 @@ msgstr "在章节条形图下方显示已读章节数和平均章节时长。在
 
 msgid "chapters left"
 msgstr "章未读"
+
+msgid "chapter read"
+msgstr "章已读"
+
+msgid "chapter left"
+msgstr "章未读"

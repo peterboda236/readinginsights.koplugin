@@ -1951,3 +1951,9 @@ msgstr "Affiche sous le graphique des chapitres le nombre de chapitres lus et la
 
 msgid "chapters left"
 msgstr "chapitres restants"
+
+msgid "chapter read"
+msgstr "chapitre lu"
+
+msgid "chapter left"
+msgstr "chapitre restant"

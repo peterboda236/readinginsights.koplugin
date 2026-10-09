@@ -2000,3 +2000,9 @@ msgstr "Показує під діаграмою розділів кількіс
 
 msgid "chapters left"
 msgstr "розділів залишилось"
+
+msgid "chapter read"
+msgstr "розділ прочитано"
+
+msgid "chapter left"
+msgstr "розділ залишився"
