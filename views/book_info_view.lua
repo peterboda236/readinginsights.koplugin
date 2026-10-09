@@ -399,9 +399,9 @@ function BookInfoPopup:_buildUI()
         local pages, secs = Data.totals(self.ui, self.id_book)
         pages = math.floor(tonumber(pages) or 0)
         secs  = math.floor(tonumber(secs) or 0)
-        stats_text = string.format("%d %s \194\183 %d:%02d %s",
-            pages, _("pages"), math.floor(secs / 3600), math.floor(secs % 3600 / 60),
-            _("reading time"))
+        -- same formatter (and rounding) as the Book progress popup
+        stats_text = string.format("%d %s \194\183 %s %s",
+            pages, _("pages read"), Locale.formatTimeHHMM(secs).value, _("reading time"))
     end
     local stats_w = stats_text and naturalWidth(stats_text, desc_face) or 0
 
