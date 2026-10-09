@@ -255,6 +255,9 @@ msgstr "temps de lecture"
 msgid "No streak dates"
 msgstr "Aucune date de série"
 
+msgid "Last read: %1"
+msgstr "Dernière lecture : %1"
+
 msgid "CalendarView not available"
 msgstr "CalendarView non disponible"
 
@@ -1924,3 +1927,9 @@ msgstr "Saisissez le numéro dans la série sous forme de nombre (p. ex. 2 ou 2.
 
 msgid "Finished"
 msgstr "Terminé"
+
+msgid "Data reloaded"
+msgstr "Données rechargées"
+
+msgid "Data reloaded. New achievements: %1"
+msgstr "Données rechargées. Nouveaux succès : %1"

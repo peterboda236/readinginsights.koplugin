@@ -270,6 +270,9 @@ msgstr "olvasási idő"
 msgid "No streak dates"
 msgstr "Nincs megjeleníthető dátum"
 
+msgid "Last read: %1"
+msgstr "Utoljára olvasva: %1"
+
 msgid "CalendarView not available"
 msgstr "CalendarView nem elérhető"
 
@@ -1942,3 +1945,9 @@ msgstr "Kérlek, a sorozatbeli sorszámot számként add meg (pl. 2 vagy 2,5)"
 
 msgid "Finished"
 msgstr "Befejezve"
+
+msgid "Data reloaded"
+msgstr "Adatok újratöltve"
+
+msgid "Data reloaded. New achievements: %1"
+msgstr "Adatok újratöltve. Új teljesítmények: %1"

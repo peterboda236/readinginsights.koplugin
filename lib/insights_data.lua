@@ -505,6 +505,10 @@ function M.calculateStreaks(shared_conn)
         end
         streaks._today_confirmed = today_confirmed
 
+        -- Most recent day with any reading (nil on an empty database); the
+        -- streak popup shows it as "Last read" under the current streak.
+        streaks.last_read_date = dates[1]
+
         return streaks
     end)
 

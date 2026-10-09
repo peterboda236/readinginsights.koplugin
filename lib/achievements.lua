@@ -42,6 +42,7 @@ local _ = Locale._
 
 local M = {}
 
+local DATES_VERSION = 1
 local STORE_PATH = DataStorage:getSettingsDir() .. "/reading_insights_achievements.lua"
 
 -- The achievement catalogue. Every entry:
@@ -837,6 +838,330 @@ function M.computeMetrics()
     return m
 end
 
+-- ---------------------------------------------------------------------
+-- Real earn dates
+-- ---------------------------------------------------------------------
+-- The checks only look at "now" aggregates, so recompute() alone can only
+-- say "it's true as of this evaluation". To show the date an achievement
+-- was REALLY earned, the whole reading history is replayed in ONE
+-- chronological pass over page_stat (loaded once, no repeated SQL): the
+-- same metrics computeMetrics() produces are kept as running totals, and
+-- at the end of every reading day each not-yet-dated check is evaluated.
+-- The first day a check holds is the earn date (every metric only ever
+-- grows, so this is exactly "the first time it was true"). Returns
+-- { [id] = unix_time } for the ids it could date; the caller falls back to
+-- the current time for the rest.
+local CALENDAR_IDS = {  -- helpers that need the whole day list, see below
+    month_all_days = anyFullMonth, weekend_warrior = anyWeekendStreak,
+    complete_week = anyFullWeek, comeback = anyLongGap,
+}
+
+function M.findEarnDates(ids)
+    local out = {}
+    if not ids or #ids == 0 then return out end
+
+    local by_id = {}
+    for _idx, a in ipairs(M.CATALOGUE) do by_id[a.id] = a end
+    local pending, n_pending, cal_ids = {}, 0, {}
+    for _idx, id in ipairs(ids) do
+        if by_id[id] and id ~= "reading_anniversary" then
+            if CALENDAR_IDS[id] or id == "complete_week" then
+                cal_ids[#cal_ids + 1] = id
+            else
+                pending[id] = by_id[id]
+                n_pending = n_pending + 1
+            end
+        end
+    end
+
+    -- Finished books (finish time = last read), oldest first.
+    local fin = {}
+    local range = Data.getYearRange()
+    if range and range.min_year and range.max_year then
+        for y = range.min_year, range.max_year do
+            for _i, b in ipairs(Data.getFinishedBooksForYear(y) or {}) do
+                if b.id_book and (b.last_read or 0) > 0 then
+                    fin[#fin + 1] = { id = b.id_book, ts = b.last_read }
+                end
+            end
+        end
+        table.sort(fin, function(x, y) return x.ts < y.ts end)
+    end
+    local book_info = {}   -- id -> { pages, authors }
+    if #fin > 0 then
+        local idl = {}
+        for _i, f in ipairs(fin) do idl[#idl + 1] = f.id end
+        StatsDb.withDb(nil, function(conn)
+            StatsDb.withStatement(conn, string.format(
+                "SELECT id, pages, authors FROM book WHERE id IN (%s)", table.concat(idl, ",")),
+                function(stmt)
+                    for row in stmt:rows() do
+                        book_info[tonumber(row[1])] = { pages = tonumber(row[2]) or 0, authors = row[3] }
+                    end
+                end)
+            return nil
+        end)
+    end
+
+    local m = {
+        finished_books = 0, finished_max_year = 0, finished_max_month = 0,
+        finished_same_day = false, finished_book_max_pages = 0,
+        distinct_finished_authors = 0, total_hours = 0, hours_max_year = 0,
+        hours_max_month = 0, total_pages = 0, distinct_books = 0,
+        max_day_secs = 0, max_day_pages = 0, best_streak_days = 0,
+        best_weekly_streak = 0, month_all_days = false, weekend_warrior = false,
+        max_session_secs = 0, midnight_crossing = false, read_early = false,
+        read_lunch = false, night_owl = false, distinct_hours = 0,
+        distinct_weekdays = 0, read_dec31 = false, read_jan1 = false,
+        max_book_pace_pph = 0, max_book_secs = 0, total_reading_days = 0,
+        any_year_all_months = false, all_seasons = false, full_week_mon_sun = false,
+        span_years = 0, history_span_days = 0, max_session_pages = 0,
+        pages_max_month = 0, max_week_hours = 0, had_comeback = false,
+        max_books_one_author = 0,
+    }
+
+    local wd = Data.weekStartWday()
+    local day_list, day_ends = {}, {}
+    local total_secs = 0
+    local seen_books, book_secs, book_pset, book_pcnt, first_start = {}, {}, {}, {}, {}
+    local month_secs, month_rows, year_secs, year_months, all_months = {}, {}, {}, {}, {}
+    local week_secs = {}
+    local hset, wset = {}, {}
+    local fin_p = 1
+    local fin_year, fin_month, fin_author, n_authors = {}, {}, {}, 0
+
+    -- current day / session state
+    local cur_dnum, cur_dstr, cur_noon, cur_nm, cur_wk
+    local day_secs, day_pset, day_pcnt, day_last_end = 0, {}, 0, 0
+    local prev_noon, daily_cur = nil, 0
+    local prev_wk_noon, weekly_cur = nil, 0
+    local first_year
+    local sess_start, sess_end, sess_pages, sess_nm
+
+    local function evaluate(ts)
+        if n_pending == 0 then return end
+        for id, a in pairs(pending) do
+            local ok, got = pcall(a.check, m)
+            if ok and got then
+                out[id] = ts
+                pending[id] = nil
+                n_pending = n_pending - 1
+            end
+        end
+    end
+
+    local function finalizeDay()
+        if not cur_dnum then return end
+        -- the day's totals
+        if day_secs > m.max_day_secs then m.max_day_secs = day_secs end
+        if day_pcnt > m.max_day_pages then m.max_day_pages = day_pcnt end
+        week_secs[cur_wk] = (week_secs[cur_wk] or 0) + day_secs
+        if week_secs[cur_wk] / 3600 > m.max_week_hours then m.max_week_hours = week_secs[cur_wk] / 3600 end
+        -- finished books up to the end of this day
+        while fin[fin_p] and fin[fin_p].ts <= day_last_end do
+            local f = fin[fin_p]
+            fin_p = fin_p + 1
+            m.finished_books = m.finished_books + 1
+            local yk = os.date("%Y", f.ts)
+            local mk = os.date("%Y-%m", f.ts)
+            fin_year[yk]  = (fin_year[yk]  or 0) + 1
+            fin_month[mk] = (fin_month[mk] or 0) + 1
+            if fin_year[yk]  > m.finished_max_year  then m.finished_max_year  = fin_year[yk]  end
+            if fin_month[mk] > m.finished_max_month then m.finished_max_month = fin_month[mk] end
+            local bi = book_info[f.id]
+            if bi then
+                if bi.pages > m.finished_book_max_pages then m.finished_book_max_pages = bi.pages end
+                local au = bi.authors
+                if au and au ~= "" then
+                    if not fin_author[au] then n_authors = n_authors + 1 end
+                    fin_author[au] = (fin_author[au] or 0) + 1
+                    if fin_author[au] > m.max_books_one_author then m.max_books_one_author = fin_author[au] end
+                end
+            end
+            local fs = first_start[f.id]
+            if fs and os.date("%Y-%m-%d", fs) == os.date("%Y-%m-%d", f.ts) then
+                m.finished_same_day = true
+            end
+        end
+        m.distinct_finished_authors = n_authors
+        evaluate(day_last_end)
+    end
+
+    StatsDb.withDb(nil, function(conn)
+        StatsDb.withStatement(conn,
+            "SELECT id_book, page, start_time, duration FROM page_stat ORDER BY start_time",
+            function(stmt)
+                for row in stmt:rows() do
+                    local id  = tonumber(row[1]) or 0
+                    local pg  = tonumber(row[2]) or 0
+                    local st  = tonumber(row[3]) or 0
+                    local dur = tonumber(row[4]) or 0
+                    local t   = os.date("*t", st)
+                    local dnum = t.year * 10000 + t.month * 100 + t.day
+
+                    if dnum ~= cur_dnum then
+                        finalizeDay()
+                        cur_dnum = dnum
+                        cur_dstr = string.format("%04d-%02d-%02d", t.year, t.month, t.day)
+                        cur_noon = os.time({ year = t.year, month = t.month, day = t.day, hour = 12 })
+                        cur_nm   = os.time({ year = t.year, month = t.month, day = t.day + 1, hour = 0 })
+                        cur_wk   = Data.weekStartDate(cur_dstr, wd) or cur_dstr
+                        day_secs, day_pset, day_pcnt = 0, {}, 0
+                        day_list[#day_list + 1] = cur_dstr
+                        m.total_reading_days = #day_list
+                        first_year = first_year or t.year
+                        m.span_years = t.year - first_year + 1
+                        -- daily streak / comeback
+                        if prev_noon and math.abs(cur_noon - prev_noon - 86400) < 7200 then
+                            daily_cur = daily_cur + 1
+                        else
+                            daily_cur = 1
+                        end
+                        if daily_cur > m.best_streak_days then m.best_streak_days = daily_cur end
+                        if prev_noon and (cur_noon - prev_noon) > 30 * 86400 then m.had_comeback = true end
+                        prev_noon = cur_noon
+                        -- weekly streak
+                        local wy, wm, wdd = cur_wk:match("^(%d+)-(%d+)-(%d+)$")
+                        local wk_noon = wy and os.time({ year = tonumber(wy), month = tonumber(wm), day = tonumber(wdd), hour = 12 })
+                        if wk_noon ~= prev_wk_noon then
+                            if prev_wk_noon and wk_noon and math.abs(wk_noon - prev_wk_noon - 7 * 86400) < 7200 then
+                                weekly_cur = weekly_cur + 1
+                            else
+                                weekly_cur = 1
+                            end
+                            if weekly_cur > m.best_weekly_streak then m.best_weekly_streak = weekly_cur end
+                            prev_wk_noon = wk_noon
+                        end
+                        -- calendar-day flags
+                        if t.month == 12 and t.day == 31 then m.read_dec31 = true end
+                        if t.month == 1  and t.day == 1  then m.read_jan1  = true end
+                        if not wset[t.wday] then wset[t.wday] = true; m.distinct_weekdays = m.distinct_weekdays + 1 end
+                    end
+
+                    -- per-row running totals
+                    day_secs   = day_secs + dur
+                    total_secs = total_secs + dur
+                    m.total_hours = total_secs / 3600
+                    day_last_end = st + dur
+                    local pk = id * 1000000 + pg
+                    if not day_pset[pk] then
+                        day_pset[pk] = true
+                        day_pcnt = day_pcnt + 1
+                        m.total_pages = m.total_pages + 1
+                    end
+                    if not seen_books[id] then
+                        seen_books[id] = true
+                        m.distinct_books = m.distinct_books + 1
+                        first_start[id] = st
+                    end
+                    local ymk = t.year * 100 + t.month
+                    month_secs[ymk] = (month_secs[ymk] or 0) + dur
+                    month_rows[ymk] = (month_rows[ymk] or 0) + 1
+                    if month_secs[ymk] / 3600 > m.hours_max_month then m.hours_max_month = month_secs[ymk] / 3600 end
+                    if month_rows[ymk] > m.pages_max_month then m.pages_max_month = month_rows[ymk] end
+                    year_secs[t.year] = (year_secs[t.year] or 0) + dur
+                    if year_secs[t.year] / 3600 > m.hours_max_year then m.hours_max_year = year_secs[t.year] / 3600 end
+                    local ym = year_months[t.year]
+                    if not ym then ym = { n = 0 }; year_months[t.year] = ym end
+                    if not ym[t.month] then
+                        ym[t.month] = true
+                        ym.n = ym.n + 1
+                        if ym.n >= 12 then m.any_year_all_months = true end
+                    end
+                    all_months[t.month] = true
+                    local am = all_months
+                    m.all_seasons = (am[12] or am[1] or am[2]) and (am[3] or am[4] or am[5])
+                        and (am[6] or am[7] or am[8]) and (am[9] or am[10] or am[11]) and true or false
+                    if not hset[t.hour] then
+                        hset[t.hour] = true
+                        m.distinct_hours = m.distinct_hours + 1
+                    end
+                    if t.hour <= 3 then m.night_owl = true end
+                    if t.hour == 5 or t.hour == 6 then m.read_early = true end
+                    if t.hour == 12 then m.read_lunch = true end
+
+                    -- per-book totals (time + distinct pages -> pace)
+                    book_secs[id] = (book_secs[id] or 0) + dur
+                    local bp = book_pset[id]
+                    if not bp then bp = {}; book_pset[id] = bp; book_pcnt[id] = 0 end
+                    if not bp[pg] then bp[pg] = true; book_pcnt[id] = book_pcnt[id] + 1 end
+                    if book_secs[id] > m.max_book_secs then m.max_book_secs = book_secs[id] end
+                    if book_secs[id] >= 1800 and book_pcnt[id] > 0 then
+                        local pph = book_pcnt[id] / (book_secs[id] / 3600)
+                        if pph > m.max_book_pace_pph then m.max_book_pace_pph = pph end
+                    end
+
+                    -- continuous sessions (10-minute gap)
+                    if not sess_start or st - sess_end > 600 then
+                        sess_start, sess_end, sess_pages, sess_nm = st, st + dur, 1, cur_nm
+                    else
+                        if st + dur > sess_end then sess_end = st + dur end
+                        sess_pages = sess_pages + 1
+                    end
+                    if sess_end - sess_start > m.max_session_secs then m.max_session_secs = sess_end - sess_start end
+                    if sess_pages > m.max_session_pages then m.max_session_pages = sess_pages end
+                    if sess_end >= sess_nm then m.midnight_crossing = true end
+                end
+            end)
+        finalizeDay()
+        return nil
+    end)
+
+    -- Calendar helpers that need the full day list: the first day on which
+    -- the helper holds for the prefix of the list is the earn day (binary
+    -- search; pure Lua, no SQL).
+    if #cal_ids > 0 and #day_list > 0 then
+        -- end-of-day timestamps: re-derive from the list (noon + 12h).
+        for i, d in ipairs(day_list) do
+            local y, mo, da = d:match("^(%d+)-(%d+)-(%d+)$")
+            day_ends[i] = os.time({ year = tonumber(y), month = tonumber(mo), day = tonumber(da), hour = 23, min = 59 })
+        end
+        local function holds(id, n)
+            local set, months = {}, {}
+            local list = {}
+            for i = 1, n do
+                local d = day_list[i]
+                list[i] = d; set[d] = true; months[d:sub(1, 7)] = true
+            end
+            if id == "month_all_days" then return anyFullMonth(set, months) end
+            return CALENDAR_IDS[id](set, list)
+        end
+        for _i, id in ipairs(cal_ids) do
+            local ok, got = pcall(function()
+                if id == "comeback" then return anyLongGap(day_list) end
+                return holds(id, #day_list)
+            end)
+            if ok and got then
+                local lo, hi = 1, #day_list
+                while lo < hi do
+                    local mid = math.floor((lo + hi) / 2)
+                    local ok2, hit = pcall(function()
+                        if id == "comeback" then
+                            local l = {}
+                            for i = 1, mid do l[i] = day_list[i] end
+                            return anyLongGap(l)
+                        end
+                        return holds(id, mid)
+                    end)
+                    if ok2 and hit then hi = mid else lo = mid + 1 end
+                end
+                out[id] = day_ends[lo]
+            end
+        end
+    end
+
+    -- "Reading anniversary" is not driven by a session: one year after the
+    -- first reading.
+    for _idx, id in ipairs(ids) do
+        if id == "reading_anniversary" and day_list[1] then
+            local y, mo, da = day_list[1]:match("^(%d+)-(%d+)-(%d+)$")
+            local first = os.time({ year = tonumber(y), month = tonumber(mo), day = tonumber(da), hour = 12 })
+            if first + 365 * 86400 <= os.time() then out[id] = first + 365 * 86400 end
+        end
+    end
+    return out
+end
+
 -- Re-evaluates every not-yet-earned achievement with fresh metrics, and
 -- records the newly earned ones. Never un-earns anything. Writes the file
 -- (evaluated_ts + fingerprint) even if nothing changed, so
@@ -850,18 +1175,48 @@ function M.recompute()
     local earned  = M.getEarned()
     local new_set = M.getNew()
     local now = os.time()
+    local s0 = openStore()
+
+    local newly = {}
     for _idx, a in ipairs(M.CATALOGUE) do
         if not earned[a.id] then
             local ok_c, got = pcall(a.check, m)
-            if ok_c and got then
-                earned[a.id]  = now
-                new_set[a.id] = true   -- freshly earned -> "new"
-            end
+            if ok_c and got then newly[#newly + 1] = a.id end
+        end
+    end
+
+    -- One-time migration: entries saved by older versions carry the time of
+    -- the evaluation, not of the real achievement. Re-date them once (a
+    -- single replay of the history, see findEarnDates).
+    local migrate = s0 and s0:readSetting("dates_version") ~= DATES_VERSION
+    local to_date = {}
+    for _i, id in ipairs(newly) do to_date[#to_date + 1] = id end
+    if migrate then
+        for id in pairs(earned) do
+            if CATALOGUE_IDS[id] then to_date[#to_date + 1] = id end
+        end
+    end
+    local dates = {}
+    if #to_date > 0 then
+        local ok_d, res = pcall(M.findEarnDates, to_date)
+        if ok_d and type(res) == "table" then dates = res end
+    end
+
+    for _i, id in ipairs(newly) do
+        earned[id]  = dates[id] or now
+        new_set[id] = true   -- freshly earned -> "new"
+    end
+    if migrate then
+        for id in pairs(earned) do
+            -- Only ever move a date earlier: the replayed date can't be
+            -- later than the moment it was first noticed.
+            if dates[id] and dates[id] < earned[id] then earned[id] = dates[id] end
         end
     end
 
     local s = openStore()
     if s then
+        if migrate then s:saveSetting("dates_version", DATES_VERSION) end
         s:saveSetting("earned", earned)
         s:saveSetting("new", new_set)
         s:saveSetting("evaluated_ts", now)

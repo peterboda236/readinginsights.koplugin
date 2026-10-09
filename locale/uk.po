@@ -270,6 +270,9 @@ msgstr "час читання"
 msgid "No streak dates"
 msgstr "Немає дат серії"
 
+msgid "Last read: %1"
+msgstr "Востаннє прочитано: %1"
+
 msgid "CalendarView not available"
 msgstr "CalendarView недоступний"
 
@@ -1973,3 +1976,9 @@ msgstr "Введіть номер у серії числом (напр. 2 або
 
 msgid "Finished"
 msgstr "Завершено"
+
+msgid "Data reloaded"
+msgstr "Дані перезавантажено"
+
+msgid "Data reloaded. New achievements: %1"
+msgstr "Дані перезавантажено. Нові досягнення: %1"

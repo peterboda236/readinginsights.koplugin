@@ -190,6 +190,8 @@ msgid "reading time"
 msgstr "阅读时长"
 msgid "No streak dates"
 msgstr "无连续阅读日期"
+msgid "Last read: %1"
+msgstr "上次阅读：%1"
 
 msgid "CalendarView not available"
 msgstr "日历视图无法使用"
@@ -1646,3 +1648,9 @@ msgstr "请以数字输入系列序号（例如 2 或 2.5）"
 
 msgid "Finished"
 msgstr "已读完"
+
+msgid "Data reloaded"
+msgstr "数据已重新加载"
+
+msgid "Data reloaded. New achievements: %1"
+msgstr "数据已重新加载。新成就：%1"

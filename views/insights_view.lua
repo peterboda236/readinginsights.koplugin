@@ -2619,23 +2619,33 @@ function ReadingInsightsPopup:onHold(arg, ges_ev)
 
     local title_h = self._title_bar_height
     if title_h and pos.y <= title_h then
+        -- The "Reloading data..." message stays up for the whole reload (the
+        -- UI is busy while the database is re-scanned and the achievements
+        -- are re-dated), and a short result message follows it.
         local msg = InfoMessage:new{ text = _("Reloading data...") }
         UIManager:show(msg)
         UIManager:scheduleIn(0.5, function()
-            UIManager:close(msg)
+            local before = Achievements and Achievements.earnedCount() or 0
             Cache.clearAllCache()
             -- A full reload is the one place achievements are re-evaluated
             -- against the (now uncached) database - see lib/achievements.lua.
             -- Newly earned ones get persisted; the rebuilt goal section then
             -- reads the updated count from the file.
             if Achievements then pcall(Achievements.recompute) end
+            local gained = (Achievements and Achievements.earnedCount() or 0) - before
             self._streaks         = nil
             self._yearly          = nil
             self._monthly         = nil
             self._all_time        = nil
             self._last_week       = nil
             self._last_week_daily = nil
+            UIManager:close(msg)
             self:_loadAndRebuild()
+            local text = _("Data reloaded")
+            if gained > 0 then
+                text = T(_("Data reloaded. New achievements: %1"), tostring(gained))
+            end
+            UIManager:show(InfoMessage:new{ text = text, timeout = 3 })
         end)
         return true
     end

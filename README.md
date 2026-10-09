@@ -56,8 +56,8 @@ in the Reading insights popup).
 
 - A **calendar** of your reading with the streaks marked — page back through
   your whole history to your very first reading day.
-- **Current** and **best** streak side by side, each with its date range and
-  days | weeks.
+- **Current** and **best** streak side by side, each with its last read day
+  and days | weeks. Tap a days or weeks cell to see that streak's date range.
 
 The calendar's colours (daily-streak days and weekly-streak gap days) and its
 week-start day (Monday or Sunday) are configurable in Settings. Available
