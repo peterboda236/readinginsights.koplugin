@@ -527,6 +527,8 @@ local function buildSections(stats, fonts, layout, popup)
     -- object): a hidden part must not stay tappable.
     if popup then
         popup._chapter_headers, popup._chapter_values = nil, nil
+        popup._chapter_avg_cell = nil
+        popup._chapter_read_cell = nil
         popup._this_book_header, popup._pace_header, popup._pace_row = nil, nil, nil
         popup._started_widget, popup._finish_widget = nil, nil
         popup._chapter_bar = nil
@@ -711,6 +713,47 @@ local function buildSections(stats, fonts, layout, popup)
             Colors.newBar(layout.content_width, Size.line.thin, Colors.separator())))
         storeChapterBarOnPopup()
         table.insert(sections, chapter_bar)
+
+        -- Chapter count row: "23 / 46 chapters read | 00:33 avg. chapter
+        -- length". Tapping the right cell switches the average between
+        -- reading time and pages (see ReadingStatsPopup:onTapClose).
+        local ci = stats.chapter_info
+        if ci and Opt.readShowChapterCountRow() then
+            local avg_mode = (popup and popup._chapter_avg_mode) or "time"
+            -- Chapters before the current one are the ones the chapter bar
+            -- draws as read.
+            local read_count = math.max(0, math.min(ci.total, (ci.current or 1) - 1))
+            if stats.at_book_end then read_count = ci.total end
+            local left_cell
+            if popup and popup._chapter_read_mode == "left" and not stats.at_book_end then
+                left_cell = valueLine(
+                    { value = formatCount(ci.total - read_count), unit = "" },
+                    _("chapters left"))
+            else
+                left_cell = valueLine(
+                    { value = formatFraction(read_count, ci.total), unit = "" },
+                    _("chapters read"))
+            end
+            local read_cell = tappableWrap(left_cell, left_cell:getSize().w)
+            -- On the last page the cell is fixed to "N / N read" and not tappable.
+            if popup and not stats.at_book_end then popup._chapter_read_cell = read_cell end
+            local right_cell
+            if avg_mode == "pages" then
+                local ap = stats.avg_chapter_pages
+                right_cell = valueLine(
+                    ap and { value = formatCount(ap), unit = "" } or { value = "—", unit = "" },
+                    _("avg. pages/chapter"))
+            else
+                right_cell = valueLine(stats.avg_chapter_time_hhmm, _("avg. chapter length"))
+            end
+            local avg_cell = tappableWrap(right_cell, right_cell:getSize().w)
+            if popup then popup._chapter_avg_cell = avg_cell end
+            table.insert(sections, UI.padded(layout.padding_h,
+                Colors.newBar(layout.content_width, Size.line.thin, Colors.separator())))
+            table.insert(sections, UI.padded(layout.padding_h,
+                UI.buildTwoColRow(read_cell, avg_cell, layout)))
+            table.insert(sections, VerticalSpan:new{ height = Size.padding.default })
+        end
     end
 
     if has_book_rows or progress_bar_widget or skim_in_book then
@@ -925,10 +968,17 @@ local ReadingStatsPopup = InputContainer:extend{
     chapter_bar_offset = nil,
     _has_book_id       = false,
     _chapter_view_mode = "time",
+    _chapter_avg_mode  = "time",
+    _chapter_read_mode = "read",
     _pace_view_mode    = "time",
 }
 
 function ReadingStatsPopup:init()
+    -- Restore the display modes picked last time (tap toggles).
+    self._chapter_view_mode = VS.Opt.readPopupMode("chapter_view")
+    self._chapter_avg_mode  = VS.Opt.readPopupMode("chapter_avg")
+    self._chapter_read_mode = VS.Opt.readPopupMode("chapter_read")
+    self._pace_view_mode    = VS.Opt.readPopupMode("pace_view")
     self._stats  = self:gatherStats()
     self._fonts  = buildSerifFonts()
     -- The chapter bar's starting page is worked out in buildSections, once
@@ -1053,6 +1103,8 @@ function ReadingStatsPopup:gatherStats()
         today_pages            = UI.emptyValue(),
         today_time_hhmm        = zero_hhmm,
         chapter_info           = nil,
+        avg_chapter_pages      = nil,
+        avg_chapter_time_hhmm  = na_hhmm,
         skim                   = nil,
         has_next_chapter       = false,
         chapter_pages_left_count = nil,
@@ -1280,6 +1332,33 @@ function ReadingStatsPopup:gatherStats()
     if toc then
         local book_id = stats_plugin and stats_plugin.id_curr_book
         stats.chapter_info = ChapterInfo.getCachedChapterInfo(book_id, toc, pages, pageno)
+        -- Average chapter length (pages, and reading time at the current
+        -- pace) for the row under the chapter bar chart.
+        local ci = stats.chapter_info
+        -- On the very last page of the book the last chapter is finished too.
+        if ci and doc and doc.getTotalPagesLeft then
+            local left = doc:getTotalPagesLeft(pageno)
+            stats.at_book_end = (left ~= nil and left <= 0)
+        end
+        if ci and ci.page_counts and ci.total and ci.total > 0 then
+            -- Chapters of 1-2 pages (title pages, dedications, part
+            -- dividers...) are left out of the average; if every chapter
+            -- is that short, all of them count.
+            local sum, n = 0, 0
+            for i = 1, ci.total do
+                local pc = ci.page_counts[i] or 0
+                if pc > 2 then sum = sum + pc; n = n + 1 end
+            end
+            if n == 0 then
+                for i = 1, ci.total do sum = sum + (ci.page_counts[i] or 0) end
+                n = ci.total
+            end
+            local avg_pages = sum / n
+            stats.avg_chapter_pages = math.max(1, math.floor(avg_pages + 0.5))
+            if has_stats then
+                stats.avg_chapter_time_hhmm = Locale.formatTimeHHMM(avg_pages * avg_time)
+            end
+        end
     end
 
     -- Numbers for the skim-style chapter bar: the same ones KOReader's Skim
@@ -1395,6 +1474,21 @@ function ReadingStatsPopup:onTapClose(arg, ges_ev)
 
         if UI.hitTest(self._chapter_headers, x, y) or UI.hitTest(self._chapter_values, x, y) then
             self._chapter_view_mode = (self._chapter_view_mode == "pages") and "time" or "pages"
+            VS.Opt.savePopupMode("chapter_view", self._chapter_view_mode)
+            self:_rebuildUI()
+            return true
+        end
+
+        if UI.hitTest(self._chapter_read_cell, x, y) then
+            self._chapter_read_mode = (self._chapter_read_mode == "left") and "read" or "left"
+            VS.Opt.savePopupMode("chapter_read", self._chapter_read_mode)
+            self:_rebuildUI()
+            return true
+        end
+
+        if UI.hitTest(self._chapter_avg_cell, x, y) then
+            self._chapter_avg_mode = (self._chapter_avg_mode == "pages") and "time" or "pages"
+            VS.Opt.savePopupMode("chapter_avg", self._chapter_avg_mode)
             self:_rebuildUI()
             return true
         end
@@ -1411,6 +1505,7 @@ function ReadingStatsPopup:onTapClose(arg, ges_ev)
 
         if UI.hitTest(self._pace_row, x, y) then
             self._pace_view_mode = (self._pace_view_mode == "pages") and "time" or "pages"
+            VS.Opt.savePopupMode("pace_view", self._pace_view_mode)
             self:_rebuildUI()
             return true
         end

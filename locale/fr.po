@@ -1933,3 +1933,21 @@ msgstr "Données rechargées"
 
 msgid "Data reloaded. New achievements: %1"
 msgstr "Données rechargées. Nouveaux succès : %1"
+
+msgid "chapters read"
+msgstr "chapitres lus"
+
+msgid "avg. chapter length"
+msgstr "durée moy. chapitre"
+
+msgid "avg. pages/chapter"
+msgstr "pages moy./chapitre"
+
+msgid "Chapter count row"
+msgstr "Ligne du nombre de chapitres"
+
+msgid "Show the number of chapters read and the average chapter length under the chapter bar chart. Tap the average chapter length in the popup to switch between time and pages."
+msgstr "Affiche sous le graphique des chapitres le nombre de chapitres lus et la durée moyenne d'un chapitre. Touchez la durée moyenne dans la fenêtre pour basculer entre temps et pages."
+
+msgid "chapters left"
+msgstr "chapitres restants"

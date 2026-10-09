@@ -214,6 +214,13 @@ M.Opt = {
     SHOW_CHAPTER_BAR_KEY     = "reading_insights_book_show_chapter_bar",
     SHOW_CHAPTER_BAR_DEFAULT = true,
 
+    -- Book progress popup: the row under the chapter bar chart with the
+    -- number of chapters read ("23 / 46 chapters read") and the average
+    -- chapter length (tap it to switch between time and pages). On by
+    -- default.
+    SHOW_CHAPTER_COUNT_ROW_KEY     = "reading_insights_book_show_chapter_count_row",
+    SHOW_CHAPTER_COUNT_ROW_DEFAULT = true,
+
     -- Book progress popup: how that chapter bar is drawn. "bars" (default,
     -- unchanged look) is the per-chapter bar chart; "skim" is a single bar
     -- like the one in KOReader's "Skim to" dialog - filled up to the current
@@ -588,6 +595,40 @@ end
 
 function M.Opt.saveShowChapterBar(value)
     M.saveBoolSetting(M.Opt.SHOW_CHAPTER_BAR_KEY, value)
+end
+
+function M.Opt.readShowChapterCountRow()
+    return M.readBoolSetting(M.Opt.SHOW_CHAPTER_COUNT_ROW_KEY, M.Opt.SHOW_CHAPTER_COUNT_ROW_DEFAULT)
+end
+
+function M.Opt.saveShowChapterCountRow(value)
+    M.saveBoolSetting(M.Opt.SHOW_CHAPTER_COUNT_ROW_KEY, value)
+end
+
+-- Book progress popup: the tap-toggled display modes, remembered between
+-- openings. name = "chapter_view" (This/Next chapter: "time" | "pages"),
+-- "chapter_avg" (avg. chapter length: "time" | "pages") or "chapter_read"
+-- (chapters: "read" | "left") or "pace_view" (Pace row: "time" | "pages").
+local POPUP_MODES = {
+    chapter_view = { key = "reading_insights_book_chapter_view_mode", default = "time", other = "pages" },
+    chapter_avg  = { key = "reading_insights_book_chapter_avg_mode",  default = "time", other = "pages" },
+    chapter_read = { key = "reading_insights_book_chapter_read_mode", default = "read", other = "left"  },
+    pace_view    = { key = "reading_insights_book_pace_view_mode",    default = "time", other = "pages" },
+}
+
+function M.Opt.readPopupMode(name)
+    local m = POPUP_MODES[name]
+    if not m then return nil end
+    local v = Prefs.read(m.key, nil)
+    if v == m.other then return m.other end
+    return m.default
+end
+
+function M.Opt.savePopupMode(name, value)
+    local m = POPUP_MODES[name]
+    if not m then return end
+    if value ~= m.other then value = m.default end
+    Prefs.save(m.key, value)
 end
 
 function M.Opt.readChapterBarStyle()

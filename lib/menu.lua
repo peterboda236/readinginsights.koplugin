@@ -867,6 +867,16 @@ function M.build(self, deps)
         end,
     })
 
+    table.insert(book_progress_sub_item_table, {
+        text = _("Chapter count row"),
+        help_text = _("Show the number of chapters read and the average chapter length under the chapter bar chart. Tap the average chapter length in the popup to switch between time and pages."),
+        keep_menu_open = true,
+        checked_func = function() return deps.ViewSettings.Opt.readShowChapterCountRow() end,
+        callback = function()
+            deps.ViewSettings.Opt.saveShowChapterCountRow(not deps.ViewSettings.Opt.readShowChapterCountRow())
+        end,
+    })
+
     -- Chapter bar style: the per-chapter bar chart (default), or a single
     -- bar drawn like KOReader's "Skim to" dialog (widgets/skimbarwidget.lua),
     -- in the plugin's active / inactive colors.

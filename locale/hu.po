@@ -1951,3 +1951,21 @@ msgstr "Adatok újratöltve"
 
 msgid "Data reloaded. New achievements: %1"
 msgstr "Adatok újratöltve. Új teljesítmények: %1"
+
+msgid "chapters read"
+msgstr "fejezet elolvasva"
+
+msgid "avg. chapter length"
+msgstr "átl. fejezethossz"
+
+msgid "avg. pages/chapter"
+msgstr "átl. oldal/fejezet"
+
+msgid "Chapter count row"
+msgstr "Fejezetszám sor"
+
+msgid "Show the number of chapters read and the average chapter length under the chapter bar chart. Tap the average chapter length in the popup to switch between time and pages."
+msgstr "A fejezetsáv alatt megjeleníti az elolvasott fejezetek számát és az átlagos fejezethosszt. Az ablakban az átlagos fejezethosszra koppintva idő és oldalszám között válthatsz."
+
+msgid "chapters left"
+msgstr "fejezet hátra"

@@ -1939,3 +1939,21 @@ msgstr "Data reloaded"
 
 msgid "Data reloaded. New achievements: %1"
 msgstr "Data reloaded. New achievements: %1"
+
+msgid "chapters read"
+msgstr "chapters read"
+
+msgid "avg. chapter length"
+msgstr "avg. chapter length"
+
+msgid "avg. pages/chapter"
+msgstr "avg. pages/chapter"
+
+msgid "Chapter count row"
+msgstr "Chapter count row"
+
+msgid "Show the number of chapters read and the average chapter length under the chapter bar chart. Tap the average chapter length in the popup to switch between time and pages."
+msgstr "Show the number of chapters read and the average chapter length under the chapter bar chart. Tap the average chapter length in the popup to switch between time and pages."
+
+msgid "chapters left"
+msgstr "chapters left"

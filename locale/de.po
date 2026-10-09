@@ -1933,3 +1933,21 @@ msgstr "Daten neu geladen"
 
 msgid "Data reloaded. New achievements: %1"
 msgstr "Daten neu geladen. Neue Erfolge: %1"
+
+msgid "chapters read"
+msgstr "Kapitel gelesen"
+
+msgid "avg. chapter length"
+msgstr "Ø Kapitellänge"
+
+msgid "avg. pages/chapter"
+msgstr "Ø Seiten/Kapitel"
+
+msgid "Chapter count row"
+msgstr "Kapitelzahl-Zeile"
+
+msgid "Show the number of chapters read and the average chapter length under the chapter bar chart. Tap the average chapter length in the popup to switch between time and pages."
+msgstr "Zeigt unter dem Kapitelbalken-Diagramm die Zahl der gelesenen Kapitel und die durchschnittliche Kapitellänge an. Tippe im Fenster auf die durchschnittliche Kapitellänge, um zwischen Zeit und Seiten zu wechseln."
+
+msgid "chapters left"
+msgstr "Kapitel übrig"

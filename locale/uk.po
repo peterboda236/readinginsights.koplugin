@@ -1982,3 +1982,21 @@ msgstr "Дані перезавантажено"
 
 msgid "Data reloaded. New achievements: %1"
 msgstr "Дані перезавантажено. Нові досягнення: %1"
+
+msgid "chapters read"
+msgstr "розділів прочитано"
+
+msgid "avg. chapter length"
+msgstr "сер. довжина розділу"
+
+msgid "avg. pages/chapter"
+msgstr "сер. сторінок/розділ"
+
+msgid "Chapter count row"
+msgstr "Рядок кількості розділів"
+
+msgid "Show the number of chapters read and the average chapter length under the chapter bar chart. Tap the average chapter length in the popup to switch between time and pages."
+msgstr "Показує під діаграмою розділів кількість прочитаних розділів і середню довжину розділу. Торкніться середньої довжини у вікні, щоб перемикати між часом і сторінками."
+
+msgid "chapters left"
+msgstr "розділів залишилось"
