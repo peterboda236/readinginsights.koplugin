@@ -869,7 +869,7 @@ function M.build(self, deps)
 
     table.insert(book_progress_sub_item_table, {
         text = _("Chapter count row"),
-        help_text = _("Show the number of chapters read and the average chapter length under the chapter bar chart. Tap the average chapter length in the popup to switch between time and pages."),
+        help_text = _("Show the number of chapters read and the typical chapter length under the chapter bar chart. Tap the typical chapter length in the popup to switch between time and pages."),
         keep_menu_open = true,
         checked_func = function() return deps.ViewSettings.Opt.readShowChapterCountRow() end,
         callback = function()

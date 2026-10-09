@@ -101,6 +101,7 @@ A per-book overlay for the book you're currently reading:
 - **Today / averages** — time and pages read today and your daily average
 - **This / next chapter** — estimated reading time (or pages) left
 - **Chapter breakdown** — progress and time per chapter, when available
+  - Long-press the chapter count row ("N / M chapters" or the average length) to choose which table-of-contents level counts as a chapter: auto (deepest entries, so a book split into Parts counts the chapters inside them), or a fixed level. Remembered per book.
 
 Many rows toggle between time/pages or percent/page on tap. Tap the "Pace"
 title to open the **Book progress calendar** — a month grid coloured like a

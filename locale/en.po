@@ -1943,17 +1943,17 @@ msgstr "Data reloaded. New achievements: %1"
 msgid "chapters"
 msgstr "chapters"
 
-msgid "avg. chapter length"
-msgstr "avg. chapter length"
+msgid "typical length"
+msgstr "typical length"
 
-msgid "avg. pages/chapter"
-msgstr "avg. pages/chapter"
+msgid "typical pages/chapter"
+msgstr "typical pages/chapter"
 
 msgid "Chapter count row"
 msgstr "Chapter count row"
 
-msgid "Show the number of chapters read and the average chapter length under the chapter bar chart. Tap the average chapter length in the popup to switch between time and pages."
-msgstr "Show the number of chapters read and the average chapter length under the chapter bar chart. Tap the average chapter length in the popup to switch between time and pages."
+msgid "Show the number of chapters read and the typical chapter length under the chapter bar chart. Tap the typical chapter length in the popup to switch between time and pages."
+msgstr "Show the number of chapters read and the typical chapter length under the chapter bar chart. Tap the typical chapter length in the popup to switch between time and pages."
 
 msgid "chapters left"
 msgstr "chapters left"
@@ -1963,3 +1963,12 @@ msgstr "chapter"
 
 msgid "chapter left"
 msgstr "chapter left"
+
+msgid "This book's table of contents has only one level."
+msgstr "This book's table of contents has only one level."
+
+msgid "Chapter level: auto"
+msgstr "Chapter level: auto"
+
+msgid "Chapter level:"
+msgstr "Chapter level:"

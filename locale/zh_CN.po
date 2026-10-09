@@ -1658,17 +1658,17 @@ msgstr "数据已重新加载。新成就：%1"
 msgid "chapters"
 msgstr "章"
 
-msgid "avg. chapter length"
-msgstr "平均章节时长"
+msgid "typical length"
+msgstr "典型时长"
 
-msgid "avg. pages/chapter"
-msgstr "平均页数/章"
+msgid "typical pages/chapter"
+msgstr "典型页数/章"
 
 msgid "Chapter count row"
 msgstr "章节计数行"
 
-msgid "Show the number of chapters read and the average chapter length under the chapter bar chart. Tap the average chapter length in the popup to switch between time and pages."
-msgstr "在章节条形图下方显示已读章节数和平均章节时长。在弹窗中点击平均章节时长可在时间与页数之间切换。"
+msgid "Show the number of chapters read and the typical chapter length under the chapter bar chart. Tap the typical chapter length in the popup to switch between time and pages."
+msgstr "在章节条形图下方显示已读章节数和典型章节时长。在弹窗中点击典型章节时长可在时间与页数之间切换。"
 
 msgid "chapters left"
 msgstr "章未读"

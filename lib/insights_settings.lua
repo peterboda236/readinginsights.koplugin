@@ -607,7 +607,7 @@ end
 
 -- Book progress popup: the tap-toggled display modes, remembered between
 -- openings. name = "chapter_view" (This/Next chapter: "time" | "pages"),
--- "chapter_avg" (avg. chapter length: "time" | "pages") or "chapter_read"
+-- "chapter_avg" (typical chapter length: "time" | "pages") or "chapter_read"
 -- (chapters: "read" | "left") or "pace_view" (Pace row: "time" | "pages").
 local POPUP_MODES = {
     chapter_view = { key = "reading_insights_book_chapter_view_mode", default = "time", other = "pages" },

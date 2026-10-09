@@ -1937,17 +1937,17 @@ msgstr "Données rechargées. Nouveaux succès : %1"
 msgid "chapters"
 msgstr "chapitres"
 
-msgid "avg. chapter length"
-msgstr "durée moy. chapitre"
+msgid "typical length"
+msgstr "durée typique"
 
-msgid "avg. pages/chapter"
-msgstr "pages moy./chapitre"
+msgid "typical pages/chapter"
+msgstr "pages typiques/chapitre"
 
 msgid "Chapter count row"
 msgstr "Ligne du nombre de chapitres"
 
-msgid "Show the number of chapters read and the average chapter length under the chapter bar chart. Tap the average chapter length in the popup to switch between time and pages."
-msgstr "Affiche sous le graphique des chapitres le nombre de chapitres lus et la durée moyenne d'un chapitre. Touchez la durée moyenne dans la fenêtre pour basculer entre temps et pages."
+msgid "Show the number of chapters read and the typical chapter length under the chapter bar chart. Tap the typical chapter length in the popup to switch between time and pages."
+msgstr "Affiche sous le graphique des chapitres le nombre de chapitres lus et la durée typique d'un chapitre. Touchez la durée typique dans la fenêtre pour basculer entre temps et pages."
 
 msgid "chapters left"
 msgstr "chapitres restants"

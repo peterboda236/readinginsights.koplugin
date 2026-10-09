@@ -24,7 +24,7 @@ page numbers (`toc_ticks`). Anything else is treated as "no usable TOC".
   M.computeChapterResult(toc_items, items_are_tables, total, page_counts, pageno)
                                 current chapter + progress ratio from an
                                 already-parsed TOC
-  M.getCachedChapterInfo(book_id, toc, pages, pageno)
+  M.getCachedChapterInfo(book_id, toc, pages, pageno, level)
                                 the same, parsing (and caching) the TOC first;
                                 nil when there's no usable TOC
   M.getChapterPagesLeft(ui, pageno)
@@ -76,7 +76,15 @@ function M.computeChapterResult(toc_items, items_are_tables, total_chapters, pag
     }
 end
 
-function M.getCachedChapterInfo(book_id, toc, pages, pageno)
+-- `level` (optional) picks which TOC level counts as a "chapter":
+--   nil      auto: the deepest entries (an entry with sub-entries below it,
+--            e.g. a "Part", is only a container and is not a chapter)
+--   1, 2...  cut the TOC tree at that depth: entries at that depth count,
+--            and so do shallower entries that have nothing below them
+--            (a lone prologue, say). Level 1 is the old behaviour.
+-- The result also carries `level` and `max_depth`, so the caller can offer
+-- a way to cycle through the levels.
+function M.getCachedChapterInfo(book_id, toc, pages, pageno, level)
     if not book_id then return nil end
 
     -- explicit cache-hit / miss / invalidate branches
@@ -84,22 +92,25 @@ function M.getCachedChapterInfo(book_id, toc, pages, pageno)
     if cached == false then
         return nil
     elseif cached ~= nil then
-        if cached._pages ~= pages then
+        if cached._pages ~= pages or cached._level ~= level then
             _toc_cache[book_id] = nil
             _toc_cache_key      = nil
         else
-            return M.computeChapterResult(
+            local r = M.computeChapterResult(
                 cached._toc_items,
                 cached._items_are_tables,
                 cached._total,
                 cached._page_counts,
                 pageno
             )
+            r.level, r.max_depth = cached._level, cached._max_depth
+            return r
         end
     end
 
     -- Cache miss: parse TOC and store (at most 1 entry).
     local chapter_info = nil
+    local max_depth = 1
     local ok = pcall(function()
         local toc_items = nil
 
@@ -107,9 +118,27 @@ function M.getCachedChapterInfo(book_id, toc, pages, pageno)
             local raw = toc:getToc()
             if raw and #raw > 0 then
                 local chapter_entries = {}
-                local has_depth = raw[1] and raw[1].depth ~= nil
-                for _, entry in ipairs(raw) do
-                    if not has_depth or (entry.depth or 1) == 1 then
+                -- Any entry carrying a depth is enough; checking only the
+                -- first one misses TOCs whose first entry has no depth.
+                local has_depth = false
+                for _, e in ipairs(raw) do
+                    if type(e) == "table" and e.depth ~= nil then
+                        has_depth = true
+                        break
+                    end
+                end
+                for i, entry in ipairs(raw) do
+                    local d = has_depth and (entry.depth or 1) or 1
+                    if d > max_depth then max_depth = d end
+                    local nxt = raw[i + 1]
+                    local is_container = has_depth and nxt and (nxt.depth or 1) > d
+                    local counts
+                    if level == nil then
+                        counts = not is_container
+                    else
+                        counts = (d == level) or (d < level and not is_container)
+                    end
+                    if counts then
                         table.insert(chapter_entries, entry)
                     end
                 end
@@ -157,12 +186,15 @@ function M.getCachedChapterInfo(book_id, toc, pages, pageno)
             _page_counts      = page_counts,
             _total            = total_chapters,
             _pages            = pages,
+            _level            = level,
+            _max_depth        = max_depth,
         }
         _toc_cache_key = book_id
 
         chapter_info = M.computeChapterResult(
             toc_items, items_are_tables, total_chapters, page_counts, pageno
         )
+        chapter_info.level, chapter_info.max_depth = level, max_depth
     end)
 
     if not ok or not chapter_info then

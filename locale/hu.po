@@ -1955,17 +1955,17 @@ msgstr "Adatok újratöltve. Új teljesítmények: %1"
 msgid "chapters"
 msgstr "fejezet"
 
-msgid "avg. chapter length"
-msgstr "átl. fejezethossz"
+msgid "typical length"
+msgstr "tipikus hossz"
 
-msgid "avg. pages/chapter"
-msgstr "átl. oldal/fejezet"
+msgid "typical pages/chapter"
+msgstr "tipikus oldal/fejezet"
 
 msgid "Chapter count row"
 msgstr "Fejezetszám sor"
 
-msgid "Show the number of chapters read and the average chapter length under the chapter bar chart. Tap the average chapter length in the popup to switch between time and pages."
-msgstr "A fejezetsáv alatt megjeleníti az elolvasott fejezetek számát és az átlagos fejezethosszt. Az ablakban az átlagos fejezethosszra koppintva idő és oldalszám között válthatsz."
+msgid "Show the number of chapters read and the typical chapter length under the chapter bar chart. Tap the typical chapter length in the popup to switch between time and pages."
+msgstr "A fejezetsáv alatt megjeleníti az elolvasott fejezetek számát és a tipikus fejezethosszt. Az ablakban a tipikus fejezethosszra koppintva idő és oldalszám között válthatsz."
 
 msgid "chapters left"
 msgstr "fejezet hátra"
@@ -1975,3 +1975,12 @@ msgstr "fejezet"
 
 msgid "chapter left"
 msgstr "fejezet hátra"
+
+msgid "This book's table of contents has only one level."
+msgstr "Ennek a könyvnek a tartalomjegyzéke csak egy szintű."
+
+msgid "Chapter level: auto"
+msgstr "Fejezetszint: automatikus"
+
+msgid "Chapter level:"
+msgstr "Fejezetszint:"
