@@ -1983,8 +1983,8 @@ msgstr "Дані перезавантажено"
 msgid "Data reloaded. New achievements: %1"
 msgstr "Дані перезавантажено. Нові досягнення: %1"
 
-msgid "chapters read"
-msgstr "розділів прочитано"
+msgid "chapters"
+msgstr "розділів"
 
 msgid "avg. chapter length"
 msgstr "сер. довжина розділу"
@@ -2001,8 +2001,8 @@ msgstr "Показує під діаграмою розділів кількіс
 msgid "chapters left"
 msgstr "розділів залишилось"
 
-msgid "chapter read"
-msgstr "розділ прочитано"
+msgid "chapter"
+msgstr "розділ"
 
 msgid "chapter left"
 msgstr "розділ залишився"

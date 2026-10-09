@@ -732,7 +732,7 @@ local function buildSections(stats, fonts, layout, popup)
             else
                 left_cell = valueLine(
                     { value = formatFraction(read_count, ci.total), unit = "" },
-                    N_("chapter read", "chapters read", ci.total))
+                    N_("chapter", "chapters", ci.total))
             end
             local read_cell = tappableWrap(left_cell, left_cell:getSize().w)
             -- On the last page the cell is fixed to "N / N read" and not tappable.

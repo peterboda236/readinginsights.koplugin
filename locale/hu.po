@@ -1952,8 +1952,8 @@ msgstr "Adatok újratöltve"
 msgid "Data reloaded. New achievements: %1"
 msgstr "Adatok újratöltve. Új teljesítmények: %1"
 
-msgid "chapters read"
-msgstr "fejezet kész"
+msgid "chapters"
+msgstr "fejezet"
 
 msgid "avg. chapter length"
 msgstr "átl. fejezethossz"
@@ -1970,8 +1970,8 @@ msgstr "A fejezetsáv alatt megjeleníti az elolvasott fejezetek számát és az
 msgid "chapters left"
 msgstr "fejezet hátra"
 
-msgid "chapter read"
-msgstr "fejezet kész"
+msgid "chapter"
+msgstr "fejezet"
 
 msgid "chapter left"
 msgstr "fejezet hátra"

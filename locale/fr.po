@@ -1934,8 +1934,8 @@ msgstr "Données rechargées"
 msgid "Data reloaded. New achievements: %1"
 msgstr "Données rechargées. Nouveaux succès : %1"
 
-msgid "chapters read"
-msgstr "chapitres lus"
+msgid "chapters"
+msgstr "chapitres"
 
 msgid "avg. chapter length"
 msgstr "durée moy. chapitre"
@@ -1952,8 +1952,8 @@ msgstr "Affiche sous le graphique des chapitres le nombre de chapitres lus et la
 msgid "chapters left"
 msgstr "chapitres restants"
 
-msgid "chapter read"
-msgstr "chapitre lu"
+msgid "chapter"
+msgstr "chapitre"
 
 msgid "chapter left"
 msgstr "chapitre restant"

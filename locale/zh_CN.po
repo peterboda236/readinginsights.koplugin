@@ -1655,8 +1655,8 @@ msgstr "数据已重新加载"
 msgid "Data reloaded. New achievements: %1"
 msgstr "数据已重新加载。新成就：%1"
 
-msgid "chapters read"
-msgstr "章已读"
+msgid "chapters"
+msgstr "章"
 
 msgid "avg. chapter length"
 msgstr "平均章节时长"
@@ -1673,8 +1673,8 @@ msgstr "在章节条形图下方显示已读章节数和平均章节时长。在
 msgid "chapters left"
 msgstr "章未读"
 
-msgid "chapter read"
-msgstr "章已读"
+msgid "chapter"
+msgstr "章"
 
 msgid "chapter left"
 msgstr "章未读"
