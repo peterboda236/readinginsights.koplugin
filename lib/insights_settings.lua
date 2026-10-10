@@ -475,7 +475,7 @@ function M.monthKeyPrefixForMode(mode)
     return "days:"
 end
 
--- "Last week" chart mode: tapping the "Last week" header toggles the daily
+-- "Last 7 days" chart mode: tapping the "Last 7 days" header toggles the daily
 -- bar chart between reading time (HH:MM) and pages read per day. The choice
 -- is persisted so the popup remembers it instead of always defaulting to time.
 M.SETTINGS_KEY_WEEKLY_CHART_MODE = "reading_insights_weekly_chart_mode"
@@ -499,7 +499,7 @@ function M.saveWeeklyChartMode(mode)
     Prefs.save(M.SETTINGS_KEY_WEEKLY_CHART_MODE, mode)
 end
 
--- Time goals ("Daily goal | Weekly goal" section above "Last week"). Both are
+-- Time goals ("Daily goal | Weekly goal" section above "Last 7 days"). Both are
 -- stored in minutes and edited by a long press on the section. Defaults:
 -- 30 minutes a day, 5 hours (300 minutes) a week.
 M.DEFAULT_DAILY_GOAL_MIN  = 30
@@ -538,8 +538,8 @@ function M.saveWeeklyGoalMinutes(value)
     Prefs.save(M.SETTINGS_KEY_WEEKLY_GOAL_MIN, value)
 end
 
--- "Last week" layout (Prefs > Advanced settings > Reading insight popup >
--- "Last week layout"). "compact" (default): one row with the week's total and
+-- "Last 7 days" layout (Prefs > Advanced settings > Reading insight popup >
+-- "Last 7 days layout"). "compact" (default): one row with the week's total and
 -- the daily average, for time or pages depending on the chart mode toggled by
 -- tapping the header. "full": the previous layout with time and pages
 -- (totals and daily averages) all shown at once.
@@ -557,8 +557,8 @@ function M.saveWeeklyLayoutSetting(value)
     Prefs.save(M.SETTINGS_KEY_WEEKLY_LAYOUT, value)
 end
 
--- "Last week" bar order (Prefs ▸ Advanced settings ▸ Reading insight popup ▸
--- "Last week chapter bar order"). The chart's data always arrives with index
+-- "Last 7 days" bar order (Prefs ▸ Advanced settings ▸ Reading insight popup ▸
+-- "Last 7 days chapter bar order"). The chart's data always arrives with index
 -- 1 = today; this only decides which end of the row that first bar is drawn
 -- at, so everything keyed off "bar 1 is today" (the highlight colour, the tap
 -- that opens the Today Timeline) keeps working either way.

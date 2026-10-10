@@ -23,7 +23,7 @@ there. Four popups, all reachable from *Tools → Reading insights*:
 
 A full-screen overview of your whole reading history.
 
-- **Last week** — average time and pages per day; tap either to see its 8-week trend.
+- **Last 7 days** — average time and pages per day; tap either to see its 8-week trend.
 - **Streaks** — current and best daily & weekly streaks; tap any of them (or
   see the separate [Reading streak](#-reading-streak) popup below).
 - **Yearly & monthly** — hours/days read and pages, navigable by year; a

@@ -4,7 +4,7 @@ Reading Insights - shared popup font settings.
 Centralises the font choices used by every popup, so there is exactly one
 "Fonts" menu and one set of settings driving every text role:
 
-  insights_section  "Reading insights" section headers (Last week, Streaks,
+  insights_section  "Reading insights" section headers (Last 7 days, Streaks,
                     year header, Monthly chart, All time, ...)
   insights_value    "Reading insights" big numbers (hours/pages/streak values)
   insights_label    "Reading insights" unit/description labels next to a value

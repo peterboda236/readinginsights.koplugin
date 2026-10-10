@@ -953,8 +953,8 @@ msgstr "Sizes the Reading insights bar charts so the page fits the screen withou
 msgid "Bar chart height"
 msgstr "Bar chart height"
 
-msgid "Last week"
-msgstr "Last week"
+msgid "Last 7 days"
+msgstr "Last 7 days"
 
 msgid "Months"
 msgstr "Months"
@@ -1040,8 +1040,8 @@ msgstr "Minutes"
 msgid "Daily / weekly goal"
 msgstr "Daily / weekly goal"
 
-msgid "Show the daily and weekly reading time goals above \"Last week\". Long press the section to set the goals."
-msgstr "Show the daily and weekly reading time goals above \"Last week\". Long press the section to set the goals."
+msgid "Show the daily and weekly reading time goals above \"Last 7 days\". Long press the section to set the goals."
+msgstr "Show the daily and weekly reading time goals above \"Last 7 days\". Long press the section to set the goals."
 
 msgid "You haven't met your daily goal yet."
 msgstr "You haven't met your daily goal yet."
@@ -1061,8 +1061,8 @@ msgstr "You've met your weekly goal %1 week in a row."
 msgid "You've met your weekly goal %1 weeks in a row."
 msgstr "You've met your weekly goal %1 weeks in a row."
 
-msgid "Last week layout"
-msgstr "Last week layout"
+msgid "Last 7 days layout"
+msgstr "Last 7 days layout"
 
 msgid "Compact"
 msgstr "Compact"
@@ -1070,8 +1070,8 @@ msgstr "Compact"
 msgid "Full"
 msgstr "Full"
 
-msgid "Last week chapter bar order"
-msgstr "Last week chapter bar order"
+msgid "Last 7 days chapter bar order"
+msgstr "Last 7 days chapter bar order"
 
 msgid "Today on the left"
 msgstr "Today on the left"
@@ -1928,8 +1928,8 @@ msgstr "Description"
 msgid "No reading on %1"
 msgstr "No reading on %1"
 
-msgid "of annual goal"
-msgstr "of annual goal"
+msgid "of yearly goal"
+msgstr "of yearly goal"
 
 msgid "Latest"
 msgstr "Latest"

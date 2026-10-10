@@ -959,8 +959,8 @@ msgstr "Ajusta o tamanho dos gráficos de barras do Reading Insights para que a 
 msgid "Bar chart height"
 msgstr "Altura do gráfico de barras"
 
-msgid "Last week"
-msgstr "Última semana"
+msgid "Last 7 days"
+msgstr "Últimos 7 dias"
 
 msgid "Months"
 msgstr "Meses"
@@ -1046,8 +1046,8 @@ msgstr "Minutos"
 msgid "Daily / weekly goal"
 msgstr "Meta diária / semanal"
 
-msgid "Show the daily and weekly reading time goals above \"Last week\". Long press the section to set the goals."
-msgstr "Mostrar as metas diária e semanal de tempo de leitura acima de \"Última semana\". Prima longamente a secção para definir as metas."
+msgid "Show the daily and weekly reading time goals above \"Last 7 days\". Long press the section to set the goals."
+msgstr "Mostrar as metas diária e semanal de tempo de leitura acima de \"Últimos 7 dias\". Prima longamente a secção para definir as metas."
 
 msgid "You haven't met your daily goal yet."
 msgstr "Ainda não atingiu a meta diária."
@@ -1067,8 +1067,8 @@ msgstr "Atingiu a meta semanal %1 semana seguida."
 msgid "You've met your weekly goal %1 weeks in a row."
 msgstr "Atingiu a meta semanal %1 semanas seguidas."
 
-msgid "Last week layout"
-msgstr "Disposição da última semana"
+msgid "Last 7 days layout"
+msgstr "Disposição dos últimos 7 dias"
 
 msgid "Compact"
 msgstr "Compacto"
@@ -1076,8 +1076,8 @@ msgstr "Compacto"
 msgid "Full"
 msgstr "Completo"
 
-msgid "Last week chapter bar order"
-msgstr "Ordem da barra de capítulos da última semana"
+msgid "Last 7 days chapter bar order"
+msgstr "Ordem da barra de capítulos dos últimos 7 dias"
 
 msgid "Today on the left"
 msgstr "Hoje à esquerda"
@@ -1928,7 +1928,7 @@ msgstr "Descrição"
 msgid "No reading on %1"
 msgstr "Sem leitura em %1"
 
-msgid "of annual goal"
+msgid "of yearly goal"
 msgstr "da meta anual"
 
 msgid "Latest"
