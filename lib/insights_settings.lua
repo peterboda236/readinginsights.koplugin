@@ -488,6 +488,25 @@ function M.saveWeeklyChartMode(mode)
     Prefs.save(M.SETTINGS_KEY_WEEKLY_CHART_MODE, mode)
 end
 
+-- "Last week" layout (Prefs > Advanced settings > Reading insight popup >
+-- "Last week layout"). "compact" (default): one row with the week's total and
+-- the daily average, for time or pages depending on the chart mode toggled by
+-- tapping the header. "full": the previous layout with time and pages
+-- (totals and daily averages) all shown at once.
+M.SETTINGS_KEY_WEEKLY_LAYOUT = "reading_insights_weekly_layout"
+M.WEEKLY_LAYOUT_COMPACT = "compact"
+M.WEEKLY_LAYOUT_FULL    = "full"
+
+function M.readWeeklyLayoutSetting()
+    local v = Prefs.read(M.SETTINGS_KEY_WEEKLY_LAYOUT, nil)
+    if v == M.WEEKLY_LAYOUT_FULL then return M.WEEKLY_LAYOUT_FULL end
+    return M.WEEKLY_LAYOUT_COMPACT
+end
+
+function M.saveWeeklyLayoutSetting(value)
+    Prefs.save(M.SETTINGS_KEY_WEEKLY_LAYOUT, value)
+end
+
 -- "Last week" bar order (Prefs ▸ Advanced settings ▸ Reading insight popup ▸
 -- "Last week chapter bar order"). The chart's data always arrives with index
 -- 1 = today; this only decides which end of the row that first bar is drawn

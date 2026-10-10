@@ -779,49 +779,70 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
             local total_pages_val = formatCount(total_pages_raw)
             local total_pages_unit = N_("page read", "pages read", total_pages_raw)
 
-            -- Portrait: two 2-column rows (total above, daily average
-            -- below). Landscape: the popup is wide enough to lay all four
-            -- values out on a single row instead - reading time, reading
-            -- time per day, pages read, pages read per day.
+            local weekly_chart_mode = VS.normalizeWeeklyChartMode(popup_self.weekly_chart_mode)
             local last_week_rows
-            if isLandscapeScreen() then
-                local four_row = UI.buildFourColRow(
-                    tappableCell(
-                        buildValueLine(fonts.value, fonts.label, layout.col_width_4, total_time_val, total_time_unit),
-                        layout.col_width_4, function() popup_self:showWeeklyTrendPopup("time_total") end),
-                    tappableCell(
-                        buildValueLine(fonts.value, fonts.label, layout.col_width_4, week_time_val,   week_time_unit_full),
-                        layout.col_width_4, function() popup_self:showWeeklyTrendPopup("time_avg") end),
-                    tappableCell(
-                        buildValueLine(fonts.value, fonts.label, layout.col_width_4, total_pages_val, total_pages_unit),
-                        layout.col_width_4, function() popup_self:showWeeklyTrendPopup("pages_total") end),
-                    tappableCell(
-                        buildValueLine(fonts.value, fonts.label, layout.col_width_4, week_pages_val,  week_pages_unit),
-                        layout.col_width_4, function() popup_self:showWeeklyTrendPopup("pages_avg") end),
-                    layout)
-                last_week_rows = { four_row }
+            if VS.readWeeklyLayoutSetting() == VS.WEEKLY_LAYOUT_FULL then
+                -- Full layout. Portrait: two 2-column rows (total above,
+                -- daily average below). Landscape: all four values on one row.
+                if isLandscapeScreen() then
+                    local four_row = UI.buildFourColRow(
+                        tappableCell(
+                            buildValueLine(fonts.value, fonts.label, layout.col_width_4, total_time_val, total_time_unit),
+                            layout.col_width_4, function() popup_self:showWeeklyTrendPopup("time_total") end),
+                        tappableCell(
+                            buildValueLine(fonts.value, fonts.label, layout.col_width_4, week_time_val,   week_time_unit_full),
+                            layout.col_width_4, function() popup_self:showWeeklyTrendPopup("time_avg") end),
+                        tappableCell(
+                            buildValueLine(fonts.value, fonts.label, layout.col_width_4, total_pages_val, total_pages_unit),
+                            layout.col_width_4, function() popup_self:showWeeklyTrendPopup("pages_total") end),
+                        tappableCell(
+                            buildValueLine(fonts.value, fonts.label, layout.col_width_4, week_pages_val,  week_pages_unit),
+                            layout.col_width_4, function() popup_self:showWeeklyTrendPopup("pages_avg") end),
+                        layout)
+                    last_week_rows = { four_row }
+                else
+                    local week_row = UI.buildTwoColRow(
+                        tappableCell(
+                            buildValueLine(fonts.value, fonts.label, layout.col_width, week_time_val,   week_time_unit_full),
+                            layout.col_width, function() popup_self:showWeeklyTrendPopup("time_avg") end),
+                        tappableCell(
+                            buildValueLine(fonts.value, fonts.label, layout.col_width, week_pages_val,  week_pages_unit),
+                            layout.col_width, function() popup_self:showWeeklyTrendPopup("pages_avg") end),
+                        layout)
+                    local total_row = UI.buildTwoColRow(
+                        tappableCell(
+                            buildValueLine(fonts.value, fonts.label, layout.col_width, total_time_val, total_time_unit),
+                            layout.col_width, function() popup_self:showWeeklyTrendPopup("time_total") end),
+                        tappableCell(
+                            buildValueLine(fonts.value, fonts.label, layout.col_width, total_pages_val, total_pages_unit),
+                            layout.col_width, function() popup_self:showWeeklyTrendPopup("pages_total") end),
+                        layout)
+                    last_week_rows = { total_row, week_row }
+                end
             else
+                -- Compact layout (default): one 2-column row driven by the
+                -- chart mode (tap the "Last week" header to switch): time
+                -- view = total time + daily avg time, pages view = total
+                -- pages + daily avg pages.
+                local left_val, left_unit, left_metric, right_val, right_unit, right_metric
+                if weekly_chart_mode == VS.WEEKLY_CHART_MODE_PAGES then
+                    left_val, left_unit, left_metric    = total_pages_val, total_pages_unit, "pages_total"
+                    right_val, right_unit, right_metric = week_pages_val, week_pages_unit, "pages_avg"
+                else
+                    left_val, left_unit, left_metric    = total_time_val, total_time_unit, "time_total"
+                    right_val, right_unit, right_metric = week_time_val, week_time_unit_full, "time_avg"
+                end
                 local week_row = UI.buildTwoColRow(
                     tappableCell(
-                        buildValueLine(fonts.value, fonts.label, layout.col_width, week_time_val,   week_time_unit_full),
-                        layout.col_width, function() popup_self:showWeeklyTrendPopup("time_avg") end),
+                        buildValueLine(fonts.value, fonts.label, layout.col_width, left_val, left_unit),
+                        layout.col_width, function() popup_self:showWeeklyTrendPopup(left_metric) end),
                     tappableCell(
-                        buildValueLine(fonts.value, fonts.label, layout.col_width, week_pages_val,  week_pages_unit),
-                        layout.col_width, function() popup_self:showWeeklyTrendPopup("pages_avg") end),
+                        buildValueLine(fonts.value, fonts.label, layout.col_width, right_val, right_unit),
+                        layout.col_width, function() popup_self:showWeeklyTrendPopup(right_metric) end),
                     layout)
-
-                local total_row = UI.buildTwoColRow(
-                    tappableCell(
-                        buildValueLine(fonts.value, fonts.label, layout.col_width, total_time_val, total_time_unit),
-                        layout.col_width, function() popup_self:showWeeklyTrendPopup("time_total") end),
-                    tappableCell(
-                        buildValueLine(fonts.value, fonts.label, layout.col_width, total_pages_val, total_pages_unit),
-                        layout.col_width, function() popup_self:showWeeklyTrendPopup("pages_total") end),
-                    layout)
-                last_week_rows = { total_row, week_row }
+                last_week_rows = { week_row }
             end
 
-            local weekly_chart_mode = VS.normalizeWeeklyChartMode(popup_self.weekly_chart_mode)
             local weekly_chart = buildWeeklyChart(popup_self, last_week_daily, layout, fonts, weekly_chart_mode)
             local last_week_content = VerticalGroup:new{ align = "left" }
             for idx, row in ipairs(last_week_rows) do

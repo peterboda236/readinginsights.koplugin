@@ -1080,6 +1080,15 @@ msgstr "Дата й час"
 msgid "Reading insight popup"
 msgstr "Спливне вікно Аналітики читання"
 
+msgid "Last week layout"
+msgstr "Вигляд минулого тижня"
+
+msgid "Compact"
+msgstr "Компактний"
+
+msgid "Full"
+msgstr "Повний"
+
 msgid "Last week chapter bar order"
 msgstr "Порядок панелі глав за минулий тиждень"
 

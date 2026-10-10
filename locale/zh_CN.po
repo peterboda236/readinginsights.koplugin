@@ -760,6 +760,15 @@ msgstr "日期与时间"
 msgid "Reading insight popup"
 msgstr "阅读统计弹窗"
 
+msgid "Last week layout"
+msgstr "上周布局"
+
+msgid "Compact"
+msgstr "紧凑"
+
+msgid "Full"
+msgstr "完整"
+
 msgid "Last week chapter bar order"
 msgstr "上周章节条排列顺序"
 msgid "Today on the left"

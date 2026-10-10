@@ -603,6 +603,37 @@ function M.build(self, deps)
         })
     end
 
+    -- "Last week" layout: compact (default) shows total + daily average for
+    -- the selected view (time or pages); full is the previous layout.
+    do
+        local VSet    = deps.ViewSettings
+        local COMPACT = VSet.WEEKLY_LAYOUT_COMPACT
+        local FULL    = VSet.WEEKLY_LAYOUT_FULL
+        local function layoutEntry(value, text)
+            return {
+                text = text,
+                keep_menu_open = true,
+                radio = true,
+                checked_func = function()
+                    return VSet.readWeeklyLayoutSetting() == value
+                end,
+                callback = function() VSet.saveWeeklyLayoutSetting(value) end,
+            }
+        end
+        table.insert(insights_popup_sub_item_table, {
+            text_func = function()
+                local name = VSet.readWeeklyLayoutSetting() == FULL
+                    and _("Full") or _("Compact")
+                return _("Last week layout") .. ": " .. name
+            end,
+            keep_menu_open = true,
+            sub_item_table = {
+                layoutEntry(COMPACT, _("Compact")),
+                layoutEntry(FULL,    _("Full")),
+            },
+        })
+    end
+
     -- How often achievements re-evaluate in the background: once a day
     -- (default) or on every popup open. Either way the heavy re-scan only
     -- runs when the reading data actually changed since the last check.

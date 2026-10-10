@@ -1034,6 +1034,15 @@ msgstr "Dátum és idő"
 msgid "Reading insight popup"
 msgstr "Olvasási áttekintés ablak"
 
+msgid "Last week layout"
+msgstr "Múlt heti elrendezés"
+
+msgid "Compact"
+msgstr "Kompakt"
+
+msgid "Full"
+msgstr "Teljes"
+
 msgid "Last week chapter bar order"
 msgstr "Múlt heti oszlopok sorrendje"
 

@@ -1031,6 +1031,15 @@ msgstr "Datum & Uhrzeit"
 msgid "Reading insight popup"
 msgstr "Lese-Übersicht-Fenster"
 
+msgid "Last week layout"
+msgstr "Layout der letzten Woche"
+
+msgid "Compact"
+msgstr "Kompakt"
+
+msgid "Full"
+msgstr "Vollständig"
+
 msgid "Last week chapter bar order"
 msgstr "Balkenreihenfolge der letzten Woche"
 
