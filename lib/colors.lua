@@ -193,7 +193,7 @@ local DEFAULTS = {
     value        = "#000000",
     section      = "#000000",
     small        = "#000000",
-    -- Fill behind section headers (the insights view's "Last week",
+    -- Fill behind section headers (the insights view's "Last 7 days",
     -- "Current streak"/"Best streak", year header, "Achievements", etc.,
     -- and the Book progress popup's "This chapter"/"Next chapter", "This
     -- book" and "Pace" headers). White by default, i.e. no visible fill.

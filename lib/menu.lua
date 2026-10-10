@@ -297,7 +297,7 @@ function M.build(self, deps)
                 end,
             },
             buildBarHeightMenuEntry(
-                _("Reading insights") .. ": " .. _("Last week"),
+                _("Reading insights") .. ": " .. _("Last 7 days"),
                 deps.ViewSettings.readWeeklyBarHeightSetting,
                 deps.ViewSettings.saveWeeklyBarHeightSetting,
                 deps.ViewSettings.DEFAULT_WEEKLY_BAR_HEIGHT,
@@ -438,7 +438,7 @@ function M.build(self, deps)
         local Opt = deps.ViewSettings.Opt
         table.insert(insights_popup_sub_item_table, {
             text = _("Daily / weekly goal"),
-            help_text = _("Show the daily and weekly reading time goals above \"Last week\". Long press the section to set the goals."),
+            help_text = _("Show the daily and weekly reading time goals above \"Last 7 days\". Long press the section to set the goals."),
             keep_menu_open = true,
             checked_func = function() return deps.ViewSettings.readShowTimeGoals() end,
             callback = function()
@@ -577,7 +577,7 @@ function M.build(self, deps)
         },
     })
 
-    -- Which end of the "Last week" bar chart today sits at. The default is
+    -- Which end of the "Last 7 days" bar chart today sits at. The default is
     -- what the chart always did before this setting existed - today on the
     -- left, the week running backwards from there.
     do
@@ -602,7 +602,7 @@ function M.build(self, deps)
                 local side = VSet.readWeeklyBarOrderSetting() == LAST
                     and _("Today on the right")
                     or  _("Today on the left")
-                return _("Last week chapter bar order") .. ": " .. side
+                return _("Last 7 days chapter bar order") .. ": " .. side
             end,
             keep_menu_open = true,
             sub_item_table = {
@@ -644,7 +644,7 @@ function M.build(self, deps)
         })
     end
 
-    -- "Last week" layout: compact (default) shows total + daily average for
+    -- "Last 7 days" layout: compact (default) shows total + daily average for
     -- the selected view (time or pages); full is the previous layout.
     do
         local VSet    = deps.ViewSettings
@@ -665,7 +665,7 @@ function M.build(self, deps)
             text_func = function()
                 local name = VSet.readWeeklyLayoutSetting() == FULL
                     and _("Full") or _("Compact")
-                return _("Last week layout") .. ": " .. name
+                return _("Last 7 days layout") .. ": " .. name
             end,
             keep_menu_open = true,
             sub_item_table = {

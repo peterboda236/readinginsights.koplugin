@@ -1008,8 +1008,8 @@ msgstr ""
 msgid "Bar chart height"
 msgstr "Висота стовпчастого графіка"
 
-msgid "Last week"
-msgstr "Минулий тиждень"
+msgid "Last 7 days"
+msgstr "Останні 7 днів"
 
 msgid "Months"
 msgstr "Місяці"
@@ -1095,8 +1095,8 @@ msgstr "Хвилини"
 msgid "Daily / weekly goal"
 msgstr "Денна / тижнева мета"
 
-msgid "Show the daily and weekly reading time goals above \"Last week\". Long press the section to set the goals."
-msgstr "Показувати денну та тижневу мету часу читання над «Минулий тиждень». Утримуйте розділ, щоб задати мету."
+msgid "Show the daily and weekly reading time goals above \"Last 7 days\". Long press the section to set the goals."
+msgstr "Показувати денну та тижневу мету часу читання над «Останні 7 днів». Утримуйте розділ, щоб задати мету."
 
 msgid "You haven't met your daily goal yet."
 msgstr "Денну мету ще не виконано."
@@ -1116,8 +1116,8 @@ msgstr "Тижневу мету виконано поспіль, тижнів: %
 msgid "You've met your weekly goal %1 weeks in a row."
 msgstr "Тижневу мету виконано поспіль, тижнів: %1"
 
-msgid "Last week layout"
-msgstr "Вигляд минулого тижня"
+msgid "Last 7 days layout"
+msgstr "Вигляд за останні 7 днів"
 
 msgid "Compact"
 msgstr "Компактний"
@@ -1125,8 +1125,8 @@ msgstr "Компактний"
 msgid "Full"
 msgstr "Повний"
 
-msgid "Last week chapter bar order"
-msgstr "Порядок панелі глав за минулий тиждень"
+msgid "Last 7 days chapter bar order"
+msgstr "Порядок панелі глав за останні 7 днів"
 
 msgid "Today on the left"
 msgstr "Сьогодні ліворуч"

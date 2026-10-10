@@ -7,7 +7,7 @@ sections. The figures themselves come from lib/insights_data.lua; nothing
 here reads the statistics DB.
 
 Sections, top to bottom:
-  - Last week     7-day totals and averages + daily bar chart
+  - Last 7 days   7-day totals and averages + daily bar chart
   - Streaks       current and best daily/weekly streaks
   - Year          time, days read or books read + pages, per year
   - Monthly chart per-month bars; the header cycles hours/days/books
@@ -21,8 +21,8 @@ Gestures:
   - Tap yearly value or monthly bar    book list for that period
   - Tap monthly chart header           cycle hours/days/books
   - Tap a streak                       that streak's dates and totals
-  - Tap a Last week value              8-week trend popup
-  - Tap today's bar in Last week       Today Timeline
+  - Tap a Last 7 days value              8-week trend popup
+  - Tap today's bar in Last 7 days       Today Timeline
   - Long press current month           CalendarView
   - Tap finished-book count            books finished that year
   - Long press finished-book count     checklist to correct that list
@@ -80,7 +80,7 @@ local Locale, Colors, Fonts, PopupUtil, VS, Cache, UI, Trend, Heatmap, BookList,
 -- true: today's bar in the weekly chart is black. false: all bars gray.
 local WEEKLY_CHART_HIGHLIGHT_TODAY = true
 
--- Fill used behind a handful of section headers ("Last week", "Current
+-- Fill used behind a handful of section headers ("Last 7 days", "Current
 -- streak"/"Best streak", the year header, "Achievements" when shown next
 -- to "Reading goal", and "All time") to visually group them with the
 -- section above rather than reading as their own separate block. Backed by
@@ -636,7 +636,7 @@ end
 PopupUtil.makeDismissable(Trend.Popup, function(self) return self.box_content.dimen end)
 
 -- Weekly bar chart: 7 bars, index 1 = today, index 7 = 6 days ago. Which end
--- of the row today is drawn at follows the "Last week chapter bar order"
+-- of the row today is drawn at follows the "Last 7 days chapter bar order"
 -- setting (leftmost by default); the data index stays the same either way.
 -- Labels: "Today", "Yesterday", then weekday abbreviations.
 local function buildWeeklyChart(popup_self, daily_data, layout, fonts, mode)
@@ -765,7 +765,7 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
     -- "Daily goal | Weekly goal": time read today / this calendar week against
     -- a goal in minutes. Long press on the section edits the goals. Today's
     -- and this week's seconds come from the last-7-days data already loaded
-    -- for the "Last week" section (a calendar week never reaches back more
+    -- for the "Last 7 days" section (a calendar week never reaches back more
     -- than 7 days, so no extra query is needed).
     popup_self._timegoal_hold_targets = {}
     if VS.readShowTimeGoals() then
@@ -917,7 +917,7 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
                 end
             else
                 -- Compact layout (default): one 2-column row driven by the
-                -- chart mode (tap the "Last week" header to switch): time
+                -- chart mode (tap the "Last 7 days" header to switch): time
                 -- view = total time + daily avg time, pages view = total
                 -- pages + daily avg pages.
                 local left_val, left_unit, left_metric, right_val, right_unit, right_metric
@@ -961,7 +961,7 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
 
             -- Tapping the header toggles the chart above between reading
             -- time and pages read per day (see toggleWeeklyChartMode()).
-            local last_week_header = buildAlignedSectionHeader(fonts.section, _("Last week"), layout, HEADER_BG())
+            local last_week_header = buildAlignedSectionHeader(fonts.section, _("Last 7 days"), layout, HEADER_BG())
             local tappable_last_week_header = InputContainer:new{
                 dimen = Geom:new{ x = 0, y = 0, w = last_week_header:getSize().w, h = last_week_header:getSize().h },
                 last_week_header,
@@ -2665,7 +2665,7 @@ function ReadingInsightsPopup:init()
     local screen_h = Screen:getHeight()
 
     -- Write the current (in-memory, not yet saved) reading session into
-    -- statistics.sqlite3, then invalidate the "Last week" cache so it is
+    -- statistics.sqlite3, then invalidate the "Last 7 days" cache so it is
     -- always re-queried from the DB on every open of this popup - not just
     -- once per minute. Older cached/stale values are still shown instantly
     -- below (stale-while-revalidate); _loadAndRebuild() then replaces them
@@ -3056,7 +3056,7 @@ function ReadingInsightsPopup:toggleInsightsMode()
     return self:cycleInsightsMode()
 end
 
--- Toggles the "Last week" bar chart between reading time and pages read per
+-- Toggles the "Last 7 days" bar chart between reading time and pages read per
 -- day. No DB re-query is needed: both values are already fetched together
 -- by getLastWeekAll(), so this just flips the persisted display mode and
 -- rebuilds the UI.
