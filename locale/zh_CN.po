@@ -1732,3 +1732,6 @@ msgstr "2 行，每行 6 个月"
 
 msgid "12 months in one row"
 msgstr "12 个月显示在一行"
+
+msgid "Default: %1"
+msgstr "默认：%1"

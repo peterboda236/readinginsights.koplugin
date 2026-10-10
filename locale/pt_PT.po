@@ -2011,3 +2011,6 @@ msgstr "2 linhas de 6 meses"
 
 msgid "12 months in one row"
 msgstr "12 meses numa linha"
+
+msgid "Default: %1"
+msgstr "Predefinição: %1"

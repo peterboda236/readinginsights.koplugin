@@ -2970,6 +2970,13 @@ end
 -- same reason as editReadingGoal's modal InputDialog.
 function ReadingInsightsPopup:editTimeGoal(kind)
     local DoubleSpinWidget = require("ui/widget/doublespinwidget")
+
+    -- Label for the "default" button, e.g. "Default: 30m" / "Default: 5h"
+    -- (depends on KOReader's duration format setting), instead of KOReader's
+    -- raw "Default values: 0 : 30". Seconds are dropped.
+    local function formatDefaultGoal(total_min)
+        return T(_("Default: %1"), Locale.formatDuration(total_min * 60, true))
+    end
     local popup_self = self
     local is_daily = (kind == "daily")
     local current  = is_daily and VS.readDailyGoalMinutes() or VS.readWeeklyGoalMinutes()
@@ -2994,6 +3001,7 @@ function ReadingInsightsPopup:editTimeGoal(kind)
         default_values = true,
         left_default   = math.floor(default / 60),
         right_default  = default % 60,
+        default_text   = formatDefaultGoal(default),
         ok_always_enabled = true,
         callback = function(hours, minutes)
             local total = (tonumber(hours) or 0) * 60 + (tonumber(minutes) or 0)

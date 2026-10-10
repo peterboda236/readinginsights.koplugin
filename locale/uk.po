@@ -2060,3 +2060,6 @@ msgstr "2 рядки по 6 місяців"
 
 msgid "12 months in one row"
 msgstr "12 місяців в одному рядку"
+
+msgid "Default: %1"
+msgstr "За замовчуванням: %1"

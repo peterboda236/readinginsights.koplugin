@@ -2038,3 +2038,6 @@ msgstr "2 sor × 6 hónap"
 
 msgid "12 months in one row"
 msgstr "12 hónap egy sorban"
+
+msgid "Default: %1"
+msgstr "Alapértelmezett: %1"

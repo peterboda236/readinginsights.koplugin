@@ -2026,3 +2026,6 @@ msgstr "2 rows of 6 months"
 
 msgid "12 months in one row"
 msgstr "12 months in one row"
+
+msgid "Default: %1"
+msgstr "Default: %1"
