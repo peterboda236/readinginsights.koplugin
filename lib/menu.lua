@@ -437,6 +437,15 @@ function M.build(self, deps)
     do
         local Opt = deps.ViewSettings.Opt
         table.insert(insights_popup_sub_item_table, {
+            text = _("Daily / weekly goal"),
+            help_text = _("Show the daily and weekly reading time goals above \"Last week\". Long press the section to set the goals."),
+            keep_menu_open = true,
+            checked_func = function() return deps.ViewSettings.readShowTimeGoals() end,
+            callback = function()
+                deps.ViewSettings.saveShowTimeGoals(not deps.ViewSettings.readShowTimeGoals())
+            end,
+        })
+        table.insert(insights_popup_sub_item_table, {
             text = _("Reading goal"),
             keep_menu_open = true,
             checked_func = function() return Opt.readShowReadingGoal() end,

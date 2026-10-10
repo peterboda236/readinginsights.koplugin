@@ -1031,6 +1031,24 @@ msgstr "Date et heure"
 msgid "Reading insight popup"
 msgstr "Popup de statistiques de lecture"
 
+msgid "Daily goal"
+msgstr "Objectif quotidien"
+
+msgid "Weekly goal"
+msgstr "Objectif hebdomadaire"
+
+msgid "Hours"
+msgstr "Heures"
+
+msgid "Minutes"
+msgstr "Minutes"
+
+msgid "Daily / weekly goal"
+msgstr "Objectif quotidien / hebdomadaire"
+
+msgid "Show the daily and weekly reading time goals above \"Last week\". Long press the section to set the goals."
+msgstr "Afficher les objectifs de temps de lecture quotidien et hebdomadaire au-dessus de « Semaine dernière ». Appui long sur la section pour les régler."
+
 msgid "Last week layout"
 msgstr "Disposition de la semaine dernière"
 

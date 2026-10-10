@@ -1080,6 +1080,24 @@ msgstr "Дата й час"
 msgid "Reading insight popup"
 msgstr "Спливне вікно Аналітики читання"
 
+msgid "Daily goal"
+msgstr "Денна мета"
+
+msgid "Weekly goal"
+msgstr "Тижнева мета"
+
+msgid "Hours"
+msgstr "Години"
+
+msgid "Minutes"
+msgstr "Хвилини"
+
+msgid "Daily / weekly goal"
+msgstr "Денна / тижнева мета"
+
+msgid "Show the daily and weekly reading time goals above \"Last week\". Long press the section to set the goals."
+msgstr "Показувати денну та тижневу мету часу читання над «Минулий тиждень». Утримуйте розділ, щоб задати мету."
+
 msgid "Last week layout"
 msgstr "Вигляд минулого тижня"
 

@@ -1025,6 +1025,24 @@ msgstr "Date & time"
 msgid "Reading insight popup"
 msgstr "Reading insight popup"
 
+msgid "Daily goal"
+msgstr "Daily goal"
+
+msgid "Weekly goal"
+msgstr "Weekly goal"
+
+msgid "Hours"
+msgstr "Hours"
+
+msgid "Minutes"
+msgstr "Minutes"
+
+msgid "Daily / weekly goal"
+msgstr "Daily / weekly goal"
+
+msgid "Show the daily and weekly reading time goals above \"Last week\". Long press the section to set the goals."
+msgstr "Show the daily and weekly reading time goals above \"Last week\". Long press the section to set the goals."
+
 msgid "Last week layout"
 msgstr "Last week layout"
 

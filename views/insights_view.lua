@@ -755,6 +755,87 @@ end
 local function buildInsightsSections(popup_self, streaks, yearly_stats, year_range, monthly_data, all_time_stats, last_week_stats, last_week_daily, fonts, layout, goal_finished_count)
     local sections = VerticalGroup:new{ align = "left" }
 
+    -- "Daily goal | Weekly goal": time read today / this calendar week against
+    -- a goal in minutes. Long press on the section edits the goals. Today's
+    -- and this week's seconds come from the last-7-days data already loaded
+    -- for the "Last week" section (a calendar week never reaches back more
+    -- than 7 days, so no extra query is needed).
+    popup_self._timegoal_hold_targets = {}
+    if VS.readShowTimeGoals() then
+
+        local daily_goal_secs  = VS.readDailyGoalMinutes()  * 60
+        local weekly_goal_secs = VS.readWeeklyGoalMinutes() * 60
+
+        local today_secs, week_secs = 0, 0
+        if last_week_daily then
+            local week_start_wd = Data.weekStartWday()
+            local wday = tonumber(os.date("%w"))
+            local days_into_week = (week_start_wd == 0) and wday or ((wday + 6) % 7)
+            for i = 1, math.min(days_into_week + 1, #last_week_daily) do
+                local secs = (last_week_daily[i] and last_week_daily[i].seconds) or 0
+                week_secs = week_secs + secs
+                if i == 1 then today_secs = secs end
+            end
+        end
+
+        local function addTimeGoalHold(widget, fn)
+            table.insert(popup_self._timegoal_hold_targets, { w = widget, fn = fn })
+        end
+        local function editDaily()  popup_self:editTimeGoal("daily")  end
+        local function editWeekly() popup_self:editTimeGoal("weekly") end
+
+        -- Same duration format as the rest of the plugin (follows KOReader's
+        -- "Duration format" setting): "0:23 / 0:30" classic, "23m / 30m" etc.
+        local function goalText(done, goal)
+            return Locale.formatDuration(done, true) .. " / " .. Locale.formatDuration(goal, true)
+        end
+
+        local daily_header_w  = UI.buildSectionHeader(fonts.section, _("Daily goal"),  layout.col_width, 0, HEADER_BG())
+        local weekly_header_w = UI.buildSectionHeader(fonts.section, _("Weekly goal"), layout.col_width, 0, HEADER_BG())
+        local header_h = daily_header_w:getSize().h
+
+        local function holdCell(widget, w, fn)
+            local cell = InputContainer:new{
+                dimen = Geom:new{ x = 0, y = 0, w = w, h = widget:getSize().h },
+                widget,
+            }
+            addTimeGoalHold(cell, fn)
+            return cell
+        end
+
+        local daily_header_cell  = holdCell(daily_header_w,  layout.col_width, editDaily)
+        local weekly_header_cell = holdCell(weekly_header_w, layout.col_width, editWeekly)
+
+        local goal_header = UI.padded(layout.padding_h, FrameContainer:new{
+            background = HEADER_BG(),
+            bordersize = 0,
+            padding    = 0,
+            HorizontalGroup:new{
+                align = "center",
+                UI.fixedCol(daily_header_cell, layout.col_width),
+                UI.buildColumnSeparator(layout.column_gap, header_h),
+                UI.fixedCol(weekly_header_cell, layout.col_width),
+            },
+        })
+
+        local function valueCell(text, fn)
+            local tw = TextWidget:new{
+                text    = text,
+                face    = fonts.value,
+                fgcolor = Colors.value(),
+                max_width = layout.col_width,
+            }
+            return holdCell(tw, layout.col_width, fn)
+        end
+
+        local goal_row = UI.buildTwoColRow(
+            valueCell(goalText(today_secs, daily_goal_secs),  editDaily),
+            valueCell(goalText(week_secs,  weekly_goal_secs), editWeekly),
+            layout)
+
+        UI.addSectionWithRow(sections, goal_header, goal_row, layout, {})
+    end
+
     do
         local lw = last_week_stats or { avg_seconds = 0, avg_pages = 0 }
         local has_week = lw.avg_seconds > 0 or lw.avg_pages > 0
@@ -2680,6 +2761,16 @@ function ReadingInsightsPopup:onHold(arg, ges_ev)
         end
     end
 
+    -- Daily/Weekly time goal section: a hold edits that goal.
+    for _idx, t in ipairs(self._timegoal_hold_targets or {}) do
+        local d = t.w and t.w.dimen
+        if d and pos.x >= d.x and pos.x <= d.x + d.w
+              and pos.y >= d.y and pos.y <= d.y + d.h then
+            t.fn()
+            return true
+        end
+    end
+
     -- Reading-goal section: a hold on any of its headers/cells runs that
     -- widget's registered action (see buildInsightsSections' addHold).
     for _idx, t in ipairs(self._goal_hold_targets or {}) do
@@ -2744,6 +2835,50 @@ function ReadingInsightsPopup:editReadingGoal(year)
     }
     UIManager:show(dialog)
     dialog:onShowKeyboard()
+end
+
+-- Long press on the Daily/Weekly goal section: hours/minutes spinner for the
+-- goal (stored as total minutes). Marked modal so it opens above this popup,
+-- same reason as editReadingGoal's modal InputDialog.
+function ReadingInsightsPopup:editTimeGoal(kind)
+    local DoubleSpinWidget = require("ui/widget/doublespinwidget")
+    local popup_self = self
+    local is_daily = (kind == "daily")
+    local current  = is_daily and VS.readDailyGoalMinutes() or VS.readWeeklyGoalMinutes()
+    local default  = is_daily and VS.DEFAULT_DAILY_GOAL_MIN or VS.DEFAULT_WEEKLY_GOAL_MIN
+    local max_hours = is_daily and 23 or 99
+    local widget
+    widget = DoubleSpinWidget:new{
+        modal        = true,
+        title_text   = is_daily and _("Daily goal") or _("Weekly goal"),
+        left_text    = _("Hours"),
+        left_value   = math.floor(current / 60),
+        left_min     = 0,
+        left_max     = max_hours,
+        left_step    = 1,
+        left_hold_step = 5,
+        right_text   = _("Minutes"),
+        right_value  = current % 60,
+        right_min    = 0,
+        right_max    = 59,
+        right_step   = 1,
+        right_hold_step = 5,
+        default_values = true,
+        left_default   = math.floor(default / 60),
+        right_default  = default % 60,
+        ok_always_enabled = true,
+        callback = function(hours, minutes)
+            local total = (tonumber(hours) or 0) * 60 + (tonumber(minutes) or 0)
+            if total < 1 then total = 1 end
+            if is_daily then VS.saveDailyGoalMinutes(total) else VS.saveWeeklyGoalMinutes(total) end
+            popup_self:_buildUI()
+            UIManager:setDirty(popup_self, function()
+                return "ui", popup_self.popup_frame.dimen
+            end)
+        end,
+    }
+    widget.modal = true
+    UIManager:show(widget)
 end
 
 -- Cycles the insights mode (hours -> days -> books -> hours) and reloads

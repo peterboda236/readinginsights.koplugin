@@ -488,6 +488,45 @@ function M.saveWeeklyChartMode(mode)
     Prefs.save(M.SETTINGS_KEY_WEEKLY_CHART_MODE, mode)
 end
 
+-- Time goals ("Daily goal | Weekly goal" section above "Last week"). Both are
+-- stored in minutes and edited by a long press on the section. Defaults:
+-- 30 minutes a day, 5 hours (300 minutes) a week.
+M.DEFAULT_DAILY_GOAL_MIN  = 30
+M.DEFAULT_WEEKLY_GOAL_MIN = 300
+M.TIME_GOAL_MAX_MIN       = 9999
+M.SETTINGS_KEY_DAILY_GOAL_MIN  = "reading_insights_daily_goal_min"
+M.SETTINGS_KEY_WEEKLY_GOAL_MIN = "reading_insights_weekly_goal_min"
+M.SETTINGS_KEY_SHOW_TIME_GOALS = "reading_insights_show_time_goals"
+
+-- Whether the "Daily goal | Weekly goal" section is drawn (default: on).
+function M.readShowTimeGoals()
+    return Prefs.read(M.SETTINGS_KEY_SHOW_TIME_GOALS, true) ~= false
+end
+
+function M.saveShowTimeGoals(value)
+    Prefs.save(M.SETTINGS_KEY_SHOW_TIME_GOALS, value and true or false)
+end
+
+function M.readDailyGoalMinutes()
+    local v = tonumber(Prefs.read(M.SETTINGS_KEY_DAILY_GOAL_MIN, M.DEFAULT_DAILY_GOAL_MIN))
+    if not v or v < 1 then return M.DEFAULT_DAILY_GOAL_MIN end
+    return math.floor(v)
+end
+
+function M.saveDailyGoalMinutes(value)
+    Prefs.save(M.SETTINGS_KEY_DAILY_GOAL_MIN, value)
+end
+
+function M.readWeeklyGoalMinutes()
+    local v = tonumber(Prefs.read(M.SETTINGS_KEY_WEEKLY_GOAL_MIN, M.DEFAULT_WEEKLY_GOAL_MIN))
+    if not v or v < 1 then return M.DEFAULT_WEEKLY_GOAL_MIN end
+    return math.floor(v)
+end
+
+function M.saveWeeklyGoalMinutes(value)
+    Prefs.save(M.SETTINGS_KEY_WEEKLY_GOAL_MIN, value)
+end
+
 -- "Last week" layout (Prefs > Advanced settings > Reading insight popup >
 -- "Last week layout"). "compact" (default): one row with the week's total and
 -- the daily average, for time or pages depending on the chart mode toggled by

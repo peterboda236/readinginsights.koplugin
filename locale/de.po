@@ -1031,6 +1031,24 @@ msgstr "Datum & Uhrzeit"
 msgid "Reading insight popup"
 msgstr "Lese-Übersicht-Fenster"
 
+msgid "Daily goal"
+msgstr "Tagesziel"
+
+msgid "Weekly goal"
+msgstr "Wochenziel"
+
+msgid "Hours"
+msgstr "Stunden"
+
+msgid "Minutes"
+msgstr "Minuten"
+
+msgid "Daily / weekly goal"
+msgstr "Tages-/Wochenziel"
+
+msgid "Show the daily and weekly reading time goals above \"Last week\". Long press the section to set the goals."
+msgstr "Tages- und Wochenziel für die Lesezeit über „Letzte Woche“ anzeigen. Abschnitt lange drücken, um die Ziele festzulegen."
+
 msgid "Last week layout"
 msgstr "Layout der letzten Woche"
 

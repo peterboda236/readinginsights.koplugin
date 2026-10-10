@@ -1034,6 +1034,24 @@ msgstr "Dátum és idő"
 msgid "Reading insight popup"
 msgstr "Olvasási áttekintés ablak"
 
+msgid "Daily goal"
+msgstr "Napi cél"
+
+msgid "Weekly goal"
+msgstr "Heti cél"
+
+msgid "Hours"
+msgstr "Óra"
+
+msgid "Minutes"
+msgstr "Perc"
+
+msgid "Daily / weekly goal"
+msgstr "Napi / heti cél"
+
+msgid "Show the daily and weekly reading time goals above \"Last week\". Long press the section to set the goals."
+msgstr "A napi és heti olvasási idő cél megjelenítése a „Last week\" fölött. A célok beállításához tartsd hosszan a szekciót."
+
 msgid "Last week layout"
 msgstr "Múlt heti elrendezés"
 

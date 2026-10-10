@@ -1031,6 +1031,24 @@ msgstr "Data e hora"
 msgid "Reading insight popup"
 msgstr "Janela do Reading Insight"
 
+msgid "Daily goal"
+msgstr "Meta diária"
+
+msgid "Weekly goal"
+msgstr "Meta semanal"
+
+msgid "Hours"
+msgstr "Horas"
+
+msgid "Minutes"
+msgstr "Minutos"
+
+msgid "Daily / weekly goal"
+msgstr "Meta diária / semanal"
+
+msgid "Show the daily and weekly reading time goals above \"Last week\". Long press the section to set the goals."
+msgstr "Mostrar as metas diária e semanal de tempo de leitura acima de \"Última semana\". Prima longamente a secção para definir as metas."
+
 msgid "Last week layout"
 msgstr "Disposição da última semana"
 

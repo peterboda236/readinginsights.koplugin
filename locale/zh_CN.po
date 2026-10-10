@@ -760,6 +760,24 @@ msgstr "日期与时间"
 msgid "Reading insight popup"
 msgstr "阅读统计弹窗"
 
+msgid "Daily goal"
+msgstr "每日目标"
+
+msgid "Weekly goal"
+msgstr "每周目标"
+
+msgid "Hours"
+msgstr "小时"
+
+msgid "Minutes"
+msgstr "分钟"
+
+msgid "Daily / weekly goal"
+msgstr "每日/每周目标"
+
+msgid "Show the daily and weekly reading time goals above \"Last week\". Long press the section to set the goals."
+msgstr "在“上周”上方显示每日和每周阅读时间目标。长按该部分可设置目标。"
+
 msgid "Last week layout"
 msgstr "上周布局"
 
