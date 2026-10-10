@@ -960,10 +960,6 @@ end
 -- the "reading_insights_popup" action), so both gesture-assignable actions
 -- are declared in one place.
 
--- Per-book setting (stored in the book's sidecar): which TOC level counts as
--- a chapter. Unset = auto (deepest entries).
-local TOC_LEVEL_KEY = "readinginsights_toc_level"
-
 local ReadingStatsPopup = InputContainer:extend{
     modal              = true,
     ui                 = nil,
@@ -1342,9 +1338,8 @@ function ReadingStatsPopup:gatherStats()
     if toc then
         local book_id = stats_plugin and stats_plugin.id_curr_book
         -- Which TOC level counts as a "chapter" is a per-book choice (long
-        -- press the chapter count row to change it, see onHold); nil = auto.
-        local toc_level = ui.doc_settings and ui.doc_settings:readSetting(TOC_LEVEL_KEY) or nil
-        stats.chapter_info = ChapterInfo.getCachedChapterInfo(book_id, toc, pages, pageno, toc_level)
+        -- press the chapter count row ... (level choice removed); auto.
+        stats.chapter_info = ChapterInfo.getCachedChapterInfo(book_id, toc, pages, pageno, nil)
         -- Typical (median) chapter length (pages, and reading time at the current
         -- pace) for the row under the chapter bar chart.
         local ci = stats.chapter_info
@@ -1379,15 +1374,21 @@ function ReadingStatsPopup:gatherStats()
                 if pc > 1 then kept[#kept + 1] = pc end
             end
             if #kept == 0 then kept = all end
-            -- Absolute floor first: anything under 1% of the whole book is
-            -- a stub, however many of them there are. The median-based cut
-            -- below can't catch these when stubs outnumber real chapters
-            -- (then the median itself is a stub's length).
+            -- Absolute floor first: anything under the floor is a stub,
+            -- however many of them there are. The median-based cut below
+            -- can't catch these when stubs outnumber real chapters (then
+            -- the median itself is a stub's length). The floor is the
+            -- larger of two things: 0.3% of the whole book (so a few real
+            -- but short chapters survive in a book with very many chapters),
+            -- and a quarter of the mean chapter length (so that, in a book
+            -- where a few huge chapters hold most of the text, the pile of
+            -- tiny ones around them is not what "typical" means).
             local total_pages = 0
             for i = 1, #all do total_pages = total_pages + all[i] end
+            local abs_floor = math.max(0.003 * total_pages, 0.25 * total_pages / math.max(1, #all))
             local not_tiny = {}
             for _, pc in ipairs(kept) do
-                if pc >= 0.01 * total_pages then not_tiny[#not_tiny + 1] = pc end
+                if pc >= abs_floor then not_tiny[#not_tiny + 1] = pc end
             end
             if #not_tiny > 0 then kept = not_tiny end
             -- The 20% cut-off is applied repeatedly: with many stubs
@@ -1593,73 +1594,9 @@ function ReadingStatsPopup:onTapClose(arg, ges_ev)
     return true
 end
 
--- Long press on the chapter count row ("23 / 46 chapters" or the average
--- length next to it) cycles which TOC level counts as a chapter:
--- auto -> level 1 -> ... -> one level above the deepest -> auto. Auto (the
--- deepest entries) is what you want for a book split into Parts that
--- contain the chapters; level 1 is what you want when chapters have
--- sub-sections. The choice is remembered per book.
---
--- Only this row, the chapter bar and the average change - the "This chapter
--- / Next chapter" times come from KOReader's own TOC lookups and already
--- follow the nearest entry at any depth.
---
--- A long press anywhere else is swallowed, so it doesn't fall through to
--- the reader underneath and start a text selection.
+-- A long press is swallowed, so it doesn't fall through to the reader
+-- underneath and start a text selection.
 function ReadingStatsPopup:onHold(arg, ges_ev)
-    if not (ges_ev and ges_ev.pos) then return true end
-    local x, y = ges_ev.pos.x, ges_ev.pos.y
-    if not (UI.hitTest(self._chapter_read_cell, x, y)
-            or UI.hitTest(self._chapter_avg_cell, x, y)) then
-        return true
-    end
-
-    local ci = self._stats and self._stats.chapter_info
-    local max_depth = ci and ci.max_depth or 1
-    if max_depth <= 1 then
-        UIManager:show(InfoMessage:new{
-            text = _("This book's table of contents has only one level."),
-            timeout = 3,
-        })
-        return true
-    end
-
-    -- Auto is the same as the deepest level, so only the levels above it
-    -- are worth stopping at.
-    local current = ci.level            -- nil = auto
-    local nxt
-    if current == nil then
-        nxt = 1
-    elseif current + 1 >= max_depth then
-        nxt = nil
-    else
-        nxt = current + 1
-    end
-
-    local ds = self.ui and self.ui.doc_settings
-    if ds then
-        if nxt == nil then
-            ds:delSetting(TOC_LEVEL_KEY)
-        else
-            ds:saveSetting(TOC_LEVEL_KEY, nxt)
-        end
-    end
-
-    -- Re-gather so the count, the bar and the average all follow; start the
-    -- bar on the page that holds the current chapter again, since the
-    -- chapter list just changed length.
-    self._stats = self:gatherStats()
-    self.chapter_bar_offset = nil
-    self:_rebuildUI()
-
-    local new_ci = self._stats and self._stats.chapter_info
-    local total = new_ci and new_ci.total or 0
-    local label = (nxt == nil) and _("Chapter level: auto")
-        or (_("Chapter level:") .. " " .. tostring(nxt))
-    UIManager:show(InfoMessage:new{
-        text = label .. "\n" .. formatCount(total) .. " " .. N_("chapter", "chapters", total),
-        timeout = 2,
-    })
     return true
 end
 

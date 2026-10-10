@@ -2009,15 +2009,6 @@ msgstr "chapter"
 msgid "chapter left"
 msgstr "chapter left"
 
-msgid "This book's table of contents has only one level."
-msgstr "This book's table of contents has only one level."
-
-msgid "Chapter level: auto"
-msgstr "Chapter level: auto"
-
-msgid "Chapter level:"
-msgstr "Chapter level:"
-
 msgid "Months chart layout"
 msgstr "Months chart layout"
 

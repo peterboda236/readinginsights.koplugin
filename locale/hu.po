@@ -2021,15 +2021,6 @@ msgstr "fejezet"
 msgid "chapter left"
 msgstr "fejezet hátra"
 
-msgid "This book's table of contents has only one level."
-msgstr "Ennek a könyvnek a tartalomjegyzéke csak egy szintű."
-
-msgid "Chapter level: auto"
-msgstr "Fejezetszint: automatikus"
-
-msgid "Chapter level:"
-msgstr "Fejezetszint:"
-
 msgid "Months chart layout"
 msgstr "Havi diagram elrendezése"
 
