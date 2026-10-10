@@ -959,8 +959,8 @@ msgstr "Passt die Balkendiagramme der Leseeinblicke so an, dass die Seite ohne B
 msgid "Bar chart height"
 msgstr "Balkendiagrammhöhe"
 
-msgid "Last 7 days"
-msgstr "Letzte 7 Tage"
+msgid "Last week"
+msgstr "Letzte Woche"
 
 msgid "Months"
 msgstr "Monate"
@@ -1046,8 +1046,8 @@ msgstr "Minuten"
 msgid "Daily / weekly goal"
 msgstr "Tages-/Wochenziel"
 
-msgid "Show the daily and weekly reading time goals above \"Last 7 days\". Long press the section to set the goals."
-msgstr "Tages- und Wochenziel für die Lesezeit über „Letzte 7 Tage“ anzeigen. Abschnitt lange drücken, um die Ziele festzulegen."
+msgid "Show the daily and weekly reading time goals above \"Last week\". Long press the section to set the goals."
+msgstr "Tages- und Wochenziel für die Lesezeit über „Letzte Woche“ anzeigen. Abschnitt lange drücken, um die Ziele festzulegen."
 
 msgid "You haven't met your daily goal yet."
 msgstr "Du hast dein Tagesziel noch nicht erreicht."
@@ -1067,8 +1067,8 @@ msgstr "Du hast dein Wochenziel %1 Woche in Folge erreicht."
 msgid "You've met your weekly goal %1 weeks in a row."
 msgstr "Du hast dein Wochenziel %1 Wochen in Folge erreicht."
 
-msgid "Last 7 days layout"
-msgstr "Layout der letzten 7 Tage"
+msgid "Last week layout"
+msgstr "Layout der letzten Woche"
 
 msgid "Compact"
 msgstr "Kompakt"
@@ -1076,8 +1076,8 @@ msgstr "Kompakt"
 msgid "Full"
 msgstr "Vollständig"
 
-msgid "Last 7 days chapter bar order"
-msgstr "Balkenreihenfolge der letzten 7 Tage"
+msgid "Last week chapter bar order"
+msgstr "Balkenreihenfolge der letzten Woche"
 
 msgid "Today on the left"
 msgstr "Heute links"

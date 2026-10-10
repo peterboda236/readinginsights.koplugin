@@ -216,8 +216,8 @@ msgstr "Összes könyv: %1"
 msgid "All time"
 msgstr "Összesen"
 
-msgid "Last 7 days"
-msgstr "Elmúlt 7 nap"
+msgid "Last week"
+msgstr "Legutóbbi hét"
 
 msgid "Months"
 msgstr "Hónapok"
@@ -1049,8 +1049,8 @@ msgstr "Perc"
 msgid "Daily / weekly goal"
 msgstr "Napi / heti cél"
 
-msgid "Show the daily and weekly reading time goals above \"Last 7 days\". Long press the section to set the goals."
-msgstr "A napi és heti olvasási idő cél megjelenítése az „Elmúlt 7 nap” fölött. A célok beállításához tartsd hosszan a szekciót."
+msgid "Show the daily and weekly reading time goals above \"Last week\". Long press the section to set the goals."
+msgstr "A napi és heti olvasási idő cél megjelenítése a „Last week\" fölött. A célok beállításához tartsd hosszan a szekciót."
 
 msgid "You haven't met your daily goal yet."
 msgstr "A napi célt még nem teljesítetted."
@@ -1070,8 +1070,8 @@ msgstr "Az elmúlt %1 hétben egymás után teljesítetted a heti célt."
 msgid "You've met your weekly goal %1 weeks in a row."
 msgstr "Az elmúlt %1 hétben egymás után teljesítetted a heti célt."
 
-msgid "Last 7 days layout"
-msgstr "Elmúlt 7 nap elrendezése"
+msgid "Last week layout"
+msgstr "Múlt heti elrendezés"
 
 msgid "Compact"
 msgstr "Kompakt"
@@ -1079,8 +1079,8 @@ msgstr "Kompakt"
 msgid "Full"
 msgstr "Teljes"
 
-msgid "Last 7 days chapter bar order"
-msgstr "Elmúlt 7 nap oszlopainak sorrendje"
+msgid "Last week chapter bar order"
+msgstr "Múlt heti oszlopok sorrendje"
 
 msgid "Today on the left"
 msgstr "Ma a bal oldalon"

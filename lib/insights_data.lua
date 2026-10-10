@@ -76,7 +76,7 @@ local M = {}
 -- statistics.sqlite3. Its own dialogs (e.g. "Current statistics") call
 -- self:insertDB() right before reading anything from the DB, so the numbers
 -- shown always include the still-open session. We do the same thing here
--- before querying "Last 7 days", otherwise time spent in the current session
+-- before querying "Last week", otherwise time spent in the current session
 -- would be missing until KOReader's own autosave/close flushes it.
 function M.flushStatsToDB(ui)
     local stats_plugin = ui and ui.statistics or nil

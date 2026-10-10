@@ -959,8 +959,8 @@ msgstr "Dimensionne les graphiques à barres de Statistiques de lecture pour que
 msgid "Bar chart height"
 msgstr "Hauteur des graphiques à barres"
 
-msgid "Last 7 days"
-msgstr "7 derniers jours"
+msgid "Last week"
+msgstr "Semaine dernière"
 
 msgid "Months"
 msgstr "Mois"
@@ -1046,8 +1046,8 @@ msgstr "Minutes"
 msgid "Daily / weekly goal"
 msgstr "Objectif quotidien / hebdomadaire"
 
-msgid "Show the daily and weekly reading time goals above \"Last 7 days\". Long press the section to set the goals."
-msgstr "Afficher les objectifs de temps de lecture quotidien et hebdomadaire au-dessus de « 7 derniers jours ». Appui long sur la section pour les régler."
+msgid "Show the daily and weekly reading time goals above \"Last week\". Long press the section to set the goals."
+msgstr "Afficher les objectifs de temps de lecture quotidien et hebdomadaire au-dessus de « Semaine dernière ». Appui long sur la section pour les régler."
 
 msgid "You haven't met your daily goal yet."
 msgstr "Objectif quotidien pas encore atteint."
@@ -1067,8 +1067,8 @@ msgstr "Objectif hebdomadaire atteint %1 semaine de suite."
 msgid "You've met your weekly goal %1 weeks in a row."
 msgstr "Objectif hebdomadaire atteint %1 semaines de suite."
 
-msgid "Last 7 days layout"
-msgstr "Disposition des 7 derniers jours"
+msgid "Last week layout"
+msgstr "Disposition de la semaine dernière"
 
 msgid "Compact"
 msgstr "Compact"
@@ -1076,8 +1076,8 @@ msgstr "Compact"
 msgid "Full"
 msgstr "Complet"
 
-msgid "Last 7 days chapter bar order"
-msgstr "Ordre de la barre de chapitres des 7 derniers jours"
+msgid "Last week chapter bar order"
+msgstr "Ordre de la barre de chapitres de la semaine dernière"
 
 msgid "Today on the left"
 msgstr "Aujourd'hui à gauche"

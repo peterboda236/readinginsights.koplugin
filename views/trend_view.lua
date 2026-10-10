@@ -1,7 +1,7 @@
 --[[
 Reading Insights - the 8-week trend popup.
 
-The line chart behind the "Last 7 days" section: eight weeks of reading time
+The line chart behind the "Last week" section: eight weeks of reading time
 or pages, with the current week highlighted, opened by tapping one of the
 last-week values in the insights popup.
 
