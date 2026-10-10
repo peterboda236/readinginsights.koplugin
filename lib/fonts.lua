@@ -248,6 +248,33 @@ function M.getFace(key)
     return face
 end
 
+-- Same face as getFace(), at `scale` (0 < scale <= 1) times the role's
+-- current size - used by the Reading insights popup in landscape to shrink
+-- all its text together until the page fits the screen without a scroll
+-- bar. A scale of 1 (or more) is exactly getFace(). The result is never
+-- smaller than MIN_SIZE, and every distinct size is cached on its own, so
+-- the several scales tried while fitting don't evict each other (the cache
+-- key holds the font name and size, so a changed setting can't serve a
+-- stale face either).
+function M.getScaledFace(key, scale)
+    scale = tonumber(scale) or 1
+    if scale >= 0.999 then return M.getFace(key) end
+    local defaults = DEFAULTS[key]
+    local name = M.getName(key) or defaults.file
+    local base = M.getSize(key) or defaults.size
+    local size = math.max(MIN_SIZE, math.floor(base * scale + 0.5))
+
+    local cache_key = name .. "@" .. size
+    local slot      = key .. "__s" .. size
+    local cached = _face_cache[slot]
+    if cached and cached.cache_key == cache_key then
+        return cached.face
+    end
+    local face = buildFace(defaults, name, size)
+    _face_cache[slot] = { cache_key = cache_key, face = face }
+    return face
+end
+
 -- Bold-weight variant of an existing role's face, at that role's current
 -- (possibly user-overridden) size. Used e.g. for the expected-finish day
 -- number in the Book progress calendar (book_calendar_view.lua), so that one

@@ -44,6 +44,7 @@ local Blitbuffer = require("ffi/blitbuffer")
 local BottomContainer = require("ui/widget/container/bottomcontainer")
 local CenterContainer = require("ui/widget/container/centercontainer")
 local Device = require("device")
+local Font = require("ui/font")
 local FrameContainer = require("ui/widget/container/framecontainer")
 local Geom = require("ui/geometry")
 local GestureRange = require("ui/gesturerange")
@@ -173,12 +174,15 @@ end
 -- Fonts.getFace() already caches per-role, so this is cheap to call again
 -- on every popup (re)build - which is what keeps a just-changed font
 -- setting picked up immediately, without needing our own extra cache.
-local function buildSerifFonts()
+--
+-- `scale` (optional, default 1) shrinks all four roles by the same factor;
+-- used by _buildUI's landscape fit (see there) to get rid of the scroll bar.
+local function buildSerifFonts(scale)
     return {
-        section = Fonts.getFace("insights_section"),
-        value   = Fonts.getFace("insights_value"),
-        label   = Fonts.getFace("insights_label"),
-        small   = Fonts.getFace("insights_small"),
+        section = Fonts.getScaledFace("insights_section", scale),
+        value   = Fonts.getScaledFace("insights_value",   scale),
+        label   = Fonts.getScaledFace("insights_label",   scale),
+        small   = Fonts.getScaledFace("insights_small",   scale),
     }
 end
 
@@ -190,8 +194,8 @@ local _cached_layout = nil
 -- small table on every popup (re)build is cheap and guarantees a
 -- just-changed font setting is picked up on the very next open, with no
 -- stale fonts left over from before the change.
-local function getCachedFonts()
-    return buildSerifFonts()
+local function getCachedFonts(scale)
+    return buildSerifFonts(scale)
 end
 
 -- Rebuilt whenever the screen width changes - not just on first use - so a
@@ -505,7 +509,10 @@ local function buildMonthlyChart(popup_self, monthly_data, layout, fonts)
     -- Portrait: two rows of up to 6 months. Landscape: the popup is wide
     -- enough to fit all 12 months on one row, so the year reads as a
     -- single strip instead of two stacked ones.
-    local months_per_row = isLandscapeScreen() and 12 or 6
+    -- The "Months chart layout" setting can also force the single 12-month
+    -- row in portrait (default: two rows of 6).
+    local months_per_row = (isLandscapeScreen()
+        or VS.readMonthlyLayoutSetting() == VS.MONTHLY_LAYOUT_ONE_ROW) and 12 or 6
     local bar_width    = math.floor(chart_width / months_per_row) - tonumber(Screen:scaleBySize(8))
     local bar_gap      = math.floor((chart_width - bar_width * months_per_row) / (months_per_row - 1))
     local font_small   = fonts.small
@@ -2058,11 +2065,39 @@ function ReadingInsightsPopup:_titleBarText()
     return title
 end
 
+-- A string that changes whenever any of this plugin's settings (or the UI
+-- language) changes, whichever module saved it - read straight from the
+-- settings store, so enabling/disabling a section, switching a layout, a
+-- font or a bar height all show up. _buildUI compares it with the one the
+-- remembered landscape font scale was computed under: a different one means
+-- the page's content changed, so the old scale is no longer a valid guess
+-- and the fit starts over from the configured font sizes.
+local function settingsSignature()
+    local data = G_reader_settings and G_reader_settings.data
+    if type(data) ~= "table" then return "" end
+    local keys = {}
+    for k in pairs(data) do
+        if type(k) == "string"
+           and (k:find("^reading_insights_") or k:find("^readinginsights_") or k == "language") then
+            keys[#keys + 1] = k
+        end
+    end
+    table.sort(keys)
+    local parts = {}
+    for i, k in ipairs(keys) do parts[i] = k .. "=" .. tostring(data[k]) end
+    return table.concat(parts, "|")
+end
+
 function ReadingInsightsPopup:_buildUI()
     local screen_w = Screen:getWidth()
     local screen_h = Screen:getHeight()
     local fonts    = getCachedFonts()
     local layout   = getCachedLayout()
+    -- Landscape-only text scale (1 = the configured sizes). Lowered by the
+    -- fit step below when the page is taller than the screen even after the
+    -- bar charts have been sized; everything in the popup that is text goes
+    -- through `fonts`, so changing it and rebuilding scales all of it.
+    local font_scale = 1
 
     -- Cold start (e.g. right after a KOReader restart): no cache, no stale
     -- data, nothing to show yet. Rather than flashing zeroed-out sections
@@ -2143,6 +2178,10 @@ function ReadingInsightsPopup:_buildUI()
             width          = screen_w,
             align          = "left",
             title          = self:_titleBarText(),
+            -- Same scale as the rest of the text (nil = TitleBar's own
+            -- default face while nothing is scaled).
+            title_face     = font_scale < 0.999 and Font:getFace("smalltfont",
+                math.max(8, math.floor(((Font.sizemap and Font.sizemap.smalltfont) or 24) * font_scale + 0.5))) or nil,
             -- Hamburger menu, top left: quick access to the streak/heatmap/
             -- records/achievements popups - see onShowHamburgerMenu below.
             -- Hidden in readonly (sleep-screen) mode, same as close_callback,
@@ -2249,6 +2288,64 @@ function ReadingInsightsPopup:_buildUI()
             content, content_h = buildContent()
             pcall(function() if discarded.free then discarded:free() end end)
         end
+    end
+
+    -- Landscape only: if the page is still taller than the screen here (the
+    -- bar charts are at their smallest, or auto height is off and the fixed
+    -- heights are too big) the scroll bar would show up. Shrink every font
+    -- by the same percentage until the content fits and the scroll bar is
+    -- gone. Portrait keeps its configured font sizes untouched.
+    --
+    -- Like the bar fit above, each step is measured, not predicted: text
+    -- height shrinks roughly in proportion to the scale while the bars and
+    -- spacing don't, so the next scale is the current one times
+    -- screen/content (a little under, to land on the fitting side), which
+    -- usually settles in one or two extra builds. The result is remembered
+    -- in VS.Opt.font_scale as the first guess for the next open.
+    -- FONT_SCALE_MIN stops it from shrinking text into unreadability; below
+    -- that the page just scrolls.
+    -- A settings change since the remembered scale was computed (a section
+    -- switched on/off, a layout, font or height changed...) discards it, so
+    -- the fit is recalculated from scratch instead of reusing a scale that
+    -- belonged to a different page.
+    local sig = settingsSignature()
+    if VS.Opt.settings_sig ~= sig then
+        VS.Opt.font_scale   = nil
+        VS.Opt.settings_sig = sig
+    end
+
+    if isLandscapeScreen() and content_h > screen_h then
+        local FONT_SCALE_MIN = 0.5
+        local remembered     = VS.Opt.font_scale
+        local scale          = 1
+        local best           = nil   -- smallest-change scale that fitted
+        for attempt = 1, 6 do
+            local candidate
+            if attempt == 1 and remembered and remembered < 1 and remembered >= FONT_SCALE_MIN then
+                candidate = remembered
+            else
+                candidate = scale * (screen_h / content_h) * 0.98
+                -- Always make progress, even if the measurement says the
+                -- estimate is the same as before.
+                if candidate > scale - 0.02 then candidate = scale - 0.02 end
+            end
+            candidate = math.max(FONT_SCALE_MIN, math.floor(candidate * 100) / 100)
+            if candidate >= scale then break end
+
+            scale      = candidate
+            font_scale = scale
+            fonts      = getCachedFonts(scale)
+
+            local discarded = content
+            content, content_h = buildContent()
+            pcall(function() if discarded.free then discarded:free() end end)
+
+            if content_h <= screen_h then best = scale; break end
+            if scale <= FONT_SCALE_MIN then break end
+        end
+        VS.Opt.font_scale = best  -- nil when it never fitted: don't pin a bad guess
+    else
+        VS.Opt.font_scale = nil
     end
 
     local ScrollableContainer = require("ui/widget/container/scrollablecontainer")

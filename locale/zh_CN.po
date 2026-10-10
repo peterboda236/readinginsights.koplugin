@@ -1723,3 +1723,12 @@ msgstr "章"
 
 msgid "chapter left"
 msgstr "章未读"
+
+msgid "Months chart layout"
+msgstr "月度图表布局"
+
+msgid "2 rows of 6 months"
+msgstr "2 行，每行 6 个月"
+
+msgid "12 months in one row"
+msgstr "12 个月显示在一行"

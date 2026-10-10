@@ -2002,3 +2002,12 @@ msgstr "capítulo"
 
 msgid "chapter left"
 msgstr "capítulo restante"
+
+msgid "Months chart layout"
+msgstr "Disposição do gráfico mensal"
+
+msgid "2 rows of 6 months"
+msgstr "2 linhas de 6 meses"
+
+msgid "12 months in one row"
+msgstr "12 meses numa linha"

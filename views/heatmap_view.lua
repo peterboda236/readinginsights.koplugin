@@ -1136,13 +1136,22 @@ local function getHeatmapData(popup_self, start_t, end_t, force_fresh)
     return daily_map, weekday_hour_map
 end
 
-function M.buildHeatmapBoxContent(popup_self, periods_back, force_fresh)
-    local start_t, end_t = M.getHeatmapPeriodRange(periods_back)
-    local daily_map, weekday_hour_map = getHeatmapData(popup_self, start_t, end_t, force_fresh)
+-- width_override: optional box width in pixels instead of the usual 94% of
+-- the screen (see the landscape fit in M.buildHeatmapBoxContent below);
+-- data: the table this function returned last time, so a second pass reuses
+-- the loaded data instead of fetching it again.
+local function buildBox(popup_self, periods_back, force_fresh, width_override, data)
+    local start_t, end_t, daily_map, weekday_hour_map
+    if data then
+        start_t, end_t, daily_map, weekday_hour_map = data[1], data[2], data[3], data[4]
+    else
+        start_t, end_t = M.getHeatmapPeriodRange(periods_back)
+        daily_map, weekday_hour_map = getHeatmapData(popup_self, start_t, end_t, force_fresh)
+    end
 
     local fonts = getCachedFonts()
     local inner_padding = Size.padding.large
-    local box_width      = math.floor(Screen:getWidth() * 0.94)
+    local box_width      = width_override or math.floor(Screen:getWidth() * 0.94)
     local content_width  = box_width - 2 * inner_padding
 
     -- Older/newer availability, needed up front now (not just at the end)
@@ -1181,7 +1190,7 @@ function M.buildHeatmapBoxContent(popup_self, periods_back, force_fresh)
     -- M.buildRangeHeatmapWidget) when the period crosses a Dec/Jan
     -- boundary; no separate subtitle needed here, even for periods that
     -- stay within one year.
-    local calendar_widget = M.buildRangeHeatmapWidget(daily_map, start_t, end_t, fonts, content_width)
+    local calendar_widget, calendar_cell = M.buildRangeHeatmapWidget(daily_map, start_t, end_t, fonts, content_width)
 
     -- Time-of-day section: the new day-part bar chart (default) or the older
     -- weekday x hour-of-day heatmap grid, per Settings ▸ ... ▸ "Time of day
@@ -1347,8 +1356,56 @@ function M.buildHeatmapBoxContent(popup_self, periods_back, force_fresh)
     if when_caption then when_zone = zoneOf(when_caption) end
     week_zone = zoneOf(week_caption)
 
+    -- The last four values are for the landscape fit below only: the
+    -- calendar's square size, how much one pixel of box width is worth in
+    -- box height (see there), the box width used, and the loaded data.
+    local rows_per_px = 7 / M.heatmapFixedNumCols()
+    if not timeofday_is_chart then rows_per_px = rows_per_px + 7 / 24 end
     return box, older_available, newer_available,
-        cal_left_frame, cal_right_frame, cal_left_w, cal_right_w, cal_header_h, when_zone, week_zone
+        cal_left_frame, cal_right_frame, cal_left_w, cal_right_w, cal_header_h, when_zone, week_zone,
+        calendar_cell, rows_per_px, box_width, { start_t, end_t, daily_map, weekday_hour_map }
+end
+
+-- Builds the popup box. The box may never be taller than 94% of the screen. In
+-- landscape the screen is much shorter than wide, and the squares get their
+-- size from the box width - so at the usual 94%-of-the-screen width the box
+-- would end up taller than the screen and be cut off. There the width is
+-- allowed to shrink: the box gets narrower (everything in it is laid out
+-- against the narrower width, so the squares shrink with it) until its
+-- height fits that limit. Portrait keeps the full width, untouched.
+--
+-- Measured, not predicted (labels, headers and charts around the grids have
+-- font-dependent heights): each pass takes the excess height and converts
+-- it to a width reduction (a square's size is about width / columns, so one
+-- pixel less width removes rows/columns pixels of height), then rebuilds;
+-- it settles in one or two passes. Stops at the minimum square size or a
+-- minimum width - below that the box is simply taller than the screen.
+function M.buildHeatmapBoxContent(popup_self, periods_back, force_fresh)
+    local r = { buildBox(popup_self, periods_back, force_fresh, nil, nil) }
+
+    if UI.isLandscapeScreen() then
+        -- Same 94% of the screen the other popups use as their size limit
+        -- (the calendar popups apply it to the height in landscape too), so
+        -- the box keeps a margin to the screen's edges instead of touching
+        -- the bottom.
+        local target_h  = math.floor(Screen:getHeight() * 0.94)
+        local min_cell  = Screen:scaleBySize(4)
+        local min_width = math.floor(Screen:getWidth() * 0.4)
+        for _pass = 1, 6 do
+            local box_h = r[1]:getSize().h
+            local cell, rows_per_px, width = r[11], r[12], r[13]
+            if box_h <= target_h or not cell or cell <= min_cell or width <= min_width then break end
+
+            -- A little extra (2%) so the result lands on the fitting side.
+            local cut = math.ceil((box_h - target_h) / rows_per_px * 1.02)
+            local new_width = math.max(min_width, width - math.max(1, cut))
+            local discarded = r[1]
+            r = { buildBox(popup_self, periods_back, force_fresh, new_width, r[14]) }
+            pcall(function() if discarded.free then discarded:free() end end)
+        end
+    end
+
+    return (table.unpack or unpack)(r, 1, 10)
 end
 
 -- Full-screen "Reading heatmap" popup, paginated in half-year steps.

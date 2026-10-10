@@ -2029,3 +2029,12 @@ msgstr "Fejezetszint: automatikus"
 
 msgid "Chapter level:"
 msgstr "Fejezetszint:"
+
+msgid "Months chart layout"
+msgstr "Havi diagram elrendezése"
+
+msgid "2 rows of 6 months"
+msgstr "2 sor × 6 hónap"
+
+msgid "12 months in one row"
+msgstr "12 hónap egy sorban"

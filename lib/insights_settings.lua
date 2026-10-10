@@ -153,6 +153,17 @@ M.Opt = {
     -- boundaries and show up as a one-pixel mismatch between the charts.
     auto_height = nil,
 
+    -- Landscape only: the text scale the last fit settled on (< 1 when the
+    -- page had to shrink its fonts to lose the scroll bar), kept as the
+    -- first guess for the next build. nil = fonts at their configured size.
+    -- Never persisted; see _buildUI in views/insights_view.lua.
+    font_scale = nil,
+
+    -- Snapshot of this plugin's settings that font_scale was computed
+    -- under; a mismatch at the next build means a setting changed, and the
+    -- remembered scale is dropped (see settingsSignature in insights_view).
+    settings_sig = nil,
+
     -- Set by the chart builders during a build so the fit loop knows how
     -- many of the two adjustable charts are actually on the page for the
     -- current year/mode/data (an empty year has no monthly chart, for
@@ -567,6 +578,27 @@ end
 
 function M.saveWeeklyBarOrderSetting(value)
     Prefs.save(M.SETTINGS_KEY_WEEKLY_BAR_ORDER, value)
+end
+
+-- Layout of the yearly (months) bar chart in the Reading insights popup
+-- (Settings > Reading insight popup > "Months chart layout"). "two_rows" is
+-- the default and what the chart always did: two rows of 6 months in
+-- portrait. "one_row" draws all 12 months in a single row. Landscape always
+-- uses a single row regardless of this setting.
+M.SETTINGS_KEY_MONTHLY_LAYOUT = "reading_insights_monthly_chart_layout"
+
+M.MONTHLY_LAYOUT_TWO_ROWS = "two_rows"
+
+M.MONTHLY_LAYOUT_ONE_ROW  = "one_row"
+
+function M.readMonthlyLayoutSetting()
+    local v = Prefs.read(M.SETTINGS_KEY_MONTHLY_LAYOUT, nil)
+    if v == M.MONTHLY_LAYOUT_ONE_ROW then return M.MONTHLY_LAYOUT_ONE_ROW end
+    return M.MONTHLY_LAYOUT_TWO_ROWS
+end
+
+function M.saveMonthlyLayoutSetting(value)
+    Prefs.save(M.SETTINGS_KEY_MONTHLY_LAYOUT, value)
 end
 
 function M.readInsightsMode()

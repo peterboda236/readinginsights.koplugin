@@ -2051,3 +2051,12 @@ msgstr "розділ"
 
 msgid "chapter left"
 msgstr "розділ залишився"
+
+msgid "Months chart layout"
+msgstr "Розташування місячної діаграми"
+
+msgid "2 rows of 6 months"
+msgstr "2 рядки по 6 місяців"
+
+msgid "12 months in one row"
+msgstr "12 місяців в одному рядку"

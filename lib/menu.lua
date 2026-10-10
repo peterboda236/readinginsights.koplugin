@@ -612,6 +612,38 @@ function M.build(self, deps)
         })
     end
 
+    -- Months (yearly) bar chart layout: two rows of 6 months (default) or a
+    -- single row with all 12 months.
+    do
+        local VSet = deps.ViewSettings
+        local TWO  = VSet.MONTHLY_LAYOUT_TWO_ROWS
+        local ONE  = VSet.MONTHLY_LAYOUT_ONE_ROW
+        local function monthlyLayoutEntry(value, text)
+            return {
+                text = text,
+                keep_menu_open = true,
+                radio = true,
+                checked_func = function()
+                    return VSet.readMonthlyLayoutSetting() == value
+                end,
+                callback = function() VSet.saveMonthlyLayoutSetting(value) end,
+            }
+        end
+        table.insert(insights_popup_sub_item_table, {
+            text_func = function()
+                local v = VSet.readMonthlyLayoutSetting() == ONE
+                    and _("12 months in one row")
+                    or  _("2 rows of 6 months")
+                return _("Months chart layout") .. ": " .. v
+            end,
+            keep_menu_open = true,
+            sub_item_table = {
+                monthlyLayoutEntry(TWO, _("2 rows of 6 months")),
+                monthlyLayoutEntry(ONE, _("12 months in one row")),
+            },
+        })
+    end
+
     -- "Last week" layout: compact (default) shows total + daily average for
     -- the selected view (time or pages); full is the previous layout.
     do

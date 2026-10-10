@@ -2017,3 +2017,12 @@ msgstr "Chapter level: auto"
 
 msgid "Chapter level:"
 msgstr "Chapter level:"
+
+msgid "Months chart layout"
+msgstr "Months chart layout"
+
+msgid "2 rows of 6 months"
+msgstr "2 rows of 6 months"
+
+msgid "12 months in one row"
+msgstr "12 months in one row"

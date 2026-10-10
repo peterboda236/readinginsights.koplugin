@@ -452,6 +452,17 @@ end
 -- streak of any length only ever builds this many row widgets at a time.
 local STREAK_HISTORY_PAGE_SIZE = 21
 
+-- Landscape shows half as many rows per page (the screen is much shorter
+-- there, and the page would otherwise be taller than it); portrait keeps
+-- the full page. Looked up on every rebuild rather than once, so a rotation
+-- while the popup is open is picked up too.
+local function streakHistoryPageSize()
+    if UI.isLandscapeScreen() then
+        return math.floor(STREAK_HISTORY_PAGE_SIZE / 2)
+    end
+    return STREAK_HISTORY_PAGE_SIZE
+end
+
 --[[
 The streak history popup: one bar per day of a streak's date range, each row
 "date | bar | value". Pageable (STREAK_HISTORY_PAGE_SIZE rows per page)
@@ -574,6 +585,49 @@ function StreakHistoryPopup:_rebuild()
         sample_pages:free()
 
         self._col_gap = Size.padding.default
+
+        -- Landscape only: the box doesn't need most of a wide screen. Limit
+        -- it to 50% of the screen width - or, if that is too little, to the
+        -- narrowest width at which everything still fits:
+        --   - the title,
+        --   - the date range ("Sep 13 \xE2\x80\x93 Sep 22") with both paging arrows
+        --     on one line (the widest range over every page, since the
+        --     paging header keeps its arrow slots reserved even when hidden),
+        --   - one row: date | a minimal bar | value.
+        -- Never wider than the usual width passed in. Decided once, with the
+        -- column widths above, so paging and toggling the metric never
+        -- resize the box.
+        if UI.isLandscapeScreen() then
+            local function textW(text, face)
+                local w = TextWidget:new{ text = text, face = face }
+                local width = w:getSize().w
+                pcall(function() w:free() end)
+                return width
+            end
+            local arrow_pad = Size.padding.default
+            local slot_w = math.max(textW("\xe2\x80\xb9", fonts.section), textW("\xe2\x80\xba", fonts.section))
+                + 2 * arrow_pad
+
+            local need = textW(self.title_str, fonts.section)
+
+            local ps, n = streakHistoryPageSize(), #self.days
+            local range_w = textW("\xE2\x80\x93", fonts.label)
+            for first = 1, n, ps do
+                local last = math.min(first + ps - 1, n)
+                local r = formatDateForDisplay(self.days[last], true)
+                    .. " \xE2\x80\x93 " .. formatDateForDisplay(self.days[first])
+                range_w = math.max(range_w, textW(r, fonts.label))
+            end
+            need = math.max(need, range_w + 2 * slot_w + 2 * arrow_pad)
+
+            need = math.max(need, self._date_col_w + self._value_col_w
+                + 2 * self._col_gap + Screen:scaleBySize(60))
+
+            local half_content = math.floor(Screen:getWidth() * 0.5) - 2 * self.inner_padding
+            self.content_width = math.min(self.content_width, math.max(half_content, math.ceil(need)))
+            cont_w = self.content_width
+        end
+
         self._rows_w = cont_w
         self._bar_w = self._rows_w - self._date_col_w - self._value_col_w - 2 * self._col_gap
         if self._bar_w < Screen:scaleBySize(20) then self._bar_w = Screen:scaleBySize(20) end
@@ -600,11 +654,12 @@ function StreakHistoryPopup:_rebuild()
 
     -- This page's slice of the (newest-first) day list.
     local total_days = #self.days
-    self._total_pages = math.max(1, math.ceil(total_days / STREAK_HISTORY_PAGE_SIZE))
+    local page_size  = streakHistoryPageSize()
+    self._total_pages = math.max(1, math.ceil(total_days / page_size))
     if self.page_index < 1 then self.page_index = 1 end
     if self.page_index > self._total_pages then self.page_index = self._total_pages end
-    local start_i = (self.page_index - 1) * STREAK_HISTORY_PAGE_SIZE + 1
-    local end_i = math.min(start_i + STREAK_HISTORY_PAGE_SIZE - 1, total_days)
+    local start_i = (self.page_index - 1) * page_size + 1
+    local end_i = math.min(start_i + page_size - 1, total_days)
     local page_days = {}
     for i = start_i, end_i do page_days[#page_days + 1] = self.days[i] end
 
@@ -1357,6 +1412,76 @@ local function showStreaksPopup(streaks)
             local delta_cell = math.ceil((measured_h - target_h) / 6) + 2
             popup.cal_cell_override = math.max(
                 normal_cell - delta_cell, Screen:scaleBySize(24))
+            popup:_rebuild()
+        end
+
+        -- Then narrow the box itself, still landscape only: at 94% of a wide
+        -- screen it is mostly empty space around the (height-limited)
+        -- calendar. Shrink it to the narrowest width that still keeps
+        --   - the calendar (week column + 7 day squares) whole,
+        --   - the month title and its paging arrows on one line,
+        --   - the "Last read" line on one line,
+        --   - "Current streak" / "Best streak" on one line, and each
+        --     "<n> days | <n> weeks" figure on one line (the number and its
+        --     unit side by side, never wrapped).
+        -- The calendar keeps the cell size settled above (cal_cell_override
+        -- is set explicitly so it doesn't shrink along with the width), and
+        -- the box is rebuilt once at the new width. Widths are measured from
+        -- the real text in the current fonts/language, so nothing here
+        -- depends on how long a particular string happens to be.
+        local function textW(text, face)
+            local w = TextWidget:new{ text = text, face = face }
+            local width = w:getSize().w
+            pcall(function() w:free() end)
+            return width
+        end
+
+        local _week_col_w, week_prefix_w = weekColumnMetrics(showWeekNumbers(), fonts.small)
+        local cell = popup.cal_cell_override or math.floor((content_width - week_prefix_w) / 7)
+        local need = week_prefix_w + 7 * cell
+
+        -- Calendar header: widest month title + the two arrow slots (same
+        -- slot width as buildStreakCalHeader).
+        local arrow_pad = Size.padding.default
+        local slot_w = math.max(textW("\xe2\x80\xb9", fonts.section), textW("\xe2\x80\xba", fonts.section)) + 2 * arrow_pad
+        local title_w = 0
+        for m = 1, 12 do
+            local title = (getLangBase() == "hu")
+                and string.format("%04d. %s", 2026, MONTH_NAMES_FULL_HU_LC[m])
+                or  (MONTH_NAMES_FULL[m] .. " 2026")
+            title_w = math.max(title_w, textW(title, fonts.section))
+        end
+        need = math.max(need, title_w + 2 * slot_w + 2 * arrow_pad)
+
+        need = math.max(need, textW(last_read_str, fonts.label))
+
+        -- Streak columns. One column holds "days | weeks": each half must fit
+        -- its number + gap + unit (the same arrangement buildValueLine uses),
+        -- and the pair is two halves plus the small separator between them.
+        local inner_gap = math.floor(layout.column_gap / 2)
+        local half_need = 0
+        for _i, f in ipairs({
+            { popup.cur_days,  "day",  "days"  }, { popup.cur_weeks,  "week", "weeks" },
+            { popup.best_days, "day",  "days"  }, { popup.best_weeks, "week", "weeks" },
+        }) do
+            local n = f[1]
+            local line_w = textW(formatCount(n), fonts.value) + Size.padding.large
+                + textW(N_(f[2], f[3], n), fonts.label)
+            half_need = math.max(half_need, line_w)
+        end
+        half_need = half_need + Size.padding.small   -- rounding safety
+        local col_need = 2 * half_need + 2 * inner_gap + Size.line.medium
+        col_need = math.max(col_need,
+            textW(_("Current streak"), fonts.section), textW(_("Best streak"), fonts.section))
+        need = math.max(need, 2 * col_need + layout.separator_width)
+
+        need = math.ceil(need)
+        if need < content_width then
+            local new_layout = UI.buildLayout(need, 0, column_gap)
+            popup.layout            = new_layout
+            popup.col_width         = new_layout.col_width
+            popup.content_width     = new_layout.content_width
+            popup.cal_cell_override = cell
             popup:_rebuild()
         end
     end
