@@ -1,19 +1,22 @@
 ### 📊 Reading insights plugin
 
-<img width="255" height="340" alt="FileManager_2026-07-27_074128" src="https://github.com/user-attachments/assets/c12e7ab1-e3a9-4611-be17-0539527b6efc" />
+<img width="255" height="340" alt="FileManager_2026-10-10_164138" src="https://github.com/user-attachments/assets/5ac81254-b530-405f-b5bf-8c1fe078aff3" />
 <img width="255" height="340" alt="FileManager_2026-07-17_152344" src="https://github.com/user-attachments/assets/4a3d2fb9-cc51-4342-a952-36f23bb1925c" />
-<img width="255" height="340" alt="Reader book progress" src="https://github.com/user-attachments/assets/555ab8c6-d9ce-4ebc-a6ac-cfdf097ec51d" />
+<img width="255" height="340" alt="Reader_Sebastian Bergman 6  - Egyetlen igazsag - Hjorth, Michael   Rosenfeldt, Hans #p(458) epub_p222_2026-10-10_164231" src="https://github.com/user-attachments/assets/d180c3ae-e731-48c5-90be-0564d0bb2a3d" />
+
 <br/><br/>
 <img width="255" height="340" alt="Reader chapter view" src="https://github.com/user-attachments/assets/371b3119-119a-4ccb-9660-a63879996c48" />
-<img width="255" height="340" alt="FileManager_2026-07-17_152315" src="https://github.com/user-attachments/assets/ea6711c7-7c18-4bb5-a15c-871cc0b74888" />
-<img width="255" height="340" alt="FileManager_2026-07-27_074133" src="https://github.com/user-attachments/assets/de2d7a78-a657-40cf-8628-f0787a827147" />
+<img width="255" height="340" alt="FileManager_2026-10-10_164145" src="https://github.com/user-attachments/assets/57bd2fc4-29d7-4bd9-b56a-e4cef901a9b0" />
+<img width="255" height="340" alt="FileManager_2026-10-10_164210" src="https://github.com/user-attachments/assets/e1168ec4-9e7a-40f3-9ac4-693f13facbd2" />
 
 More screenshots
 
 <img width="192" height="256" alt="Book progress popup" src="https://github.com/user-attachments/assets/52f851b7-8955-4739-b3a7-96ff8c2cbfe6" />
-<img width="192" height="256" alt="FileManager_2026-07-18_211837" src="https://github.com/user-attachments/assets/e4e5d617-98c6-40bc-8844-f23fa5837e95" />
-<img width="192" height="256" alt="FileManager_2026-07-02_083320" src="https://github.com/user-attachments/assets/8193ba8b-7f7e-4b35-9efb-81d0d4a1df8e" />
-<img width="192" height="256" alt="FileManager_2026-07-17_152332" src="https://github.com/user-attachments/assets/21b311a8-bb10-4ffe-b7f0-3e91b19bb281" />
+<img width="192" height="256" alt="FileManager_2026-10-10_164210" src="https://github.com/user-attachments/assets/e1168ec4-9e7a-40f3-9ac4-693f13facbd2" />
+<img width="192" height="256" alt="FileManager_2026-10-10_164220" src="https://github.com/user-attachments/assets/66805663-9ae3-43c3-bf71-877f1c6038ad" />
+<img width="192" height="256" alt="FileManager_2026-07-27_074133" src="https://github.com/user-attachments/assets/de2d7a78-a657-40cf-8628-f0787a827147" />
+<img width="192" height="256" alt="Reader_Sebastian Bergman 6  - Egyetlen igazsag - Hjorth, Michael   Rosenfeldt, Hans #p(458) epub_p222_2026-10-10_164254" src="https://github.com/user-attachments/assets/b887e10c-5a26-4177-88f6-ab938f6baf54" />
+
 
 A set of reading-stats popups powered by KOReader's own statistics database.
 Nothing to configure to get started — install it, and your reading history is
