@@ -1049,6 +1049,24 @@ msgstr "Meta diária / semanal"
 msgid "Show the daily and weekly reading time goals above \"Last week\". Long press the section to set the goals."
 msgstr "Mostrar as metas diária e semanal de tempo de leitura acima de \"Última semana\". Prima longamente a secção para definir as metas."
 
+msgid "You haven't met your daily goal yet."
+msgstr "Ainda não atingiu a meta diária."
+
+msgid "You haven't met your weekly goal yet."
+msgstr "Ainda não atingiu a meta semanal."
+
+msgid "You've met your daily goal %1 day in a row."
+msgstr "Atingiu a meta diária %1 dia seguido."
+
+msgid "You've met your daily goal %1 days in a row."
+msgstr "Atingiu a meta diária %1 dias seguidos."
+
+msgid "You've met your weekly goal %1 week in a row."
+msgstr "Atingiu a meta semanal %1 semana seguida."
+
+msgid "You've met your weekly goal %1 weeks in a row."
+msgstr "Atingiu a meta semanal %1 semanas seguidas."
+
 msgid "Last week layout"
 msgstr "Disposição da última semana"
 

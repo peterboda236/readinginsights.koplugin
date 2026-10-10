@@ -794,17 +794,25 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
         local weekly_header_w = UI.buildSectionHeader(fonts.section, _("Weekly goal"), layout.col_width, 0, HEADER_BG())
         local header_h = daily_header_w:getSize().h
 
-        local function holdCell(widget, w, fn)
+        -- Hold edits the goal, tap shows how long the goal has been met in a row.
+        local function holdCell(widget, w, fn, on_tap)
             local cell = InputContainer:new{
                 dimen = Geom:new{ x = 0, y = 0, w = w, h = widget:getSize().h },
                 widget,
             }
+            if on_tap then
+                cell.ges_events = { Tap = { GestureRange:new{ ges = "tap", range = cell.dimen } } }
+                cell.onTap = function() on_tap(); return true end
+            end
             addTimeGoalHold(cell, fn)
             return cell
         end
 
-        local daily_header_cell  = holdCell(daily_header_w,  layout.col_width, editDaily)
-        local weekly_header_cell = holdCell(weekly_header_w, layout.col_width, editWeekly)
+        local function showDailyStreak()  popup_self:showTimeGoalStreak("daily")  end
+        local function showWeeklyStreak() popup_self:showTimeGoalStreak("weekly") end
+
+        local daily_header_cell  = holdCell(daily_header_w,  layout.col_width, editDaily,  showDailyStreak)
+        local weekly_header_cell = holdCell(weekly_header_w, layout.col_width, editWeekly, showWeeklyStreak)
 
         local goal_header = UI.padded(layout.padding_h, FrameContainer:new{
             background = HEADER_BG(),
@@ -818,19 +826,19 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
             },
         })
 
-        local function valueCell(text, fn)
+        local function valueCell(text, fn, on_tap)
             local tw = TextWidget:new{
                 text    = text,
                 face    = fonts.value,
                 fgcolor = Colors.value(),
                 max_width = layout.col_width,
             }
-            return holdCell(tw, layout.col_width, fn)
+            return holdCell(tw, layout.col_width, fn, on_tap)
         end
 
         local goal_row = UI.buildTwoColRow(
-            valueCell(goalText(today_secs, daily_goal_secs),  editDaily),
-            valueCell(goalText(week_secs,  weekly_goal_secs), editWeekly),
+            valueCell(goalText(today_secs, daily_goal_secs),  editDaily,  showDailyStreak),
+            valueCell(goalText(week_secs,  weekly_goal_secs), editWeekly, showWeeklyStreak),
             layout)
 
         UI.addSectionWithRow(sections, goal_header, goal_row, layout, {})
@@ -2729,6 +2737,7 @@ function ReadingInsightsPopup:onHold(arg, ges_ev)
         UIManager:scheduleIn(0.5, function()
             local before = Achievements and Achievements.earnedCount() or 0
             Cache.clearAllCache()
+            Data.clearTimeGoalCache()
             -- A full reload is the one place achievements are re-evaluated
             -- against the (now uncached) database - see lib/achievements.lua.
             -- Newly earned ones get persisted; the rebuilt goal section then
@@ -2835,6 +2844,28 @@ function ReadingInsightsPopup:editReadingGoal(year)
     }
     UIManager:show(dialog)
     dialog:onShowKeyboard()
+end
+
+-- Tap on the Daily/Weekly goal section: how many days / weeks in a row the
+-- goal has been met. Runs one grouped query only now, so opening the popup
+-- itself costs nothing extra.
+function ReadingInsightsPopup:showTimeGoalStreak(kind)
+    local is_daily = (kind == "daily")
+    Data.flushStatsToDB(self.ui)
+    local goal_secs = (is_daily and VS.readDailyGoalMinutes() or VS.readWeeklyGoalMinutes()) * 60
+    local n = Data.getTimeGoalStreak(kind, goal_secs) or 0
+    local text
+    if n <= 0 then
+        text = is_daily and _("You haven't met your daily goal yet.")
+                         or _("You haven't met your weekly goal yet.")
+    elseif is_daily then
+        text = T(N_("You've met your daily goal %1 day in a row.",
+                    "You've met your daily goal %1 days in a row.", n), formatCount(n))
+    else
+        text = T(N_("You've met your weekly goal %1 week in a row.",
+                    "You've met your weekly goal %1 weeks in a row.", n), formatCount(n))
+    end
+    UIManager:show(InfoMessage:new{ text = text, modal = true, timeout = 5 })
 end
 
 -- Long press on the Daily/Weekly goal section: hours/minutes spinner for the

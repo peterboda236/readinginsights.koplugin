@@ -1616,6 +1616,100 @@ function M.getLastWeekAll(shared_conn)
     return lw_result, daily_result
 end
 
+-- Consecutive days (kind = "daily") or calendar weeks (kind = "weekly") up to
+-- now in which at least `goal_secs` was read. Today / this week doesn't break
+-- the run while it is still short of the goal (it just isn't counted yet).
+--
+-- Closed periods never change, so the run length ending at the last closed
+-- day/week is remembered in the settings (per kind, together with the goal and
+-- week start it was computed for). The next call then only queries the
+-- periods since then and extends the run, instead of re-scanning the whole
+-- history. A different goal or week start setting, or clearTimeGoalCache()
+-- ("Reload data"), starts over with one full grouped scan. The goal currently
+-- set is applied to the whole history. Returns 0 on any failure.
+local TIME_GOAL_CACHE_KEY = "reading_insights_time_goal_cache"
+
+function M.clearTimeGoalCache()
+    Prefs.save(TIME_GOAL_CACHE_KEY, nil)
+end
+
+function M.getTimeGoalStreak(kind, goal_secs)
+    goal_secs = math.floor(tonumber(goal_secs) or 0)
+    if goal_secs <= 0 then return 0 end
+
+    local weekly  = (kind == "weekly")
+    local week_wd = weekStartWday()
+    local step    = weekly and 7 or 1
+
+    local function addDays(date_str, n)
+        local y, m, d = M.parseDateYMD(date_str)
+        if not y then return nil end
+        return os.date("%Y-%m-%d", os.time{ year = y, month = m, day = d + n, hour = 12 })
+    end
+
+    local today   = os.date("%Y-%m-%d")
+    local current = weekly and M.weekStartDate(today, week_wd) or today
+    if not current then return 0 end
+    local last_closed = addDays(current, -step)
+    if not last_closed then return 0 end
+
+    local all = Prefs.read(TIME_GOAL_CACHE_KEY, nil)
+    if type(all) ~= "table" then all = {} end
+    local c = all[kind]
+    local cache_ok = type(c) == "table"
+        and c.goal == goal_secs
+        and c.week_wd == (weekly and week_wd or nil)
+        and type(c.anchor) == "string" and c.anchor <= last_closed
+        and tonumber(c.run) ~= nil
+
+    local from_date = cache_ok and addDays(c.anchor, step) or nil
+    local run       = cache_ok and tonumber(c.run) or 0
+
+    local group = weekly and M.weekStartSqlExpr(week_wd)
+                          or "date(start_time, 'unixepoch', 'localtime')"
+    local where = ""
+    if from_date then
+        local y, m, d = M.parseDateYMD(from_date)
+        if y then
+            where = string.format("WHERE start_time >= %d",
+                os.time{ year = y, month = m, day = d, hour = 0, min = 0, sec = 0 })
+        end
+    end
+    local sql = string.format(
+        "SELECT %s AS g FROM page_stat %s GROUP BY g HAVING SUM(duration) >= %d",
+        group, where, goal_secs)
+
+    local met, ok = {}, false
+    StatsDb.withDb(nil, function(conn)
+        local _res, ran = StatsDb.withStatement(conn, sql, function(stmt)
+            for row in stmt:rows() do met[row[1]] = true end
+        end)
+        ok = ran
+    end)
+    if not ok then return 0 end
+
+    -- No cache: start at the earliest period that met the goal (nothing
+    -- before it can be part of a run).
+    if not cache_ok then
+        for date_str in pairs(met) do
+            if not from_date or date_str < from_date then from_date = date_str end
+        end
+        run = 0
+    end
+
+    local d = from_date
+    while d and d <= last_closed do
+        run = met[d] and (run + 1) or 0
+        d = addDays(d, step)
+    end
+
+    all[kind] = { goal = goal_secs, week_wd = weekly and week_wd or nil,
+                  anchor = last_closed, run = run }
+    Prefs.save(TIME_GOAL_CACHE_KEY, all)
+
+    return run + (met[current] and 1 or 0)
+end
+
 -- Returns an array of 8 weekly buckets (index 1 = oldest of the 8 weeks,
 -- index 8 = current week), each { start_date, end_date, seconds, pages }.
 -- Mirrors the de-duplication logic used by getLastWeekAll, just over a

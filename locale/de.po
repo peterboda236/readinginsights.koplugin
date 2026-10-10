@@ -1049,6 +1049,24 @@ msgstr "Tages-/Wochenziel"
 msgid "Show the daily and weekly reading time goals above \"Last week\". Long press the section to set the goals."
 msgstr "Tages- und Wochenziel für die Lesezeit über „Letzte Woche“ anzeigen. Abschnitt lange drücken, um die Ziele festzulegen."
 
+msgid "You haven't met your daily goal yet."
+msgstr "Du hast dein Tagesziel noch nicht erreicht."
+
+msgid "You haven't met your weekly goal yet."
+msgstr "Du hast dein Wochenziel noch nicht erreicht."
+
+msgid "You've met your daily goal %1 day in a row."
+msgstr "Du hast dein Tagesziel %1 Tag in Folge erreicht."
+
+msgid "You've met your daily goal %1 days in a row."
+msgstr "Du hast dein Tagesziel %1 Tage in Folge erreicht."
+
+msgid "You've met your weekly goal %1 week in a row."
+msgstr "Du hast dein Wochenziel %1 Woche in Folge erreicht."
+
+msgid "You've met your weekly goal %1 weeks in a row."
+msgstr "Du hast dein Wochenziel %1 Wochen in Folge erreicht."
+
 msgid "Last week layout"
 msgstr "Layout der letzten Woche"
 

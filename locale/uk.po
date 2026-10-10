@@ -1098,6 +1098,24 @@ msgstr "Денна / тижнева мета"
 msgid "Show the daily and weekly reading time goals above \"Last week\". Long press the section to set the goals."
 msgstr "Показувати денну та тижневу мету часу читання над «Минулий тиждень». Утримуйте розділ, щоб задати мету."
 
+msgid "You haven't met your daily goal yet."
+msgstr "Денну мету ще не виконано."
+
+msgid "You haven't met your weekly goal yet."
+msgstr "Тижневу мету ще не виконано."
+
+msgid "You've met your daily goal %1 day in a row."
+msgstr "Денну мету виконано поспіль, днів: %1"
+
+msgid "You've met your daily goal %1 days in a row."
+msgstr "Денну мету виконано поспіль, днів: %1"
+
+msgid "You've met your weekly goal %1 week in a row."
+msgstr "Тижневу мету виконано поспіль, тижнів: %1"
+
+msgid "You've met your weekly goal %1 weeks in a row."
+msgstr "Тижневу мету виконано поспіль, тижнів: %1"
+
 msgid "Last week layout"
 msgstr "Вигляд минулого тижня"
 
