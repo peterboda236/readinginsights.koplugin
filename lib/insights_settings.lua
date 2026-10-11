@@ -602,10 +602,10 @@ function M.saveMonthlyLayoutSetting(value)
 end
 
 -- Style of the yearly (months) chart in the Reading insights popup
--- (Settings > Reading insight popup > "Months chart style"). "line" (the
--- default) draws one line with a dot per month, all 12 months in a single
--- row; "bars" is the older bar chart (which still honours the "Months chart
--- layout" setting).
+-- (Settings > Reading insight popup > "Months chart style"). "bars" (the
+-- default) is the bar chart (which honours the "Months chart
+-- layout" setting); "line" draws one line with a dot per month, all 12 months
+-- in a single row.
 M.SETTINGS_KEY_MONTHLY_STYLE = "reading_insights_monthly_chart_style"
 
 M.MONTHLY_STYLE_LINE = "line"
@@ -614,8 +614,8 @@ M.MONTHLY_STYLE_BARS = "bars"
 
 function M.readMonthlyStyleSetting()
     local v = Prefs.read(M.SETTINGS_KEY_MONTHLY_STYLE, nil)
-    if v == M.MONTHLY_STYLE_BARS then return M.MONTHLY_STYLE_BARS end
-    return M.MONTHLY_STYLE_LINE
+    if v == M.MONTHLY_STYLE_LINE then return M.MONTHLY_STYLE_LINE end
+    return M.MONTHLY_STYLE_BARS
 end
 
 function M.saveMonthlyStyleSetting(value)
