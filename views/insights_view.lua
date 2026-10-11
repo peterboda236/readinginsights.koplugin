@@ -520,6 +520,20 @@ local function isFutureMonth(popup_self, m)
     return sel_year == current_year and tostring(m.month) > os.date("%Y-%m")
 end
 
+-- True for a month before the very first month with reading data (and with
+-- nothing in the shown view either - a manually added book can be older than
+-- the first reading record). The yearly chart leaves these empty, like the
+-- months still to come, instead of showing "00:00".
+local function isBeforeFirstData(popup_self, m)
+    local yr = popup_self._year_range
+    if not yr or not yr.min_year then return false end
+    local first = string.format("%04d-%02d", yr.min_year, yr.min_month or 1)
+    if not (tostring(m.month) < first) then return false end
+    local has_value = (tonumber(m.seconds) or 0) > 0 or (tonumber(m.hours) or 0) > 0
+        or (tonumber(m.book_count) or 0) > 0 or (tonumber(m.days) or 0) > 0
+    return not has_value
+end
+
 -- What the yearly chart plots for a month. In the "days read" view it is the
 -- share of the month read (days / days in that month), so a month read
 -- through every day stands as high as any other fully read month - 30, 31
@@ -547,6 +561,9 @@ end
 --   o.slots           how many columns the full width is divided into
 --                     (12 months / 7 days), so a short row stays left-aligned
 --                     in the same scale
+--   o.first           optional: entries before `first` are left empty too (no
+--                     dot, value or curve point) - months before the first
+--                     reading data. Default: 1.
 --   o.visible         optional: only the first `visible` entries get a dot,
 --                     a value and a place on the curve (the rest keep their
 --                     axis label and baseline) - used to leave out months
@@ -559,6 +576,7 @@ end
 local function buildDotLineChart(o)
     local n_cols     = #o.ratios
     local n_vis      = math.max(0, math.min(o.visible or n_cols, n_cols))
+    local first_vis  = math.max(1, o.first or 1)
     local col_width  = math.floor(o.chart_width / o.slots)
     local plot_height = o.plot_height
     local font_small = o.fonts.small
@@ -572,7 +590,7 @@ local function buildDotLineChart(o)
     local label_gap  = tonumber(Screen:scaleBySize(4))
 
     local label_ws = {}
-    for i = 1, n_vis do
+    for i = first_vis, n_vis do
         local tw = TextWidget:new{ text = o.value_strs[i], face = font_small }
         label_ws[i] = tw:getSize().w
         tw:free()
@@ -581,9 +599,9 @@ local function buildDotLineChart(o)
     -- Labels share one row above the dots; one that would run into an
     -- earlier label on the same row goes up a row instead.
     local levels, any_raised = {}, false
-    for i = 1, n_vis do
+    for i = first_vis, n_vis do
         levels[i] = 0
-        for j = i - 1, math.max(1, i - 3), -1 do
+        for j = i - 1, math.max(first_vis, i - 3), -1 do
             if levels[j] == levels[i]
                and (label_ws[j] + label_ws[i]) / 2 + label_gap > (i - j) * col_width then
                 levels[i] = 1
@@ -608,23 +626,26 @@ local function buildDotLineChart(o)
 
         -- Entries past `visible` (months still to come) have no dot, value
         -- or curve point; only their column and axis label remain.
-        if i <= n_vis then
+        if i >= first_vis and i <= n_vis then
             local ratio = o.ratios[i]
             local dot_color = o.highlight[i] and Colors.activeBar() or Colors.inactiveBar()
             local dot_y_from_bottom = math.floor(ratio * (plot_height - dot_size))
             local space_above = plot_height - dot_size - dot_y_from_bottom
             if space_above < 0 then space_above = 0 end
 
-            points[i] = {
+            -- points/dots are kept as gap-free lists (the curve and the dots
+            -- are drawn from them in order).
+            local pt = {
                 x = (i - 1) * col_width + math.floor(col_width / 2),
                 y = label_area_h + space_above + math.floor(dot_size / 2),
             }
-            dots[i] = { x = points[i].x, y = points[i].y, size = dot_size, color = dot_color }
+            points[#points + 1] = pt
+            dots[#dots + 1] = { x = pt.x, y = pt.y, size = dot_size, color = dot_color }
 
             local value_label = TextWidget:new{ text = o.value_strs[i], face = font_small, fgcolor = Colors.small() }
             value_label.overlap_offset = {
-                points[i].x - math.floor(label_ws[i] / 2),
-                points[i].y - math.floor(dot_size / 2) - label_height - levels[i] * label_height,
+                pt.x - math.floor(label_ws[i] / 2),
+                pt.y - math.floor(dot_size / 2) - label_height - levels[i] * label_height,
             }
             value_labels[#value_labels + 1] = value_label
         end
@@ -741,12 +762,18 @@ local function buildMonthlyLineChart(popup_self, monthly_data, layout, fonts)
     for i, m in ipairs(monthly_data) do
         if not isFutureMonth(popup_self, m) then visible = i end
     end
+    -- Months before the first reading data are left empty as well.
+    local first = 1
+    while first <= visible and isBeforeFirstData(popup_self, monthly_data[first]) do
+        first = first + 1
+    end
     for i = visible + 1, #monthly_data do on_tap[i] = nil end
+    for i = 1, first - 1 do on_tap[i] = nil end
 
     return buildDotLineChart{
         ratios = ratios, value_strs = value_strs, axis_strs = axis_strs,
         highlight = highlight, on_tap = on_tap,
-        visible = visible,
+        visible = visible, first = first,
         on_widget = function(i, w)
             if i == current_idx then popup_self._current_month_bar_widget = w end
         end,
@@ -812,9 +839,10 @@ local function buildMonthlyChart(popup_self, monthly_data, layout, fonts)
             local is_current = (popup_self.selected_year == current_year) and (m.month == current_month)
             local bar_color  = is_current and Colors.activeBar() or Colors.inactiveBar()
 
-            -- A month still to come has no value to show: no "00:00" above
-            -- it and no tap (its bar is empty and its name stays below).
-            local future = isFutureMonth(popup_self, m)
+            -- A month still to come, or from before the first reading data,
+            -- has no value to show: no "00:00" above it and no tap (its bar
+            -- is empty and its name stays below).
+            local future = isFutureMonth(popup_self, m) or isBeforeFirstData(popup_self, m)
 
             local bar_label_str
             if popup_self.mode == VS.INSIGHTS_MODE_HOURS then
