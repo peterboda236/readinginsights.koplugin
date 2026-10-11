@@ -1,6 +1,6 @@
 ### 📊 Reading insights plugin
 
-<img width="255" height="340" alt="FileManager_2026-10-10_164138" src="https://github.com/user-attachments/assets/5ac81254-b530-405f-b5bf-8c1fe078aff3" />
+<img width="255" height="340" alt="FileManager_2026-10-11_125526" src="https://github.com/user-attachments/assets/00326dea-6755-4487-ba47-2c33b77adac4" />
 <img width="255" height="340" alt="FileManager_2026-07-17_152344" src="https://github.com/user-attachments/assets/4a3d2fb9-cc51-4342-a952-36f23bb1925c" />
 <img width="255" height="340" alt="Reader_Sebastian Bergman 6  - Egyetlen igazsag - Hjorth, Michael   Rosenfeldt, Hans #p(458) epub_p222_2026-10-10_164231" src="https://github.com/user-attachments/assets/d180c3ae-e731-48c5-90be-0564d0bb2a3d" />
 
