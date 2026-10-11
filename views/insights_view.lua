@@ -508,6 +508,18 @@ local function daysInMonthOf(month_str)
     return tonumber(os.date("%d", os.time{ year = y, month = mo + 1, day = 0, hour = 12 })) or 31
 end
 
+-- True for a month that hasn't happened yet in the year being shown: later
+-- than the current month this year (every month of a future year). The
+-- yearly chart leaves these out - no dot / value in the line style, no value
+-- or tap in the bar style - instead of showing a made-up "00:00".
+local function isFutureMonth(popup_self, m)
+    local sel_year     = tonumber(popup_self.selected_year)
+    local current_year = tonumber(os.date("%Y"))
+    if not sel_year then return false end
+    if sel_year > current_year then return true end
+    return sel_year == current_year and tostring(m.month) > os.date("%Y-%m")
+end
+
 -- What the yearly chart plots for a month. In the "days read" view it is the
 -- share of the month read (days / days in that month), so a month read
 -- through every day stands as high as any other fully read month - 30, 31
@@ -535,6 +547,10 @@ end
 --   o.slots           how many columns the full width is divided into
 --                     (12 months / 7 days), so a short row stays left-aligned
 --                     in the same scale
+--   o.visible         optional: only the first `visible` entries get a dot,
+--                     a value and a place on the curve (the rest keep their
+--                     axis label and baseline) - used to leave out months
+--                     that haven't happened yet. Default: all.
 --   o.chart_width, o.plot_height, o.fonts
 --
 -- Neighbouring values only move (one up a row, alternating) when they would
@@ -542,6 +558,7 @@ end
 -- the values are all placed from the same coordinates, so they line up.
 local function buildDotLineChart(o)
     local n_cols     = #o.ratios
+    local n_vis      = math.max(0, math.min(o.visible or n_cols, n_cols))
     local col_width  = math.floor(o.chart_width / o.slots)
     local plot_height = o.plot_height
     local font_small = o.fonts.small
@@ -555,7 +572,7 @@ local function buildDotLineChart(o)
     local label_gap  = tonumber(Screen:scaleBySize(4))
 
     local label_ws = {}
-    for i = 1, n_cols do
+    for i = 1, n_vis do
         local tw = TextWidget:new{ text = o.value_strs[i], face = font_small }
         label_ws[i] = tw:getSize().w
         tw:free()
@@ -564,7 +581,7 @@ local function buildDotLineChart(o)
     -- Labels share one row above the dots; one that would run into an
     -- earlier label on the same row goes up a row instead.
     local levels, any_raised = {}, false
-    for i = 1, n_cols do
+    for i = 1, n_vis do
         levels[i] = 0
         for j = i - 1, math.max(1, i - 3), -1 do
             if levels[j] == levels[i]
@@ -583,30 +600,34 @@ local function buildDotLineChart(o)
     local points, dots, value_labels = {}, {}, {}
 
     for i = 1, n_cols do
-        local ratio = o.ratios[i]
-        local dot_color = o.highlight[i] and Colors.activeBar() or Colors.inactiveBar()
-        local dot_y_from_bottom = math.floor(ratio * (plot_height - dot_size))
-        local space_above = plot_height - dot_size - dot_y_from_bottom
-        if space_above < 0 then space_above = 0 end
-
         -- The column only carries the baseline and the tap area; the dot and
         -- the value are placed explicitly on the chart area below, from the
         -- same coordinates as the curve.
         local col_group = VerticalGroup:new{ align = "center" }
         table.insert(col_group, Colors.newBar(col_width, baseline_h, Colors.inactiveBar()))
 
-        points[i] = {
-            x = (i - 1) * col_width + math.floor(col_width / 2),
-            y = label_area_h + space_above + math.floor(dot_size / 2),
-        }
-        dots[i] = { x = points[i].x, y = points[i].y, size = dot_size, color = dot_color }
+        -- Entries past `visible` (months still to come) have no dot, value
+        -- or curve point; only their column and axis label remain.
+        if i <= n_vis then
+            local ratio = o.ratios[i]
+            local dot_color = o.highlight[i] and Colors.activeBar() or Colors.inactiveBar()
+            local dot_y_from_bottom = math.floor(ratio * (plot_height - dot_size))
+            local space_above = plot_height - dot_size - dot_y_from_bottom
+            if space_above < 0 then space_above = 0 end
 
-        local value_label = TextWidget:new{ text = o.value_strs[i], face = font_small, fgcolor = Colors.small() }
-        value_label.overlap_offset = {
-            points[i].x - math.floor(label_ws[i] / 2),
-            points[i].y - math.floor(dot_size / 2) - label_height - levels[i] * label_height,
-        }
-        value_labels[#value_labels + 1] = value_label
+            points[i] = {
+                x = (i - 1) * col_width + math.floor(col_width / 2),
+                y = label_area_h + space_above + math.floor(dot_size / 2),
+            }
+            dots[i] = { x = points[i].x, y = points[i].y, size = dot_size, color = dot_color }
+
+            local value_label = TextWidget:new{ text = o.value_strs[i], face = font_small, fgcolor = Colors.small() }
+            value_label.overlap_offset = {
+                points[i].x - math.floor(label_ws[i] / 2),
+                points[i].y - math.floor(dot_size / 2) - label_height - levels[i] * label_height,
+            }
+            value_labels[#value_labels + 1] = value_label
+        end
 
         local tappable_col = InputContainer:new{
             dimen = Geom:new{ x = 0, y = 0, w = col_width, h = total_col_h },
@@ -713,9 +734,19 @@ local function buildMonthlyLineChart(popup_self, monthly_data, layout, fonts)
         on_tap[i] = function() popup_self:showBooksForMonth(month, month_year_label) end
     end
 
+    -- Months that haven't happened yet are cut off: the curve ends at the
+    -- current month, they get no dot, value or tap (their names stay on the
+    -- axis). Past years show all months.
+    local visible = 0
+    for i, m in ipairs(monthly_data) do
+        if not isFutureMonth(popup_self, m) then visible = i end
+    end
+    for i = visible + 1, #monthly_data do on_tap[i] = nil end
+
     return buildDotLineChart{
         ratios = ratios, value_strs = value_strs, axis_strs = axis_strs,
         highlight = highlight, on_tap = on_tap,
+        visible = visible,
         on_widget = function(i, w)
             if i == current_idx then popup_self._current_month_bar_widget = w end
         end,
@@ -781,6 +812,10 @@ local function buildMonthlyChart(popup_self, monthly_data, layout, fonts)
             local is_current = (popup_self.selected_year == current_year) and (m.month == current_month)
             local bar_color  = is_current and Colors.activeBar() or Colors.inactiveBar()
 
+            -- A month still to come has no value to show: no "00:00" above
+            -- it and no tap (its bar is empty and its name stays below).
+            local future = isFutureMonth(popup_self, m)
+
             local bar_label_str
             if popup_self.mode == VS.INSIGHTS_MODE_HOURS then
                 local mo_secs = tonumber(m.seconds) or math.floor((tonumber(m.hours) or 0) * 3600 + 0.5)
@@ -794,7 +829,11 @@ local function buildMonthlyChart(popup_self, monthly_data, layout, fonts)
             }
 
             local bar_column = VerticalGroup:new{ align = "center" }
-            table.insert(bar_column, centered_label)
+            if not future then
+                table.insert(bar_column, centered_label)
+            else
+                value_label:free()
+            end
             if bar_h > 0 then
                 table.insert(bar_column, Colors.newBar(bar_width, bar_h, bar_color))
             end
@@ -816,12 +855,14 @@ local function buildMonthlyChart(popup_self, monthly_data, layout, fonts)
                 -- matching the calendar headers.
                 month_year_label = tostring(popup_self.selected_year) .. ". " .. m.label_full
             end
-            tappable_bar.ges_events = {
-                Tap  = { GestureRange:new{ ges = "tap",  range = tappable_bar.dimen } },
-            }
-            function tappable_bar:onTap()
-                popup_self:showBooksForMonth(month_data.month, month_year_label)
-                return true
+            if not future then
+                tappable_bar.ges_events = {
+                    Tap  = { GestureRange:new{ ges = "tap",  range = tappable_bar.dimen } },
+                }
+                function tappable_bar:onTap()
+                    popup_self:showBooksForMonth(month_data.month, month_year_label)
+                    return true
+                end
             end
             if is_current then
                 popup_self._current_month_bar_widget = tappable_bar
