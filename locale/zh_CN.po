@@ -1735,3 +1735,15 @@ msgstr "12 个月显示在一行"
 
 msgid "Default: %1"
 msgstr "默认：%1"
+
+msgid "Months chart style"
+msgstr "月度图表样式"
+
+msgid "Line with dots"
+msgstr "带点折线"
+
+msgid "Bars"
+msgstr "柱状"
+
+msgid "Last 7 days chart style"
+msgstr "过去 7 天图表样式"

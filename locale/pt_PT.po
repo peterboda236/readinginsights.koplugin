@@ -2014,3 +2014,15 @@ msgstr "12 meses numa linha"
 
 msgid "Default: %1"
 msgstr "Predefinição: %1"
+
+msgid "Months chart style"
+msgstr "Estilo do gráfico mensal"
+
+msgid "Line with dots"
+msgstr "Linha com pontos"
+
+msgid "Bars"
+msgstr "Barras"
+
+msgid "Last 7 days chart style"
+msgstr "Estilo do gráfico dos últimos 7 dias"

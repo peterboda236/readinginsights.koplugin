@@ -2020,3 +2020,15 @@ msgstr "12 months in one row"
 
 msgid "Default: %1"
 msgstr "Default: %1"
+
+msgid "Months chart style"
+msgstr "Months chart style"
+
+msgid "Line with dots"
+msgstr "Line with dots"
+
+msgid "Bars"
+msgstr "Bars"
+
+msgid "Last 7 days chart style"
+msgstr "Last 7 days chart style"

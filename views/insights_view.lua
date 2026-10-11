@@ -18,7 +18,7 @@ Sections, top to bottom:
 Gestures:
   - Tap "All time" header            reading heatmap (swipe there to page
                                        through older periods)
-  - Tap yearly value or monthly bar    book list for that period
+  - Tap yearly value or monthly bar/dot  book list for that period
   - Tap monthly chart header           cycle hours/days/books
   - Tap a streak                       that streak's dates and totals
   - Tap a Last 7 days value              8-week trend popup
@@ -491,17 +491,259 @@ local function buildYearlyRow(popup_self, yearly_stats, fonts, layout)
     }
 end
 
+-- Yearly chart as a smooth curve with a dot on it for each month and the
+-- month's value above the dot (the default style; the "Months chart style"
+-- setting switches back to bars). Always one row of all months, since the
+-- curve needs to run unbroken. Each month column is tappable (opens that
+-- month's books); the current month's dot has the active colour, like the
+-- current bar in the bar style. Neighbouring values only move (one up a
+-- row, alternating) when they would overlap, so compact values like "0:04"
+-- never move.
+-- Number of days in the month of a "YYYY-MM" string (28-31).
+local function daysInMonthOf(month_str)
+    local y, mo = tostring(month_str or ""):match("^(%d+)%-(%d+)$")
+    y, mo = tonumber(y), tonumber(mo)
+    if not y or not mo then return 31 end
+    -- Day 0 of the next month is the last day of this one.
+    return tonumber(os.date("%d", os.time{ year = y, month = mo + 1, day = 0, hour = 12 })) or 31
+end
+
+-- What the yearly chart plots for a month. In the "days read" view it is the
+-- share of the month read (days / days in that month), so a month read
+-- through every day stands as high as any other fully read month - 30, 31
+-- or 28 days alike - instead of the longer month looking better. The label
+-- still shows the real day count. Hours and books are plotted as they are.
+local function monthlyPlotValue(m, value_key)
+    local v = tonumber(m[value_key]) or 0
+    if value_key == "days" then
+        return v / daysInMonthOf(m.month)
+    end
+    return v
+end
+
+-- Shared line chart: a smooth curve with a dot on it for each entry, the
+-- entry's value above the dot and its name (month / day) in a row below.
+-- Used for the yearly chart and for "Last 7 days" when their style setting is
+-- "Line with dots".
+--
+--   o.ratios[i]       height of entry i, 0..1 of the plot
+--   o.value_strs[i]   text above the dot
+--   o.axis_strs[i]    text under the chart
+--   o.highlight[i]    true -> dot in the active colour
+--   o.on_tap[i]       optional function, called when column i is tapped
+--   o.on_widget(i, w) optional, handed the tappable column widget of entry i
+--   o.slots           how many columns the full width is divided into
+--                     (12 months / 7 days), so a short row stays left-aligned
+--                     in the same scale
+--   o.chart_width, o.plot_height, o.fonts
+--
+-- Neighbouring values only move (one up a row, alternating) when they would
+-- overlap, so compact values like "0:04" never move. The curve, the dots and
+-- the values are all placed from the same coordinates, so they line up.
+local function buildDotLineChart(o)
+    local n_cols     = #o.ratios
+    local col_width  = math.floor(o.chart_width / o.slots)
+    local plot_height = o.plot_height
+    local font_small = o.fonts.small
+
+    local sample_label = TextWidget:new{ text = "0", face = font_small }
+    local label_height = sample_label:getSize().h
+    sample_label:free()
+
+    local dot_size   = tonumber(Screen:scaleBySize(8))
+    local baseline_h = Size.line.medium
+    local label_gap  = tonumber(Screen:scaleBySize(4))
+
+    local label_ws = {}
+    for i = 1, n_cols do
+        local tw = TextWidget:new{ text = o.value_strs[i], face = font_small }
+        label_ws[i] = tw:getSize().w
+        tw:free()
+    end
+
+    -- Labels share one row above the dots; one that would run into an
+    -- earlier label on the same row goes up a row instead.
+    local levels, any_raised = {}, false
+    for i = 1, n_cols do
+        levels[i] = 0
+        for j = i - 1, math.max(1, i - 3), -1 do
+            if levels[j] == levels[i]
+               and (label_ws[j] + label_ws[i]) / 2 + label_gap > (i - j) * col_width then
+                levels[i] = 1
+                break
+            end
+        end
+        if levels[i] == 1 then any_raised = true end
+    end
+    local label_area_h = any_raised and (label_height * 2) or label_height
+    local total_col_h  = plot_height + label_area_h + baseline_h
+
+    local columns_row     = HorizontalGroup:new{ align = "bottom" }
+    local axis_labels_row = HorizontalGroup:new{ align = "top" }
+    local points, dots, value_labels = {}, {}, {}
+
+    for i = 1, n_cols do
+        local ratio = o.ratios[i]
+        local dot_color = o.highlight[i] and Colors.activeBar() or Colors.inactiveBar()
+        local dot_y_from_bottom = math.floor(ratio * (plot_height - dot_size))
+        local space_above = plot_height - dot_size - dot_y_from_bottom
+        if space_above < 0 then space_above = 0 end
+
+        -- The column only carries the baseline and the tap area; the dot and
+        -- the value are placed explicitly on the chart area below, from the
+        -- same coordinates as the curve.
+        local col_group = VerticalGroup:new{ align = "center" }
+        table.insert(col_group, Colors.newBar(col_width, baseline_h, Colors.inactiveBar()))
+
+        points[i] = {
+            x = (i - 1) * col_width + math.floor(col_width / 2),
+            y = label_area_h + space_above + math.floor(dot_size / 2),
+        }
+        dots[i] = { x = points[i].x, y = points[i].y, size = dot_size, color = dot_color }
+
+        local value_label = TextWidget:new{ text = o.value_strs[i], face = font_small, fgcolor = Colors.small() }
+        value_label.overlap_offset = {
+            points[i].x - math.floor(label_ws[i] / 2),
+            points[i].y - math.floor(dot_size / 2) - label_height - levels[i] * label_height,
+        }
+        value_labels[#value_labels + 1] = value_label
+
+        local tappable_col = InputContainer:new{
+            dimen = Geom:new{ x = 0, y = 0, w = col_width, h = total_col_h },
+            BottomContainer:new{
+                dimen = Geom:new{ w = col_width, h = total_col_h },
+                col_group,
+            },
+        }
+        local on_tap = o.on_tap and o.on_tap[i]
+        if on_tap then
+            tappable_col.ges_events = {
+                Tap = { GestureRange:new{ ges = "tap", range = tappable_col.dimen } },
+            }
+            function tappable_col:onTap()
+                on_tap()
+                return true
+            end
+        end
+        if o.on_widget then o.on_widget(i, tappable_col) end
+        table.insert(columns_row, tappable_col)
+
+        local axis_widget = TextWidget:new{ text = o.axis_strs[i], face = font_small, fgcolor = Colors.small() }
+        table.insert(axis_labels_row, CenterContainer:new{
+            dimen = Geom:new{ w = col_width, h = axis_widget:getSize().h },
+            axis_widget,
+        })
+    end
+
+    local line_widget = Trend.LineChartWidget:new{
+        width      = n_cols * col_width,
+        height     = total_col_h,
+        points     = points,
+        dots       = dots,
+        line_color = Colors.trendLine(),
+        thickness  = 2,
+        smooth     = true,
+    }
+
+    -- Columns (baseline) first, the curve and its dots over them, and the
+    -- values over everything.
+    local chart_area = OverlapGroup:new{
+        dimen = Geom:new{ w = n_cols * col_width, h = total_col_h },
+        columns_row,
+        line_widget,
+    }
+    for _, vl in ipairs(value_labels) do
+        table.insert(chart_area, vl)
+    end
+
+    return VerticalGroup:new{
+        align = "center",
+        chart_area,
+        VerticalSpan:new{ height = Size.padding.small },
+        axis_labels_row,
+    }
+end
+
+-- Yearly chart as a line (the "Months chart style" setting switches back to
+-- bars). Always one row of all months, since the curve needs to run
+-- unbroken. Tapping a month opens its books; the current month's dot has the
+-- active colour, like the current bar in the bar style.
+local function buildMonthlyLineChart(popup_self, monthly_data, layout, fonts)
+    local value_key = (popup_self.mode == VS.INSIGHTS_MODE_HOURS and "hours")
+        or (popup_self.mode == VS.INSIGHTS_MODE_BOOKS and "book_count")
+        or "days"
+    local max_value = 0
+    for _, m in ipairs(monthly_data) do
+        local v = monthlyPlotValue(m, value_key)
+        if v > max_value then max_value = v end
+    end
+    if max_value <= 0 then max_value = 1 end
+
+    VS.Opt.built_monthly = true
+
+    local current_year  = tonumber(os.date("%Y"))
+    local current_month = os.date("%Y-%m")
+
+    local ratios, value_strs, axis_strs, highlight, on_tap = {}, {}, {}, {}, {}
+    local current_idx
+    for i, m in ipairs(monthly_data) do
+        local value = tonumber(m[value_key]) or 0
+        ratios[i] = monthlyPlotValue(m, value_key) / max_value
+        if popup_self.mode == VS.INSIGHTS_MODE_HOURS then
+            local mo_secs = tonumber(m.seconds) or math.floor((tonumber(m.hours) or 0) * 3600 + 0.5)
+            value_strs[i] = Locale.formatDuration(mo_secs, true)
+        else
+            value_strs[i] = formatNumber(value)
+        end
+        highlight[i] = (popup_self.selected_year == current_year) and (m.month == current_month)
+        if highlight[i] then current_idx = i end
+
+        local month_label_text = m.label
+        if getLangBase() == "hu" then
+            local mn = tonumber(tostring(m.month):match("%-(%d%d)$"))
+            month_label_text = MONTH_NAMES_SHORT_HU_LC[mn] or m.label
+        end
+        axis_strs[i] = month_label_text
+
+        local month_year_label = m.label_full .. " " .. popup_self.selected_year
+        if getLangBase() == "hu" then
+            month_year_label = tostring(popup_self.selected_year) .. ". " .. m.label_full
+        end
+        local month = m.month
+        on_tap[i] = function() popup_self:showBooksForMonth(month, month_year_label) end
+    end
+
+    return buildDotLineChart{
+        ratios = ratios, value_strs = value_strs, axis_strs = axis_strs,
+        highlight = highlight, on_tap = on_tap,
+        on_widget = function(i, w)
+            if i == current_idx then popup_self._current_month_bar_widget = w end
+        end,
+        slots = 12,
+        chart_width = layout.content_width,
+        plot_height = tonumber(Screen:scaleBySize(VS.Opt.monthlyBarHeight())),
+        fonts = fonts,
+    }
+end
+
 local function buildMonthlyChart(popup_self, monthly_data, layout, fonts)
     if #monthly_data == 0 then return nil end
+
+    if VS.readMonthlyStyleSetting() == VS.MONTHLY_STYLE_LINE then
+        return buildMonthlyLineChart(popup_self, monthly_data, layout, fonts)
+    end
 
     local value_key = (popup_self.mode == VS.INSIGHTS_MODE_HOURS and "hours")
         or (popup_self.mode == VS.INSIGHTS_MODE_BOOKS and "book_count")
         or "days"
-    local max_value = 1
+    -- Days view plots fractions of a month (0..1), so its scale starts from
+    -- nothing; hours and books keep their old minimum scale of 1.
+    local max_value = (value_key == "days") and 0 or 1
     for _, m in ipairs(monthly_data) do
-        local v = tonumber(m[value_key]) or 0
+        local v = monthlyPlotValue(m, value_key)
         if v > max_value then max_value = v end
     end
+    if max_value <= 0 then max_value = 1 end
 
     local chart_width  = layout.content_width
     VS.Opt.built_monthly = true
@@ -532,7 +774,7 @@ local function buildMonthlyChart(popup_self, monthly_data, layout, fonts)
 
         for i, m in ipairs(data_slice) do
             local value = tonumber(m[value_key]) or 0
-            local ratio = max_value > 0 and (value / max_value) or 0
+            local ratio = max_value > 0 and (monthlyPlotValue(m, value_key) / max_value) or 0
             local bar_h = math.floor(ratio * bar_height + 0.5)
             if bar_h == 0 and value > 0 then bar_h = 1 end
 
@@ -647,6 +889,46 @@ local function buildWeeklyChart(popup_self, daily_data, layout, fonts, mode)
     -- Pad to exactly 7 entries.
     while #daily_data < 7 do
         table.insert(daily_data, { hours = 0, seconds = 0, pages = 0, label = "" })
+    end
+
+    if VS.readWeeklyStyleSetting() == VS.WEEKLY_STYLE_LINE then
+        -- Same smooth line with dots as the yearly chart. Order follows the
+        -- "today on the left/right" setting; today is highlighted and, as
+        -- in the bar style, opens the timeline when tapped.
+        VS.Opt.built_weekly = true
+        local num = 7
+        local max_v = 0
+        for _, d in ipairs(daily_data) do
+            local v = show_pages and (tonumber(d.pages) or 0) or (tonumber(d.seconds) or 0)
+            if v > max_v then max_v = v end
+        end
+        if max_v < 0.1 then max_v = 1 end
+        local today_last_l = (VS.readWeeklyBarOrderSetting() == VS.WEEKLY_BAR_ORDER_TODAY_LAST)
+        local ratios, value_strs, axis_strs, highlight, on_tap = {}, {}, {}, {}, {}
+        for pos = 1, num do
+            local i = today_last_l and (num + 1 - pos) or pos
+            local d = daily_data[i]
+            local v = show_pages and (tonumber(d.pages) or 0) or (tonumber(d.seconds) or 0)
+            ratios[pos] = v / max_v
+            if show_pages then
+                value_strs[pos] = string.format(_("%d p"), math.floor((tonumber(d.pages) or 0) + 0.5))
+            else
+                value_strs[pos] = Locale.formatDuration(tonumber(d.seconds) or 0, true)
+            end
+            axis_strs[pos] = d.label or ""
+            highlight[pos] = (WEEKLY_CHART_HIGHLIGHT_TODAY and i == 1)
+            if i == 1 then
+                on_tap[pos] = function() popup_self:openTodayTimeline() end
+            end
+        end
+        return buildDotLineChart{
+            ratios = ratios, value_strs = value_strs, axis_strs = axis_strs,
+            highlight = highlight, on_tap = on_tap,
+            slots = num,
+            chart_width = layout.content_width,
+            plot_height = tonumber(Screen:scaleBySize(VS.Opt.weeklyBarHeight())),
+            fonts = fonts,
+        }
     end
 
     local chart_width  = layout.content_width

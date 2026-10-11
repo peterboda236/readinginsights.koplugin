@@ -2014,3 +2014,15 @@ msgstr "12 Monate in einer Zeile"
 
 msgid "Default: %1"
 msgstr "Standard: %1"
+
+msgid "Months chart style"
+msgstr "Monatsdiagramm-Stil"
+
+msgid "Line with dots"
+msgstr "Linie mit Punkten"
+
+msgid "Bars"
+msgstr "Balken"
+
+msgid "Last 7 days chart style"
+msgstr "Diagrammstil der letzten 7 Tage"

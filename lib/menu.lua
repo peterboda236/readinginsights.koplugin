@@ -612,7 +612,69 @@ function M.build(self, deps)
         })
     end
 
-    -- Months (yearly) bar chart layout: two rows of 6 months (default) or a
+    -- "Last 7 days" chart style: bars (default) or line with dots.
+    do
+        local VSet = deps.ViewSettings
+        local BARS = VSet.WEEKLY_STYLE_BARS
+        local LINE = VSet.WEEKLY_STYLE_LINE
+        local function weeklyStyleEntry(value, text)
+            return {
+                text = text,
+                keep_menu_open = true,
+                radio = true,
+                checked_func = function()
+                    return VSet.readWeeklyStyleSetting() == value
+                end,
+                callback = function() VSet.saveWeeklyStyleSetting(value) end,
+            }
+        end
+        table.insert(insights_popup_sub_item_table, {
+            text_func = function()
+                local v = VSet.readWeeklyStyleSetting() == LINE
+                    and _("Line with dots")
+                    or  _("Bars")
+                return _("Last 7 days chart style") .. ": " .. v
+            end,
+            keep_menu_open = true,
+            sub_item_table = {
+                weeklyStyleEntry(BARS, _("Bars")),
+                weeklyStyleEntry(LINE, _("Line with dots")),
+            },
+        })
+    end
+
+    -- Months (yearly) chart style: line with dots (default) or bars.
+    do
+        local VSet  = deps.ViewSettings
+        local LINE  = VSet.MONTHLY_STYLE_LINE
+        local BARS  = VSet.MONTHLY_STYLE_BARS
+        local function monthlyStyleEntry(value, text)
+            return {
+                text = text,
+                keep_menu_open = true,
+                radio = true,
+                checked_func = function()
+                    return VSet.readMonthlyStyleSetting() == value
+                end,
+                callback = function() VSet.saveMonthlyStyleSetting(value) end,
+            }
+        end
+        table.insert(insights_popup_sub_item_table, {
+            text_func = function()
+                local v = VSet.readMonthlyStyleSetting() == BARS
+                    and _("Bars")
+                    or  _("Line with dots")
+                return _("Months chart style") .. ": " .. v
+            end,
+            keep_menu_open = true,
+            sub_item_table = {
+                monthlyStyleEntry(LINE, _("Line with dots")),
+                monthlyStyleEntry(BARS, _("Bars")),
+            },
+        })
+    end
+
+    -- Months (yearly) bar chart layout (bars style only): two rows of 6 months (default) or a
     -- single row with all 12 months.
     do
         local VSet = deps.ViewSettings
@@ -750,6 +812,35 @@ function M.build(self, deps)
         keep_menu_open = true,
         sub_item_table = date_time_sub_item_table,
     })
+
+    -- Group the "Reading insight popup" settings by what they affect, with a
+    -- separator line between the groups (the items above are built one by
+    -- one in the order they were added over time, so they are put in order
+    -- here, in one place):
+    --   1. what the popup shows: goals, achievements (+ refresh), hamburger menu
+    --   2. "Last 7 days": chart style, today's side, layout, 8-week trend order
+    --   3. yearly months chart: style, layout (bars)
+    --   4. heatmap and time of day
+    -- The numbers are the order in which the items were inserted above; if
+    -- items were ever added or removed without updating this, the list is
+    -- left as it is rather than scrambled.
+    do
+        local t = insights_popup_sub_item_table
+        if #t == 13 then
+            local order = { 1, 2, 3, 13, 4,   9, 8, 12, 7,   10, 11,   5, 6 }
+            local grouped = {}
+            for pos, idx in ipairs(order) do
+                local item = t[idx]
+                item.separator = nil
+                grouped[pos] = item
+            end
+            for _idx, pos in ipairs({ 5, 9, 11 }) do
+                grouped[pos].separator = true
+            end
+            for k = #t, 1, -1 do t[k] = nil end
+            for pos, item in ipairs(grouped) do t[pos] = item end
+        end
+    end
 
     table.insert(settings_sub_item_table, {
         text = _("Reading insight popup"),

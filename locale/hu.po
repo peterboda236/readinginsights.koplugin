@@ -2032,3 +2032,15 @@ msgstr "12 hónap egy sorban"
 
 msgid "Default: %1"
 msgstr "Alapértelmezett: %1"
+
+msgid "Months chart style"
+msgstr "Havi diagram stílusa"
+
+msgid "Line with dots"
+msgstr "Vonal pontokkal"
+
+msgid "Bars"
+msgstr "Oszlopok"
+
+msgid "Last 7 days chart style"
+msgstr "Elmúlt 7 nap diagramjának stílusa"

@@ -262,6 +262,57 @@ function M.Popup:init()
     }
 end
 
+-- Smooth curve through `pts` ({x, y}, x strictly increasing): monotone cubic
+-- (Fritsch-Carlson) interpolation, so the curve passes exactly through every
+-- point and never overshoots between them (no dips below the baseline or
+-- above the highest value). Returns a denser point list, a sample every
+-- couple of pixels, that the widget joins with short straight segments.
+function M.smoothCurve(pts)
+    local n = #pts
+    local h, d, m = {}, {}, {}
+    for k = 1, n - 1 do
+        h[k] = pts[k + 1].x - pts[k].x
+        d[k] = (pts[k + 1].y - pts[k].y) / h[k]
+    end
+    m[1] = d[1]
+    m[n] = d[n - 1]
+    for k = 2, n - 1 do
+        if d[k - 1] * d[k] <= 0 then
+            m[k] = 0
+        else
+            m[k] = (d[k - 1] + d[k]) / 2
+        end
+    end
+    for k = 1, n - 1 do
+        if d[k] == 0 then
+            m[k], m[k + 1] = 0, 0
+        else
+            local a, b = m[k] / d[k], m[k + 1] / d[k]
+            local r = a * a + b * b
+            if r > 9 then
+                local tau = 3 / math.sqrt(r)
+                m[k], m[k + 1] = tau * a * d[k], tau * b * d[k]
+            end
+        end
+    end
+    local out = {}
+    for k = 1, n - 1 do
+        local x0, y0, y1 = pts[k].x, pts[k].y, pts[k + 1].y
+        local samples = math.max(2, math.ceil(h[k] / 2))
+        for s = 0, samples - 1 do
+            local t   = s / samples
+            local t2, t3 = t * t, t * t * t
+            local yv = (2 * t3 - 3 * t2 + 1) * y0
+                     + (t3 - 2 * t2 + t) * h[k] * m[k]
+                     + (-2 * t3 + 3 * t2) * y1
+                     + (t3 - t2) * h[k] * m[k + 1]
+            out[#out + 1] = { x = x0 + t * h[k], y = yv }
+        end
+    end
+    out[#out + 1] = { x = pts[n].x, y = pts[n].y }
+    return out
+end
+
 function LineChartWidget:getSize()
     return Geom:new{ w = self.width, h = self.height }
 end
@@ -274,19 +325,44 @@ function LineChartWidget:paintTo(bb, x, y)
     -- bb:paintRectRGB32 or they silently misrender (usually as black).
     local paint = Blitbuffer.isColor8(color) and bb.paintRect or bb.paintRectRGB32
 
-    if #self.points > 1 then
-        for i = 1, #self.points - 1 do
-            local p1, p2 = self.points[i], self.points[i + 1]
+    local pts = self.points
+    if self.smooth and #pts > 2 then
+        pts = M.smoothCurve(pts)
+    end
+
+    if #pts > 1 then
+        for i = 1, #pts - 1 do
+            local p1, p2 = pts[i], pts[i + 1]
             local dx, dy = p2.x - p1.x, p2.y - p1.y
             local steps  = math.max(math.abs(dx), math.abs(dy), 1)
             for s = 0, steps do
                 local t  = s / steps
                 local px = math.floor(p1.x + dx * t + 0.5)
                 local py = math.floor(p1.y + dy * t + 0.5)
-                paint(bb, x + px, y + py, 2, 2, color)
+                local th = self.thickness or 2
+                paint(bb, x + px - math.floor(th / 2), y + py - math.floor(th / 2), th, th, color)
             end
         end
     end
+
+    -- Optional dots ({x, y, size, color}), painted by this same widget with
+    -- the same coordinates as the curve so they sit exactly on it. Corners
+    -- are cut a little so they read as round rather than square.
+    if self.dots then
+        for _, dt in ipairs(self.dots) do
+            local sz  = dt.size
+            local half = math.floor(sz / 2)
+            local c   = dt.color
+            local pnt = Blitbuffer.isColor8(c) and bb.paintRect or bb.paintRectRGB32
+            local cut = math.max(1, math.floor(sz / 4))
+            local left, top = x + dt.x - half, y + dt.y - half
+            pnt(bb, left + cut, top, sz - 2 * cut, sz, c)
+            pnt(bb, left, top + cut, sz, sz - 2 * cut, c)
+        end
+    end
 end
+
+-- Exported so the insights view can draw the yearly line chart with it too.
+M.LineChartWidget = LineChartWidget
 
 return M

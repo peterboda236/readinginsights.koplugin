@@ -601,6 +601,46 @@ function M.saveMonthlyLayoutSetting(value)
     Prefs.save(M.SETTINGS_KEY_MONTHLY_LAYOUT, value)
 end
 
+-- Style of the yearly (months) chart in the Reading insights popup
+-- (Settings > Reading insight popup > "Months chart style"). "line" (the
+-- default) draws one line with a dot per month, all 12 months in a single
+-- row; "bars" is the older bar chart (which still honours the "Months chart
+-- layout" setting).
+M.SETTINGS_KEY_MONTHLY_STYLE = "reading_insights_monthly_chart_style"
+
+M.MONTHLY_STYLE_LINE = "line"
+
+M.MONTHLY_STYLE_BARS = "bars"
+
+function M.readMonthlyStyleSetting()
+    local v = Prefs.read(M.SETTINGS_KEY_MONTHLY_STYLE, nil)
+    if v == M.MONTHLY_STYLE_BARS then return M.MONTHLY_STYLE_BARS end
+    return M.MONTHLY_STYLE_LINE
+end
+
+function M.saveMonthlyStyleSetting(value)
+    Prefs.save(M.SETTINGS_KEY_MONTHLY_STYLE, value)
+end
+
+-- Style of the "Last 7 days" chart (Settings > Reading insight popup >
+-- "Last 7 days chart style"): "bars" (default) or "line" (smooth line with a
+-- dot per day, like the yearly chart).
+M.SETTINGS_KEY_WEEKLY_STYLE = "reading_insights_weekly_chart_style"
+
+M.WEEKLY_STYLE_BARS = "bars"
+
+M.WEEKLY_STYLE_LINE = "line"
+
+function M.readWeeklyStyleSetting()
+    local v = Prefs.read(M.SETTINGS_KEY_WEEKLY_STYLE, nil)
+    if v == M.WEEKLY_STYLE_LINE then return M.WEEKLY_STYLE_LINE end
+    return M.WEEKLY_STYLE_BARS
+end
+
+function M.saveWeeklyStyleSetting(value)
+    Prefs.save(M.SETTINGS_KEY_WEEKLY_STYLE, value)
+end
+
 function M.readInsightsMode()
     return M.normalizeInsightsMode(Prefs.read(M.INSIGHTS_MODE_KEY, M.INSIGHTS_MODE_HOURS))
 end
