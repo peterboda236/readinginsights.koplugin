@@ -2032,3 +2032,24 @@ msgstr "Bars"
 
 msgid "Last 7 days chart style"
 msgstr "Last 7 days chart style"
+
+msgid "Goal reached"
+msgstr "Goal reached"
+
+msgid "On track"
+msgstr "On track"
+
+msgid "Goal not reached"
+msgstr "Goal not reached"
+
+msgid "book ahead of pace"
+msgstr "book ahead of pace"
+
+msgid "books ahead of pace"
+msgstr "books ahead of pace"
+
+msgid "book behind pace"
+msgstr "book behind pace"
+
+msgid "books behind pace"
+msgstr "books behind pace"

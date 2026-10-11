@@ -1747,3 +1747,24 @@ msgstr "柱状"
 
 msgid "Last 7 days chart style"
 msgstr "过去 7 天图表样式"
+
+msgid "Goal reached"
+msgstr "目标已达成"
+
+msgid "On track"
+msgstr "进度正常"
+
+msgid "Goal not reached"
+msgstr "目标未达成"
+
+msgid "book ahead of pace"
+msgstr "本书领先"
+
+msgid "books ahead of pace"
+msgstr "本书领先"
+
+msgid "book behind pace"
+msgstr "本书落后"
+
+msgid "books behind pace"
+msgstr "本书落后"

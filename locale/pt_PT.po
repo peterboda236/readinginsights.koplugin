@@ -2026,3 +2026,24 @@ msgstr "Barras"
 
 msgid "Last 7 days chart style"
 msgstr "Estilo do gráfico dos últimos 7 dias"
+
+msgid "Goal reached"
+msgstr "Objetivo alcançado"
+
+msgid "On track"
+msgstr "No bom caminho"
+
+msgid "Goal not reached"
+msgstr "Objetivo não alcançado"
+
+msgid "book ahead of pace"
+msgstr "livro à frente"
+
+msgid "books ahead of pace"
+msgstr "livros à frente"
+
+msgid "book behind pace"
+msgstr "livro em atraso"
+
+msgid "books behind pace"
+msgstr "livros em atraso"

@@ -2075,3 +2075,24 @@ msgstr "Стовпці"
 
 msgid "Last 7 days chart style"
 msgstr "Стиль діаграми за останні 7 днів"
+
+msgid "Goal reached"
+msgstr "Мету досягнуто"
+
+msgid "On track"
+msgstr "Все за планом"
+
+msgid "Goal not reached"
+msgstr "Мету не досягнуто"
+
+msgid "book ahead of pace"
+msgstr "книга попереду"
+
+msgid "books ahead of pace"
+msgstr "книг попереду"
+
+msgid "book behind pace"
+msgstr "книга позаду"
+
+msgid "books behind pace"
+msgstr "книг позаду"

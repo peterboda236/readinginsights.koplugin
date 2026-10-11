@@ -2044,3 +2044,24 @@ msgstr "Oszlopok"
 
 msgid "Last 7 days chart style"
 msgstr "Elmúlt 7 nap diagramjának stílusa"
+
+msgid "Goal reached"
+msgstr "Cél teljesítve"
+
+msgid "On track"
+msgstr "Jól haladsz"
+
+msgid "Goal not reached"
+msgstr "Cél nem teljesítve"
+
+msgid "book ahead of pace"
+msgstr "könyvvel előrébb"
+
+msgid "books ahead of pace"
+msgstr "könyvvel előrébb"
+
+msgid "book behind pace"
+msgstr "könyvvel hátrébb"
+
+msgid "books behind pace"
+msgstr "könyvvel hátrébb"

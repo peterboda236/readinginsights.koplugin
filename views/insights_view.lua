@@ -1117,7 +1117,9 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
         -- Same duration format as the rest of the plugin (follows KOReader's
         -- "Duration format" setting): "0:23 / 0:30" classic, "23m / 30m" etc.
         local function goalText(done, goal)
-            return Locale.formatDuration(done, true) .. " / " .. Locale.formatDuration(goal, true)
+            local txt = Locale.formatDuration(done, true) .. " / " .. Locale.formatDuration(goal, true)
+            if goal > 0 and done >= goal then txt = txt .. "  \u{2713}" end  -- goal met
+            return txt
         end
 
         local daily_header_w  = UI.buildSectionHeader(fonts.section, _("Daily goal"),  layout.col_width, 0, HEADER_BG())
@@ -1615,6 +1617,39 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
                 left_value, N_("book finished", "books finished", finished_count))
             local right_line = buildValueLine(fonts.value, fonts.label, layout.col_width,
                 formatCount(percent) .. "%", _("of yearly goal"))
+
+            -- With a goal set, the percentage is replaced by:
+            --   closed year  -> "Goal reached" / "Goal not reached"
+            --   current year -> the pace: "3 books ahead of pace" /
+            --                   "1 book behind pace" / "On track" / "Goal reached"
+            -- Pace uses the day of the year and whole books only (floor), so
+            -- "On track" covers less than a book either way. Text without a
+            -- number is plain label-font text; only numbers are bold.
+            local this_year = tonumber(os.date("%Y"))
+            local function plainText(txt)
+                return buildValueLine(fonts.value, fonts.label, layout.col_width, "", txt)
+            end
+            if goal_value > 0 and goal_year < this_year then
+                right_line = plainText(finished_count >= goal_value
+                    and _("Goal reached") or _("Goal not reached"))
+            elseif goal_value > 0 and goal_year == this_year then
+                local y = goal_year
+                local leap = (y % 4 == 0 and y % 100 ~= 0) or (y % 400 == 0)
+                local expected = goal_value * tonumber(os.date("%j")) / (leap and 366 or 365)
+                local diff = finished_count - expected
+                local n = math.floor(math.abs(diff))
+                if finished_count >= goal_value then
+                    right_line = plainText(_("Goal reached"))
+                elseif n == 0 then
+                    right_line = plainText(_("On track"))
+                elseif diff > 0 then
+                    right_line = buildValueLine(fonts.value, fonts.label, layout.col_width,
+                        formatCount(n), N_("book ahead of pace", "books ahead of pace", n))
+                else
+                    right_line = buildValueLine(fonts.value, fonts.label, layout.col_width,
+                        formatCount(n), N_("book behind pace", "books behind pace", n))
+                end
+            end
 
             local left_cell  = dataCell(left_line, openFinished)
             addHold(left_cell, openFinishedMenu)
