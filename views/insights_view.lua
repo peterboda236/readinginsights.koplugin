@@ -1254,67 +1254,32 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
             local total_pages_unit = N_("page read", "pages read", total_pages_raw)
 
             local weekly_chart_mode = VS.normalizeWeeklyChartMode(popup_self.weekly_chart_mode)
-            local last_week_rows
-            if VS.readWeeklyLayoutSetting() == VS.WEEKLY_LAYOUT_FULL then
-                -- Full layout. Portrait: two 2-column rows (total above,
-                -- daily average below). Landscape: all four values on one row.
-                if isLandscapeScreen() then
-                    local four_row = UI.buildFourColRow(
-                        tappableCell(
-                            buildValueLine(fonts.value, fonts.label, layout.col_width_4, total_time_val, total_time_unit),
-                            layout.col_width_4, function() popup_self:showWeeklyTrendPopup("time_total") end),
-                        tappableCell(
-                            buildValueLine(fonts.value, fonts.label, layout.col_width_4, week_time_val,   week_time_unit_full),
-                            layout.col_width_4, function() popup_self:showWeeklyTrendPopup("time_avg") end),
-                        tappableCell(
-                            buildValueLine(fonts.value, fonts.label, layout.col_width_4, total_pages_val, total_pages_unit),
-                            layout.col_width_4, function() popup_self:showWeeklyTrendPopup("pages_total") end),
-                        tappableCell(
-                            buildValueLine(fonts.value, fonts.label, layout.col_width_4, week_pages_val,  week_pages_unit),
-                            layout.col_width_4, function() popup_self:showWeeklyTrendPopup("pages_avg") end),
-                        layout)
-                    last_week_rows = { four_row }
-                else
-                    local week_row = UI.buildTwoColRow(
-                        tappableCell(
-                            buildValueLine(fonts.value, fonts.label, layout.col_width, week_time_val,   week_time_unit_full),
-                            layout.col_width, function() popup_self:showWeeklyTrendPopup("time_avg") end),
-                        tappableCell(
-                            buildValueLine(fonts.value, fonts.label, layout.col_width, week_pages_val,  week_pages_unit),
-                            layout.col_width, function() popup_self:showWeeklyTrendPopup("pages_avg") end),
-                        layout)
-                    local total_row = UI.buildTwoColRow(
-                        tappableCell(
-                            buildValueLine(fonts.value, fonts.label, layout.col_width, total_time_val, total_time_unit),
-                            layout.col_width, function() popup_self:showWeeklyTrendPopup("time_total") end),
-                        tappableCell(
-                            buildValueLine(fonts.value, fonts.label, layout.col_width, total_pages_val, total_pages_unit),
-                            layout.col_width, function() popup_self:showWeeklyTrendPopup("pages_total") end),
-                        layout)
-                    last_week_rows = { total_row, week_row }
-                end
-            else
-                -- Compact layout (default): one 2-column row driven by the
-                -- chart mode (tap the "Last 7 days" header to switch): time
-                -- view = total time + daily avg time, pages view = total
-                -- pages + daily avg pages.
-                local left_val, left_unit, left_metric, right_val, right_unit, right_metric
-                if weekly_chart_mode == VS.WEEKLY_CHART_MODE_PAGES then
-                    left_val, left_unit, left_metric    = total_pages_val, total_pages_unit, "pages_total"
-                    right_val, right_unit, right_metric = week_pages_val, week_pages_unit, "pages_avg"
-                else
-                    left_val, left_unit, left_metric    = total_time_val, total_time_unit, "time_total"
-                    right_val, right_unit, right_metric = week_time_val, week_time_unit_full, "time_avg"
-                end
-                local week_row = UI.buildTwoColRow(
+            local pages_mode = (weekly_chart_mode == VS.WEEKLY_CHART_MODE_PAGES)
+
+            local time_cells  = { total_time_val, total_time_unit, "time_total",
+                                  week_time_val, week_time_unit_full, "time_avg" }
+            local pages_cells = { total_pages_val, total_pages_unit, "pages_total",
+                                  week_pages_val, week_pages_unit, "pages_avg" }
+
+            -- One 2-column row: total on the left, daily average on the right.
+            local function weekRow(c)
+                return UI.buildTwoColRow(
                     tappableCell(
-                        buildValueLine(fonts.value, fonts.label, layout.col_width, left_val, left_unit),
-                        layout.col_width, function() popup_self:showWeeklyTrendPopup(left_metric) end),
+                        buildValueLine(fonts.value, fonts.label, layout.col_width, c[1], c[2]),
+                        layout.col_width, function() popup_self:showWeeklyTrendPopup(c[3]) end),
                     tappableCell(
-                        buildValueLine(fonts.value, fonts.label, layout.col_width, right_val, right_unit),
-                        layout.col_width, function() popup_self:showWeeklyTrendPopup(right_metric) end),
+                        buildValueLine(fonts.value, fonts.label, layout.col_width, c[4], c[5]),
+                        layout.col_width, function() popup_self:showWeeklyTrendPopup(c[6]) end),
                     layout)
-                last_week_rows = { week_row }
+            end
+
+            -- Compact row (always shown), driven by the chart mode (tap the
+            -- "Last 7 days" header to switch): time view = total time +
+            -- daily avg time, pages view = total pages + daily avg pages.
+            local last_week_rows = { weekRow(pages_mode and pages_cells or time_cells) }
+            -- Optional second row with the other metric.
+            if VS.readWeeklyExtraRow() then
+                table.insert(last_week_rows, weekRow(pages_mode and time_cells or pages_cells))
             end
 
             local weekly_chart = buildWeeklyChart(popup_self, last_week_daily, layout, fonts, weekly_chart_mode)
@@ -1335,6 +1300,46 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
             if weekly_chart then
                 table.insert(last_week_content, VerticalSpan:new{ height = Size.padding.default })
                 table.insert(last_week_content, UI.padded(layout.padding_h, weekly_chart))
+            end
+
+            -- Optional "compared to previous week" row under the chart,
+            -- after a thin divider: change of the total and of the daily
+            -- average against the 7 days before the last 7 days.
+            if VS.readWeeklyVsPrev() then
+                local cur_total, prev_total, fmt_delta
+                if pages_mode then
+                    cur_total  = total_pages_raw
+                    prev_total = math.floor((lw.prev_pages or 0) + 0.5)
+                    fmt_delta = function(d, decimals)
+                        local a = math.abs(d)
+                        local txt = decimals and formatNumber(math.floor(a * 10 + 0.5) / 10, 1)
+                                              or formatCount(math.floor(a + 0.5))
+                        return (d < 0 and "-" or "+") .. txt
+                    end
+                else
+                    cur_total  = math.floor((lw.avg_seconds or 0) * 7 + 0.5)
+                    prev_total = math.floor((lw.prev_seconds or 0) + 0.5)
+                    fmt_delta = function(d)
+                        local a = math.floor(math.abs(d) / 60 + 0.5)
+                        return string.format("%s%02d:%02d", d < 0 and "-" or "+",
+                            math.floor(a / 60), a % 60)
+                    end
+                end
+                local diff_total = cur_total - prev_total
+                local diff_avg   = diff_total / 7
+                local d_total_val = fmt_delta(diff_total)
+                local d_avg_val   = fmt_delta(diff_avg, true)
+                local d_total_unit = pages_mode and _("p vs prev. week") or _("vs prev. week")
+                local d_avg_unit   = pages_mode and _("daily avg pages") or _("daily avg time")
+                local vs_row = UI.buildTwoColRow(
+                    buildValueLine(fonts.value, fonts.label, layout.col_width, d_total_val, d_total_unit),
+                    buildValueLine(fonts.value, fonts.label, layout.col_width, d_avg_val,   d_avg_unit),
+                    layout)
+                table.insert(last_week_content, VerticalSpan:new{ height = Size.padding.default })
+                table.insert(last_week_content, UI.padded(layout.padding_h,
+                    Colors.newBar(layout.content_width, Size.line.thin, Colors.separator())))
+                table.insert(last_week_content, VerticalSpan:new{ height = Size.padding.default })
+                table.insert(last_week_content, UI.padded(layout.padding_h, vs_row))
             end
 
             -- Tapping the header toggles the chart above between reading

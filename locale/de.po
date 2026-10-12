@@ -1067,15 +1067,6 @@ msgstr "Du hast dein Wochenziel %1 Woche in Folge erreicht."
 msgid "You've met your weekly goal %1 weeks in a row."
 msgstr "Du hast dein Wochenziel %1 Wochen in Folge erreicht."
 
-msgid "Last 7 days layout"
-msgstr "Layout der letzten 7 Tage"
-
-msgid "Compact"
-msgstr "Kompakt"
-
-msgid "Full"
-msgstr "Vollständig"
-
 msgid "Last 7 days chapter bar order"
 msgstr "Balkenreihenfolge der letzten 7 Tage"
 
@@ -2047,3 +2038,21 @@ msgstr "Buch im Rückstand"
 
 msgid "books behind pace"
 msgstr "Bücher im Rückstand"
+
+msgid "Last 7 days: time and pages row"
+msgstr "Letzte 7 Tage: Zeit-/Seitenzeile"
+
+msgid "Show a second row with the other metric (pages when the chart shows time, time when it shows pages) below the total and daily average."
+msgstr "Zweite Zeile mit der jeweils anderen Größe unter Summe und Tagesdurchschnitt (Seiten, wenn das Diagramm Zeit zeigt, und umgekehrt)."
+
+msgid "Last 7 days: compared to previous week"
+msgstr "Letzte 7 Tage: Vergleich zur Vorwoche"
+
+msgid "Below the chart, show how the total and the daily average changed compared to the 7 days before."
+msgstr "Zeigt unter dem Diagramm die Änderung von Summe und Tagesschnitt gegenüber den 7 Tagen davor."
+
+msgid "vs prev. week"
+msgstr "zur Vorwoche"
+
+msgid "p vs prev. week"
+msgstr "Seiten zur Vorwoche"

@@ -538,23 +538,33 @@ function M.saveWeeklyGoalMinutes(value)
     Prefs.save(M.SETTINGS_KEY_WEEKLY_GOAL_MIN, value)
 end
 
--- "Last 7 days" layout (Prefs > Advanced settings > Reading insight popup >
--- "Last 7 days layout"). "compact" (default): one row with the week's total and
--- the daily average, for time or pages depending on the chart mode toggled by
--- tapping the header. "full": the previous layout with time and pages
--- (totals and daily averages) all shown at once.
-M.SETTINGS_KEY_WEEKLY_LAYOUT = "reading_insights_weekly_layout"
-M.WEEKLY_LAYOUT_COMPACT = "compact"
-M.WEEKLY_LAYOUT_FULL    = "full"
+-- "Last 7 days" section rows (Prefs > Advanced settings > Reading insight
+-- popup > "Last 7 days"). The compact row (total + daily average of the
+-- selected chart mode, time or pages) is always shown. Two optional extras,
+-- both off by default and independent of each other:
+--   * "Time and pages row": a second row with the other metric (pages when
+--     the chart shows time, time when it shows pages), i.e. what the old
+--     "full" layout added to the compact one.
+--   * "Compared to previous week": under the chart, after a thin divider,
+--     the change of the total and of the daily average against the 7 days
+--     before the last 7 days.
+M.SETTINGS_KEY_WEEKLY_EXTRA_ROW = "reading_insights_weekly_extra_row"
+M.SETTINGS_KEY_WEEKLY_VS_PREV   = "reading_insights_weekly_vs_prev_week"
 
-function M.readWeeklyLayoutSetting()
-    local v = Prefs.read(M.SETTINGS_KEY_WEEKLY_LAYOUT, nil)
-    if v == M.WEEKLY_LAYOUT_FULL then return M.WEEKLY_LAYOUT_FULL end
-    return M.WEEKLY_LAYOUT_COMPACT
+function M.readWeeklyExtraRow()
+    return M.readBoolSetting(M.SETTINGS_KEY_WEEKLY_EXTRA_ROW, false)
 end
 
-function M.saveWeeklyLayoutSetting(value)
-    Prefs.save(M.SETTINGS_KEY_WEEKLY_LAYOUT, value)
+function M.saveWeeklyExtraRow(value)
+    M.saveBoolSetting(M.SETTINGS_KEY_WEEKLY_EXTRA_ROW, value)
+end
+
+function M.readWeeklyVsPrev()
+    return M.readBoolSetting(M.SETTINGS_KEY_WEEKLY_VS_PREV, false)
+end
+
+function M.saveWeeklyVsPrev(value)
+    M.saveBoolSetting(M.SETTINGS_KEY_WEEKLY_VS_PREV, value)
 end
 
 -- "Last 7 days" bar order (Prefs ▸ Advanced settings ▸ Reading insight popup ▸

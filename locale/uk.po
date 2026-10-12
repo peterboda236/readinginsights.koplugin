@@ -1116,15 +1116,6 @@ msgstr "Тижневу мету виконано поспіль, тижнів: %
 msgid "You've met your weekly goal %1 weeks in a row."
 msgstr "Тижневу мету виконано поспіль, тижнів: %1"
 
-msgid "Last 7 days layout"
-msgstr "Вигляд за останні 7 днів"
-
-msgid "Compact"
-msgstr "Компактний"
-
-msgid "Full"
-msgstr "Повний"
-
 msgid "Last 7 days chapter bar order"
 msgstr "Порядок панелі глав за останні 7 днів"
 
@@ -2096,3 +2087,21 @@ msgstr "книга позаду"
 
 msgid "books behind pace"
 msgstr "книг позаду"
+
+msgid "Last 7 days: time and pages row"
+msgstr "Останні 7 днів: рядок час/сторінки"
+
+msgid "Show a second row with the other metric (pages when the chart shows time, time when it shows pages) below the total and daily average."
+msgstr "Показує другий рядок з іншим показником (сторінки, якщо графік показує час, і навпаки) під сумою та середнім за день."
+
+msgid "Last 7 days: compared to previous week"
+msgstr "Останні 7 днів: до минулого тижня"
+
+msgid "Below the chart, show how the total and the daily average changed compared to the 7 days before."
+msgstr "Під графіком показує зміну суми та середнього за день порівняно з попередніми 7 днями."
+
+msgid "vs prev. week"
+msgstr "до мин. тижня"
+
+msgid "p vs prev. week"
+msgstr "стор. до мин. тижня"

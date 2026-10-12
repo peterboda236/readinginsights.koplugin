@@ -706,34 +706,25 @@ function M.build(self, deps)
         })
     end
 
-    -- "Last 7 days" layout: compact (default) shows total + daily average for
-    -- the selected view (time or pages); full is the previous layout.
+    -- "Last 7 days" extras: the compact row (total + daily average) is
+    -- always shown; the second (time and pages) row and the comparison with
+    -- the previous week can each be switched on separately (both off by
+    -- default).
     do
-        local VSet    = deps.ViewSettings
-        local COMPACT = VSet.WEEKLY_LAYOUT_COMPACT
-        local FULL    = VSet.WEEKLY_LAYOUT_FULL
-        local function layoutEntry(value, text)
-            return {
-                text = text,
-                keep_menu_open = true,
-                radio = true,
-                checked_func = function()
-                    return VSet.readWeeklyLayoutSetting() == value
-                end,
-                callback = function() VSet.saveWeeklyLayoutSetting(value) end,
-            }
-        end
+        local VSet = deps.ViewSettings
         table.insert(insights_popup_sub_item_table, {
-            text_func = function()
-                local name = VSet.readWeeklyLayoutSetting() == FULL
-                    and _("Full") or _("Compact")
-                return _("Last 7 days layout") .. ": " .. name
-            end,
+            text = _("Last 7 days: time and pages row"),
+            help_text = _("Show a second row with the other metric (pages when the chart shows time, time when it shows pages) below the total and daily average."),
             keep_menu_open = true,
-            sub_item_table = {
-                layoutEntry(COMPACT, _("Compact")),
-                layoutEntry(FULL,    _("Full")),
-            },
+            checked_func = function() return VSet.readWeeklyExtraRow() end,
+            callback = function() VSet.saveWeeklyExtraRow(not VSet.readWeeklyExtraRow()) end,
+        })
+        table.insert(insights_popup_sub_item_table, {
+            text = _("Last 7 days: compared to previous week"),
+            help_text = _("Below the chart, show how the total and the daily average changed compared to the 7 days before."),
+            keep_menu_open = true,
+            checked_func = function() return VSet.readWeeklyVsPrev() end,
+            callback = function() VSet.saveWeeklyVsPrev(not VSet.readWeeklyVsPrev()) end,
         })
     end
 

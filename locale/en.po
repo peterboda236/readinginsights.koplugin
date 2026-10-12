@@ -1061,15 +1061,6 @@ msgstr "You've met your weekly goal %1 week in a row."
 msgid "You've met your weekly goal %1 weeks in a row."
 msgstr "You've met your weekly goal %1 weeks in a row."
 
-msgid "Last 7 days layout"
-msgstr "Last 7 days layout"
-
-msgid "Compact"
-msgstr "Compact"
-
-msgid "Full"
-msgstr "Full"
-
 msgid "Last 7 days chapter bar order"
 msgstr "Last 7 days chapter bar order"
 
@@ -2053,3 +2044,21 @@ msgstr "book behind pace"
 
 msgid "books behind pace"
 msgstr "books behind pace"
+
+msgid "Last 7 days: time and pages row"
+msgstr "Last 7 days: time and pages row"
+
+msgid "Show a second row with the other metric (pages when the chart shows time, time when it shows pages) below the total and daily average."
+msgstr "Show a second row with the other metric (pages when the chart shows time, time when it shows pages) below the total and daily average."
+
+msgid "Last 7 days: compared to previous week"
+msgstr "Last 7 days: compared to previous week"
+
+msgid "Below the chart, show how the total and the daily average changed compared to the 7 days before."
+msgstr "Below the chart, show how the total and the daily average changed compared to the 7 days before."
+
+msgid "vs prev. week"
+msgstr "vs prev. week"
+
+msgid "p vs prev. week"
+msgstr "p vs prev. week"

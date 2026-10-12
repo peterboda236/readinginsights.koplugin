@@ -126,11 +126,12 @@ local DEFAULTS = {
     records_small    = { file = "NotoSans-Regular.ttf", fallback = "xx_smallinfofont",  size = 15 },
 
     -- Book info popup. The font files are the Book card plugin's own
-    -- defaults for its title / author / series lines (bold, italic, bold);
+    -- defaults for its title / series lines (bold, bold); the author line is
+    -- regular (it used to be italic);
     -- the sizes are set for this popup, where the text sits beside a small
     -- cover instead of under a big one.
     bookinfo_title   = { file = "NotoSans-Bold.ttf",    fallback = "tfont",             size = 24 },
-    bookinfo_author  = { file = "NotoSans-Italic.ttf",  fallback = "x_smallinfofont",   size = 18 },
+    bookinfo_author  = { file = "NotoSans-Regular.ttf", fallback = "x_smallinfofont",   size = 18 },
     bookinfo_series  = { file = "NotoSans-Bold.ttf",    fallback = "x_smallinfofont",   size = 18 },
     bookinfo_description = { file = "NotoSans-Regular.ttf", fallback = "xx_smallinfofont", size = 15 },
 }

@@ -1499,7 +1499,8 @@ function M.getFinishedTimestamp(id_book)
 end
 
 -- Returns both last-week stats in one DB connection:
---   last_week:       { avg_seconds, avg_pages }
+--   last_week:       { avg_seconds, avg_pages, prev_seconds, prev_pages }
+--                    (prev_* = totals of the 7 days before the last 7 days)
 --   last_week_daily: array[7] of { hours, seconds, pages, label, midnight_ts }, index 1 = today
 function M.getLastWeekAll(shared_conn)
     local minute = Cache.currentMinute()
@@ -1520,7 +1521,9 @@ function M.getLastWeekAll(shared_conn)
         return os.time{ year = now_t.year, month = now_t.month, day = now_t.day + day_offset,
                         hour = 0, min = 0, sec = 0 }
     end
-    local week_start_ts = localMidnight(-6)
+    -- The query also covers the 7 days before that, for the "compared to
+    -- previous week" figures.
+    local week_start_ts = localMidnight(-13)
 
     local DOW_KEYS = { [0]="Sun", [1]="Mon", [2]="Tue", [3]="Wed", [4]="Thu", [5]="Fri", [6]="Sat" }
     local date_info = {}
@@ -1537,6 +1540,10 @@ function M.getLastWeekAll(shared_conn)
             label = _(DOW_KEYS[dow] or "")
         end
         date_info[i + 1] = { date_str = date_str, label = label, midnight_ts = day_midnight }
+    end
+    local prev_dates = {}
+    for i = 7, 13 do
+        prev_dates[#prev_dates + 1] = os.date("%Y-%m-%d", localMidnight(-i))
     end
 
     local lw_result    = lw_ok    and Cache._cache.last_week       or { avg_seconds = 0, avg_pages = 0 }
@@ -1571,11 +1578,23 @@ function M.getLastWeekAll(shared_conn)
         end
 
         if not lw_ok then
-            local total_sec   = 0
-            local total_pages = 0
-            for _, secs in pairs(seconds_by_date) do total_sec   = total_sec   + secs end
-            for _, pgs  in pairs(pages_by_date)   do total_pages = total_pages + pgs  end
-            lw_result = { avg_seconds = total_sec / 7, avg_pages = total_pages / 7 }
+            local total_sec, total_pages = 0, 0
+            for i = 1, 7 do
+                local ds = date_info[i].date_str
+                total_sec   = total_sec   + (seconds_by_date[ds] or 0)
+                total_pages = total_pages + (pages_by_date[ds]   or 0)
+            end
+            local prev_sec, prev_pages = 0, 0
+            for _, ds in ipairs(prev_dates) do
+                prev_sec   = prev_sec   + (seconds_by_date[ds] or 0)
+                prev_pages = prev_pages + (pages_by_date[ds]   or 0)
+            end
+            lw_result = {
+                avg_seconds  = total_sec / 7,
+                avg_pages    = total_pages / 7,
+                prev_seconds = prev_sec,
+                prev_pages   = prev_pages,
+            }
         end
 
         if not daily_ok then

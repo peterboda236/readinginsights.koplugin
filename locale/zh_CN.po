@@ -796,15 +796,6 @@ msgstr "您已连续 %1 周达成每周目标。"
 msgid "You've met your weekly goal %1 weeks in a row."
 msgstr "您已连续 %1 周达成每周目标。"
 
-msgid "Last 7 days layout"
-msgstr "过去 7 天布局"
-
-msgid "Compact"
-msgstr "紧凑"
-
-msgid "Full"
-msgstr "完整"
-
 msgid "Last 7 days chapter bar order"
 msgstr "过去 7 天章节条排列顺序"
 msgid "Today on the left"
@@ -1768,3 +1759,21 @@ msgstr "本书落后"
 
 msgid "books behind pace"
 msgstr "本书落后"
+
+msgid "Last 7 days: time and pages row"
+msgstr "过去 7 天：时间和页数行"
+
+msgid "Show a second row with the other metric (pages when the chart shows time, time when it shows pages) below the total and daily average."
+msgstr "在总计和日均下方显示第二行，内容为另一项指标（图表显示时间时为页数，显示页数时为时间）。"
+
+msgid "Last 7 days: compared to previous week"
+msgstr "过去 7 天：与上周对比"
+
+msgid "Below the chart, show how the total and the daily average changed compared to the 7 days before."
+msgstr "在图表下方显示总计和日均与前 7 天相比的变化。"
+
+msgid "vs prev. week"
+msgstr "较上周"
+
+msgid "p vs prev. week"
+msgstr "页 较上周"
