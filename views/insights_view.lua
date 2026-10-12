@@ -534,6 +534,12 @@ local function isBeforeFirstData(popup_self, m)
     return not has_value
 end
 
+-- Horizontal gap between bars, shared by the weekly and monthly charts so
+-- the two read with the same rhythm (bar widths differ with the bar count).
+local function CHART_BAR_GAP()
+    return tonumber(Screen:scaleBySize(8))
+end
+
 -- What the yearly chart plots for a month. In the "days read" view it is the
 -- share of the month read (days / days in that month), so a month read
 -- through every day stands as high as any other fully read month - 30, 31
@@ -811,8 +817,14 @@ local function buildMonthlyChart(popup_self, monthly_data, layout, fonts)
     -- portrait back to two rows of 6 months.
     local months_per_row = (isLandscapeScreen()
         or VS.readMonthlyLayoutSetting() ~= VS.MONTHLY_LAYOUT_TWO_ROWS) and 12 or 6
-    local bar_width    = math.floor(chart_width / months_per_row) - tonumber(Screen:scaleBySize(8))
-    local bar_gap      = math.floor((chart_width - bar_width * months_per_row) / (months_per_row - 1))
+    -- Same fixed gap as the weekly chart (CHART_BAR_GAP); the bar width
+    -- follows from it.
+    local bar_width    = math.floor((chart_width - CHART_BAR_GAP() * (months_per_row - 1)) / months_per_row)
+    local bar_gap      = CHART_BAR_GAP()
+    -- Pixels left over after the integer bar width: split evenly on the two
+    -- sides so the gap stays exactly CHART_BAR_GAP and the chart stays centred.
+    local lead_pad     = math.floor((chart_width - bar_width * months_per_row
+                                     - bar_gap * (months_per_row - 1)) / 2)
     local font_small   = fonts.small
 
     local sample_label = TextWidget:new{ text = "0", face = font_small }
@@ -913,6 +925,11 @@ local function buildMonthlyChart(popup_self, monthly_data, layout, fonts)
             end
         end
 
+        if lead_pad > 0 then
+            table.insert(bars_row,         1, HorizontalSpan:new{ width = lead_pad })
+            table.insert(month_labels_row, 1, HorizontalSpan:new{ width = lead_pad })
+        end
+
         return VerticalGroup:new{
             align = "center",
             bars_row,
@@ -1003,8 +1020,13 @@ local function buildWeeklyChart(popup_self, daily_data, layout, fonts, mode)
     VS.Opt.built_weekly = true
     local bar_height   = tonumber(Screen:scaleBySize(VS.Opt.weeklyBarHeight()))
     local num_bars     = 7
-    local bar_width    = math.floor(chart_width / num_bars) - tonumber(Screen:scaleBySize(6))
-    local bar_gap      = math.floor((chart_width - bar_width * num_bars) / (num_bars - 1))
+    -- Same fixed gap as the monthly chart (CHART_BAR_GAP); the bar width
+    -- follows from it.
+    local bar_width    = math.floor((chart_width - CHART_BAR_GAP() * (num_bars - 1)) / num_bars)
+    local bar_gap      = CHART_BAR_GAP()
+    -- Leftover pixels split on both sides (see the monthly chart).
+    local lead_pad     = math.floor((chart_width - bar_width * num_bars
+                                     - bar_gap * (num_bars - 1)) / 2)
     local font_small   = fonts.small
 
     local sample_label = TextWidget:new{ text = "0", face = font_small }
@@ -1090,6 +1112,11 @@ local function buildWeeklyChart(popup_self, daily_data, layout, fonts, mode)
             table.insert(bars_row,       HorizontalSpan:new{ width = bar_gap })
             table.insert(day_labels_row, HorizontalSpan:new{ width = bar_gap })
         end
+    end
+
+    if lead_pad > 0 then
+        table.insert(bars_row,       1, HorizontalSpan:new{ width = lead_pad })
+        table.insert(day_labels_row, 1, HorizontalSpan:new{ width = lead_pad })
     end
 
     return VerticalGroup:new{
