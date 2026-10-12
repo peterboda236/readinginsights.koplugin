@@ -176,7 +176,7 @@ end
 -- setting picked up immediately, without needing our own extra cache.
 --
 -- `scale` (optional, default 1) shrinks all four roles by the same factor;
--- used by _buildUI's landscape fit (see there) to get rid of the scroll bar.
+-- used by _buildUI's font fit (see there) to get rid of the scroll bar.
 local function buildSerifFonts(scale)
     return {
         section = Fonts.getScaledFace("insights_section", scale),
@@ -806,13 +806,11 @@ local function buildMonthlyChart(popup_self, monthly_data, layout, fonts)
     local chart_width  = layout.content_width
     VS.Opt.built_monthly = true
     local bar_height   = tonumber(Screen:scaleBySize(VS.Opt.monthlyBarHeight()))
-    -- Portrait: two rows of up to 6 months. Landscape: the popup is wide
-    -- enough to fit all 12 months on one row, so the year reads as a
-    -- single strip instead of two stacked ones.
-    -- The "Months chart layout" setting can also force the single 12-month
-    -- row in portrait (default: two rows of 6).
+    -- Default (and landscape): all 12 months on one row, so the year reads
+    -- as a single strip. The "Months chart layout" setting can switch
+    -- portrait back to two rows of 6 months.
     local months_per_row = (isLandscapeScreen()
-        or VS.readMonthlyLayoutSetting() == VS.MONTHLY_LAYOUT_ONE_ROW) and 12 or 6
+        or VS.readMonthlyLayoutSetting() ~= VS.MONTHLY_LAYOUT_TWO_ROWS) and 12 or 6
     local bar_width    = math.floor(chart_width / months_per_row) - tonumber(Screen:scaleBySize(8))
     local bar_gap      = math.floor((chart_width - bar_width * months_per_row) / (months_per_row - 1))
     local font_small   = fonts.small
@@ -2479,7 +2477,7 @@ function ReadingInsightsPopup:_buildUI()
     local screen_h = Screen:getHeight()
     local fonts    = getCachedFonts()
     local layout   = getCachedLayout()
-    -- Landscape-only text scale (1 = the configured sizes). Lowered by the
+    -- Text scale (1 = the configured sizes). Lowered by the
     -- fit step below when the page is taller than the screen even after the
     -- bar charts have been sized; everything in the popup that is text goes
     -- through `fonts`, so changing it and rebuilding scales all of it.
@@ -2676,11 +2674,11 @@ function ReadingInsightsPopup:_buildUI()
         end
     end
 
-    -- Landscape only: if the page is still taller than the screen here (the
+    -- Landscape and portrait: if the page is still taller than the screen here (the
     -- bar charts are at their smallest, or auto height is off and the fixed
     -- heights are too big) the scroll bar would show up. Shrink every font
     -- by the same percentage until the content fits and the scroll bar is
-    -- gone. Portrait keeps its configured font sizes untouched.
+    -- gone. If everything fits, the configured font sizes stay untouched.
     --
     -- Like the bar fit above, each step is measured, not predicted: text
     -- height shrinks roughly in proportion to the scale while the bars and
@@ -2700,7 +2698,7 @@ function ReadingInsightsPopup:_buildUI()
         VS.Opt.settings_sig = sig
     end
 
-    if isLandscapeScreen() and content_h > screen_h then
+    if content_h > screen_h then
         local FONT_SCALE_MIN = 0.5
         local remembered     = VS.Opt.font_scale
         local scale          = 1

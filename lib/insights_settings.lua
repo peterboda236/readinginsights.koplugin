@@ -581,10 +581,10 @@ function M.saveWeeklyBarOrderSetting(value)
 end
 
 -- Layout of the yearly (months) bar chart in the Reading insights popup
--- (Settings > Reading insight popup > "Months chart layout"). "two_rows" is
--- the default and what the chart always did: two rows of 6 months in
--- portrait. "one_row" draws all 12 months in a single row. Landscape always
--- uses a single row regardless of this setting.
+-- (Settings > Reading insight popup > "Months chart layout"). "one_row" is
+-- the default: all 12 months in a single row. "two_rows" draws two rows of
+-- 6 months in portrait. Landscape always uses a single row regardless of
+-- this setting.
 M.SETTINGS_KEY_MONTHLY_LAYOUT = "reading_insights_monthly_chart_layout"
 
 M.MONTHLY_LAYOUT_TWO_ROWS = "two_rows"
@@ -593,8 +593,8 @@ M.MONTHLY_LAYOUT_ONE_ROW  = "one_row"
 
 function M.readMonthlyLayoutSetting()
     local v = Prefs.read(M.SETTINGS_KEY_MONTHLY_LAYOUT, nil)
-    if v == M.MONTHLY_LAYOUT_ONE_ROW then return M.MONTHLY_LAYOUT_ONE_ROW end
-    return M.MONTHLY_LAYOUT_TWO_ROWS
+    if v == M.MONTHLY_LAYOUT_TWO_ROWS then return M.MONTHLY_LAYOUT_TWO_ROWS end
+    return M.MONTHLY_LAYOUT_ONE_ROW
 end
 
 function M.saveMonthlyLayoutSetting(value)
