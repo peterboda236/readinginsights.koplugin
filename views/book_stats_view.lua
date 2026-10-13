@@ -64,9 +64,9 @@ local Screen = Device.screen
 -- header comment above).
 -- Shared modules, passed in as one named table by main.lua (see there).
 local deps = ...
-local Locale, Colors, Fonts, Prefs, BookProgress, BookCalendar, ChapterInfo, ChapterBar, ProgressBar, SkimBar, UI, BookStatsData, VS, Donut =
+local Locale, Colors, Fonts, Prefs, BookProgress, BookCalendar, ChapterInfo, ChapterBar, SkimBar, UI, BookStatsData, VS, Donut =
     deps.Locale, deps.Colors, deps.Fonts, deps.Prefs, deps.BookProgress,
-    deps.BookCalendar, deps.ChapterInfo, deps.ChapterBar, deps.ProgressBar, deps.SkimBar, deps.UI,
+    deps.BookCalendar, deps.ChapterInfo, deps.ChapterBar, deps.SkimBar, deps.UI,
     deps.BookStatsData, deps.VS, deps.Donut
 local _            = Locale._
 local N_           = Locale.N_
@@ -484,6 +484,18 @@ local function buildSections(stats, fonts, layout, popup)
     local book_pages_read = valueLine(stats.book_pages_read, "")
     local book_col1       = valueLine(stats.book_time_spent_hhmm, _("read so far"))
     local book_col2       = valueLine(stats.book_time_left_hhmm, _("reading time left"))
+
+    -- Thin progress bars (Settings > Book progress popup > Progress bars):
+    -- under the "This chapter" row and under the book percentage row, in the
+    -- chart's active / inactive bar colors. The chapter bar sits inside the
+    -- left cell (one column wide; the column separator runs down past it and
+    -- the neighbouring cell is padded to the same height). The book bar sits
+    -- under the percentage row of "This book" and spans up to the right padding.
+    local show_cell_bars = VS.Opt.readShowCellBars()
+    local small_face = Fonts.getFace("insights_small")
+    local function rowBar(ratio, width, placement)
+        return UI.buildRowBar(ratio, width, fonts.value, small_face, placement)
+    end
     -- "read today" / "avg time/day" can show either time (default) or page
     -- counts - toggled by tapping the pace row (see ReadingStatsPopup:onTapClose).
     -- popup._pace_view_mode is nil/"time" by default; "pages" once toggled.
@@ -544,7 +556,7 @@ local function buildSections(stats, fonts, layout, popup)
     -- on the left only (content ends padding_h short of the right edge); the
     -- chapter bar, which pads both sides, was the one widget that spanned the
     -- full width and so set the width of the (centered) frame. With that bar
-    -- off the frame shrank by padding_h and the progress bar ended flush
+    -- off the frame shrank by padding_h and the content ended flush
     -- against the right border. The strut keeps the width fixed either way.
     table.insert(sections, HorizontalSpan:new{ width = layout.full_width })
 
@@ -581,6 +593,13 @@ local function buildSections(stats, fonts, layout, popup)
             left_val,  right_val  = chapter_val2, valueLine(UI.emptyValue(), "")
         end
         local chapter_headers_content = buildChapterHeaders(fonts.section, layout, left_text, right_text)
+        if show_cell_bars and show_cur then
+            local extra
+            left_val, extra = UI.withCellBar(left_val,
+                stats.chapter_progress_ratio or stats.book_progress_ratio,
+                layout.col_width, fonts.value, small_face)
+            right_val = UI.padBottom(right_val, extra)
+        end
         local chapter_values_content  = UI.buildTwoColRow(left_val, right_val, layout, not (show_cur and show_next))
         -- Wrapped in tappableWrap (fixed dimen) rather than used raw, so tapping
         -- either row reliably hits (same reasoning as started_tap/finish_tap
@@ -625,8 +644,8 @@ local function buildSections(stats, fonts, layout, popup)
         )
 
     -- ===== This book ====================================================
-    -- Parts: the reading-time row, the "read" row (percent + pages), the
-    -- progress bar and the chapter bar.
+    -- Parts: the "read" row (percent + pages, with its progress bar), the
+    -- reading-time row and the chapter bar.
     -- "Donut chart" section style: the pages and the times are always
     -- shown (the menu toggles are greyed out); the saved toggles only
     -- apply to the "Classic" style.
@@ -635,19 +654,10 @@ local function buildSections(stats, fonts, layout, popup)
     local show_read_row = donut_forced or Opt.readShowBookReadRow()
     local show_time_row = donut_forced or Opt.readShowBookTimeRow()
 
-    -- Progress bar: a black/gray (by default) filled bar showing how far
-    -- into the book the reader is. Toggle + colors + height are all user
-    -- settings (Settings > Book progress popup >
-    -- Progress bar); skipped entirely when off or when there's no width to
-    -- draw it in.
-    local progress_bar_widget = nil
     -- "Donut chart" section style: the donut row replaces the read / time
-    -- rows and the linear progress bar (it shows the same progress).
+    -- rows (it shows the same progress as the bar under the percentage).
     local donut_style = Donut ~= nil
         and Opt.readBookSectionStyle() == Opt.BOOK_SECTION_STYLE_DONUT
-    if ProgressBar and Opt.readShowProgressBar() and not donut_style then
-        progress_bar_widget = ProgressBar.build(stats.book_progress_ratio, layout.content_width)
-    end
     -- Chapter bar style (Settings > Book progress popup):
     -- the per-chapter bar chart, or one KOReader-Skim-style bar with chapter
     -- separators and the position marker. The skim bar needs no TOC (without
@@ -756,7 +766,7 @@ local function buildSections(stats, fonts, layout, popup)
         end
     end
 
-    if has_book_rows or progress_bar_widget or skim_in_book then
+    if has_book_rows or skim_in_book then
         sectionSeparator()
 
         local this_book_title = _("This book")
@@ -777,29 +787,26 @@ local function buildSections(stats, fonts, layout, popup)
             table.insert(this_book_rows,
                 buildDonutBookRow(stats, fonts, layout, show_read_row, show_time_row))
         elseif has_book_rows then
-            this_book_rows = VerticalGroup:new{ align = "center" }
-            -- Row order depends on the progress bar: with the bar on, the
-            -- "read" row (percent + pages) sits under the reading-time row,
-            -- right above the bar; with the bar off, it moves to the top.
+            this_book_rows = VerticalGroup:new{ align = "left" }
             local function addTimeRow()
                 table.insert(this_book_rows, UI.buildTwoColRow(book_col1, book_col2, layout))
             end
             local function addReadRow()
                 table.insert(this_book_rows, UI.buildTwoColRow(book_progress, book_pages_read, layout))
             end
-            local first_row, second_row
-            if progress_bar_widget then
-                first_row  = show_time_row and addTimeRow or nil
-                second_row = show_read_row and addReadRow or nil
-            else
-                first_row  = show_read_row and addReadRow or nil
-                second_row = show_time_row and addTimeRow or nil
-            end
+            -- Reading-time row first, then the percentage row with its
+            -- progress bar directly under it (full row width, up to the right
+            -- padding), so the bar clearly belongs to the percentage.
+            local first_row  = show_time_row and addTimeRow or nil
+            local second_row = show_read_row and addReadRow or nil
             if first_row then first_row() end
             if first_row and second_row then
                 table.insert(this_book_rows, VerticalSpan:new{ height = Size.padding.default })
             end
             if second_row then second_row() end
+            if show_cell_bars and show_read_row then
+                table.insert(this_book_rows, rowBar(stats.book_progress_ratio, layout.content_width))
+            end
         end
 
         if skim_in_book then
@@ -823,36 +830,6 @@ local function buildSections(stats, fonts, layout, popup)
                 layout,
                 { no_bottom_line = true }
             )
-        else
-            -- Only the progress bar in this section: header and its thin
-            -- divider, then the bar directly below.
-            table.insert(sections, this_book_header)
-            table.insert(sections, VerticalSpan:new{ height = Size.padding.default })
-            table.insert(sections, UI.padded(layout.padding_h,
-                Colors.newBar(layout.content_width, Size.line.thin, Colors.separator())))
-        end
-
-        if progress_bar_widget then
-            -- Gap above the bar matching the padding that already surrounds the
-            -- divider line shown above the chapter bar when the progress bar is
-            -- off (UI.addSectionWithRow's own trailing
-            -- VerticalSpan{height = Size.padding.large} after this_book_rows,
-            -- above): reuse that same amount here. No extra gap below the bar -
-            -- in the off state nothing sits between the divider line and the
-            -- chapter bar either, so adding one here made the bar's bottom
-            -- spacing bigger than the line's.
-            -- Default padding below the bar, same as the skim bar gets. Done
-            -- via FrameContainer padding_bottom, not VerticalSpan: a
-            -- VerticalSpan's size property is "width" ("height" is ignored
-            -- and reserves no space).
-            table.insert(sections, FrameContainer:new{
-                bordersize     = 0,
-                padding        = 0,
-                padding_bottom = Size.padding.default,
-                margin         = 0,
-                background     = Blitbuffer.COLOR_WHITE,
-                UI.padded(layout.padding_h, progress_bar_widget),
-            })
         end
     end
 
@@ -1146,7 +1123,7 @@ function ReadingStatsPopup:gatherStats()
     local progress_percent = BookProgress.percent(ui)
     if progress_percent then
         stats.book_progress = { value = formatCount(progress_percent) .. "%", unit = "" }
-        -- Fraction (0.0..1.0) for the progress bar widget - kept alongside
+        -- Fraction (0.0..1.0) for the progress bars - kept alongside
         -- book_progress rather than re-derived from its formatted "N%"
         -- string, the same "keep the raw number, not just its formatted
         -- text" reasoning as total_pages_for_calendar below.
@@ -1343,6 +1320,18 @@ function ReadingStatsPopup:gatherStats()
         -- Typical (median) chapter length (pages, and reading time at the current
         -- pace) for the row under the chapter bar chart.
         local ci = stats.chapter_info
+        -- How far into the current chapter the reader is (0..1), for the
+        -- bar under "This chapter": from the pages left in it, so it reaches
+        -- 100% on the chapter's last page.
+        do
+            local pl = stats.chapter_pages_left_count
+            local pc = ci and ci.page_counts and ci.current and ci.page_counts[ci.current]
+            if pl and pc and pc > 0 then
+                stats.chapter_progress_ratio = math.max(0, math.min(1, 1 - pl / pc))
+            elseif ci then
+                stats.chapter_progress_ratio = ci.chapter_progress_ratio
+            end
+        end
         -- On the very last page of the book the last chapter is finished too.
         if ci and doc and doc.getTotalPagesLeft then
             local left = doc:getTotalPagesLeft(pageno)

@@ -246,11 +246,12 @@ M.Opt = {
     SHOW_PACE_DATES_KEY      = "reading_insights_book_show_pace_dates",
     SHOW_PACE_DATES_DEFAULT  = true,
 
-    -- Book progress popup: whether the progress bar (the black/gray filled
-    -- bar between the "This book" header and the percentage row) is shown.
-    -- On by default. See widgets/progressbarwidget.lua for the bar itself.
-    SHOW_PROGRESS_BAR_KEY     = "reading_insights_book_show_progress_bar",
-    SHOW_PROGRESS_BAR_DEFAULT = true,
+    -- Book progress popup: whether the thin (5 px) progress bars under the
+    -- "This chapter" value and under the book percentage are shown (drawn
+    -- with the chart's active / inactive bar colors, see UI.buildRowBar in
+    -- lib/uikit.lua). On by default.
+    SHOW_CELL_BARS_KEY     = "reading_insights_book_show_cell_bars",
+    SHOW_CELL_BARS_DEFAULT = true,
 
     -- Book progress popup: which rows / columns are shown. All on by default.
     -- A section whose parts are all off is hidden with its header (see
@@ -283,7 +284,7 @@ M.Opt = {
     BOOK_POPUP_POSITION_CENTER = "center",
 
     -- Book progress popup, "This book" section: "classic" is the original
-    -- rows (percent + pages, time read + time left, optional progress bar);
+    -- rows (percent + pages, time read + time left);
     -- "donut" replaces them with one large donut chart (percentage in the
     -- middle, "read" beside it) on the left and, after the column divider,
     -- pages / time read / time left stacked on the right. Settings >
@@ -843,12 +844,12 @@ function M.Opt.saveBookSectionStyle(value)
     Prefs.save(M.Opt.BOOK_SECTION_STYLE_KEY, value)
 end
 
-function M.Opt.readShowProgressBar()
-    return M.readBoolSetting(M.Opt.SHOW_PROGRESS_BAR_KEY, M.Opt.SHOW_PROGRESS_BAR_DEFAULT)
+function M.Opt.readShowCellBars()
+    return M.readBoolSetting(M.Opt.SHOW_CELL_BARS_KEY, M.Opt.SHOW_CELL_BARS_DEFAULT)
 end
 
-function M.Opt.saveShowProgressBar(value)
-    M.saveBoolSetting(M.Opt.SHOW_PROGRESS_BAR_KEY, value)
+function M.Opt.saveShowCellBars(value)
+    M.saveBoolSetting(M.Opt.SHOW_CELL_BARS_KEY, value)
 end
 
 -- Reading insights popup's title-bar hamburger menu (Settings > Advanced

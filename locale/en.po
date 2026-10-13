@@ -824,9 +824,6 @@ msgstr "Daily streak day"
 msgid "Weekly streak gap day"
 msgstr "Weekly streak gap day"
 
-msgid "Book progress bar"
-msgstr "Book progress bar"
-
 msgid "Show long durations (24h+) as days"
 msgstr "Show long durations (24h+) as days"
 
@@ -1673,18 +1670,6 @@ msgstr "Chapters per page"
 msgid "How many chapters the chapter bar shows at once before paging with the arrows."
 msgstr "How many chapters the chapter bar shows at once before paging with the arrows."
 
-msgid "Progress bar"
-msgstr "Progress bar"
-
-msgid "Show progress bar"
-msgstr "Show progress bar"
-
-msgid "Show the progress bar in the \"This book\" section."
-msgstr "Show the progress bar in the \"This book\" section."
-
-msgid "Progress bar height"
-msgstr "Progress bar height"
-
 msgid "Read portion color"
 msgstr "Read portion color"
 
@@ -2068,3 +2053,9 @@ msgstr "Daily / weekly goal bar"
 
 msgid "Show a thin progress bar under the daily and weekly goal values."
 msgstr "Show a thin progress bar under the daily and weekly goal values."
+
+msgid "Progress bars"
+msgstr "Progress bars"
+
+msgid "Show a thin progress bar under the current chapter and under the book percentage."
+msgstr "Show a thin progress bar under the current chapter and under the book percentage."

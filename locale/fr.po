@@ -830,9 +830,6 @@ msgstr "Jour de série quotidienne"
 msgid "Weekly streak gap day"
 msgstr "Jour de rupture de série hebdomadaire"
 
-msgid "Book progress bar"
-msgstr "Barre de progression du livre"
-
 msgid "Show long durations (24h+) as days"
 msgstr "Afficher les longues durées (24 h+) en jours"
 
@@ -1703,18 +1700,6 @@ msgstr "Chapitres par page"
 msgid "How many chapters the chapter bar shows at once before paging with the arrows."
 msgstr "Nombre de chapitres que la barre de chapitres affiche à la fois avant de paginer avec les flèches."
 
-msgid "Progress bar"
-msgstr "Barre de progression"
-
-msgid "Show progress bar"
-msgstr "Afficher la barre de progression"
-
-msgid "Show the progress bar in the \"This book\" section."
-msgstr "Afficher la barre de progression dans la section « Ce livre »."
-
-msgid "Progress bar height"
-msgstr "Hauteur de la barre de progression"
-
 msgid "Read portion color"
 msgstr "Couleur de la partie lue"
 
@@ -2062,3 +2047,9 @@ msgstr "Barre d'objectif quotidien / hebdomadaire"
 
 msgid "Show a thin progress bar under the daily and weekly goal values."
 msgstr "Afficher une fine barre de progression sous les objectifs quotidien et hebdomadaire."
+
+msgid "Progress bars"
+msgstr "Barres de progression"
+
+msgid "Show a thin progress bar under the current chapter and under the book percentage."
+msgstr "Afficher une fine barre de progression sous le chapitre en cours et sous le pourcentage du livre."

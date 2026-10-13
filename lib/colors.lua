@@ -153,12 +153,6 @@ local HEATMAP_KEY_ORDER = { "heatmap_0", "heatmap_25", "heatmap_50", "heatmap_75
 -- setting.
 local STREAK_KEY_ORDER = { "streak_read", "streak_gap" }
 
--- The "This book" progress bar's two colors, grouped together under their
--- own "Book progress bar" submenu in the Colors menu (same pattern as
--- HEATMAP_KEY_ORDER/STREAK_KEY_ORDER above). Still included in
--- ALL_KEY_ORDER so "Reset all colors to default" covers them too.
-local PROGRESS_BAR_KEY_ORDER = { "progress_bar_read", "progress_bar_unread" }
-
 -- The skim bar's two colors (the KOReader-Skim-style chapter bar, see
 -- widgets/skimbarwidget.lua), grouped under their own "Skim bar" submenu.
 -- Separate from the two pairs above so the bar can be colored on its own.
@@ -166,17 +160,15 @@ local SKIM_BAR_KEY_ORDER = { "skim_bar_read", "skim_bar_unread" }
 
 -- The donut chart's two colors (the "Donut chart" Book section style, see
 -- widgets/donutwidget.lua), grouped under their own "Donut chart" submenu.
--- Separate from the linear progress bar's pair so the two can differ.
 local DONUT_KEY_ORDER = { "donut_read", "donut_unread" }
 
--- Every color key that exists, flat + heatmap + streak + progress bar
+-- Every color key that exists, flat + heatmap + streak + skim bar + donut
 -- combined - used wherever the code needs to touch *all* colors (e.g.
 -- "reset all colors to default").
 local ALL_KEY_ORDER = {}
 for _, key in ipairs(KEY_ORDER) do table.insert(ALL_KEY_ORDER, key) end
 for _, key in ipairs(HEATMAP_KEY_ORDER) do table.insert(ALL_KEY_ORDER, key) end
 for _, key in ipairs(STREAK_KEY_ORDER) do table.insert(ALL_KEY_ORDER, key) end
-for _, key in ipairs(PROGRESS_BAR_KEY_ORDER) do table.insert(ALL_KEY_ORDER, key) end
 for _, key in ipairs(SKIM_BAR_KEY_ORDER) do table.insert(ALL_KEY_ORDER, key) end
 for _, key in ipairs(DONUT_KEY_ORDER) do table.insert(ALL_KEY_ORDER, key) end
 
@@ -213,13 +205,6 @@ local DEFAULTS = {
     --   (the weekly streak is secured for that week) - light gray.
     streak_read  = "#555555",
     streak_gap   = "#CCCCCC",
-    -- Book progress popup: the "This book" progress bar (see
-    -- widgets/progressbarwidget.lua). progress_bar_read is the filled
-    -- (already-read) portion, progress_bar_unread the remaining portion -
-    -- black and light gray by default, distinct from active_bar/
-    -- inactive_bar above so the two bars can be colored independently.
-    progress_bar_read   = "#000000",
-    progress_bar_unread = "#E0E0E0",
     -- Book progress popup: the skim-style chapter bar (see
     -- widgets/skimbarwidget.lua). skim_bar_read fills the bar up to the
     -- current page, skim_bar_unread the rest. Chapter separators are drawn
@@ -356,8 +341,6 @@ function M.heatmap75()   return M.getColor("heatmap_75")   end
 function M.heatmap100()  return M.getColor("heatmap_100")  end
 function M.streakRead()  return M.getColor("streak_read")  end
 function M.streakGap()   return M.getColor("streak_gap")   end
-function M.progressBarRead()   return M.getColor("progress_bar_read")   end
-function M.progressBarUnread() return M.getColor("progress_bar_unread") end
 function M.skimBarRead()   return M.getColor("skim_bar_read")   end
 function M.skimBarUnread() return M.getColor("skim_bar_unread") end
 function M.donutRead()     return M.getColor("donut_read")       end
@@ -383,8 +366,6 @@ local function labelFor(key)
         heatmap_100  = _("Peak activity (100%)"),
         streak_read  = _("Daily streak day"),
         streak_gap   = _("Weekly streak gap day"),
-        progress_bar_read   = _("Read portion color"),
-        progress_bar_unread = _("Unread portion color"),
         skim_bar_read       = _("Read portion color"),
         skim_bar_unread     = _("Unread portion color"),
         donut_read          = _("Read portion color"),
@@ -486,8 +467,7 @@ local function colorItem(key, on_change)
     }
 end
 
--- Exposed so other menus (e.g. the "Book progress popup > Progress bar"
--- submenu in menu.lua) can drop in a single "tap to edit hex" entry for one
+-- Exposed so other menus (e.g. a submenu in menu.lua) can drop in a single "tap to edit hex" entry for one
 -- of their own colors, without duplicating showHexInputDialog/colorItem or
 -- pulling in the rest of the flat Colors menu.
 M.colorItem = colorItem
@@ -520,16 +500,6 @@ function M.buildMenu(on_change)
         text = _("Reading streak calendar"),
         keep_menu_open = true,
         sub_item_table = streak_sub_item_table,
-    })
-
-    local progress_bar_sub_item_table = {}
-    for _, key in ipairs(PROGRESS_BAR_KEY_ORDER) do
-        table.insert(progress_bar_sub_item_table, colorItem(key, on_change))
-    end
-    table.insert(sub_item_table, {
-        text = _("Book progress bar"),
-        keep_menu_open = true,
-        sub_item_table = progress_bar_sub_item_table,
     })
 
     local skim_bar_sub_item_table = {}

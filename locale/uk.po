@@ -858,9 +858,6 @@ msgstr "День щоденної серії"
 msgid "Weekly streak gap day"
 msgstr "День пропуску тижневої серії"
 
-msgid "Book progress bar"
-msgstr "Смуга прогресу книги"
-
 msgid "Show long durations (24h+) as days"
 msgstr "Показати тривалі періоди (24г+) у днях"
 
@@ -1752,18 +1749,6 @@ msgstr "Глав на сторінку"
 msgid "How many chapters the chapter bar shows at once before paging with the arrows."
 msgstr "Скільки глав показує панель глав одночасно, перш ніж перегортати стрілками."
 
-msgid "Progress bar"
-msgstr "Смуга прогресу"
-
-msgid "Show progress bar"
-msgstr "Показати смугу прогресу"
-
-msgid "Show the progress bar in the \"This book\" section."
-msgstr "Показати смугу прогресу в розділі «Ця книга»."
-
-msgid "Progress bar height"
-msgstr "Висота смуги прогресу"
-
 msgid "Read portion color"
 msgstr "Колір прочитаної частини"
 
@@ -2111,3 +2096,9 @@ msgstr "Смуга денної / тижневої мети"
 
 msgid "Show a thin progress bar under the daily and weekly goal values."
 msgstr "Показувати тонку смугу прогресу під значеннями денної та тижневої мети."
+
+msgid "Progress bars"
+msgstr "Смуги прогресу"
+
+msgid "Show a thin progress bar under the current chapter and under the book percentage."
+msgstr "Показувати тонку смугу прогресу під поточним розділом і під відсотком прочитаного в книзі."

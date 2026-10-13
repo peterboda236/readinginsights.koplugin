@@ -128,6 +128,101 @@ function M.buildColumnSeparator(column_gap, height)
     }
 end
 
+-- ---------------------------------------------------------------------
+-- Thin progress bar under a row of value cells (Book progress popup: under
+-- "This chapter" and under the book percentage). Drawn in the chart's active
+-- (done) / inactive (remaining) bar colors. The gap around it is the empty
+-- space under the day labels of the weekly bar chart (small-font label height
+-- minus its baseline): that is the whole gap below the bar; above it the
+-- value text already has its own descent, so only the remainder is added.
+-- NB: VerticalSpan only honors `width` (it is the vertical size); `height`
+-- is silently ignored.
+-- ---------------------------------------------------------------------
+M.CELL_BAR_HEIGHT = 5
+
+local function descentOf(widget)
+    local ok, d = pcall(function() return widget:getSize().h - widget:getBaseline() end)
+    return (ok and d and d > 0) and d or 0
+end
+
+function M.buildCellBar(ratio, width)
+    ratio = tonumber(ratio) or 0
+    if ratio < 0 then ratio = 0 end
+    if ratio > 1 then ratio = 1 end
+    local done_w = math.floor(width * ratio + 0.5)
+    if ratio > 0 and done_w == 0 then done_w = 1 end
+    if ratio < 1 and done_w >= width then done_w = width - 1 end
+    if done_w < 0 then done_w = 0 end
+    local rest_w = width - done_w
+    local bar = HorizontalGroup:new{ align = "top" }
+    if done_w > 0 then
+        table.insert(bar, Colors.newBar(done_w, M.CELL_BAR_HEIGHT, Colors.activeBar()))
+    end
+    if rest_w > 0 then
+        table.insert(bar, Colors.newBar(rest_w, M.CELL_BAR_HEIGHT, Colors.inactiveBar()))
+    end
+    bar.dimen = Geom:new{ w = width, h = M.CELL_BAR_HEIGHT }
+    return bar
+end
+
+-- Returns gap_above, gap_below (pixels) for a bar under text set in value_face,
+-- measured against small_face (the chart label font).
+function M.cellBarGaps(value_face, small_face)
+    local small = TextWidget:new{ text = "0", face = small_face }
+    local below = descentOf(small)
+    small:free()
+    if below <= 0 then below = Size.padding.default end
+    local value = TextWidget:new{ text = "0", face = value_face }
+    local value_descent = descentOf(value)
+    value:free()
+    return math.max(0, below - value_descent), below
+end
+
+-- A bar of `width` pixels with the gap above and below it, to be placed
+-- directly under a row of value cells (see M.cellBarGaps). `width` is the
+-- bar's own width: one column, or the whole row.
+-- `placement`: nil = bar under its row (small gap above, bigger below);
+-- "even" = the same gap above and below it (not used by the popup now).
+function M.buildRowBar(ratio, width, value_face, small_face, placement)
+    local above, below = M.cellBarGaps(value_face, small_face)
+    if placement == "even" then
+        local g = math.max(above, Size.padding.small)
+        above, below = g, g
+    end
+    return VerticalGroup:new{
+        align = "left",
+        VerticalSpan:new{ width = above },
+        M.buildCellBar(ratio, width),
+        VerticalSpan:new{ width = below },
+    }
+end
+
+-- `cell` with the bar under it (so the row's column separator runs down past
+-- the bar too). Returns the new widget and the extra height it added, so the
+-- row's other cell can be padded to the same height (see M.padBottom).
+function M.withCellBar(cell, ratio, width, value_face, small_face)
+    local above, below = M.cellBarGaps(value_face, small_face)
+    local group = VerticalGroup:new{
+        align = "left",
+        cell,
+        VerticalSpan:new{ width = above },
+        M.buildCellBar(ratio, width),
+        VerticalSpan:new{ width = below },
+    }
+    return group, above + M.CELL_BAR_HEIGHT + below
+end
+
+-- `cell` kept at its own position (top) but made `extra` pixels taller, so the
+-- other cell of a row (which got a bar) doesn't push it down by centering.
+function M.padBottom(cell, extra)
+    if not extra or extra <= 0 then return cell end
+    return FrameContainer:new{
+        bordersize = 0, padding = 0, margin = 0,
+        padding_bottom = extra,
+        cell,
+    }
+end
+
 -- One row of the two-column grid. `hide_separator` keeps the columns where
 -- they are but leaves the gap between them empty.
 function M.buildTwoColRow(left_widget, right_widget, layout, hide_separator)

@@ -1147,44 +1147,19 @@ function M.build(self, deps)
         })
     end
 
-    -- "Progress bar": the filled bar shown between the "This book" header
-    -- and the percentage row (widgets/progressbarwidget.lua). On/off toggle
-    -- and the bar's height live here; its two colors moved to the top-level
-    -- Colors menu (Colors > Book progress bar), alongside every other color
-    -- in the plugin, instead of being duplicated here.
-    do
-        local progress_bar_sub_item_table = {}
-
-        table.insert(progress_bar_sub_item_table, {
-            text = _("Show progress bar"),
-            help_text = _("Show the progress bar in the \"This book\" section."),
-            keep_menu_open = true,
-            checked_func = function() return deps.ViewSettings.Opt.readShowProgressBar() end,
-            callback = function()
-                deps.ViewSettings.Opt.saveShowProgressBar(not deps.ViewSettings.Opt.readShowProgressBar())
-            end,
-        })
-
-        table.insert(progress_bar_sub_item_table, buildBarHeightMenuEntry(
-            _("Progress bar height"),
-            deps.ProgressBar.readHeightSetting,
-            deps.ProgressBar.saveHeightSetting,
-            deps.ProgressBar.DEFAULT_HEIGHT,
-            1, 200
-        ))
-
-        -- Greyed out with the "Donut chart" section style: the donut
-        -- replaces the linear progress bar, so its settings have no effect.
-        table.insert(book_progress_sub_item_table, {
-            text = _("Progress bar"),
-            keep_menu_open = true,
-            enabled_func = function()
-                local Opt = deps.ViewSettings.Opt
-                return Opt.readBookSectionStyle() ~= Opt.BOOK_SECTION_STYLE_DONUT
-            end,
-            sub_item_table = progress_bar_sub_item_table,
-        })
-    end
+    -- "Progress bars": the thin bars under the "This chapter" value and under
+    -- the book percentage (lib/uikit.lua, UI.withCellBar / UI.buildRowBar). They use the chart's
+    -- active / inactive bar colors (Colors menu), so there are no separate
+    -- color or height settings.
+    table.insert(book_progress_sub_item_table, {
+        text = _("Progress bars"),
+        help_text = _("Show a thin progress bar under the current chapter and under the book percentage."),
+        keep_menu_open = true,
+        checked_func = function() return deps.ViewSettings.Opt.readShowCellBars() end,
+        callback = function()
+            deps.ViewSettings.Opt.saveShowCellBars(not deps.ViewSettings.Opt.readShowCellBars())
+        end,
+    })
 
     table.insert(book_progress_sub_item_table, {
         text = _("Read today row"),

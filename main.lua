@@ -224,9 +224,6 @@ local ListWidget = loadModule("widgets/booklistwidget.lua",
 local ChapterBar = loadModule("widgets/chapterbarwidget.lua",
     { Colors = Colors, Fonts = Fonts, UI = UI })
 
-local ProgressBar = loadModule("widgets/progressbarwidget.lua",
-    { Colors = Colors })
-
 -- The donut (ring) chart shown in the "This book" section when the "Donut
 -- chart" book section style is selected.
 local Donut = loadModule("widgets/donutwidget.lua",
@@ -311,7 +308,7 @@ local BookCalendar = loadModule("views/book_calendar_view.lua", {
 local StatsPopup = loadModule("views/book_stats_view.lua", {
     Locale = Locale, Colors = Colors, Fonts = Fonts, Prefs = Prefs,
     BookProgress = BookProgress, BookCalendar = BookCalendar,
-    ChapterInfo = ChapterInfo, ChapterBar = ChapterBar, ProgressBar = ProgressBar,
+    ChapterInfo = ChapterInfo, ChapterBar = ChapterBar,
     Donut = Donut, SkimBar = SkimBar, UI = UI,
     BookStatsData = BookStatsData, VS = ViewSettings,
 })
@@ -1080,7 +1077,6 @@ function ReadingInsights:_menuDeps()
         Locale                      = Locale,
         ViewSettings                = ViewSettings,
         ChapterBar                  = ChapterBar,
-        ProgressBar                 = ProgressBar,
         SkimBar                     = SkimBar,
         SCREENSAVER_TYPE_VALUE      = SCREENSAVER_TYPE_VALUE,
         patchScreensaverMenuBuilder = patchScreensaverMenuBuilder,
