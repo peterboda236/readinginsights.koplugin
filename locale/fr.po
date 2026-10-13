@@ -213,10 +213,10 @@ msgstr "Statistiques de lecture : calendrier de progression du livre"
 msgid "All books %1"
 msgstr "Tous les livres : %1"
 
-msgid "daily avg page"
+msgid "daily average page"
 msgstr "pages moy/jour"
 
-msgid "daily avg pages"
+msgid "daily average pages"
 msgstr "pages moy/jour"
 
 msgid "Today"
@@ -246,7 +246,7 @@ msgstr "Sam"
 msgid "Sun"
 msgstr "Dim"
 
-msgid "daily avg time"
+msgid "daily average time"
 msgstr "temps moy/jour"
 
 msgid "reading time"
@@ -275,12 +275,6 @@ msgstr "Pages quotidiennes moyennes, 8 dernières semaines"
 
 msgid "No reading data in the last 8 weeks"
 msgstr "Aucune donnée de lecture sur les 8 dernières semaines"
-
-msgid "avg time/day"
-msgstr "temps moy/jour"
-
-msgid "avg pages/day"
-msgstr "pages moy/jour"
 
 msgid "page read today"
 msgstr "page lue aujourd'hui"

@@ -1288,7 +1288,7 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
         if has_week then
 
             local avg_secs = lw.avg_seconds or 0
-            local week_time_val, week_time_unit_full = splitDurationValueUnit(avg_secs, _("daily avg time"))
+            local week_time_val, week_time_unit_full = splitDurationValueUnit(avg_secs, _("daily average time"))
 
             local avg_pages_rounded
             if lw.avg_pages >= 10 then
@@ -1297,7 +1297,7 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
                 avg_pages_rounded = math.floor(lw.avg_pages * 10 + 0.5) / 10
             end
             local week_pages_val  = formatNumber(avg_pages_rounded, avg_pages_rounded ~= math.floor(avg_pages_rounded) and 1 or 0)
-            local week_pages_unit = N_("daily avg page", "daily avg pages", avg_pages_rounded)
+            local week_pages_unit = N_("daily average page", "daily average pages", avg_pages_rounded)
 
             local total_secs = (lw.avg_seconds or 0) * 7
             local total_time_val, total_time_unit = splitDurationValueUnit(total_secs, _("reading time"))
@@ -1383,7 +1383,7 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
                 local d_total_val = fmt_delta(diff_total)
                 local d_avg_val   = fmt_delta(diff_avg, true)
                 local d_total_unit = pages_mode and _("p vs prev. 7 days") or _("vs prev. 7 days")
-                local d_avg_unit   = pages_mode and _("daily avg pages") or _("daily avg time")
+                local d_avg_unit   = pages_mode and _("daily average pages") or _("daily average time")
                 local vs_row = UI.buildTwoColRow(
                     buildValueLine(fonts.value, fonts.label, layout.col_width, d_total_val, d_total_unit),
                     buildValueLine(fonts.value, fonts.label, layout.col_width, d_avg_val,   d_avg_unit),

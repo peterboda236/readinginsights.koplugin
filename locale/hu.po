@@ -228,11 +228,11 @@ msgstr "Oszlopdiagram magassága"
 msgid "Set"
 msgstr "Beállítás"
 
-msgid "daily avg page"
-msgstr "napi átl. oldal"
+msgid "daily average page"
+msgstr "napi átlagos oldal"
 
-msgid "daily avg pages"
-msgstr "napi átl. oldal"
+msgid "daily average pages"
+msgstr "napi átlagos oldal"
 
 msgid "Today"
 msgstr "Ma"
@@ -261,8 +261,8 @@ msgstr "Szo"
 msgid "Sun"
 msgstr "V"
 
-msgid "daily avg time"
-msgstr "napi átl. idő"
+msgid "daily average time"
+msgstr "napi átlagos idő"
 
 msgid "reading time"
 msgstr "olvasási idő"
@@ -290,12 +290,6 @@ msgstr "Elmúlt 8 hét átlagos napi oldalszáma"
 
 msgid "No reading data in the last 8 weeks"
 msgstr "Nincs olvasási adat az elmúlt 8 héten"
-
-msgid "avg time/day"
-msgstr "napi átlagos idő"
-
-msgid "avg pages/day"
-msgstr "napi átlagos oldal"
 
 msgid "page read today"
 msgstr "oldal olvasva ma"

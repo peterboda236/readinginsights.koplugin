@@ -522,11 +522,11 @@ local function buildSections(stats, fonts, layout, popup)
         local today_pages_val, today_pages_label = nonEmptyPagesToday(today_pages_data)
         local avg_pages_data = stats.avg_pages_per_day or { value = "—", unit = "" }
         days_col2 = valueLine(today_pages_val, today_pages_label)
-        pace_col2 = valueLine(avg_pages_data, _("avg pages/day"))
+        pace_col2 = valueLine(avg_pages_data, _("daily average pages"))
     else
         local avg_day_data = stats.avg_time_per_day_hhmm or { value = "—:—", unit = "" }
         days_col2 = valueLine(nonEmpty(today_time_data_hhmm), _("read today"))
-        pace_col2 = valueLine(avg_day_data, _("avg time/day"))
+        pace_col2 = valueLine(avg_day_data, _("daily average time"))
     end
 
     -- Which parts of each section are shown. Every toggle lives under

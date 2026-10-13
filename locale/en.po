@@ -213,11 +213,11 @@ msgstr "Reading insights: book progress calendar"
 msgid "All books %1"
 msgstr "All books: %1"
 
-msgid "daily avg page"
-msgstr "daily avg page"
+msgid "daily average page"
+msgstr "daily average page"
 
-msgid "daily avg pages"
-msgstr "daily avg pages"
+msgid "daily average pages"
+msgstr "daily average pages"
 
 msgid "Today"
 msgstr "Today"
@@ -246,8 +246,8 @@ msgstr "Sat"
 msgid "Sun"
 msgstr "Sun"
 
-msgid "daily avg time"
-msgstr "daily avg time"
+msgid "daily average time"
+msgstr "daily average time"
 
 msgid "reading time"
 msgstr "reading time"
@@ -275,12 +275,6 @@ msgstr "Average daily pages, last 8 weeks"
 
 msgid "No reading data in the last 8 weeks"
 msgstr "No reading data in the last 8 weeks"
-
-msgid "avg time/day"
-msgstr "avg time/day"
-
-msgid "avg pages/day"
-msgstr "avg pages/day"
 
 msgid "page read today"
 msgstr "page read today"

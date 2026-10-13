@@ -228,10 +228,10 @@ msgstr "Аналітика читання: календар прогресу к�
 msgid "All books %1"
 msgstr "Усі книги: %1"
 
-msgid "daily avg page"
+msgid "daily average page"
 msgstr "сер. сторінок/день"
 
-msgid "daily avg pages"
+msgid "daily average pages"
 msgstr "сер. сторінок/день"
 
 msgid "Today"
@@ -261,7 +261,7 @@ msgstr "Сб"
 msgid "Sun"
 msgstr "Нд"
 
-msgid "daily avg time"
+msgid "daily average time"
 msgstr "сер. час/день"
 
 msgid "reading time"
@@ -290,12 +290,6 @@ msgstr "Середня кількість сторінок на день, ост
 
 msgid "No reading data in the last 8 weeks"
 msgstr "Немає даних читання за останні 8 тижнів"
-
-msgid "avg time/day"
-msgstr "сер. час/день"
-
-msgid "avg pages/day"
-msgstr "сер. сторінок/день"
 
 msgid "page read today"
 msgstr "сторінку прочитано сьогодні"
