@@ -26,7 +26,7 @@ Sections shown:
                                    progress popup) can combine the next two
                                    chapters' reading times into that column
                                    instead of just the one immediately next.
-  - This book                     time spent, time left, progress percentage, pages read
+  - This book                     time left, time spent, progress percentage, pages read
                                    (tap the title to open the Book info popup:
                                    cover, title, author, series)
   - Chapter bar                   visual bar chart of all chapters (tappable, swipeable)
@@ -354,8 +354,8 @@ local function buildDonutBookRow(stats, fonts, layout, show_pages, show_times)
         addRight(valueLine(stats.book_pages_read, ""))
     end
     if show_times then
-        addRight(valueLine(stats.book_time_spent_hhmm, _("read so far")))
         addRight(valueLine(stats.book_time_left_hhmm, _("reading time left")))
+        addRight(valueLine(stats.book_time_spent_hhmm, _("read so far")))
     end
     if #right == 0 then
         addRight(valueLine(UI.emptyValue(), ""))
@@ -482,8 +482,8 @@ local function buildSections(stats, fonts, layout, popup)
     local progress_label  = stats.book_progress.value ~= "" and _("read") or ""
     local book_progress   = valueLine(stats.book_progress, progress_label)
     local book_pages_read = valueLine(stats.book_pages_read, "")
-    local book_col1       = valueLine(stats.book_time_spent_hhmm, _("read so far"))
-    local book_col2       = valueLine(stats.book_time_left_hhmm, _("reading time left"))
+    local book_col1       = valueLine(stats.book_time_left_hhmm, _("reading time left"))
+    local book_col2       = valueLine(stats.book_time_spent_hhmm, _("read so far"))
 
     -- Thin progress bars (Settings > Book progress popup > Progress bars):
     -- under the "This chapter" row and under the book percentage row, in the
@@ -794,7 +794,7 @@ local function buildSections(stats, fonts, layout, popup)
             local function addReadRow()
                 table.insert(this_book_rows, UI.buildTwoColRow(book_progress, book_pages_read, layout))
             end
-            -- Reading-time row first, then the percentage row with its
+            -- Reading-time row first (time left, then time read), then the percentage row with its
             -- progress bar directly under it (full row width, up to the right
             -- padding), so the bar clearly belongs to the percentage.
             local first_row  = show_time_row and addTimeRow or nil
