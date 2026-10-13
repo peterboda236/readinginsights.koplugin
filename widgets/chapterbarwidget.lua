@@ -236,7 +236,9 @@ function M.build(chapter_info, full_width, padding_h, offset_override, on_prev, 
         if ch_idx <= total then
             local bh = barHeight(ch_idx)
             if ch_idx == current then
-                local read_h   = math.max(1, math.floor(bh * chapter_progress_ratio))
+                -- Floored, no forced minimum: 0 progress (first page of the
+                -- chapter) draws no read part at all.
+                local read_h   = math.floor(bh * chapter_progress_ratio)
                 local unread_h = bh - read_h
                 table.insert(bar_row, VerticalGroup:new{
                     align = "left",

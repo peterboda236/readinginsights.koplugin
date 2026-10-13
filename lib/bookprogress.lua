@@ -13,7 +13,10 @@ the calendar moved into its own file.
                              current_page_idx, total_pages_idx, pagemap }
                              or nil when there's no usable open document
   BookProgress.pagesLeft(ui) pages remaining
-  BookProgress.percent(ui)   integer 0..100 progress
+  BookProgress.percent(ui)   integer 0..100 progress (for the text)
+  BookProgress.ratio(ui)     exact 0.0..1.0 fraction (for bars/donut), NOT
+                             rounded to whole percent; same page/total
+                             convention as KOReader's footer and Bookends
   BookProgress.counts(ui)    current_page, total_pages (page-map aware)
 ]]--
 
@@ -62,6 +65,23 @@ function M.percent(ui)
         return Math.round(100 * progress.current_page_idx / progress.total_pages_idx)
     end
     return Math.round(100 * progress.current_page / progress.total_pages)
+end
+
+-- Exact progress fraction for the bars. Same convention as KOReader's footer
+-- bar and Bookends (current page / total pages), but without the rounding to
+-- a whole percent that percent() applies for the text: a bar drawn from the
+-- rounded value jumped in 1% steps (and sat at 0 on page 1 of any long book
+-- while Bookends already showed the real sliver).
+function M.ratio(ui)
+    local progress = M.data(ui)
+    if not progress then return end
+    local r
+    if progress.pagemap and progress.current_page_idx and progress.total_pages_idx and progress.total_pages_idx > 0 then
+        r = progress.current_page_idx / progress.total_pages_idx
+    else
+        r = progress.current_page / progress.total_pages
+    end
+    return math.max(0, math.min(1, r))
 end
 
 function M.counts(ui)

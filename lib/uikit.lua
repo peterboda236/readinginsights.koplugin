@@ -149,10 +149,11 @@ function M.buildCellBar(ratio, width)
     ratio = tonumber(ratio) or 0
     if ratio < 0 then ratio = 0 end
     if ratio > 1 then ratio = 1 end
-    local done_w = math.floor(width * ratio + 0.5)
-    if ratio > 0 and done_w == 0 then done_w = 1 end
-    if ratio < 1 and done_w >= width then done_w = width - 1 end
+    -- Same as Bookends' bar fill: floored, no forced minimum. A tiny ratio
+    -- that rounds down to 0 px draws no read part at all.
+    local done_w = math.floor(width * ratio)
     if done_w < 0 then done_w = 0 end
+    if done_w > width then done_w = width end
     local rest_w = width - done_w
     local bar = HorizontalGroup:new{ align = "top" }
     if done_w > 0 then

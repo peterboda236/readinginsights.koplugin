@@ -66,15 +66,11 @@ function M.build(ratio, full_width, read_color, unread_color)
 
     local height = Screen:scaleBySize(M.readHeightSetting())
 
-    -- Rounded rather than floored, and nudged so a genuinely-started book
-    -- always shows at least a sliver of the read color, and a genuinely-
-    -- unfinished book always shows at least a sliver of the unread color -
-    -- the same "always visible, never both-or-nothing at the edges" idea
-    -- as the chapter bar's current-chapter fill.
-    local read_w = math.floor(full_width * ratio + 0.5)
-    if ratio > 0 and read_w == 0 then read_w = 1 end
-    if ratio < 1 and read_w >= full_width then read_w = full_width - 1 end
+    -- Same as Bookends' bar fill: floored, with no forced minimum. A tiny
+    -- ratio that rounds down to 0 px draws no read part at all.
+    local read_w = math.floor(full_width * ratio)
     if read_w < 0 then read_w = 0 end
+    if read_w > full_width then read_w = full_width end
     local unread_w = full_width - read_w
 
     local bar_row = HorizontalGroup:new{ align = "top" }

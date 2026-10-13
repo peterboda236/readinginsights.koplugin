@@ -1127,7 +1127,7 @@ function ReadingStatsPopup:gatherStats()
         -- book_progress rather than re-derived from its formatted "N%"
         -- string, the same "keep the raw number, not just its formatted
         -- text" reasoning as total_pages_for_calendar below.
-        stats.book_progress_ratio = progress_percent / 100
+        stats.book_progress_ratio = BookProgress.ratio(ui) or (progress_percent / 100)
     end
     local current_page_count, total_page_count = BookProgress.counts(ui)
     if current_page_count and total_page_count and total_page_count > 0 then
@@ -1321,16 +1321,14 @@ function ReadingStatsPopup:gatherStats()
         -- pace) for the row under the chapter bar chart.
         local ci = stats.chapter_info
         -- How far into the current chapter the reader is (0..1), for the
-        -- bar under "This chapter": from the pages left in it, so it reaches
-        -- 100% on the chapter's last page.
-        do
-            local pl = stats.chapter_pages_left_count
-            local pc = ci and ci.page_counts and ci.current and ci.page_counts[ci.current]
-            if pl and pc and pc > 0 then
-                stats.chapter_progress_ratio = math.max(0, math.min(1, 1 - pl / pc))
-            elseif ci then
-                stats.chapter_progress_ratio = ci.chapter_progress_ratio
-            end
+        -- bar under "This chapter" and the chapter bar chart's current column.
+        -- Chapter boundaries and the ratio come from KOReader's TOC like in
+        -- Bookends (all TOC levels), so "This chapter" shows the same percent
+        -- as Bookends' %chap_pct. The chart's current column uses it too.
+        if ci then
+            local bk_ratio = ChapterInfo.getBookendsChapterRatio(ui, pageno)
+            if bk_ratio ~= nil then ci.chapter_progress_ratio = bk_ratio end
+            stats.chapter_progress_ratio = ci.chapter_progress_ratio
         end
         -- On the very last page of the book the last chapter is finished too.
         if ci and doc and doc.getTotalPagesLeft then

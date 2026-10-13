@@ -27,6 +27,9 @@ page numbers (`toc_ticks`). Anything else is treated as "no usable TOC".
   M.getCachedChapterInfo(book_id, toc, pages, pageno, level)
                                 the same, parsing (and caching) the TOC first;
                                 nil when there's no usable TOC
+  M.getBookendsChapterRatio(ui, pageno)
+                                progress inside the current chapter, computed
+                                like Bookends (KOReader's own chapter boundaries)
   M.getChapterPagesLeft(ui, pageno)
                                 pages left in the current chapter, falling
                                 back to pages left in the book
@@ -64,8 +67,16 @@ function M.computeChapterResult(toc_items, items_are_tables, total_chapters, pag
         local cur_start = items_are_tables
             and toc_items[current_chapter].page
             or  toc_items[current_chapter]
-        local pages_read_in_chapter = math.max(0, pageno - cur_start) + 0.5
-        chapter_progress_ratio = math.min(0.95, pages_read_in_chapter / cur_pc)
+        -- Same formula as Bookends' chapter bar / %chap_pct: 0 on the
+        -- chapter's first page, 1 on its last (the page you are on is not
+        -- yet "read", so there is no half-page head start, and no cap
+        -- below 100%). A one-page chapter counts as complete.
+        local done = math.max(0, pageno - cur_start)
+        if cur_pc > 1 then
+            chapter_progress_ratio = math.max(0, math.min(1, done / (cur_pc - 1)))
+        else
+            chapter_progress_ratio = 1.0
+        end
     end
 
     return {
@@ -77,8 +88,9 @@ function M.computeChapterResult(toc_items, items_are_tables, total_chapters, pag
 end
 
 -- `level` (optional) picks which TOC level counts as a "chapter":
---   nil      auto: the deepest entries (an entry with sub-entries below it,
---            e.g. a "Part", is only a container and is not a chapter)
+--   nil      auto: KOReader's own chapters, like Bookends (every TOC entry
+--            of every level, via toc:getTocTicksFlattened); falls back to
+--            the deepest entries (containers like a "Part" excluded)
 --   1, 2...  cut the TOC tree at that depth: entries at that depth count,
 --            and so do shallower entries that have nothing below them
 --            (a lone prologue, say). Level 1 is the old behaviour.
@@ -114,7 +126,20 @@ function M.getCachedChapterInfo(book_id, toc, pages, pageno, level)
     local ok = pcall(function()
         local toc_items = nil
 
-        if toc.getToc and type(toc.getToc) == "function" then
+        -- Auto mode (level == nil): chapters are exactly KOReader's own
+        -- chapters, the same boundaries Bookends and the footer use: every
+        -- TOC entry of every level, one boundary per distinct page
+        -- (getTocTicksFlattened). The level-based parsing below is only
+        -- used for an explicit level, or when that API is missing.
+        if level == nil and toc.getTocTicksFlattened
+            and type(toc.getTocTicksFlattened) == "function" then
+            local ticks = toc:getTocTicksFlattened()
+            if type(ticks) == "table" and #ticks > 0 and type(ticks[1]) == "number" then
+                toc_items = ticks
+            end
+        end
+
+        if not toc_items and toc.getToc and type(toc.getToc) == "function" then
             local raw = toc:getToc()
             if raw and #raw > 0 then
                 local chapter_entries = {}
@@ -203,6 +228,31 @@ function M.getCachedChapterInfo(book_id, toc, pages, pageno, level)
     end
 
     return chapter_info
+end
+
+-- Progress inside the current chapter (0..1), computed exactly the way
+-- Bookends does it: the chapter boundaries come from KOReader's own TOC API
+-- (ui.toc:getPreviousChapter / isChapterStart / getNextChapter), which looks at
+-- ALL TOC levels at once, not at the single level the chapter chart uses.
+-- 0 on the chapter's first page, 1 on its last; a one-page chapter counts as
+-- complete. Returns nil when there is no TOC / chapter info.
+function M.getBookendsChapterRatio(ui, pageno)
+    local toc, doc = ui and ui.toc, ui and ui.document
+    if not toc or not doc or not pageno then return nil end
+    if not (toc.getPreviousChapter and toc.getNextChapter and toc.isChapterStart) then
+        return nil
+    end
+    local chapter_start = toc:getPreviousChapter(pageno)
+    if toc:isChapterStart(pageno) then chapter_start = pageno end
+    if not chapter_start then return nil end
+    local chapter_end = toc:getNextChapter(pageno) or (doc:getPageCount() + 1)
+    local total = chapter_end - chapter_start
+    if total > 1 then
+        return math.max(0, math.min(1, (pageno - chapter_start) / (total - 1)))
+    elseif total > 0 then
+        return 1.0
+    end
+    return nil
 end
 
 function M.getChapterPagesLeft(ui, pageno)
