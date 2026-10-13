@@ -213,10 +213,10 @@ msgstr "Leseeinblicke: Buchfortschrittskalender"
 msgid "All books %1"
 msgstr "Alle Bücher: %1"
 
-msgid "daily average page"
+msgid "daily avg page"
 msgstr "Ø Seiten/Tag"
 
-msgid "daily average pages"
+msgid "daily avg pages"
 msgstr "Ø Seiten/Tag"
 
 msgid "Today"
@@ -246,7 +246,7 @@ msgstr "Sa"
 msgid "Sun"
 msgstr "So"
 
-msgid "daily average time"
+msgid "daily avg time"
 msgstr "Ø Zeit/Tag"
 
 msgid "reading time"
@@ -2030,11 +2030,14 @@ msgstr "Letzte 7 Tage: Vergleich zu den vorherigen 7 Tagen"
 msgid "Below the chart, show how the total and the daily average changed compared to the 7 days before."
 msgstr "Zeigt unter dem Diagramm die Änderung von Summe und Tagesschnitt gegenüber den 7 Tagen davor."
 
-msgid "vs prev. 7 days"
-msgstr "zu vorh. 7 Tagen"
+msgid "vs prev. 7d"
+msgstr "vs vorh. 7 Tage"
 
-msgid "p vs prev. 7 days"
-msgstr "Seiten zu vorh. 7 Tagen"
+msgid "page vs prev. 7d"
+msgstr "Seite vs vorh. 7 Tage"
+
+msgid "pages vs prev. 7d"
+msgstr "Seiten vs vorh. 7 Tage"
 
 msgid "Daily / weekly goal bar"
 msgstr "Tages-/Wochenzielbalken"

@@ -159,10 +159,10 @@ msgstr "阅读统计：阅读进度日历"
 
 msgid "All books %1"
 msgstr "全部书籍：%1本"
-msgid "daily average page"
+msgid "daily avg page"
 msgstr "日均页数"
 
-msgid "daily average pages"
+msgid "daily avg pages"
 msgstr "日均页数"
 
 msgid "Today"
@@ -184,7 +184,7 @@ msgstr "周六"
 msgid "Sun"
 msgstr "周日"
 
-msgid "daily average time"
+msgid "daily avg time"
 msgstr "日均时长"
 msgid "reading time"
 msgstr "阅读时长"
@@ -1753,10 +1753,13 @@ msgstr "过去 7 天：与前 7 天对比"
 msgid "Below the chart, show how the total and the daily average changed compared to the 7 days before."
 msgstr "在图表下方显示总计和日均与前 7 天相比的变化。"
 
-msgid "vs prev. 7 days"
+msgid "vs prev. 7d"
 msgstr "较前 7 天"
 
-msgid "p vs prev. 7 days"
+msgid "page vs prev. 7d"
+msgstr "页 较前 7 天"
+
+msgid "pages vs prev. 7d"
 msgstr "页 较前 7 天"
 
 msgid "Daily / weekly goal bar"

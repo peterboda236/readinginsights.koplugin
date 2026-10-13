@@ -213,10 +213,10 @@ msgstr "Statistiques de lecture : calendrier de progression du livre"
 msgid "All books %1"
 msgstr "Tous les livres : %1"
 
-msgid "daily average page"
+msgid "daily avg page"
 msgstr "pages moy/jour"
 
-msgid "daily average pages"
+msgid "daily avg pages"
 msgstr "pages moy/jour"
 
 msgid "Today"
@@ -246,7 +246,7 @@ msgstr "Sam"
 msgid "Sun"
 msgstr "Dim"
 
-msgid "daily average time"
+msgid "daily avg time"
 msgstr "temps moy/jour"
 
 msgid "reading time"
@@ -2030,11 +2030,14 @@ msgstr "7 derniers jours : vs 7 jours précédents"
 msgid "Below the chart, show how the total and the daily average changed compared to the 7 days before."
 msgstr "Sous le graphique : évolution du total et de la moyenne par jour vs les 7 jours précédents."
 
-msgid "vs prev. 7 days"
+msgid "vs prev. 7d"
 msgstr "vs 7 j préc."
 
-msgid "p vs prev. 7 days"
-msgstr "p vs 7 j préc."
+msgid "page vs prev. 7d"
+msgstr "page vs 7 j préc."
+
+msgid "pages vs prev. 7d"
+msgstr "pages vs 7 j préc."
 
 msgid "Daily / weekly goal bar"
 msgstr "Barre d'objectif quotidien / hebdomadaire"

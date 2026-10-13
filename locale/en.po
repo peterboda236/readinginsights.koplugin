@@ -213,11 +213,11 @@ msgstr "Reading insights: book progress calendar"
 msgid "All books %1"
 msgstr "All books: %1"
 
-msgid "daily average page"
-msgstr "daily average page"
+msgid "daily avg page"
+msgstr "daily avg page"
 
-msgid "daily average pages"
-msgstr "daily average pages"
+msgid "daily avg pages"
+msgstr "daily avg pages"
 
 msgid "Today"
 msgstr "Today"
@@ -246,8 +246,8 @@ msgstr "Sat"
 msgid "Sun"
 msgstr "Sun"
 
-msgid "daily average time"
-msgstr "daily average time"
+msgid "daily avg time"
+msgstr "daily avg time"
 
 msgid "reading time"
 msgstr "reading time"
@@ -2036,11 +2036,14 @@ msgstr "Last 7 days: compared to previous 7 days"
 msgid "Below the chart, show how the total and the daily average changed compared to the 7 days before."
 msgstr "Below the chart, show how the total and the daily average changed compared to the 7 days before."
 
-msgid "vs prev. 7 days"
-msgstr "vs prev. 7 days"
+msgid "vs prev. 7d"
+msgstr "vs prev. 7d"
 
-msgid "p vs prev. 7 days"
-msgstr "p vs prev. 7 days"
+msgid "page vs prev. 7d"
+msgstr "page vs prev. 7d"
+
+msgid "pages vs prev. 7d"
+msgstr "pages vs prev. 7d"
 
 msgid "Daily / weekly goal bar"
 msgstr "Daily / weekly goal bar"

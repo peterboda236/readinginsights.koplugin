@@ -228,10 +228,10 @@ msgstr "Oszlopdiagram magassága"
 msgid "Set"
 msgstr "Beállítás"
 
-msgid "daily average page"
+msgid "daily avg page"
 msgstr "napi átlagos oldal"
 
-msgid "daily average pages"
+msgid "daily avg pages"
 msgstr "napi átlagos oldal"
 
 msgid "Today"
@@ -261,7 +261,7 @@ msgstr "Szo"
 msgid "Sun"
 msgstr "V"
 
-msgid "daily average time"
+msgid "daily avg time"
 msgstr "napi átlagos idő"
 
 msgid "reading time"
@@ -2048,11 +2048,14 @@ msgstr "Elmúlt 7 nap: összevetés az előző 7 nappal"
 msgid "Below the chart, show how the total and the daily average changed compared to the 7 days before."
 msgstr "A diagram alatt mutatja, mennyit változott az összeg és a napi átlag az azt megelőző 7 naphoz képest."
 
-msgid "vs prev. 7 days"
-msgstr "előző 7 naphoz"
+msgid "vs prev. 7d"
+msgstr "vs előző 7 nap"
 
-msgid "p vs prev. 7 days"
-msgstr "oldal előző 7 naphoz"
+msgid "page vs prev. 7d"
+msgstr "oldal vs előző 7 nap"
+
+msgid "pages vs prev. 7d"
+msgstr "oldal vs előző 7 nap"
 
 msgid "Daily / weekly goal bar"
 msgstr "Napi / heti cél sáv"

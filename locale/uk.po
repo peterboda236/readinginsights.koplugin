@@ -228,10 +228,10 @@ msgstr "Аналітика читання: календар прогресу к�
 msgid "All books %1"
 msgstr "Усі книги: %1"
 
-msgid "daily average page"
+msgid "daily avg page"
 msgstr "сер. сторінок/день"
 
-msgid "daily average pages"
+msgid "daily avg pages"
 msgstr "сер. сторінок/день"
 
 msgid "Today"
@@ -261,7 +261,7 @@ msgstr "Сб"
 msgid "Sun"
 msgstr "Нд"
 
-msgid "daily average time"
+msgid "daily avg time"
 msgstr "сер. час/день"
 
 msgid "reading time"
@@ -2079,11 +2079,14 @@ msgstr "Останні 7 днів: до попередніх 7 днів"
 msgid "Below the chart, show how the total and the daily average changed compared to the 7 days before."
 msgstr "Під графіком показує зміну суми та середнього за день порівняно з попередніми 7 днями."
 
-msgid "vs prev. 7 days"
-msgstr "до поперед. 7 днів"
+msgid "vs prev. 7d"
+msgstr "vs поперед. 7 днів"
 
-msgid "p vs prev. 7 days"
-msgstr "стор. до поперед. 7 днів"
+msgid "page vs prev. 7d"
+msgstr "сторінка vs поперед. 7 днів"
+
+msgid "pages vs prev. 7d"
+msgstr "сторінок vs поперед. 7 днів"
 
 msgid "Daily / weekly goal bar"
 msgstr "Смуга денної / тижневої мети"
