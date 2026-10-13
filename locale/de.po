@@ -2056,3 +2056,9 @@ msgstr "zu vorh. 7 Tagen"
 
 msgid "p vs prev. 7 days"
 msgstr "Seiten zu vorh. 7 Tagen"
+
+msgid "Daily / weekly goal bar"
+msgstr "Tages-/Wochenzielbalken"
+
+msgid "Show a thin progress bar under the daily and weekly goal values."
+msgstr "Einen dünnen Fortschrittsbalken unter den Tages- und Wochenzielwerten anzeigen."

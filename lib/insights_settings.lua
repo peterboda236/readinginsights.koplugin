@@ -508,6 +508,7 @@ M.TIME_GOAL_MAX_MIN       = 9999
 M.SETTINGS_KEY_DAILY_GOAL_MIN  = "reading_insights_daily_goal_min"
 M.SETTINGS_KEY_WEEKLY_GOAL_MIN = "reading_insights_weekly_goal_min"
 M.SETTINGS_KEY_SHOW_TIME_GOALS = "reading_insights_show_time_goals"
+M.SETTINGS_KEY_SHOW_TIME_GOAL_BAR = "reading_insights_show_time_goal_bar"
 
 -- Whether the "Daily goal | Weekly goal" section is drawn (default: on).
 function M.readShowTimeGoals()
@@ -516,6 +517,16 @@ end
 
 function M.saveShowTimeGoals(value)
     Prefs.save(M.SETTINGS_KEY_SHOW_TIME_GOALS, value and true or false)
+end
+
+-- Whether the thin (5 px) progress bar under the daily / weekly goal values
+-- is drawn (default: on).
+function M.readShowTimeGoalBar()
+    return Prefs.read(M.SETTINGS_KEY_SHOW_TIME_GOAL_BAR, true) ~= false
+end
+
+function M.saveShowTimeGoalBar(value)
+    Prefs.save(M.SETTINGS_KEY_SHOW_TIME_GOAL_BAR, value and true or false)
 end
 
 function M.readDailyGoalMinutes()

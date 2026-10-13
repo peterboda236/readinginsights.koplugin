@@ -1211,19 +1211,72 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
             },
         })
 
-        local function valueCell(text, fn, on_tap)
+        -- Thin (5 px) progress bar under a goal value, drawn with the chart's
+        -- active (done) / inactive (remaining) bar colors. Can be switched
+        -- off in Settings > Reading insight popup > "Daily / weekly goal bar".
+        local show_goal_bar = VS.readShowTimeGoalBar()
+        local GOAL_BAR_HEIGHT = 5
+        local function buildGoalBar(done, goal, width)
+            local ratio = 0
+            if goal > 0 then ratio = math.min(1, math.max(0, done / goal)) end
+            local done_w = math.floor(width * ratio + 0.5)
+            if ratio > 0 and done_w == 0 then done_w = 1 end
+            if ratio < 1 and done_w >= width then done_w = width - 1 end
+            if done_w < 0 then done_w = 0 end
+            local rest_w = width - done_w
+            local bar = HorizontalGroup:new{ align = "top" }
+            if done_w > 0 then
+                table.insert(bar, Colors.newBar(done_w, GOAL_BAR_HEIGHT, Colors.activeBar()))
+            end
+            if rest_w > 0 then
+                table.insert(bar, Colors.newBar(rest_w, GOAL_BAR_HEIGHT, Colors.inactiveBar()))
+            end
+            bar.dimen = Geom:new{ w = width, h = GOAL_BAR_HEIGHT }
+            return bar
+        end
+
+        local function valueCell(text, fn, on_tap, done, goal)
             local tw = TextWidget:new{
                 text    = text,
                 face    = fonts.value,
                 fgcolor = Colors.value(),
                 max_width = layout.col_width,
             }
-            return holdCell(tw, layout.col_width, fn, on_tap)
+            local content = tw
+            if show_goal_bar then
+                -- Gap around the bar = the empty space under the day labels of
+                -- the weekly bar chart (small-font label height minus its
+                -- baseline; the section's own padding.large + bottom line
+                -- follow after it, same as under the chart). Below the bar
+                -- that is the whole gap; above it, the value text already
+                -- has its own descent, so only the remainder is added.
+                -- NB: here VerticalSpan only honors `width` (it is the
+                -- vertical size); `height` is ignored.
+                local function descentOf(widget)
+                    local ok_d, d = pcall(function()
+                        return widget:getSize().h - widget:getBaseline()
+                    end)
+                    return (ok_d and d and d > 0) and d or 0
+                end
+                local ref = TextWidget:new{ text = "0", face = fonts.small }
+                local gap = descentOf(ref)
+                ref:free()
+                if gap <= 0 then gap = Size.padding.default end
+                local gap_above = math.max(0, gap - descentOf(tw))
+                content = VerticalGroup:new{
+                    align = "left",
+                    tw,
+                    VerticalSpan:new{ width = gap_above },
+                    buildGoalBar(done, goal, layout.col_width),
+                    VerticalSpan:new{ width = gap },
+                }
+            end
+            return holdCell(content, layout.col_width, fn, on_tap)
         end
 
         local goal_row = UI.buildTwoColRow(
-            valueCell(goalText(today_secs, daily_goal_secs),  editDaily,  showDailyStreak),
-            valueCell(goalText(week_secs,  weekly_goal_secs), editWeekly, showWeeklyStreak),
+            valueCell(goalText(today_secs, daily_goal_secs),  editDaily,  showDailyStreak, today_secs, daily_goal_secs),
+            valueCell(goalText(week_secs,  weekly_goal_secs), editWeekly, showWeeklyStreak, week_secs, weekly_goal_secs),
             layout)
 
         UI.addSectionWithRow(sections, goal_header, goal_row, layout, {})

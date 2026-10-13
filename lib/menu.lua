@@ -446,6 +446,16 @@ function M.build(self, deps)
             end,
         })
         table.insert(insights_popup_sub_item_table, {
+            text = _("Daily / weekly goal bar"),
+            help_text = _("Show a thin progress bar under the daily and weekly goal values."),
+            keep_menu_open = true,
+            enabled_func = function() return deps.ViewSettings.readShowTimeGoals() end,
+            checked_func = function() return deps.ViewSettings.readShowTimeGoalBar() end,
+            callback = function()
+                deps.ViewSettings.saveShowTimeGoalBar(not deps.ViewSettings.readShowTimeGoalBar())
+            end,
+        })
+        table.insert(insights_popup_sub_item_table, {
             text = _("Reading goal"),
             keep_menu_open = true,
             checked_func = function() return Opt.readShowReadingGoal() end,

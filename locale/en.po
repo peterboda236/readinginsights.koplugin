@@ -2062,3 +2062,9 @@ msgstr "vs prev. 7 days"
 
 msgid "p vs prev. 7 days"
 msgstr "p vs prev. 7 days"
+
+msgid "Daily / weekly goal bar"
+msgstr "Daily / weekly goal bar"
+
+msgid "Show a thin progress bar under the daily and weekly goal values."
+msgstr "Show a thin progress bar under the daily and weekly goal values."

@@ -2074,3 +2074,9 @@ msgstr "előző 7 naphoz"
 
 msgid "p vs prev. 7 days"
 msgstr "oldal előző 7 naphoz"
+
+msgid "Daily / weekly goal bar"
+msgstr "Napi / heti cél sáv"
+
+msgid "Show a thin progress bar under the daily and weekly goal values."
+msgstr "Vékony folyamatsáv megjelenítése a napi és heti cél értékei alatt."
