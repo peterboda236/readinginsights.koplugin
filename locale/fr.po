@@ -2045,14 +2045,14 @@ msgstr "7 derniers j. : ligne temps/pages"
 msgid "Show a second row with the other metric (pages when the chart shows time, time when it shows pages) below the total and daily average."
 msgstr "Affiche une 2e ligne avec l'autre mesure (pages si le graphique montre le temps, et inversement) sous le total et la moyenne/jour."
 
-msgid "Last 7 days: compared to previous week"
-msgstr "7 derniers jours : vs sem. précédente"
+msgid "Last 7 days: compared to previous 7 days"
+msgstr "7 derniers jours : vs 7 jours précédents"
 
 msgid "Below the chart, show how the total and the daily average changed compared to the 7 days before."
 msgstr "Sous le graphique : évolution du total et de la moyenne par jour vs les 7 jours précédents."
 
-msgid "vs prev. week"
-msgstr "vs sem. préc."
+msgid "vs prev. 7 days"
+msgstr "vs 7 j préc."
 
-msgid "p vs prev. week"
-msgstr "p vs sem. préc."
+msgid "p vs prev. 7 days"
+msgstr "p vs 7 j préc."

@@ -545,7 +545,7 @@ end
 --   * "Time and pages row": a second row with the other metric (pages when
 --     the chart shows time, time when it shows pages), i.e. what the old
 --     "full" layout added to the compact one.
---   * "Compared to previous week": under the chart, after a thin divider,
+--   * "Compared to previous 7 days": under the chart, after a thin divider,
 --     the change of the total and of the daily average against the 7 days
 --     before the last 7 days.
 M.SETTINGS_KEY_WEEKLY_EXTRA_ROW = "reading_insights_weekly_extra_row"

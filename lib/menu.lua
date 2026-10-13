@@ -708,7 +708,7 @@ function M.build(self, deps)
 
     -- "Last 7 days" extras: the compact row (total + daily average) is
     -- always shown; the second (time and pages) row and the comparison with
-    -- the previous week can each be switched on separately (both off by
+    -- the previous 7 days can each be switched on separately (both off by
     -- default).
     do
         local VSet = deps.ViewSettings
@@ -720,7 +720,7 @@ function M.build(self, deps)
             callback = function() VSet.saveWeeklyExtraRow(not VSet.readWeeklyExtraRow()) end,
         })
         table.insert(insights_popup_sub_item_table, {
-            text = _("Last 7 days: compared to previous week"),
+            text = _("Last 7 days: compared to previous 7 days"),
             help_text = _("Below the chart, show how the total and the daily average changed compared to the 7 days before."),
             keep_menu_open = true,
             checked_func = function() return VSet.readWeeklyVsPrev() end,

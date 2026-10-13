@@ -2094,14 +2094,14 @@ msgstr "Останні 7 днів: рядок час/сторінки"
 msgid "Show a second row with the other metric (pages when the chart shows time, time when it shows pages) below the total and daily average."
 msgstr "Показує другий рядок з іншим показником (сторінки, якщо графік показує час, і навпаки) під сумою та середнім за день."
 
-msgid "Last 7 days: compared to previous week"
-msgstr "Останні 7 днів: до минулого тижня"
+msgid "Last 7 days: compared to previous 7 days"
+msgstr "Останні 7 днів: до попередніх 7 днів"
 
 msgid "Below the chart, show how the total and the daily average changed compared to the 7 days before."
 msgstr "Під графіком показує зміну суми та середнього за день порівняно з попередніми 7 днями."
 
-msgid "vs prev. week"
-msgstr "до мин. тижня"
+msgid "vs prev. 7 days"
+msgstr "до поперед. 7 днів"
 
-msgid "p vs prev. week"
-msgstr "стор. до мин. тижня"
+msgid "p vs prev. 7 days"
+msgstr "стор. до поперед. 7 днів"

@@ -2063,14 +2063,14 @@ msgstr "Elmúlt 7 nap: idő és oldalak sor"
 msgid "Show a second row with the other metric (pages when the chart shows time, time when it shows pages) below the total and daily average."
 msgstr "Második sor megjelenítése a másik mutatóval (oldalak, ha a diagram időt mutat; idő, ha oldalakat) az összeg és a napi átlag alatt."
 
-msgid "Last 7 days: compared to previous week"
-msgstr "Elmúlt 7 nap: összevetés az előző héttel"
+msgid "Last 7 days: compared to previous 7 days"
+msgstr "Elmúlt 7 nap: összevetés az előző 7 nappal"
 
 msgid "Below the chart, show how the total and the daily average changed compared to the 7 days before."
 msgstr "A diagram alatt mutatja, mennyit változott az összeg és a napi átlag az azt megelőző 7 naphoz képest."
 
-msgid "vs prev. week"
-msgstr "előző héthez"
+msgid "vs prev. 7 days"
+msgstr "előző 7 naphoz"
 
-msgid "p vs prev. week"
-msgstr "oldal előző héthez"
+msgid "p vs prev. 7 days"
+msgstr "oldal előző 7 naphoz"

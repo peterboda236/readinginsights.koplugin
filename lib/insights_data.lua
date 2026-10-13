@@ -1522,7 +1522,7 @@ function M.getLastWeekAll(shared_conn)
                         hour = 0, min = 0, sec = 0 }
     end
     -- The query also covers the 7 days before that, for the "compared to
-    -- previous week" figures.
+    -- previous 7 days" figures.
     local week_start_ts = localMidnight(-13)
 
     local DOW_KEYS = { [0]="Sun", [1]="Mon", [2]="Tue", [3]="Wed", [4]="Thu", [5]="Fri", [6]="Sat" }

@@ -1302,7 +1302,7 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
                 table.insert(last_week_content, UI.padded(layout.padding_h, weekly_chart))
             end
 
-            -- Optional "compared to previous week" row under the chart,
+            -- Optional "compared to previous 7 days" row under the chart,
             -- after a thin divider: change of the total and of the daily
             -- average against the 7 days before the last 7 days.
             if VS.readWeeklyVsPrev() then
@@ -1329,7 +1329,7 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
                 local diff_avg   = diff_total / 7
                 local d_total_val = fmt_delta(diff_total)
                 local d_avg_val   = fmt_delta(diff_avg, true)
-                local d_total_unit = pages_mode and _("p vs prev. week") or _("vs prev. week")
+                local d_total_unit = pages_mode and _("p vs prev. 7 days") or _("vs prev. 7 days")
                 local d_avg_unit   = pages_mode and _("daily avg pages") or _("daily avg time")
                 local vs_row = UI.buildTwoColRow(
                     buildValueLine(fonts.value, fonts.label, layout.col_width, d_total_val, d_total_unit),

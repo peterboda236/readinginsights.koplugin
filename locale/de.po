@@ -2045,14 +2045,14 @@ msgstr "Letzte 7 Tage: Zeit-/Seitenzeile"
 msgid "Show a second row with the other metric (pages when the chart shows time, time when it shows pages) below the total and daily average."
 msgstr "Zweite Zeile mit der jeweils anderen Größe unter Summe und Tagesdurchschnitt (Seiten, wenn das Diagramm Zeit zeigt, und umgekehrt)."
 
-msgid "Last 7 days: compared to previous week"
-msgstr "Letzte 7 Tage: Vergleich zur Vorwoche"
+msgid "Last 7 days: compared to previous 7 days"
+msgstr "Letzte 7 Tage: Vergleich zu den vorherigen 7 Tagen"
 
 msgid "Below the chart, show how the total and the daily average changed compared to the 7 days before."
 msgstr "Zeigt unter dem Diagramm die Änderung von Summe und Tagesschnitt gegenüber den 7 Tagen davor."
 
-msgid "vs prev. week"
-msgstr "zur Vorwoche"
+msgid "vs prev. 7 days"
+msgstr "zu vorh. 7 Tagen"
 
-msgid "p vs prev. week"
-msgstr "Seiten zur Vorwoche"
+msgid "p vs prev. 7 days"
+msgstr "Seiten zu vorh. 7 Tagen"
