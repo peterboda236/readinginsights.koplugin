@@ -2060,8 +2060,8 @@ msgstr "Daily / weekly goal bar"
 msgid "Show a thin progress bar under the daily and weekly goal values."
 msgstr "Show a thin progress bar under the daily and weekly goal values."
 
-msgid "Progress bars"
-msgstr "Progress bars"
+msgid "Progress bar"
+msgstr "Progress bar"
 
 msgid "Show a thin progress bar under the book percentage."
 msgstr "Show a thin progress bar under the book percentage."

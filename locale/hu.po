@@ -2072,8 +2072,8 @@ msgstr "Napi / heti cél sáv"
 msgid "Show a thin progress bar under the daily and weekly goal values."
 msgstr "Vékony folyamatsáv megjelenítése a napi és heti cél értékei alatt."
 
-msgid "Progress bars"
-msgstr "Folyamatsávok"
+msgid "Progress bar"
+msgstr "Folyamatsáv"
 
 msgid "Show a thin progress bar under the book percentage."
 msgstr "Vékony folyamatsáv megjelenítése a könyv százaléka alatt."

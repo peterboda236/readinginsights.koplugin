@@ -2103,8 +2103,8 @@ msgstr "Смуга денної / тижневої мети"
 msgid "Show a thin progress bar under the daily and weekly goal values."
 msgstr "Показувати тонку смугу прогресу під значеннями денної та тижневої мети."
 
-msgid "Progress bars"
-msgstr "Смуги прогресу"
+msgid "Progress bar"
+msgstr "Смуга прогресу"
 
 msgid "Show a thin progress bar under the book percentage."
 msgstr "Показувати тонку смугу прогресу під відсотком прочитаного в книзі."
