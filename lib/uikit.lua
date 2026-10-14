@@ -145,7 +145,8 @@ local function descentOf(widget)
     return (ok and d and d > 0) and d or 0
 end
 
-function M.buildCellBar(ratio, width)
+function M.buildCellBar(ratio, width, height)
+    height = height or M.CELL_BAR_HEIGHT
     ratio = tonumber(ratio) or 0
     if ratio < 0 then ratio = 0 end
     if ratio > 1 then ratio = 1 end
@@ -157,12 +158,12 @@ function M.buildCellBar(ratio, width)
     local rest_w = width - done_w
     local bar = HorizontalGroup:new{ align = "top" }
     if done_w > 0 then
-        table.insert(bar, Colors.newBar(done_w, M.CELL_BAR_HEIGHT, Colors.activeBar()))
+        table.insert(bar, Colors.newBar(done_w, height, Colors.activeBar()))
     end
     if rest_w > 0 then
-        table.insert(bar, Colors.newBar(rest_w, M.CELL_BAR_HEIGHT, Colors.inactiveBar()))
+        table.insert(bar, Colors.newBar(rest_w, height, Colors.inactiveBar()))
     end
-    bar.dimen = Geom:new{ w = width, h = M.CELL_BAR_HEIGHT }
+    bar.dimen = Geom:new{ w = width, h = height }
     return bar
 end
 
@@ -184,7 +185,7 @@ end
 -- bar's own width: one column, or the whole row.
 -- `placement`: nil = bar under its row (small gap above, bigger below);
 -- "even" = the same gap above and below it (not used by the popup now).
-function M.buildRowBar(ratio, width, value_face, small_face, placement)
+function M.buildRowBar(ratio, width, value_face, small_face, placement, height)
     local above, below = M.cellBarGaps(value_face, small_face)
     if placement == "even" then
         local g = math.max(above, Size.padding.small)
@@ -193,7 +194,7 @@ function M.buildRowBar(ratio, width, value_face, small_face, placement)
     return VerticalGroup:new{
         align = "left",
         VerticalSpan:new{ width = above },
-        M.buildCellBar(ratio, width),
+        M.buildCellBar(ratio, width, height),
         VerticalSpan:new{ width = below },
     }
 end

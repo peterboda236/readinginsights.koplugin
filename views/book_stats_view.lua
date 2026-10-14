@@ -493,8 +493,8 @@ local function buildSections(stats, fonts, layout, popup)
     -- under the percentage row of "This book" and spans up to the right padding.
     local show_cell_bars = VS.Opt.readShowCellBars()
     local small_face = Fonts.getFace("insights_small")
-    local function rowBar(ratio, width, placement)
-        return UI.buildRowBar(ratio, width, fonts.value, small_face, placement)
+    local function rowBar(ratio, width, placement, height)
+        return UI.buildRowBar(ratio, width, fonts.value, small_face, placement, height)
     end
     -- "read today" / "avg time/day" can show either time (default) or page
     -- counts - toggled by tapping the pace row (see ReadingStatsPopup:onTapClose).
@@ -792,21 +792,25 @@ local function buildSections(stats, fonts, layout, popup)
                 table.insert(this_book_rows, UI.buildTwoColRow(book_col1, book_col2, layout))
             end
             local function addReadRow()
-                table.insert(this_book_rows, UI.buildTwoColRow(book_progress, book_pages_read, layout))
+                local left_cell, right_cell = book_progress, book_pages_read
+                if show_cell_bars then
+                    -- The bar sits inside the percentage cell (one column
+                    -- wide), the neighbouring cell is padded to match.
+                    local extra
+                    left_cell, extra = UI.withCellBar(left_cell,
+                        stats.book_progress_ratio, layout.col_width,
+                        fonts.value, small_face)
+                    right_cell = UI.padBottom(right_cell, extra)
+                end
+                table.insert(this_book_rows, UI.buildTwoColRow(left_cell, right_cell, layout))
             end
-            -- Reading-time row first (time left, then time read), then the percentage row with its
-            -- progress bar directly under it (full row width, up to the right
-            -- padding), so the bar clearly belongs to the percentage.
-            local first_row  = show_time_row and addTimeRow or nil
-            local second_row = show_read_row and addReadRow or nil
-            if first_row then first_row() end
-            if first_row and second_row then
+            -- Percentage row first with its progress bar under the
+            -- percentage (that cell only), then the reading-time row.
+            if show_read_row then addReadRow() end
+            if show_read_row and show_time_row then
                 table.insert(this_book_rows, VerticalSpan:new{ height = Size.padding.default })
             end
-            if second_row then second_row() end
-            if show_cell_bars and show_read_row then
-                table.insert(this_book_rows, rowBar(stats.book_progress_ratio, layout.content_width))
-            end
+            if show_time_row then addTimeRow() end
         end
 
         if skim_in_book then
