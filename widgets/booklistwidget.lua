@@ -476,6 +476,10 @@ local BookListWidget = SortWidget:extend{
     display_modes     = nil,
     display_mode      = nil,
     display_setting_key = nil,
+    -- Optional: called with the widget right after the display mode or the
+    -- sort order was changed and before the rows are rebuilt, so a list can
+    -- fetch data that only the new mode needs (the star ratings).
+    prepare_func      = nil,
     -- Drop the (blank) checkbox column so rows sit close to the left edge,
     -- for read-only lists that never tick anything (the achievements list).
     no_checkbox       = nil,
@@ -554,6 +558,7 @@ function BookListWidget:setDisplayMode(mode)
     if not mode or mode == self.display_mode then return end
     self.display_mode = mode
     M.saveDisplayMode(self.display_setting_key, mode)
+    if self.prepare_func then self.prepare_func(self) end
     self:_populateItems()
 end
 
@@ -594,6 +599,7 @@ function BookListWidget:setSortMode(mode)
     self.sort_mode = mode
     M.saveSortMode(self.sort_setting_key, mode)
     self.show_page = 1
+    if self.prepare_func then self.prepare_func(self) end
     self:updateItems()
 end
 

@@ -819,23 +819,31 @@ function M.build(self, deps)
     -- one in the order they were added over time, so they are put in order
     -- here, in one place):
     --   1. what the popup shows: goals, achievements (+ refresh), hamburger menu
-    --   2. "Last 7 days": chart style, today's side, layout, 8-week trend order
+    --   2. "Last 7 days": chart style, today's side, extra rows, 8-week trend order
     --   3. yearly months chart: style, layout (bars)
     --   4. heatmap and time of day
-    -- The numbers are the order in which the items were inserted above; if
-    -- items were ever added or removed without updating this, the list is
-    -- left as it is rather than scrambled.
+    -- The numbers are the order in which the items were inserted above:
+    --    1 daily / weekly goal         9 Last 7 days: today's side
+    --    2 daily / weekly goal bar    10 Last 7 days: chart style
+    --    3 reading goal               11 months chart style
+    --    4 achievements               12 months chart layout
+    --    5 hamburger menu             13 Last 7 days: time and pages row
+    --    6 heatmap months             14 Last 7 days: compared to previous 7 days
+    --    7 time of day (chart/heatmap)15 achievements refresh
+    --    8 8-week chart order
+    -- If items were ever added or removed without updating this (the count
+    -- below), the list is left as it is rather than scrambled.
     do
         local t = insights_popup_sub_item_table
-        if #t == 13 then
-            local order = { 1, 2, 3, 13, 4,   9, 8, 12, 7,   10, 11,   5, 6 }
+        if #t == 15 then
+            local order = { 1, 2, 3, 4, 15, 5,   10, 9, 13, 14, 8,   11, 12,   6, 7 }
             local grouped = {}
             for pos, idx in ipairs(order) do
                 local item = t[idx]
                 item.separator = nil
                 grouped[pos] = item
             end
-            for _idx, pos in ipairs({ 5, 9, 11 }) do
+            for _idx, pos in ipairs({ 6, 11, 13 }) do
                 grouped[pos].separator = true
             end
             for k = #t, 1, -1 do t[k] = nil end

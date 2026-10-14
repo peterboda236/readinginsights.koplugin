@@ -2059,3 +2059,12 @@ msgstr "Fortschrittsbalken"
 
 msgid "Show a thin progress bar under the book percentage."
 msgstr "Einen dünnen Fortschrittsbalken unter dem Buchfortschritt in Prozent anzeigen."
+
+msgid "Loading ratings..."
+msgstr "Bewertungen werden geladen..."
+
+msgid "Rating (0-5 stars)"
+msgstr "Bewertung (0–5 Sterne)"
+
+msgid "Please enter a rating from 0 to 5"
+msgstr "Bitte eine Bewertung von 0 bis 5 eingeben"

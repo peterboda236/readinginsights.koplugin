@@ -2108,3 +2108,12 @@ msgstr "Смуга прогресу"
 
 msgid "Show a thin progress bar under the book percentage."
 msgstr "Показувати тонку смугу прогресу під відсотком прочитаного в книзі."
+
+msgid "Rating (0-5 stars)"
+msgstr "Оцінка (0–5 зірок)"
+
+msgid "Please enter a rating from 0 to 5"
+msgstr "Будь ласка, введіть оцінку від 0 до 5"
+
+msgid "Loading ratings..."
+msgstr "Завантаження оцінок..."

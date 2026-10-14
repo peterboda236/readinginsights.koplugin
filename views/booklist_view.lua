@@ -121,6 +121,31 @@ local function annotateRatings(books)
     end
 end
 
+-- The ratings are only worth looking up when the list shows them (the
+-- "rating" column) or is ordered by them: the lookup can rebuild the map of
+-- every book's sidecar, which is slow on a big library.
+local function isRatingSort(mode)
+    return mode == "rating_desc" or mode == "rating_asc"
+end
+
+-- annotateRatings, with a "Loading ratings..." notice when the lookup is
+-- going to have to rebuild the map (so the screen doesn't just freeze). The
+-- notice is painted first, then the (blocking) lookup runs, then it goes.
+local function annotateRatingsWithNotice(books)
+    if Ratings.isWarm() then
+        annotateRatings(books)
+        return
+    end
+    local info = InfoMessage:new{ text = _("Loading ratings...") }
+    UIManager:show(info)
+    UIManager:forceRePaint()
+    local ok, err = pcall(annotateRatings, books)
+    UIManager:close(info)
+    if not ok then
+        require("logger").warn("ReadingInsights: rating lookup failed: " .. tostring(err))
+    end
+end
+
 -- The text for one book in one display mode (see ListWidget.displayLabel).
 -- A hand-added book has no reading time and no pages to report, so those
 -- stay blank for it rather than printing a zero.
@@ -228,7 +253,6 @@ function M.showBookList(title, books, on_close, stats_plugin, opts)
         return
     end
 
-    annotateRatings(books)
     local display_modes = (opts and opts.show_dates) and MODES_DATED or MODES_PERIOD
     local display_key   = (opts and opts.show_dates) and DISPLAY_KEY_FINISHED or DISPLAY_KEY_BOOKS
     local display_mode  = ListWidget.readDisplayMode(display_key, display_modes)
@@ -348,6 +372,16 @@ function M.showBookList(title, books, on_close, stats_plugin, opts)
     -- insights popup underneath it.
     local sort_mode = ListWidget.readSortMode(SORT_KEY_BOOKS)
 
+    -- Ratings are looked up the first time they are needed: when the list
+    -- opens in (or is switched to) the rating column or a rating order.
+    local ratings_loaded = false
+    local function ensureRatings()
+        if ratings_loaded then return end
+        if display_mode ~= "rating" and not isRatingSort(sort_mode) then return end
+        annotateRatingsWithNotice(books)
+        ratings_loaded = true
+    end
+
     local function sortedBooks()
         local sorted = {}
         for _idx, book in ipairs(books) do table.insert(sorted, book) end
@@ -359,6 +393,7 @@ function M.showBookList(title, books, on_close, stats_plugin, opts)
     end
 
     openPage = function(page)
+        ensureRatings()
         kv = KeyValuePage:new{
             show_page           = page or 1,
             title               = title,
@@ -533,9 +568,17 @@ function M.showFinishedChecklist(insights_popup, year)
     end
 
     local widget            -- the list below; the rows' long press asks it for its display mode
+    -- Ratings are only fetched when the list shows or sorts by them - at
+    -- opening, or later when the reader switches to that column / order (see
+    -- prepare_func below).
+    local ratings_loaded =
+        ListWidget.readDisplayMode(DISPLAY_KEY_CHECKLIST, MODES_DATED) == "rating"
+        or isRatingSort(ListWidget.readSortMode(SORT_KEY_CHECKLIST))
+    local item_of_book = {}
     local function buildItems()
       local item_table = {}
-      annotateRatings(books)
+      item_of_book = {}
+      if ratings_loaded then annotateRatingsWithNotice(books) end
       for _idx, book in ipairs(books) do
         local id_str = tostring(book.id_book)
         local item
@@ -570,6 +613,7 @@ function M.showFinishedChecklist(insights_popup, year)
                 item.text = rowText(book, id_str)
             end,
         }
+        item_of_book[item] = book
         table.insert(item_table, item)
       end
       return item_table
@@ -588,6 +632,19 @@ function M.showFinishedChecklist(insights_popup, year)
         sort_modes       = ListWidget.BOOK_SORT_MODES,
         display_modes    = MODES_DATED,
         display_setting_key = DISPLAY_KEY_CHECKLIST,
+        prepare_func     = function(self)
+            if ratings_loaded then return end
+            if self.display_mode ~= "rating" and not isRatingSort(self.sort_mode) then return end
+            ratings_loaded = true
+            annotateRatingsWithNotice(books)
+            for _idx, it in ipairs(self.item_table) do
+                local b = item_of_book[it]
+                if b then
+                    it.values      = valueTable(b)
+                    it.sort_rating = b.rating or 0
+                end
+            end
+        end,
         show_ok_cancel   = true,
         -- Offered next to the sort orders in the title bar's menu: re-runs
         -- both queries, so a book finished while this list was open (or

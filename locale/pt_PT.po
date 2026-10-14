@@ -2059,3 +2059,12 @@ msgstr "Barra de progresso"
 
 msgid "Show a thin progress bar under the book percentage."
 msgstr "Mostrar uma barra de progresso fina sob a percentagem do livro."
+
+msgid "Rating (0-5 stars)"
+msgstr "Classificação (0-5 estrelas)"
+
+msgid "Please enter a rating from 0 to 5"
+msgstr "Por favor, introduza uma classificação de 0 a 5"
+
+msgid "Loading ratings..."
+msgstr "A carregar classificações..."
