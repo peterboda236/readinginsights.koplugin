@@ -739,7 +739,7 @@ local function buildMonthlyLineChart(popup_self, monthly_data, layout, fonts)
         ratios[i] = monthlyPlotValue(m, value_key) / max_value
         if popup_self.mode == VS.INSIGHTS_MODE_HOURS then
             local mo_secs = tonumber(m.seconds) or math.floor((tonumber(m.hours) or 0) * 3600 + 0.5)
-            value_strs[i] = Locale.formatDuration(mo_secs, true)
+            value_strs[i] = Locale.formatDurationChart(mo_secs)
         else
             value_strs[i] = formatNumber(value)
         end
@@ -857,7 +857,12 @@ local function buildMonthlyChart(popup_self, monthly_data, layout, fonts)
             local bar_label_str
             if popup_self.mode == VS.INSIGHTS_MODE_HOURS then
                 local mo_secs = tonumber(m.seconds) or math.floor((tonumber(m.hours) or 0) * 3600 + 0.5)
-                bar_label_str = Locale.formatDuration(mo_secs, true)
+                -- The compact label (letters format: "1.9h" / "45m") is for the
+                -- tight 12-in-a-row strip; with two rows of 6 months there is
+                -- room for the full duration.
+                bar_label_str = (months_per_row == 6)
+                    and Locale.formatDuration(mo_secs, true)
+                    or Locale.formatDurationChart(mo_secs)
             else
                 bar_label_str = formatNumber(value)
             end            local value_label   = TextWidget:new{ text = bar_label_str, face = font_small, fgcolor = Colors.small() }
@@ -1372,20 +1377,41 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
                 else
                     cur_total  = math.floor((lw.avg_seconds or 0) * 7 + 0.5)
                     prev_total = math.floor((lw.prev_seconds or 0) + 0.5)
-                    fmt_delta = function(d)
-                        local a = math.floor(math.abs(d) / 60 + 0.5)
-                        return string.format("%s%02d:%02d", d < 0 and "-" or "+",
-                            math.floor(a / 60), a % 60)
+                    -- Honours KOReader's "duration_format" (classic / modern /
+                    -- letters) and the "long durations as days" option via
+                    -- splitDurationValueUnit(), same as the rest of the popup.
+                    -- Returns the signed value plus the label with an optional
+                    -- "day" word merged in front of it.
+                    fmt_delta = function(d, base_label)
+                        local a = math.floor(math.abs(d) / 60 + 0.5) * 60
+                        local val, unit = splitDurationValueUnit(a, base_label)
+                        return ((d < 0 and a > 0) and "-" or "+") .. val, unit
                     end
                 end
                 local diff_total = cur_total - prev_total
                 local diff_avg   = diff_total / 7
-                local d_total_val = fmt_delta(diff_total)
-                local d_avg_val   = fmt_delta(diff_avg, true)
-                local d_total_unit = pages_mode
-                    and N_("page vs prev. 7d", "pages vs prev. 7d", math.abs(diff_total))
-                    or _("vs prev. 7d")
-                local d_avg_unit   = pages_mode and _("daily avg pages") or _("daily avg time")
+                local d_total_val, d_total_unit, d_avg_val, d_avg_unit
+                if pages_mode then
+                    d_total_val  = fmt_delta(diff_total)
+                    d_avg_val    = fmt_delta(diff_avg, true)
+                    d_total_unit = N_("page vs prev. 7d", "pages vs prev. 7d", math.abs(diff_total))
+                    d_avg_unit   = _("daily avg pages")
+                else
+                    d_total_val, d_total_unit = fmt_delta(diff_total, _("time vs prev. 7d"))
+                    -- A long value ("-6h 18m") can leave too little room for
+                    -- the full label, which would then wrap onto two lines.
+                    -- In that case fall back to the shorter "vs prev. 7d".
+                    local value_probe = TextWidget:new{ text = d_total_val,  face = fonts.value }
+                    local label_probe = TextWidget:new{ text = d_total_unit, face = fonts.label }
+                    local fits = value_probe:getSize().w + Size.padding.large
+                                 + label_probe:getSize().w <= layout.col_width
+                    value_probe:free()
+                    label_probe:free()
+                    if not fits then
+                        d_total_val, d_total_unit = fmt_delta(diff_total, _("vs prev. 7d"))
+                    end
+                    d_avg_val,   d_avg_unit   = fmt_delta(diff_avg,   _("daily avg time"))
+                end
                 local vs_row = UI.buildTwoColRow(
                     buildValueLine(fonts.value, fonts.label, layout.col_width, d_total_val, d_total_unit),
                     buildValueLine(fonts.value, fonts.label, layout.col_width, d_avg_val,   d_avg_unit),

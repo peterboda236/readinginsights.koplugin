@@ -2030,6 +2030,9 @@ msgstr "Letzte 7 Tage: Vergleich zu den vorherigen 7 Tagen"
 msgid "Below the chart, show how the total and the daily average changed compared to the 7 days before."
 msgstr "Zeigt unter dem Diagramm die Änderung von Summe und Tagesschnitt gegenüber den 7 Tagen davor."
 
+msgid "time vs prev. 7d"
+msgstr "Zeit vs vorh. 7 Tage"
+
 msgid "vs prev. 7d"
 msgstr "vs vorh. 7 Tage"
 

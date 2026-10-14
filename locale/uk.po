@@ -2079,6 +2079,9 @@ msgstr "Останні 7 днів: до попередніх 7 днів"
 msgid "Below the chart, show how the total and the daily average changed compared to the 7 days before."
 msgstr "Під графіком показує зміну суми та середнього за день порівняно з попередніми 7 днями."
 
+msgid "time vs prev. 7d"
+msgstr "час vs поперед. 7 днів"
+
 msgid "vs prev. 7d"
 msgstr "vs поперед. 7 днів"
 

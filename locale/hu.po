@@ -2048,6 +2048,9 @@ msgstr "Elmúlt 7 nap: összevetés az előző 7 nappal"
 msgid "Below the chart, show how the total and the daily average changed compared to the 7 days before."
 msgstr "A diagram alatt mutatja, mennyit változott az összeg és a napi átlag az azt megelőző 7 naphoz képest."
 
+msgid "time vs prev. 7d"
+msgstr "idő vs előző 7 nap"
+
 msgid "vs prev. 7d"
 msgstr "vs előző 7 nap"
 

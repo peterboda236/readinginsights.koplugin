@@ -2036,6 +2036,9 @@ msgstr "Last 7 days: compared to previous 7 days"
 msgid "Below the chart, show how the total and the daily average changed compared to the 7 days before."
 msgstr "Below the chart, show how the total and the daily average changed compared to the 7 days before."
 
+msgid "time vs prev. 7d"
+msgstr "time vs prev. 7d"
+
 msgid "vs prev. 7d"
 msgstr "vs prev. 7d"
 

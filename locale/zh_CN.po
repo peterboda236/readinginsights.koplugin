@@ -1753,6 +1753,9 @@ msgstr "过去 7 天：与前 7 天对比"
 msgid "Below the chart, show how the total and the daily average changed compared to the 7 days before."
 msgstr "在图表下方显示总计和日均与前 7 天相比的变化。"
 
+msgid "time vs prev. 7d"
+msgstr "时间 较前 7 天"
+
 msgid "vs prev. 7d"
 msgstr "较前 7 天"
 
