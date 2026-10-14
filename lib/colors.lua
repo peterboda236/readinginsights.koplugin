@@ -177,10 +177,10 @@ for _, key in ipairs(DONUT_KEY_ORDER) do table.insert(ALL_KEY_ORDER, key) end
 -- so upgrading the plugin changes nothing visually until the user opens
 -- the new Colors menu and picks something else.
 local DEFAULTS = {
-    active_bar   = "#000000",
-    inactive_bar = "#AAAAAA",
+    active_bar   = "#555555", -- Blitbuffer.COLOR_GRAY_5 (KOReader status bar progress)
+    inactive_bar = "#AAAAAA", -- Blitbuffer.COLOR_GRAY (KOReader status bar background)
     trend_line   = "#000000",
-    separator    = "#AAAAAA",
+    separator    = "#888888", -- Blitbuffer.COLOR_DARK_GRAY
     label        = "#000000",
     value        = "#000000",
     section      = "#000000",
@@ -203,19 +203,19 @@ local DEFAULTS = {
     --   gray, so a run of read days reads as a dark block.
     -- streak_gap:  a day inside a week that has reading but was not itself read
     --   (the weekly streak is secured for that week) - light gray.
-    streak_read  = "#555555",
-    streak_gap   = "#CCCCCC",
+    streak_read  = "#555555", -- COLOR_GRAY_5 (active)
+    streak_gap   = "#AAAAAA", -- COLOR_GRAY (inactive)
     -- Book progress popup: the skim-style chapter bar (see
     -- widgets/skimbarwidget.lua). skim_bar_read fills the bar up to the
     -- current page, skim_bar_unread the rest. Chapter separators are drawn
     -- black or white on top, whichever contrasts with the color under them.
-    skim_bar_read   = "#000000",
-    skim_bar_unread = "#E0E0E0",
+    skim_bar_read   = "#555555", -- COLOR_GRAY_5 (active)
+    skim_bar_unread = "#AAAAAA", -- COLOR_GRAY (inactive)
     -- Book progress popup: the donut chart of the "Donut chart" Book
     -- section style (see widgets/donutwidget.lua). donut_read is the
     -- already-read arc, donut_unread the rest of the ring.
-    donut_read   = "#000000",
-    donut_unread = "#E0E0E0",
+    donut_read   = "#555555", -- COLOR_GRAY_5 (active)
+    donut_unread = "#AAAAAA", -- COLOR_GRAY (inactive)
 }
 
 local SETTINGS_PREFIX = "reading_insights_color_"

@@ -61,8 +61,8 @@ function M.build(ratio, full_width, read_color, unread_color)
     if ratio < 0 then ratio = 0 end
     if ratio > 1 then ratio = 1 end
 
-    read_color   = read_color   or Colors.progressBarRead()
-    unread_color = unread_color or Colors.progressBarUnread()
+    read_color   = read_color   or Colors.activeBar()
+    unread_color = unread_color or Colors.inactiveBar()
 
     local height = Screen:scaleBySize(M.readHeightSetting())
 
