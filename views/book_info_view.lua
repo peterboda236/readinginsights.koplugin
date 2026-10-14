@@ -210,7 +210,9 @@ function BookInfoPopup:init()
         self.info = Data.gatherForFile(self.file, self.book)
         self.md5 = self.book.md5
         self.id_book = self.book.id_book
-        self.rating_file = self.file
+        -- a file that was only guessed from the title is shown (cover,
+        -- description) but never used for the rating
+        self.rating_file = (not self.file_guessed) and self.file or nil
     else
         self.info = Data.gather(self.ui) or { title = "" }
         self.md5 = Data.md5(self.ui)

@@ -650,6 +650,14 @@ function ReadingInsights:onSuspend()
     UIManager:show(popup, "full")
 end
 
+-- A book was just read: its rating may have been set in KOReader's own book
+-- status page, which the plugin does not see. Drop the quick map so the next
+-- list shows the current value. (Nothing is rebuilt here, the next lookup
+-- does it; and the event is not consumed.)
+function ReadingInsights:onCloseDocument()
+    if Ratings and Ratings.refresh then Ratings.refresh() end
+end
+
 function ReadingInsights:onResume()
     if self._screensaver_widget then
         UIManager:close(self._screensaver_widget)

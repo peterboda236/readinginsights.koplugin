@@ -168,20 +168,38 @@ end
 
 -- The properties read straight from the book itself: the last resort, and
 -- what supplies a description the cached properties did not carry.
+-- Remembered for the session (false = "tried, nothing there"): opening a
+-- whole book just to read its properties costs seconds on a big EPUB / PDF,
+-- and the answer does not change between two popups.
+local props_memo = {}
+
 local function docProps(file)
+    local memo = props_memo[file]
+    if memo ~= nil then return memo or nil end
     local doc = openDoc(file)
-    if not doc then return nil end
+    if not doc then
+        props_memo[file] = false
+        return nil
+    end
     local ok, props = pcall(function() return doc:getProps() end)
     pcall(function() doc:close() end)
-    if ok and type(props) == "table" then return props end
+    if ok and type(props) == "table" then
+        props_memo[file] = props
+        return props
+    end
+    props_memo[file] = false
     return nil
 end
 
 function M.gatherForFile(file, book)
-    local props = (file and fileProps(file)) or {}
-    if file and (type(props) ~= "table" or not props.description or props.description == "") then
-        -- the cached properties have no description (or there are none):
-        -- ask the book itself, and take what is missing from there
+    local cached_props = file and fileProps(file) or nil
+    if type(cached_props) ~= "table" then cached_props = nil end
+    local props = cached_props or {}
+    if file and not cached_props then
+        -- KOReader has no properties for this book at all: only then is the
+        -- book itself opened and asked. A book KOReader does know, but that
+        -- has no description, really has none - opening the whole file for
+        -- that on every popup was the slow part.
         local dp = docProps(file)
         if dp then
             local base = props
@@ -272,9 +290,57 @@ function M.seriesLine(info)
     end))
 end
 
+-- The last few covers read from a book's file, kept as copies: reading a
+-- cover means opening the book, and the same list row is often tapped twice.
+-- The caller still gets its own buffer to free (see the header).
+local COVER_CACHE_MAX = 3
+local cover_cache, cover_order = {}, {}
+
+local function coverFromCache(file)
+    local cached = cover_cache[file]
+    if not cached then return nil end
+    local ok, copy = pcall(function() return cached:copy() end)
+    if ok and copy then return copy end
+    return nil
+end
+
+local function coverToCache(file, bb)
+    if not bb or cover_cache[file] then return end
+    local ok, copy = pcall(function() return bb:copy() end)
+    if not (ok and copy) then return end
+    cover_cache[file] = copy
+    cover_order[#cover_order + 1] = file
+    while #cover_order > COVER_CACHE_MAX do
+        local old = table.remove(cover_order, 1)
+        local buf = cover_cache[old]
+        cover_cache[old] = nil
+        if buf then pcall(function() buf:free() end) end
+    end
+end
+
 function M.getCover(ui, file)
     local bb
     M.last_cover_error = nil
+    if file then
+        bb = coverFromCache(file)
+        if bb then return bb end
+        bb = M._getCoverFromFile(file)
+        if bb then coverToCache(file, bb) end
+        return bb
+    end
+    if not ui or not ui.document then return nil end
+    pcall(function()
+        local bookinfo = ui.bookinfo
+        if not bookinfo then
+            bookinfo = require("apps/filemanager/filemanagerbookinfo")
+        end
+        bb = bookinfo:getCoverImage(ui.document)
+    end)
+    return bb
+end
+
+function M._getCoverFromFile(file)
+    local bb
     if file then
         -- a book that is not open: the cover is read from the file
         local ok_bi, bookinfo = pcall(require, "apps/filemanager/filemanagerbookinfo")
@@ -303,15 +369,7 @@ function M.getCover(ui, file)
         end
         return bb
     end
-    if not ui or not ui.document then return nil end
-    pcall(function()
-        local bookinfo = ui.bookinfo
-        if not bookinfo then
-            bookinfo = require("apps/filemanager/filemanagerbookinfo")
-        end
-        bb = bookinfo:getCoverImage(ui.document)
-    end)
-    return bb
+    return nil
 end
 
 return M

@@ -220,7 +220,9 @@ local function rateStatsBook(book, on_done)
         -- write into the book's own sidecar when its file is known (so the
         -- file manager and status page agree); otherwise Ratings.save falls
         -- back to the plugin's own store
-        local file = Ratings.fileFor(book.md5, book.title, authorsOf(book))
+        -- exact lookup only (no title): a rating is never written into a
+        -- sidecar that was merely guessed from a file name
+        local file = Ratings.fileFor(book.md5)
         if not Ratings.save(book.md5, n, file) then
             -- nothing was stored: don't show the new stars in the list
             UIManager:show(InfoMessage:new{ text = _("This book has no checksum, so its rating can't be saved") })
@@ -328,11 +330,19 @@ function M.showBookList(title, books, on_close, stats_plugin, opts)
                         local ok, ts = pcall(Data.getFinishedTimestamp, book.id_book)
                         if ok then finished_ts = ts end
                     end
+                    local book_file, file_guessed
+                    if not book.manual then
+                        book_file, file_guessed = Ratings.fileFor(book.md5, book.title, authorsOf(book))
+                    end
                     UIManager:show(BookInfoPopup:new{
                         ui      = ui,
                         book    = book,
                         finished_ts = finished_ts,
-                        file    = (not book.manual) and Ratings.fileFor(book.md5, book.title, authorsOf(book)) or nil,
+                        file    = book_file,
+                        -- a file found by title is good for the cover and the
+                        -- description, but the rating is not read from / written
+                        -- into it
+                        file_guessed = file_guessed,
                         -- A hand-added book keeps its rating in the manual list.
                         save_rating = book.manual and function(n)
                             if not (book.manual_year and book.manual_id) then return false end
