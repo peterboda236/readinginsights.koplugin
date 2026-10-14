@@ -593,13 +593,6 @@ local function buildSections(stats, fonts, layout, popup)
             left_val,  right_val  = chapter_val2, valueLine(UI.emptyValue(), "")
         end
         local chapter_headers_content = buildChapterHeaders(fonts.section, layout, left_text, right_text)
-        if show_cell_bars and show_cur then
-            local extra
-            left_val, extra = UI.withCellBar(left_val,
-                stats.chapter_progress_ratio or stats.book_progress_ratio,
-                layout.col_width, fonts.value, small_face)
-            right_val = UI.padBottom(right_val, extra)
-        end
         local chapter_values_content  = UI.buildTwoColRow(left_val, right_val, layout, not (show_cur and show_next))
         -- Wrapped in tappableWrap (fixed dimen) rather than used raw, so tapping
         -- either row reliably hits (same reasoning as started_tap/finish_tap
