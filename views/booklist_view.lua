@@ -111,9 +111,9 @@ end
 
 -- Looks each book's star rating up (from its sidecar, via the statistics
 -- DB's md5) and stores it on the record. Books added by hand carry their own
--- rating already.
+-- rating already. No Ratings.refresh() here: the quick map's TTL keeps it
+-- fresh enough, and rating a book (Ratings.save) updates it anyway.
 local function annotateRatings(books)
-    Ratings.refresh()
     for _idx, book in ipairs(books) do
         if not book.manual then
             book.rating = Ratings.get(book.md5) or 0

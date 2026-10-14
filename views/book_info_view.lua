@@ -222,11 +222,9 @@ function BookInfoPopup:init()
         -- a hand-added book: its rating lives in the book row itself
         self.rating = tonumber(self.book and self.book.rating) or 0
     else
-        -- A rating may have been changed elsewhere (e.g. the file manager).
         -- With the book's file known its sidecar is read directly: cheap and
-        -- always current. Without one only the quick map can tell, so that
-        -- is dropped to be rebuilt (the sidecar-folder walk keeps its cache).
-        if not self.rating_file and Ratings.refresh then Ratings.refresh() end
+        -- always current. Otherwise the quick map answers; its TTL keeps it
+        -- fresh enough and Ratings.save updates it, so no refresh() here.
         self.rating = (self.md5 and Ratings.get(self.md5, self.rating_file)) or 0
     end
     self.dimen = Geom:new{ w = Screen:getWidth(), h = Screen:getHeight() }
