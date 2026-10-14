@@ -196,7 +196,11 @@ local function rateStatsBook(book, on_done)
         -- file manager and status page agree); otherwise Ratings.save falls
         -- back to the plugin's own store
         local file = Ratings.fileFor(book.md5, book.title, authorsOf(book))
-        Ratings.save(book.md5, n, file)
+        if not Ratings.save(book.md5, n, file) then
+            -- nothing was stored: don't show the new stars in the list
+            UIManager:show(InfoMessage:new{ text = _("This book has no checksum, so its rating can't be saved") })
+            return
+        end
         book.rating = n
         on_done(n)
     end)

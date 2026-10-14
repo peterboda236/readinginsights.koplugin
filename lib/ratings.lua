@@ -13,13 +13,18 @@ The map is rebuilt at most once every TTL seconds - lists are opened a tap
 at a time, and walking a few hundred sidecars on every one of them would be
 wasteful.
 
-  Ratings.get(md5)      -> 1..5, or nil when the book has no rating (or is
-                           not in the reading history)
+  Ratings.get(md5, file) -> 1..5, or nil when the book has no rating (or is
+                           not in the reading history). With `file` (the
+                           book's path, when known) the rating is read
+                           straight from that book's sidecar - cheap, and
+                           always fresh - instead of from the map
   Ratings.stars(n)      -> "★★★☆☆" (five glyphs), "☆☆☆☆☆" for no rating
   Ratings.set(md5, n)   store a rating the reader typed in by hand (0 = no
                         rating); kept in its own file and loaded again on the
                         next start, and it wins over the book's sidecar
-  Ratings.refresh()     drop the map so the next get() rebuilds it
+  Ratings.refresh()     drop the quick map (TTL seconds) so the next get()
+                        rebuilds it; the slow sidecar-folder walk keeps its
+                        own cache (SCAN_TTL) and is not redone
   Ratings.fileFor(md5)  -> the book's file path (from the reading history /
                         the open book), nil when it is not known
   Ratings.save(md5, n)  set a rating from the Book info popup: written into
@@ -28,6 +33,8 @@ wasteful.
                         is known, so a book that had no stars gets them there
                         too; otherwise kept in the plugin's own file as set()
 ]]--
+
+local logger = require("logger")
 
 local M = {}
 
@@ -83,17 +90,37 @@ end
 
 -- `file` (optional) is the book itself: when the sidecar carries a rating but
 -- no checksum (older sidecars), the checksum is computed from the file.
-local function ratingFrom(settings, file)
-    if not settings or not settings.readSetting then return nil, nil end
-    local md5 = settings:readSetting("partial_md5_checksum")
+-- The star rating (1..5) in a sidecar's settings, nil when there is none.
+local function ratingValue(settings)
+    if not settings or not settings.readSetting then return nil end
     local summary = settings:readSetting("summary")
     local rating = type(summary) == "table" and tonumber(summary.rating) or nil
     if rating then
         rating = math.floor(rating + 0.5)
         if rating < 1 then rating = nil elseif rating > 5 then rating = 5 end
     end
+    return rating
+end
+
+local function ratingFrom(settings, file)
+    if not settings or not settings.readSetting then return nil, nil end
+    local md5 = settings:readSetting("partial_md5_checksum")
+    local rating = ratingValue(settings)
     if (not md5 or md5 == "") and rating then md5 = fileMD5(file) end
     return md5, rating
+end
+
+-- The settings of a book's sidecar: the live ones when that book is the one
+-- open right now (its rating is only written to the file when it is closed),
+-- the sidecar file's own otherwise. nil when they can't be opened.
+local function sidecarSettings(file)
+    local ok_r, ReaderUI = pcall(require, "apps/reader/readerui")
+    local ui = ok_r and ReaderUI and ReaderUI.instance
+    if ui and ui.doc_settings and ui.document and ui.document.file == file then
+        return ui.doc_settings
+    end
+    local ok, settings = pcall(function() return require("docsettings"):open(file) end)
+    return ok and settings or nil
 end
 
 -- Walks the folders KOReader keeps sidecars in and files every rating found
@@ -229,9 +256,12 @@ local function ensure()
     end
 end
 
+-- Only the quick map: rebuilding it reads the reading history's sidecars,
+-- which is cheap. The sidecar-folder walk (up to SCAN_BUDGET seconds of CPU
+-- on a big library) stays cached for SCAN_TTL - dropping it here would redo
+-- it every time a list or the Book info popup opens.
 function M.refresh()
     map, built_at, file_map = nil, nil, nil
-    scan_map, scan_files, scan_built_at = nil, nil, nil
 end
 
 function M.set(md5, n)
@@ -239,18 +269,31 @@ function M.set(md5, n)
     n = tonumber(n) or 0
     n = math.max(0, math.min(5, math.floor(n + 0.5)))
     local st = openStore()
-    if not st then return false end
+    if not st then
+        logger.warn("ReadingInsights: can't open the ratings store " .. STORE_PATH)
+        return false
+    end
     local t = overrides()
     t[md5] = n
     st:saveSetting("ratings", t)
-    local ok = pcall(function() st:flush() end)
+    local ok, err = pcall(function() st:flush() end)
+    if not ok then
+        logger.warn("ReadingInsights: failed to save the rating of " .. md5
+            .. " into " .. STORE_PATH .. ": " .. tostring(err))
+    end
     return ok
 end
 
-function M.get(md5)
+function M.get(md5, file)
     if not md5 or md5 == "" then return nil end
     local own = overrides()[md5]
     if own ~= nil then return own > 0 and own or nil end
+    if file then
+        -- the book's own sidecar is the source of truth: read it directly
+        -- (no map, no walk) so the rating is always the current one
+        local settings = sidecarSettings(file)
+        if settings then return ratingValue(settings) end
+    end
     ensure()
     return map[md5]
 end
@@ -480,20 +523,17 @@ function M.save(md5, n, file)
 
     local saved = false
     if file then
-        local ok = pcall(function()
-            local ui
-            local ok_r, ReaderUI = pcall(require, "apps/reader/readerui")
-            if ok_r and ReaderUI then ui = ReaderUI.instance end
-            local doc_settings
-            if ui and ui.doc_settings and ui.document and ui.document.file == file then
-                doc_settings = ui.doc_settings
-            else
-                doc_settings = require("docsettings"):open(file)
-            end
+        local ok, err = pcall(function()
+            local doc_settings = sidecarSettings(file)
+            if not doc_settings then error("can't open the sidecar", 0) end
             writeSummary(doc_settings, n)
             doc_settings:flush()
         end)
         saved = ok
+        if not ok then
+            logger.warn("ReadingInsights: failed to write the rating into the sidecar of "
+                .. tostring(file) .. ": " .. tostring(err))
+        end
     end
 
     if saved then

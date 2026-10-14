@@ -206,8 +206,6 @@ local BookInfoPopup = InputContainer:extend{
 }
 
 function BookInfoPopup:init()
-    -- a rating may have been changed elsewhere (e.g. the file manager): re-read the sidecars
-    if Ratings and Ratings.refresh then Ratings.refresh() end
     if self.book then
         self.info = Data.gatherForFile(self.file, self.book)
         self.md5 = self.book.md5
@@ -224,7 +222,12 @@ function BookInfoPopup:init()
         -- a hand-added book: its rating lives in the book row itself
         self.rating = tonumber(self.book and self.book.rating) or 0
     else
-        self.rating = (self.md5 and Ratings.get(self.md5)) or 0
+        -- A rating may have been changed elsewhere (e.g. the file manager).
+        -- With the book's file known its sidecar is read directly: cheap and
+        -- always current. Without one only the quick map can tell, so that
+        -- is dropped to be rebuilt (the sidecar-folder walk keeps its cache).
+        if not self.rating_file and Ratings.refresh then Ratings.refresh() end
+        self.rating = (self.md5 and Ratings.get(self.md5, self.rating_file)) or 0
     end
     self.dimen = Geom:new{ w = Screen:getWidth(), h = Screen:getHeight() }
 
