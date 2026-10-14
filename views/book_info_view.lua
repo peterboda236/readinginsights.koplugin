@@ -31,7 +31,7 @@ replaces how a rating is stored (hand-added books keep theirs in their own
 list).
 
 Controls:
-  - Long press the stars       set / change / clear the rating
+  - Tap / long press the stars set / change / clear the rating
   - Tap the description        full description in a viewer window
   - Tap anywhere else / swipe  dismiss
 
@@ -206,6 +206,8 @@ local BookInfoPopup = InputContainer:extend{
 }
 
 function BookInfoPopup:init()
+    -- a rating may have been changed elsewhere (e.g. the file manager): re-read the sidecars
+    if Ratings and Ratings.refresh then Ratings.refresh() end
     if self.book then
         self.info = Data.gatherForFile(self.file, self.book)
         self.md5 = self.book.md5
@@ -370,7 +372,7 @@ function BookInfoPopup:_buildUI()
     local show_author = Opt.readBookInfo("author") and self.info.authors
     local series_line = Opt.readBookInfo("series") and Data.seriesLine(self.info) or nil
 
-    -- Star rating, above the title (long press it to edit).
+    -- Star rating, above the title (tap or long press it to edit).
     self.stars_widget = TextWidget:new{
         text    = Ratings.stars(self.rating),
         face    = author_face,
@@ -614,7 +616,7 @@ function BookInfoPopup:_showFullDescription()
     UIManager:show(viewer)
 end
 
--- Long press on the stars: the star rating popup. The rating goes into the
+-- Tap or long press on the stars: the star rating popup. The rating goes into the
 -- book's own sidecar (so the file manager shows it too - a book that had no
 -- stars there gets them), or into the plugin's own file when the book's file
 -- is not known (see Ratings.save).
@@ -653,14 +655,19 @@ function BookInfoPopup:_editRating()
     }
 end
 
-function BookInfoPopup:onHold(arg, ges)
+-- Is the gesture on the stars? A fingertip is bigger than five small stars:
+-- a little slack all round.
+function BookInfoPopup:_onStars(ges)
     local d = self.stars_frame and self.stars_frame.dimen
     local pos = ges and ges.pos
-    if not d or not pos then return true end
-    -- a fingertip is bigger than five small stars: a little slack all round
+    if not d or not pos then return false end
     local slack = S(12)
-    if pos.x >= d.x - slack and pos.x <= d.x + d.w + slack
-       and pos.y >= d.y - slack and pos.y <= d.y + d.h + slack then
+    return pos.x >= d.x - slack and pos.x <= d.x + d.w + slack
+       and pos.y >= d.y - slack and pos.y <= d.y + d.h + slack
+end
+
+function BookInfoPopup:onHold(arg, ges)
+    if self:_onStars(ges) then
         self:_editRating()
     elseif self.cover_diag then
         -- a long press anywhere else while the cover is missing says why
@@ -670,6 +677,11 @@ function BookInfoPopup:onHold(arg, ges)
 end
 
 function BookInfoPopup:onTapClose(arg, ges)
+    -- a tap on the stars opens the rating popup (as a long press does)
+    if self:_onStars(ges) then
+        self:_editRating()
+        return true
+    end
     local d = self.desc_frame and self.desc_frame.dimen
     if d and self.desc_full and ges and ges.pos and ges.pos:intersectWith(d) then
         self:_showFullDescription()

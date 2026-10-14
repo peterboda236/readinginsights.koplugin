@@ -113,6 +113,7 @@ end
 -- DB's md5) and stores it on the record. Books added by hand carry their own
 -- rating already.
 local function annotateRatings(books)
+    Ratings.refresh()
     for _idx, book in ipairs(books) do
         if not book.manual then
             book.rating = Ratings.get(book.md5) or 0
@@ -172,6 +173,17 @@ local function pickRating(title, current, on_pick)
     }
 end
 
+-- The author of a list book, for finding its file: the rows of the lists
+-- carry none, so it is read from the statistics DB when needed.
+local function authorsOf(book)
+    if book.authors and book.authors ~= "" then return book.authors end
+    if book.id_book and BookStatsData then
+        local ok, row = pcall(BookStatsData.getBookRow, book.id_book)
+        if ok and row and row.authors then return row.authors end
+    end
+    return nil
+end
+
 -- A book from the statistics DB: store the rating by its checksum (hand-added
 -- books carry their own and are handled where they are listed).
 local function rateStatsBook(book, on_done)
@@ -180,7 +192,11 @@ local function rateStatsBook(book, on_done)
         return
     end
     pickRating(book.title or _("Unknown"), book.rating, function(n)
-        Ratings.set(book.md5, n)
+        -- write into the book's own sidecar when its file is known (so the
+        -- file manager and status page agree); otherwise Ratings.save falls
+        -- back to the plugin's own store
+        local file = Ratings.fileFor(book.md5, book.title, authorsOf(book))
+        Ratings.save(book.md5, n, file)
         book.rating = n
         on_done(n)
     end)
@@ -200,17 +216,6 @@ end
 -- opts.modal marks the list (and the book stats page a row opens) as modal,
 -- so it stacks above modal popups such as the streak calendar and the
 -- insights popup instead of opening behind them.
--- The author of a list book, for finding its file: the rows of the lists
--- carry none, so it is read from the statistics DB when needed.
-local function authorsOf(book)
-    if book.authors and book.authors ~= "" then return book.authors end
-    if book.id_book and BookStatsData then
-        local ok, row = pcall(BookStatsData.getBookRow, book.id_book)
-        if ok and row and row.authors then return row.authors end
-    end
-    return nil
-end
-
 function M.showBookList(title, books, on_close, stats_plugin, opts)
     local KeyValuePage = require("ui/widget/keyvaluepage")
 
