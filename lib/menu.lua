@@ -1147,13 +1147,12 @@ function M.build(self, deps)
         })
     end
 
-    -- "Progress bars": the thin bars under the "This chapter" value and under
-    -- the book percentage (lib/uikit.lua, UI.withCellBar / UI.buildRowBar). They use the chart's
+    -- "Progress bars": the thin bar under the book percentage (lib/uikit.lua, UI.withCellBar / UI.buildRowBar). They use the chart's
     -- active / inactive bar colors (Colors menu), so there are no separate
     -- color or height settings.
     table.insert(book_progress_sub_item_table, {
         text = _("Progress bars"),
-        help_text = _("Show a thin progress bar under the current chapter and under the book percentage."),
+        help_text = _("Show a thin progress bar under the book percentage."),
         keep_menu_open = true,
         checked_func = function() return deps.ViewSettings.Opt.readShowCellBars() end,
         callback = function()

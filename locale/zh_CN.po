@@ -1780,5 +1780,5 @@ msgstr "在每日和每周目标数值下方显示一条细进度条。"
 msgid "Progress bars"
 msgstr "进度条"
 
-msgid "Show a thin progress bar under the current chapter and under the book percentage."
-msgstr "在当前章节和全书百分比下方显示一条细进度条。"
+msgid "Show a thin progress bar under the book percentage."
+msgstr "在全书百分比下方显示一条细进度条。"

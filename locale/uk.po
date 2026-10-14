@@ -2106,5 +2106,5 @@ msgstr "Показувати тонку смугу прогресу під зн�
 msgid "Progress bars"
 msgstr "Смуги прогресу"
 
-msgid "Show a thin progress bar under the current chapter and under the book percentage."
-msgstr "Показувати тонку смугу прогресу під поточним розділом і під відсотком прочитаного в книзі."
+msgid "Show a thin progress bar under the book percentage."
+msgstr "Показувати тонку смугу прогресу під відсотком прочитаного в книзі."

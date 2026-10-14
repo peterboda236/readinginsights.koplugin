@@ -2057,5 +2057,5 @@ msgstr "Einen dünnen Fortschrittsbalken unter den Tages- und Wochenzielwerten a
 msgid "Progress bars"
 msgstr "Fortschrittsbalken"
 
-msgid "Show a thin progress bar under the current chapter and under the book percentage."
-msgstr "Einen dünnen Fortschrittsbalken unter dem aktuellen Kapitel und dem Buchfortschritt in Prozent anzeigen."
+msgid "Show a thin progress bar under the book percentage."
+msgstr "Einen dünnen Fortschrittsbalken unter dem Buchfortschritt in Prozent anzeigen."
