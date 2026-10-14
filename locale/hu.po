@@ -2060,6 +2060,12 @@ msgstr "oldal vs előző 7 nap"
 msgid "pages vs prev. 7d"
 msgstr "oldal vs előző 7 nap"
 
+msgid "pg vs prev. 7d"
+msgstr "old. vs előző 7 n."
+
+msgid "daily avg pg"
+msgstr "napi átl. old."
+
 msgid "Daily / weekly goal bar"
 msgstr "Napi / heti cél sáv"
 

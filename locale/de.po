@@ -2042,6 +2042,12 @@ msgstr "Seite vs vorh. 7 Tage"
 msgid "pages vs prev. 7d"
 msgstr "Seiten vs vorh. 7 Tage"
 
+msgid "pg vs prev. 7d"
+msgstr "S. vs vorh. 7 T."
+
+msgid "daily avg pg"
+msgstr "Ø S./T."
+
 msgid "Daily / weekly goal bar"
 msgstr "Tages-/Wochenzielbalken"
 

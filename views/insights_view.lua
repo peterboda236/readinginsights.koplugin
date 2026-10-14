@@ -1396,6 +1396,23 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
                     d_avg_val    = fmt_delta(diff_avg, true)
                     d_total_unit = N_("page vs prev. 7d", "pages vs prev. 7d", math.abs(diff_total))
                     d_avg_unit   = _("daily avg pages")
+                    -- Same idea as in the time view: when a long value leaves
+                    -- too little room for either full label (it would wrap),
+                    -- switch both to their shorter forms so the two cells stay
+                    -- consistent.
+                    local function cellFits(val, unit)
+                        local value_probe = TextWidget:new{ text = val,  face = fonts.value }
+                        local label_probe = TextWidget:new{ text = unit, face = fonts.label }
+                        local ok = value_probe:getSize().w + Size.padding.large
+                                   + label_probe:getSize().w <= layout.col_width
+                        value_probe:free()
+                        label_probe:free()
+                        return ok
+                    end
+                    if not (cellFits(d_total_val, d_total_unit) and cellFits(d_avg_val, d_avg_unit)) then
+                        d_total_unit = _("pg vs prev. 7d")
+                        d_avg_unit   = _("daily avg pg")
+                    end
                 else
                     d_total_val, d_total_unit = fmt_delta(diff_total, _("time vs prev. 7d"))
                     -- A long value ("-6h 18m") can leave too little room for

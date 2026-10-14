@@ -2042,6 +2042,12 @@ msgstr "page vs 7 j préc."
 msgid "pages vs prev. 7d"
 msgstr "pages vs 7 j préc."
 
+msgid "pg vs prev. 7d"
+msgstr "p. vs 7 j préc."
+
+msgid "daily avg pg"
+msgstr "p. moy/j"
+
 msgid "Daily / weekly goal bar"
 msgstr "Barre d'objectif quotidien / hebdomadaire"
 

@@ -1765,6 +1765,12 @@ msgstr "页 较前 7 天"
 msgid "pages vs prev. 7d"
 msgstr "页 较前 7 天"
 
+msgid "pg vs prev. 7d"
+msgstr "页 较前 7 天"
+
+msgid "daily avg pg"
+msgstr "日均页"
+
 msgid "Daily / weekly goal bar"
 msgstr "每日/每周目标进度条"
 

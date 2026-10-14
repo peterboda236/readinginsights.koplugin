@@ -2048,6 +2048,12 @@ msgstr "page vs prev. 7d"
 msgid "pages vs prev. 7d"
 msgstr "pages vs prev. 7d"
 
+msgid "pg vs prev. 7d"
+msgstr "pg vs prev. 7d"
+
+msgid "daily avg pg"
+msgstr "daily avg pg"
+
 msgid "Daily / weekly goal bar"
 msgstr "Daily / weekly goal bar"
 

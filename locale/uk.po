@@ -2091,6 +2091,12 @@ msgstr "сторінка vs поперед. 7 днів"
 msgid "pages vs prev. 7d"
 msgstr "сторінок vs поперед. 7 днів"
 
+msgid "pg vs prev. 7d"
+msgstr "с. vs попер. 7 дн."
+
+msgid "daily avg pg"
+msgstr "сер. с./д"
+
 msgid "Daily / weekly goal bar"
 msgstr "Смуга денної / тижневої мети"
 
