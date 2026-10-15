@@ -9,6 +9,9 @@ MD5 checksum: stored as `md5` in statistics.sqlite3's `book` table, and as
 walking the reading history, opening each book's sidecar and filing its
 rating under that checksum.
 
+The result is also kept in a file (reading_insights_ratings_cache.lua, see "File
+cache" below), so a rebuild only re-opens the sidecars that changed.
+
 The map is rebuilt at most once every TTL seconds - lists are opened a tap
 at a time, and walking a few hundred sidecars on every one of them would be
 wasteful.
@@ -25,6 +28,8 @@ wasteful.
   Ratings.refresh()     drop the quick map (TTL seconds) so the next get()
                         rebuilds it; the slow sidecar-folder walk keeps its
                         own cache (SCAN_TTL) and is not redone
+  Ratings.clearCache()  drop the quick map, the folder walk and the cache file
+                        too (a full "reload data"): everything is re-read next
   Ratings.isWarm()      -> true when the quick map is current, i.e. the next
                         get() will not rebuild it (so it will be instant)
   Ratings.fileFor(md5)  -> the book's file path (from the reading history /
@@ -93,6 +98,100 @@ local map, built_at, file_map
 local scan_map, scan_built_at, scan_files, scan_list, scan_complete
 local guess_cache = {}   -- md5 -> file guessed from the title (display only)
 local file_list      -- every book file whose sidecar is known (history + scan)
+
+-- ---------------------------------------------------------------------
+-- File cache. Rebuilding the quick map used to open EVERY sidecar of the
+-- reading history (a Lua file parsed per book) - on an e-ink device that is
+-- what made the book lists slow after a restart, after reading a book (the
+-- map is dropped when a book closes) or every 5 minutes. Now the result is
+-- kept in a file next to KOReader's settings:
+--   entries[bookfile] = { s = sidecar stamp, md5 = ..., r = rating (0 = none) }
+--   scan              = the sidecar-folder walk (so a restart does not redo it)
+-- A rebuild only stat()s each sidecar (cheap) and re-opens the ones whose
+-- stamp (modification time + size) changed, so a rating changed anywhere -
+-- KOReader's status page, the file manager, this plugin - is still picked up.
+-- ---------------------------------------------------------------------
+local PCACHE_PATH = require("datastorage"):getSettingsDir() .. "/reading_insights_ratings_cache.lua"
+local PCACHE_VERSION = 1
+local pc_settings, pc_entries
+local pc_dirty = false
+
+local function openPCache()
+    if pc_settings == nil then
+        local ok, st = pcall(function() return require("luasettings"):open(PCACHE_PATH) end)
+        pc_settings = ok and st or false
+        if pc_settings and pc_settings:readSetting("version") ~= PCACHE_VERSION then
+            -- unknown / older layout: ignore what is in there
+            pc_settings:saveSetting("version", PCACHE_VERSION)
+            pc_settings:saveSetting("entries", {})
+            pc_settings:delSetting("scan")
+        end
+    end
+    return pc_settings or nil
+end
+
+local function loadEntries()
+    if pc_entries == nil then
+        local st = openPCache()
+        local t = st and st:readSetting("entries")
+        pc_entries = type(t) == "table" and t or {}
+    end
+    return pc_entries
+end
+
+-- "<mtime>:<size>" of a book's sidecar file, nil when it can't be told (the
+-- caller then simply opens the sidecar, as before).
+local function sidecarStamp(file)
+    local ok, stamp = pcall(function()
+        local DocSettings = require("docsettings")
+        local sc
+        if DocSettings.findSidecarFile then
+            sc = DocSettings:findSidecarFile(file)
+        end
+        if not sc and DocSettings.getSidecarFile then
+            sc = DocSettings:getSidecarFile(file)
+        end
+        if type(sc) ~= "string" then return nil end
+        local lfs = require("libs/libkoreader-lfs")
+        local attr = lfs.attributes(sc)
+        if not attr or attr.mode ~= "file" then return nil end
+        return tostring(attr.modification) .. ":" .. tostring(attr.size)
+    end)
+    return ok and stamp or nil
+end
+
+-- The sidecar-folder walk of the last run, from the file (nothing happens
+-- when the walk is already in memory).
+local function restoreScan()
+    if scan_map then return end
+    local st = openPCache()
+    local sc = st and st:readSetting("scan")
+    if type(sc) == "table" and type(sc.map) == "table" and type(sc.files) == "table"
+       and type(sc.list) == "table" and tonumber(sc.at) then
+        scan_map, scan_files, scan_list = sc.map, sc.files, sc.list
+        scan_built_at, scan_complete = tonumber(sc.at), sc.complete == true
+    end
+end
+
+local function savePCache()
+    local st = openPCache()
+    if not st then return end
+    pc_dirty = false
+    local ok, err = pcall(function()
+        st:saveSetting("version", PCACHE_VERSION)
+        st:saveSetting("entries", loadEntries())
+        if scan_map then
+            st:saveSetting("scan", {
+                at = scan_built_at, complete = scan_complete == true,
+                map = scan_map, files = scan_files or {}, list = scan_list or {},
+            })
+        end
+        st:flush()
+    end)
+    if not ok then
+        logger.warn("ReadingInsights: failed to save the ratings cache: " .. tostring(err))
+    end
+end
 
 local function fileMD5(file)
     if not file then return nil end
@@ -235,20 +334,44 @@ local function build()
 
     local ok_rh, ReadHistory = pcall(require, "readhistory")
     if ok_rh and ReadHistory and type(ReadHistory.hist) == "table" then
+        local entries = loadEntries()
+        local old_count = 0
+        for _k in pairs(entries) do old_count = old_count + 1 end
+        local fresh, reopened, from_cache = {}, 0, 0
         for _idx, item in ipairs(ReadHistory.hist) do
             local file = item and item.file
             if file then
                 list[#list + 1] = file
                 pcall(function()
-                    local settings = DocSettings:open(file)
-                    local md5, rating = ratingFrom(settings, file)
-                    if not md5 or md5 == "" then
-                        md5 = settings:readSetting("partial_md5_checksum")
+                    local stamp = sidecarStamp(file)
+                    local e = stamp and entries[file]
+                    local md5, rating
+                    if e and e.s == stamp then
+                        -- sidecar untouched since the last run: no need to open it
+                        md5, rating = e.md5, tonumber(e.r)
+                        if rating and rating < 1 then rating = nil end
+                        fresh[file] = e
+                        from_cache = from_cache + 1
+                    else
+                        local settings = DocSettings:open(file)
+                        md5, rating = ratingFrom(settings, file)
+                        if not md5 or md5 == "" then
+                            md5 = settings:readSetting("partial_md5_checksum")
+                        end
+                        reopened = reopened + 1
+                        if stamp then
+                            fresh[file] = { s = stamp, md5 = md5 or "", r = rating or 0 }
+                        end
                     end
                     if md5 and md5 ~= "" then files[md5] = file end
                     if md5 and rating then out[md5] = rating end
                 end)
             end
+        end
+        -- books that left the history drop out of the file as well
+        if reopened > 0 or from_cache ~= old_count then
+            pc_entries = fresh
+            pc_dirty = true
         end
     end
 
@@ -271,6 +394,7 @@ local function build()
     -- Books the history does not know about: fill the gaps from the sidecar
     -- folders (never overriding what the history / the open book said).
     local now = os.time()
+    restoreScan()
     local scan_ttl = scan_complete and SCAN_TTL or SCAN_PARTIAL_TTL
     if not scan_map or not scan_built_at or now - scan_built_at > scan_ttl or now < scan_built_at then
         local ok, res, res_files, res_list, complete = pcall(scanSidecars)
@@ -278,6 +402,7 @@ local function build()
             ok and res or {}, ok and res_files or {}, ok and res_list or {}, now
         -- an error counts as incomplete too: do not trust {} for an hour
         scan_complete = ok and complete ~= false
+        pc_dirty = true
     end
     for md5, f in pairs(scan_files or {}) do
         if files[md5] == nil then files[md5] = f end
@@ -286,6 +411,7 @@ local function build()
         if out[md5] == nil then out[md5] = rating end
     end
     for _idx, f in ipairs(scan_list or {}) do list[#list + 1] = f end
+    if pc_dirty then savePCache() end
     return out, files, list
 end
 
@@ -304,6 +430,25 @@ end
 -- it every time a list or the Book info popup opens.
 function M.refresh()
     map, built_at, file_map, file_list = nil, nil, nil, nil
+end
+
+-- Forget everything, the cache file included: the quick map, the sidecar-folder
+-- walk and every cached sidecar entry. The next lookup re-reads all sidecars
+-- (and redoes the folder walk). For an explicit full "reload data".
+function M.clearCache()
+    map, built_at, file_map, file_list = nil, nil, nil, nil
+    scan_map, scan_built_at, scan_files, scan_list, scan_complete = nil, nil, nil, nil, nil
+    guess_cache = {}
+    pc_entries = {}
+    pc_dirty = false
+    local st = openPCache()
+    if st then
+        pcall(function()
+            st:saveSetting("entries", {})
+            st:delSetting("scan")
+            st:flush()
+        end)
+    end
 end
 
 -- True when get() would be served from the current map without rebuilding it
@@ -483,9 +628,13 @@ end
 -- would come straight back from the stale walk: the history sidecar no longer
 -- has a rating, so the old one from the cached walk would fill the gap.
 local function forgetScanned(md5, n)
-    if not md5 or md5 == "" or not scan_map then return end
+    if not md5 or md5 == "" then return end
+    restoreScan()
+    if not scan_map then return end
     n = tonumber(n) or 0
     scan_map[md5] = n >= 1 and n or nil
+    pc_dirty = true
+    savePCache()
 end
 
 -- A rating chosen in the Book info popup. Goes into the book's sidecar

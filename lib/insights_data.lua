@@ -1961,6 +1961,78 @@ function M.getBooksForPeriod(period_format, period_value)
     end)
 end
 
+-- The same rows getBooksForPeriod gives for a year, but only for the listed
+-- books. The finished-books list needs just the few books the reader ticked
+-- by hand that the "99%" rule missed; running the whole year's query (and
+-- caching it) for them was what made that list slow to open after a reload.
+-- Cached like the other lists (stamp-validated, kept in the book-list file).
+function M.getBooksForYearByIds(year, ids)
+    local books = {}
+    local clean = {}
+    for _idx, id in ipairs(ids or {}) do
+        id = tonumber(id)
+        if id then clean[#clean + 1] = math.floor(id) end
+    end
+    if #clean == 0 then return books end
+    table.sort(clean)
+    local id_list = table.concat(clean, ",")
+    local period_value = tostring(year)
+    return StatsDb.withDb(books, function(conn)
+        local cache_key = "yearids2:" .. period_value .. ":" .. id_list
+        local lo, hi    = M._periodBounds("%Y", period_value)
+        local stamp     = (lo and hi) and M._bookListStamp(conn, lo, hi) or nil
+        local hit       = Cache.getBookList(cache_key, stamp)
+        if hit then return hit end
+
+        local sql = string.format([[
+            SELECT book.title, book.authors,
+                   COUNT(DISTINCT ps_dedup.page) AS pages_read,
+                   SUM(ps_dedup.period_sum) AS duration_sec,
+                   MAX(ps_dedup.last_read) AS last_read_time,
+                   day_counts.days_read,
+                   book.id AS id_book,
+                   book.md5 AS md5
+            FROM (
+                SELECT id_book, page,
+                       SUM(duration) AS period_sum,
+                       MAX(start_time) AS last_read
+                FROM page_stat
+                WHERE id_book IN (%s)
+                  AND strftime('%%Y', start_time, 'unixepoch', 'localtime') = '%s'
+                GROUP BY id_book, page
+            ) ps_dedup
+            JOIN book ON ps_dedup.id_book = book.id
+            LEFT JOIN (
+                SELECT id_book,
+                       COUNT(DISTINCT date(start_time, 'unixepoch', 'localtime')) AS days_read
+                FROM page_stat
+                WHERE id_book IN (%s)
+                  AND strftime('%%Y', start_time, 'unixepoch', 'localtime') = '%s'
+                GROUP BY id_book
+            ) day_counts ON ps_dedup.id_book = day_counts.id_book
+            GROUP BY ps_dedup.id_book
+            ORDER BY MAX(ps_dedup.last_read) DESC
+        ]], id_list, period_value, id_list, period_value)
+
+        local _res, ran = StatsDb.withStatement(conn, sql, function(stmt)
+            for row in stmt:rows() do
+                table.insert(books, {
+                    title     = row[1] or _("Unknown"),
+                    authors   = "",
+                    pages     = tonumber(row[3]) or 0,
+                    duration  = tonumber(row[4]) or 0,
+                    days_read = tonumber(row[6]) or 0,
+                    id_book   = tonumber(row[7]),
+                    md5       = row[8],
+                    last_read = tonumber(row[5]) or 0,
+                })
+            end
+        end)
+        if ran and stamp then Cache.setBookList(cache_key, stamp, books) end
+        return books
+    end)
+end
+
 function M.getAllBooks()
     local books = {}
     return StatsDb.withDb(books, function(conn)

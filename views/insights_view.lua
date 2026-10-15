@@ -2197,15 +2197,16 @@ local function getFinishedBooksForYearCombined(popup_self, year)
         end
     end
 
-    local missing = false
+    -- Books ticked by hand that the query missed: look up just those, not
+    -- the whole year (see Data.getBooksForYearByIds).
+    local missing_ids = {}
     for id_str, val in pairs(overrides) do
         if val == true and not by_id[id_str] then
-            missing = true
-            break
+            missing_ids[#missing_ids + 1] = id_str
         end
     end
-    if missing then
-        local candidates = popup_self:getBooksForYear(year)
+    if #missing_ids > 0 then
+        local candidates = Data.getBooksForYearByIds(year, missing_ids)
         for _, b in ipairs(candidates) do
             local id_str = tostring(b.id_book)
             if overrides[id_str] == true and not by_id[id_str] then
@@ -3349,6 +3350,8 @@ function ReadingInsightsPopup:onHold(arg, ges_ev)
             local before = Achievements and Achievements.earnedCount() or 0
             Cache.clearAllCache()
             Data.clearTimeGoalCache()
+            -- ratings changed outside the plugin (file manager, status page)
+            if BookList and BookList.refreshRatings then pcall(BookList.refreshRatings, true) end
             -- A full reload is the one place achievements are re-evaluated
             -- against the (now uncached) database - see lib/achievements.lua.
             -- Newly earned ones get persisted; the rebuilt goal section then

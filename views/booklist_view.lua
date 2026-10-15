@@ -128,19 +128,10 @@ local function isRatingSort(mode)
     return mode == "rating_desc" or mode == "rating_asc"
 end
 
--- annotateRatings, with a "Loading ratings..." notice when the lookup is
--- going to have to rebuild the map (so the screen doesn't just freeze). The
--- notice is painted first, then the (blocking) lookup runs, then it goes.
+-- annotateRatings, run synchronously (no "Loading ratings..." popup: the lookup
+-- is quick now that the sidecar results are kept in a file, see lib/ratings.lua).
 local function annotateRatingsWithNotice(books)
-    if Ratings.isWarm() then
-        annotateRatings(books)
-        return
-    end
-    local info = InfoMessage:new{ text = _("Loading ratings...") }
-    UIManager:show(info)
-    UIManager:forceRePaint()
     local ok, err = pcall(annotateRatings, books)
-    UIManager:close(info)
     if not ok then
         require("logger").warn("ReadingInsights: rating lookup failed: " .. tostring(err))
     end
@@ -247,6 +238,19 @@ end
 -- opts.modal marks the list (and the book stats page a row opens) as modal,
 -- so it stacks above modal popups such as the streak calendar and the
 -- insights popup instead of opening behind them.
+-- Drops the quick ratings map, so the next list reads the sidecars' current
+-- ratings (the file cache only re-opens the ones that changed). With `full`
+-- the ratings cache file is wiped too. Called by the insights popup's
+-- "reload data".
+function M.refreshRatings(full)
+    if not Ratings then return end
+    if full and Ratings.clearCache then
+        Ratings.clearCache()
+    elseif Ratings.refresh then
+        Ratings.refresh()
+    end
+end
+
 function M.showBookList(title, books, on_close, stats_plugin, opts)
     local KeyValuePage = require("ui/widget/keyvaluepage")
 
@@ -665,6 +669,7 @@ function M.showFinishedChecklist(insights_popup, year)
             callback = function()
                 Data.flushStatsToDB(insights_popup and insights_popup.ui)
                 Cache.clearGoalCacheForYear(year)
+                if Ratings and Ratings.refresh then Ratings.refresh() end
                 loadFromDB()
                 widget:updateItems(buildItems())
             end,
