@@ -665,9 +665,6 @@ msgstr "Використовувати як екран сну"
 msgid "Reading insights sleep screen"
 msgstr "Екран сну Аналітики читання"
 
-msgid "Sleep-screen indicator"
-msgstr "Індикатор екрана сну"
-
 msgid "Off"
 msgstr "Вимкнено"
 
@@ -695,14 +692,8 @@ msgstr "Миттєво"
 msgid "Slight delay (0.1s)"
 msgstr "Невелика затримка (0.1с)"
 
-msgid "sleeping…"
-msgstr "сплячий режим…"
-
 msgid "Indicator"
 msgstr "Індикатор"
-
-msgid "\"(sleeping…)\" after the title"
-msgstr "«(сплячий режим…)» після назви"
 
 msgid "None"
 msgstr "Немає"
@@ -2138,3 +2129,42 @@ msgstr "Рядок часу та сторінок"
 
 msgid "Comparison with previous 7 days row"
 msgstr "Рядок порівняння з попередніми 7 днями"
+
+msgid "Sleep screen"
+msgstr "Екран сну"
+
+msgid "Content"
+msgstr "Вміст"
+
+msgid "Background"
+msgstr "Тло"
+
+msgid "Book cover"
+msgstr "Обкладинка книги"
+
+msgid "Follow theme"
+msgstr "Дотримуватись теми"
+
+msgid "Custom image"
+msgstr "Власне зображення"
+
+msgid "Image fit"
+msgstr "Розміщення зображення"
+
+msgid "Fit"
+msgstr "Вмістити"
+
+msgid "Stretch"
+msgstr "Розтягнути"
+
+msgid "Zoom"
+msgstr "Збільшити"
+
+msgid "Random"
+msgstr "Випадково"
+
+msgid "No images in {dir}"
+msgstr "Немає зображень у {dir}"
+
+msgid "Images are loaded from {dir}"
+msgstr "Зображення завантажуються з {dir}"

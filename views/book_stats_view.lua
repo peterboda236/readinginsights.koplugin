@@ -937,6 +937,11 @@ end
 local ReadingStatsPopup = InputContainer:extend{
     modal              = true,
     ui                 = nil,
+    -- Sleep screen from the file manager: the stats of the last book read
+    -- (lib/lastbook.lua) instead of a live book; `readonly` makes a tap or a
+    -- swipe leave the popup alone (the wake-up closes it).
+    snapshot           = nil,
+    readonly           = false,
     width              = nil,
     height             = nil,
     chapter_bar_offset = nil,
@@ -1093,6 +1098,41 @@ function ReadingStatsPopup:gatherStats()
         chapter_after_next_time_hhmm  = UI.emptyValue(),
         chapter_after_next_pages_count = nil,
     }
+
+    if self.snapshot then
+        -- What was gathered when the book was left. Only what depends on
+        -- the day is read again: today's pages / time, days since started.
+        local s = {}
+        for k, v in pairs(self.snapshot) do s[k] = v end
+        if s.book_id then
+            local total_days, today_p, today_t, days_since_start, started_ts =
+                BookStatsData.getBookAndTodayStats(s.book_id)
+            if total_days ~= nil then
+                if days_since_start ~= nil and days_since_start >= 0 then
+                    s.started_days_ago = {
+                        value = formatCount(days_since_start),
+                        unit  = N_("day since started", "days since started", days_since_start),
+                    }
+                    s.started_timestamp = started_ts
+                end
+                if today_p and today_p > 0 then
+                    s.today_pages = {
+                        value = formatCount(today_p),
+                        unit  = N_("page", "pages", today_p),
+                    }
+                else
+                    s.today_pages = UI.emptyValue()
+                end
+                if today_t and today_t > 0 then
+                    s.today_time_hhmm = Locale.formatTimeHHMM(today_t)
+                else
+                    s.today_time_hhmm = zero_hhmm
+                end
+            end
+            self._has_book_id = true
+        end
+        return s
+    end
 
     local ui = self.ui
     if not ui then return stats end
@@ -1419,6 +1459,7 @@ function ReadingStatsPopup:gatherStats()
 end
 
 function ReadingStatsPopup:onSwipe(arg, ges_ev)
+    if self.readonly then return true end
     local dir = ges_ev and ges_ev.direction
     if dir == "south" or dir == "down" then
         UIManager:close(self)
@@ -1506,6 +1547,7 @@ function ReadingStatsPopup:openBookInfo()
 end
 
 function ReadingStatsPopup:onTapClose(arg, ges_ev)
+    if self.readonly then return true end
     if ges_ev then
         local x, y = ges_ev.pos.x, ges_ev.pos.y
 

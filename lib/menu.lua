@@ -40,7 +40,7 @@ function M.build(self, deps)
     -- time the menu opens (sub_item_table_func at the bottom), so a change
     -- shows up right away. The three book entries also need an open book.
     local popup_entries = {
-        { key = "insights",      label = _("Reading insights"),
+        { key = "insights",      label = _("Reading insights popup title"),
           open = function() self:onShowReadingInsightsPopup() end },
         { key = "streak",        label = _("Reading streak"),
           open = function() self:onShowReadingStreakPopup() end },
@@ -134,31 +134,95 @@ function M.build(self, deps)
     -- inside our own Settings submenu, guaranteed to always work
     -- regardless of what core's menu looks like.
 
-    -- Sleep-screen indicator: the one setting here that is about the sleep
-    -- screen rather than about the popups, so it sits at the top with a
-    -- divider under it, above the appearance settings that follow.
-    I.sleep_indicator = {
-        text_func = function()
-            local label_mode = deps.readScreensaverLabelMode()
-            return _("Sleep-screen indicator") .. ": " ..
-                ((label_mode == "text") and _("\"(sleeping…)\" after the title") or _("None"))
-        end,
+    -- Sleep screen: the settings here that are about the sleep screen
+    -- rather than about the popups. Which popup is drawn (the Insights
+    -- window by default) and what is behind it (the book's cover, or a plain
+    -- white / black page that follows the dark mode) - see
+    -- lib/sleepscreen.lua. Sits at the top with a divider under it, above
+    -- the appearance settings that follow.
+    local function sleepRadioItems(list_func, read_func, save_func)
+        local items = {}
+        for _i, entry in ipairs(list_func()) do
+            items[#items + 1] = {
+                text = entry.text,
+                keep_menu_open = true,
+                radio = true,
+                checked_func = function() return read_func() == entry.id end,
+                callback = function() save_func(entry.id) end,
+            }
+        end
+        return items
+    end
+
+    local function labelOf(list_func, id)
+        for _i, entry in ipairs(list_func()) do
+            if entry.id == id then return entry.text end
+        end
+        return ""
+    end
+
+    local SS = deps.SleepScreen
+    I.sleep_screen = {
+        text = _("Sleep screen"),
         keep_menu_open = true,
         separator = true,
         sub_item_table = {
             {
-                text = _("None"),
+                -- The same switch as Settings > Screen > Sleep screen >
+                -- Wallpaper > Reading insights. Turning it off puts the
+                -- wallpaper that was set before back (or KOReader's default
+                -- "leave screen as-is" if there was none).
+                text = _("Use as sleep screen"),
                 keep_menu_open = true,
-                radio = true,
-                checked_func = function() return deps.readScreensaverLabelMode() == "none" end,
-                callback = function() deps.saveScreensaverLabelMode("none") end,
+                separator = true,
+                checked_func = function()
+                    return G_reader_settings:readSetting("screensaver_type") == deps.SCREENSAVER_TYPE_VALUE
+                end,
+                callback = function()
+                    local current = G_reader_settings:readSetting("screensaver_type")
+                    if current == deps.SCREENSAVER_TYPE_VALUE then
+                        local prev = G_reader_settings:readSetting("readinginsights_sleep_prev_type")
+                        if prev == nil or prev == deps.SCREENSAVER_TYPE_VALUE then prev = "disable" end
+                        G_reader_settings:saveSetting("screensaver_type", prev)
+                    else
+                        G_reader_settings:saveSetting("readinginsights_sleep_prev_type", current or "disable")
+                        G_reader_settings:saveSetting("screensaver_type", deps.SCREENSAVER_TYPE_VALUE)
+                    end
+                end,
             },
             {
-                text = _("\"(sleeping…)\" after the title"),
+                text_func = function()
+                    return _("Content") .. ": " .. labelOf(SS.contents, SS.readContent())
+                end,
                 keep_menu_open = true,
-                radio = true,
-                checked_func = function() return deps.readScreensaverLabelMode() == "text" end,
-                callback = function() deps.saveScreensaverLabelMode("text") end,
+                sub_item_table = sleepRadioItems(SS.contents, SS.readContent, SS.saveContent),
+            },
+            {
+                text_func = function()
+                    return _("Background") .. ": " .. labelOf(SS.backgrounds, SS.readBackground())
+                end,
+                keep_menu_open = true,
+                sub_item_table = (function()
+                    local items = sleepRadioItems(SS.backgrounds, SS.readBackground, SS.saveBackground)
+                    items[#items].separator = true
+                    -- How a cover / custom picture is put on the screen.
+                    items[#items + 1] = {
+                        text_func = function()
+                            return _("Image fit") .. ": " .. labelOf(SS.fits, SS.readFit())
+                        end,
+                        keep_menu_open = true,
+                        sub_item_table = sleepRadioItems(SS.fits, SS.readFit, SS.saveFit),
+                    }
+                    -- The pictures of the plugin's own folder.
+                    items[#items + 1] = {
+                        text_func = function()
+                            return _("Custom image") .. ": " .. SS.wallpaperLabel()
+                        end,
+                        keep_menu_open = true,
+                        sub_item_table_func = function() return SS.buildWallpaperMenu() end,
+                    }
+                    return items
+                end)(),
             },
         },
     }
@@ -1311,6 +1375,8 @@ function M.build(self, deps)
     })
 
     local settings_sub_item_table = layout({
+        I.sleep_screen,
+        "-",
         I.date_time,
         group(_("Appearance"), { I.colors, I.fonts }),
         "-",
@@ -1329,7 +1395,7 @@ function M.build(self, deps)
         I.book_info,
         "-",
         group(_("Advanced settings"), {
-            I.sleep_indicator, I.full_refresh, I.long_durations,
+            I.full_refresh, I.long_durations,
             "-",
             I.menu_items,
         }),

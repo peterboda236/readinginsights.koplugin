@@ -475,8 +475,6 @@ msgid "Use as sleep screen"
 msgstr "用作休眠屏保"
 msgid "Reading insights sleep screen"
 msgstr "阅读统计休眠屏保"
-msgid "Sleep-screen indicator"
-msgstr "休眠标识"
 msgid "Off"
 msgstr "关闭"
 msgid "File manager only"
@@ -496,12 +494,8 @@ msgid "Instant"
 msgstr "立即切换"
 msgid "Slight delay (0.1s)"
 msgstr "轻微延迟（0.1秒）"
-msgid "sleeping…"
-msgstr "休眠中……"
 msgid "Indicator"
 msgstr "标识样式"
-msgid "\"(sleeping…)\" after the title"
-msgstr "标题末尾显示「(休眠中…)」"
 msgid "None"
 msgstr "无"
 
@@ -1812,3 +1806,42 @@ msgstr "时间与页数行"
 
 msgid "Comparison with previous 7 days row"
 msgstr "与前 7 天对比行"
+
+msgid "Sleep screen"
+msgstr "休眠屏保"
+
+msgid "Content"
+msgstr "内容"
+
+msgid "Background"
+msgstr "背景"
+
+msgid "Book cover"
+msgstr "书籍封面"
+
+msgid "Follow theme"
+msgstr "跟随主题"
+
+msgid "Custom image"
+msgstr "自定义图片"
+
+msgid "Image fit"
+msgstr "图片适配"
+
+msgid "Fit"
+msgstr "适应"
+
+msgid "Stretch"
+msgstr "拉伸"
+
+msgid "Zoom"
+msgstr "缩放填充"
+
+msgid "Random"
+msgstr "随机"
+
+msgid "No images in {dir}"
+msgstr "{dir} 中没有图片"
+
+msgid "Images are loaded from {dir}"
+msgstr "图片从 {dir} 加载"

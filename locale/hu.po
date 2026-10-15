@@ -202,13 +202,13 @@ msgid "Reading insights popup title"
 msgstr "Olvasási áttekintés"
 
 msgid "Reading insights: all time statistics"
-msgstr "Reading insights: összesített statisztika"
+msgstr "Olvasási áttekintés: összesített statisztika"
 
 msgid "Reading insights: current book progress"
-msgstr "Reading insights: aktuális könyv haladása"
+msgstr "Olvasási áttekintés: aktuális könyv haladása"
 
 msgid "Reading insights: book progress calendar"
-msgstr "Reading insights: könyv haladási naptár"
+msgstr "Olvasási áttekintés: könyv haladási naptár"
 
 msgid "All books %1"
 msgstr "Összes könyv: %1"
@@ -651,13 +651,10 @@ msgstr "Elkezdve:"
 msgid "Expected finish:"
 msgstr "Várható befejezés:"
 msgid "Use as sleep screen"
-msgstr "Használat alvó képernyőként"
+msgstr "Használat alvóképernyőként"
 
 msgid "Reading insights sleep screen"
-msgstr "Reading insights alvó képernyő"
-
-msgid "Sleep-screen indicator"
-msgstr "Alvó képernyő jelzés"
+msgstr "Olvasási áttekintés alvóképernyő"
 
 msgid "Off"
 msgstr "Ki"
@@ -686,14 +683,8 @@ msgstr "Azonnali"
 msgid "Slight delay (0.1s)"
 msgstr "Kis késleltetés (0,1 mp)"
 
-msgid "sleeping…"
-msgstr "alvó mód…"
-
 msgid "Indicator"
 msgstr "Jelzés"
-
-msgid "\"(sleeping…)\" after the title"
-msgstr "„(alvó mód…)” a cím után"
 
 msgid "None"
 msgstr "Semmi"
@@ -903,7 +894,7 @@ msgid "%d hours left"
 msgstr "%d óra van hátra"
 
 msgid "Reading insights: records"
-msgstr "Reading insights: rekordok"
+msgstr "Olvasási áttekintés: rekordok"
 
 msgid "Show Records"
 msgstr "Rekordok megjelenítése"
@@ -921,10 +912,10 @@ msgid "Tick the popups that should be listed under Tools > Reading insights. The
 msgstr "Pipáld be, mely ablakok jelenjenek meg az Eszközök > Reading insights menüben. A könyves ablakok csak megnyitott könyvnél jelennek meg."
 
 msgid "Reading insights: reading streak"
-msgstr "Reading insights: olvasási széria"
+msgstr "Olvasási áttekintés: olvasási széria"
 
 msgid "Reading insights: reading heatmap"
-msgstr "Reading insights: olvasási hőtérkép"
+msgstr "Olvasási áttekintés: olvasási hőtérkép"
 
 msgid "Show Reading heatmap"
 msgstr "Olvasási hőtérkép megjelenítése"
@@ -1110,7 +1101,7 @@ msgid "Show Achievements"
 msgstr "Teljesítmények megnyitása"
 
 msgid "Reading insights: achievements"
-msgstr "Reading insights: teljesítmények"
+msgstr "Olvasási áttekintés: teljesítmények"
 
 msgid "earned"
 msgstr "megszerezve"
@@ -1824,7 +1815,7 @@ msgid "Show Book info"
 msgstr "Könyvinformáció megnyitása"
 
 msgid "Reading insights: book info"
-msgstr "Reading insights: könyvinformáció"
+msgstr "Olvasási áttekintés: könyvinformáció"
 
 msgid "Book info"
 msgstr "Könyvinformáció"
@@ -2101,3 +2092,43 @@ msgstr "Idő és oldalak sor"
 
 msgid "Comparison with previous 7 days row"
 msgstr "Összevetés az előző 7 nappal sor"
+
+msgid "Sleep screen"
+msgstr "Alvóképernyő"
+
+msgid "Content"
+msgstr "Tartalom"
+
+msgid "Background"
+msgstr "Háttérkép"
+
+msgid "Book cover"
+msgstr "Könyvborító"
+
+msgid "Follow theme"
+msgstr "Téma követése"
+
+msgid "Custom image"
+msgstr "Saját kép"
+
+msgid "Image fit"
+msgstr "Kép illesztése"
+
+msgid "Fit"
+msgstr "Illesztés"
+
+msgid "Stretch"
+msgstr "Nyújtás"
+
+msgid "Zoom"
+msgstr "Nagyítás"
+
+msgid "Random"
+msgstr "Véletlenszerű"
+
+msgid "No images in {dir}"
+msgstr "Nincs kép itt: {dir}"
+
+msgid "Images are loaded from {dir}"
+msgstr "A képek innen töltődnek be: {dir}"
+

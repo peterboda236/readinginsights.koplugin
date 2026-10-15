@@ -915,7 +915,8 @@ M.DEFAULT_CALENDAR_CELL_MODE   = DEFAULT_CALENDAR_CELL_MODE
 Open the Book progress calendar. Single funnel for both entry paths.
 
 opts:
-  ui                (required) the ReaderUI
+  ui                the ReaderUI; may be nil (sleep screen from the file
+                    manager) when book_id and total_pages are given
   book_id           optional; defaults to ui.statistics.id_curr_book
   total_pages       optional; computed from the live book position if absent
   year, month       optional; defaults to the book's last-read month, else now
@@ -930,9 +931,9 @@ case an InfoMessage is shown).
 function M.show(opts)
     opts = opts or {}
     local ui = opts.ui
-    if not ui then return end
+    if not ui and not (opts.book_id and opts.total_pages) then return end
 
-    local stats_plugin = ui.statistics
+    local stats_plugin = ui and ui.statistics
     local book_id = opts.book_id or (stats_plugin and stats_plugin.id_curr_book)
     if not book_id then
         UIManager:show(InfoMessage:new{ text = _("No reading data for this book yet.") })
@@ -940,7 +941,7 @@ function M.show(opts)
     end
 
     local total_pages = opts.total_pages
-    if not total_pages then
+    if not total_pages and ui then
         local _current, total = BookProgress.counts(ui)
         total_pages = total
     end

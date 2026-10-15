@@ -641,9 +641,6 @@ msgstr "Als Schlafbildschirm verwenden"
 msgid "Reading insights sleep screen"
 msgstr "Leseeinblicke-Ruhebildschirm"
 
-msgid "Sleep-screen indicator"
-msgstr "Ruhebildschirm-Anzeige"
-
 msgid "Off"
 msgstr "Aus"
 
@@ -671,14 +668,8 @@ msgstr "Sofort"
 msgid "Slight delay (0.1s)"
 msgstr "Kurze Verzögerung (0,1 s)"
 
-msgid "sleeping…"
-msgstr "Ruhezustand…"
-
 msgid "Indicator"
 msgstr "Anzeige"
-
-msgid "\"(sleeping…)\" after the title"
-msgstr "\"(Ruhezustand…)\" nach dem Titel"
 
 msgid "None"
 msgstr "Keine"
@@ -2089,3 +2080,43 @@ msgstr "Zeile mit Zeit und Seiten"
 
 msgid "Comparison with previous 7 days row"
 msgstr "Zeile mit Vergleich zu den vorherigen 7 Tagen"
+
+msgid "Sleep screen"
+msgstr "Ruhebildschirm"
+
+msgid "Content"
+msgstr "Inhalt"
+
+msgid "Background"
+msgstr "Hintergrund"
+
+msgid "Book cover"
+msgstr "Buchcover"
+
+msgid "Follow theme"
+msgstr "Design folgen"
+
+msgid "Custom image"
+msgstr "Eigenes Bild"
+
+msgid "Image fit"
+msgstr "Bildanpassung"
+
+msgid "Fit"
+msgstr "Einpassen"
+
+msgid "Stretch"
+msgstr "Strecken"
+
+msgid "Zoom"
+msgstr "Zoom"
+
+msgid "Random"
+msgstr "Zufällig"
+
+msgid "No images in {dir}"
+msgstr "Keine Bilder in {dir}"
+
+msgid "Images are loaded from {dir}"
+msgstr "Bilder werden geladen aus {dir}"
+

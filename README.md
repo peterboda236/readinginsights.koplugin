@@ -137,6 +137,27 @@ Reading insights can replace KOReader's sleep/lock screen with itself, so the
 last thing you see before the device sleeps is your reading progress. Enable it
 from *Settings → Screen → Sleep screen → Wallpaper → Reading insights*.
 
+What is shown is set under *Tools → Reading insights → Settings → Advanced
+settings → Sleep screen*:
+
+- **Content** — the Reading insights window (default), the reading heatmap, the
+  reading streak, the book progress popup, the book progress calendar, the book
+  info popup or the records popup. The three book ones are drawn from the open
+  book; from the file manager they are drawn from the last book read, as it was
+  when you closed it (the plugin keeps a snapshot of its data for this). If there
+  is no such book yet, the Insights window is shown.
+- **Background** — the book's cover (the open book, or the last book read when
+  sleeping from the file manager) behind the popup, or a plain page: white, or
+  black in KOReader's night mode, or a picture of your own: put images
+  (png, jpg, bmp, gif, webp) into `<KOReader settings dir>/readinginsights/wallpapers/`
+  and pick one (or *Random*) under *Custom image*. The Insights window fills the
+  screen, so it has no background.
+- **Image fit** — how a cover or custom picture is placed: *Fit* (whole picture,
+  default), *Stretch* (to the whole screen) or *Zoom* (fills the screen, the
+  overflow is cropped).
+
+Everything is queried and drawn before the device actually goes to sleep.
+
 ## 🔄 Updates
 
 *Tools → Reading insights → Updates* checks GitHub for new releases and installs
@@ -182,7 +203,7 @@ unticked keeps everything, so a later reinstall picks up where you left off.
   border, and the author and series lines. The title / author / series fonts
   are under *Fonts → Book info* (by default the same as the Book card plugin's).
 - **Book progress calendar** — what the day cells show.
-- **Advanced settings** — the sleep-screen indicator, full-screen refresh on
+- **Advanced settings** — the sleep screen, full-screen refresh on
   open/close, long durations as days, and *Menu items* (which popups the Tools
   menu lists).
 

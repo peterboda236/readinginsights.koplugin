@@ -762,7 +762,7 @@ end
 function M.buildMenu(on_change)
     local sub_item_table = {
         {
-            text = _("Reading insights"),
+            text = _("Reading insights popup title"),
             keep_menu_open = true,
             sub_item_table = groupSubItemTable(INSIGHTS_KEYS, on_change),
         },

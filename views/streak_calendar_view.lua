@@ -1487,6 +1487,7 @@ local function showStreaksPopup(streaks)
     end
 
     UIManager:show(popup)
+    return popup
 end
 
 

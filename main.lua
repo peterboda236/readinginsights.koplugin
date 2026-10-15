@@ -43,6 +43,7 @@ local InfoMessage = require("ui/widget/infomessage")
 local UIManager = require("ui/uimanager")
 local WidgetContainer = require("ui/widget/container/widgetcontainer")
 local Device = require("device")
+local logger = require("logger")
 local Screen = Device.screen
 
 -- Shared plugin bootstrap. A tiny inline loadfile is only needed to reach
@@ -73,19 +74,6 @@ local BookStatsData    = loadModule("lib/book_stats_data.lua",    { StatsDb = St
 local BookCalendarData = loadModule("lib/book_calendar_data.lua", { StatsDb = StatsDb })
 
 local SCREENSAVER_TYPE_VALUE = "readinginsights"
-
--- What to show in the title, in place of the (hidden) close button, while
--- acting as a sleep screen: "none" (default) or "text" (appends something
--- like "(sleeping…)" after "Reading insights").
-local SCREENSAVER_LABEL_SETTING = "readinginsights_screensaver_label_mode"
-
-local function readScreensaverLabelMode()
-    return Prefs.read(SCREENSAVER_LABEL_SETTING, "none")
-end
-
-local function saveScreensaverLabelMode(mode)
-    Prefs.save(SCREENSAVER_LABEL_SETTING, mode)
-end
 
 --[[
 Update settings (Updates menu). Mirrors bookshelf.koplugin's approach
@@ -327,10 +315,26 @@ local BookInfo = loadModule("views/book_info_view.lua", {
 -- A tap on a row of a book list opens this popup for that book (the lists
 -- are loaded before it, so they get it handed over here).
 BookList.bindBookInfo(BookInfo)
+-- The last book read, kept when a book is closed so the sleep screen can
+-- draw the book popups from the file manager too (lib/lastbook.lua).
+local LastBook = loadModule("lib/lastbook.lua",
+    { StatsPopup = StatsPopup, BookInfoData = BookInfoData })
 local Updater = loadModule("lib/updater.lua", { Locale = Locale })
 local About   = loadModule("views/about.lua",
     { Locale = Locale, Updater = Updater, PopupUtil = PopupUtil })
 local Menu    = loadModule("lib/menu.lua", { Locale = Locale })
+
+-- What the device shows while it sleeps: which popup (Insights by default,
+-- or heatmap / streak / book calendar / book info / records) and what is
+-- behind it (the book's cover, or a plain white/black page). Built
+-- synchronously inside onSuspend below - see lib/sleepscreen.lua.
+local SleepScreen = loadModule("lib/sleepscreen.lua", {
+    Locale = Locale, Prefs = Prefs,
+    Insights = Insights, Records = Records, Heatmap = Heatmap,
+    Streak = StreakCalendar, BookCalendar = BookCalendar,
+    StatsPopup = StatsPopup, BookInfo = BookInfo, BookInfoData = BookInfoData,
+    InsightsData = InsightsData, LastBook = LastBook,
+})
 
 --[[
 Plugin wiring.
@@ -627,27 +631,20 @@ the wake key itself can't dismiss it early while the device is still
 ]]--
 function ReadingInsights:onSuspend()
     if not self:_screensaverShouldShow() then return end
-    if self._screensaver_widget then return end -- already showing
+    if self._screensaver_widgets then return end -- already showing
     if Device:hasEinkScreen() then
         Screen:clear()
         Screen:refreshFull(0, 0, Screen:getWidth(), Screen:getHeight())
     end
-    local label_mode = readScreensaverLabelMode()
-    local screensaver_label = (label_mode == "text") and _("sleeping…") or nil
-    local popup = Insights.Popup:new{
-        ui = self.ui,
-        readonly = true,
-        screensaver_label = screensaver_label,
-    }
-    local orig_on_close_widget = popup.onCloseWidget
-    popup.onCloseWidget = function(popup_self, ...)
-        if orig_on_close_widget then orig_on_close_widget(popup_self, ...) end
-        if self._screensaver_widget == popup_self then
-            self._screensaver_widget = nil
-        end
+    -- Runs every query and paints the page before returning (see
+    -- lib/sleepscreen.lua): core only schedules the actual suspend after
+    -- this event has been handled, so nothing is left half-drawn.
+    local ok, shown = pcall(SleepScreen.show, self.ui)
+    if ok then
+        self._screensaver_widgets = shown
+    else
+        logger.warn("ReadingInsights: sleep screen failed:", tostring(shown))
     end
-    self._screensaver_widget = popup
-    UIManager:show(popup, "full")
 end
 
 -- A book was just read: its rating may have been set in KOReader's own book
@@ -656,12 +653,15 @@ end
 -- does it; and the event is not consumed.)
 function ReadingInsights:onCloseDocument()
     if Ratings and Ratings.refresh then Ratings.refresh() end
+    -- The book is still open at this point: keep what its popups show, for
+    -- the sleep screen in the file manager.
+    if self:_hasOpenDocument() then pcall(LastBook.capture, self.ui) end
 end
 
 function ReadingInsights:onResume()
-    if self._screensaver_widget then
-        UIManager:close(self._screensaver_widget)
-        self._screensaver_widget = nil
+    if self._screensaver_widgets then
+        SleepScreen.close(self._screensaver_widgets)
+        self._screensaver_widgets = nil
     end
     -- Wake-from-sleep also fires a silent background update check, mirroring
     -- bookshelf.koplugin. Updater's own 1-hour internal cache prevents
@@ -1074,8 +1074,7 @@ end
 -- persistent settings for the insights popup plus the Colors submenu.
 -- Everything the menu module needs beyond the plugin instance itself: the
 -- views it opens dialogs for, the settings modules its toggles read and
--- write, and the two sleep-screen helpers that live here because the
--- screensaver integration around them does too.
+-- write, and the sleep-screen module whose two settings it lists.
 function ReadingInsights:_menuDeps()
     return {
         BookCalendar                = BookCalendar,
@@ -1088,8 +1087,7 @@ function ReadingInsights:_menuDeps()
         SkimBar                     = SkimBar,
         SCREENSAVER_TYPE_VALUE      = SCREENSAVER_TYPE_VALUE,
         patchScreensaverMenuBuilder = patchScreensaverMenuBuilder,
-        readScreensaverLabelMode    = readScreensaverLabelMode,
-        saveScreensaverLabelMode    = saveScreensaverLabelMode,
+        SleepScreen                 = SleepScreen,
     }
 end
 

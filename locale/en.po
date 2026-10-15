@@ -635,9 +635,6 @@ msgstr "Use as sleep screen"
 msgid "Reading insights sleep screen"
 msgstr "Reading insights sleep screen"
 
-msgid "Sleep-screen indicator"
-msgstr "Sleep-screen indicator"
-
 msgid "Off"
 msgstr "Off"
 
@@ -665,14 +662,8 @@ msgstr "Instant"
 msgid "Slight delay (0.1s)"
 msgstr "Slight delay (0.1s)"
 
-msgid "sleeping…"
-msgstr "sleeping…"
-
 msgid "Indicator"
 msgstr "Indicator"
-
-msgid "\"(sleeping…)\" after the title"
-msgstr "\"(sleeping…)\" after the title"
 
 msgid "None"
 msgstr "None"
@@ -2089,3 +2080,43 @@ msgstr "Time and pages row"
 
 msgid "Comparison with previous 7 days row"
 msgstr "Comparison with previous 7 days row"
+
+msgid "Sleep screen"
+msgstr "Sleep screen"
+
+msgid "Content"
+msgstr "Content"
+
+msgid "Background"
+msgstr "Background"
+
+msgid "Book cover"
+msgstr "Book cover"
+
+msgid "Follow theme"
+msgstr "Follow theme"
+
+msgid "Custom image"
+msgstr "Custom image"
+
+msgid "Image fit"
+msgstr "Image fit"
+
+msgid "Fit"
+msgstr "Fit"
+
+msgid "Stretch"
+msgstr "Stretch"
+
+msgid "Zoom"
+msgstr "Zoom"
+
+msgid "Random"
+msgstr "Random"
+
+msgid "No images in {dir}"
+msgstr "No images in {dir}"
+
+msgid "Images are loaded from {dir}"
+msgstr "Images are loaded from {dir}"
+

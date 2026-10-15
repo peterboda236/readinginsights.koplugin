@@ -1932,10 +1932,12 @@ local ReadingInsightsPopup = InputContainer:extend{
     -- or the wake key itself doesn't dismiss it early. Year navigation
     -- (left/right swipe or key) still works. Actually closing this instance
     -- is then the caller's responsibility (see main.lua's onResume).
+    --
+    -- A readonly popup also loads and draws EVERYTHING inside init(), with
+    -- nothing deferred (see init and _sleep_sync): it is built while the
+    -- device is going to sleep, so no query or redraw may be left for a
+    -- timer that would fire after it has gone.
     readonly      = false,
-    -- Optional text shown in place of the (hidden, since readonly) close
-    -- button, e.g. "sleeping…" / nil/"" shows nothing there.
-    screensaver_label = nil,
 }
 
 -- Returns a { ["YYYY-MM-DD"] = seconds_read } map for the inclusive date
@@ -2562,10 +2564,7 @@ function ReadingInsightsPopup:showFinishedBooksMenu(year)
     UIManager:show(dialog)
 end
 
--- Normally just "Reading insights"; when shown as a sleep-screen (readonly)
-
--- with a text indicator configured, appends it, e.g. "Reading insights
--- (sleeping…)".
+-- The popup's header text.
 function ReadingInsightsPopup:_titleBarText()
     -- Popup header has its own translation key, so the Tools menu entry can
     -- stay "Reading insights" while the popup shows the localised title.
@@ -2573,9 +2572,6 @@ function ReadingInsightsPopup:_titleBarText()
     local title = _("Reading insights popup title")
     if title == "Reading insights popup title" then
         title = _("Reading insights")
-    end
-    if self.readonly and self.screensaver_label and self.screensaver_label ~= "" then
-        title = title .. " (" .. self.screensaver_label .. ")"
     end
     return title
 end
@@ -2959,6 +2955,7 @@ end
 -- itself relies on), so this is a real DB scan at most once per mode per
 -- day, same cost the visible mode already pays for itself.
 function ReadingInsightsPopup:_schedulePrefetchOtherModes()
+    if self._sleep_sync then return end
     if self._prefetch_scheduled then return end
     self._prefetch_scheduled = true
     UIManager:scheduleIn(0.3, function()
@@ -3148,6 +3145,7 @@ end
 -- passes from stacking up, and the pass never reschedules itself, so it can't
 -- loop.
 function ReadingInsightsPopup:_scheduleAchievementsRefresh()
+    if self._sleep_sync then return end
     if not Achievements then return end
     -- Only worth doing when the popup actually shows the achievements
     -- section. When it's switched off the count isn't drawn, so skip even
@@ -3311,11 +3309,48 @@ function ReadingInsightsPopup:init()
     -- Small delay (not 0) so the initial paint actually lands on screen
     -- before _loadAndRebuild() (which now recomputes all_time/yearly on
     -- almost every open, not just once a day) can trigger a second redraw.
-    self:_buildUI()
-    UIManager:scheduleIn(0.1, function()
-        if self._closed then return end
-        self:_loadAndRebuild()
-    end)
+    if self.readonly then
+        -- Sleep screen: no stale-then-refresh. Every query runs and the page
+        -- is built once, right here, before the Suspend handler returns -
+        -- otherwise the numbers would be refreshed by a timer after the
+        -- device has already started to sleep (or never, if it is quicker).
+        self:_sleep_load()
+    else
+        self:_buildUI()
+        UIManager:scheduleIn(0.1, function()
+            if self._closed then return end
+            self:_loadAndRebuild()
+        end)
+    end
+end
+
+-- Readonly (sleep screen) loading: the whole of _loadAndRebuild() plus the
+-- achievements count, run now and in order, with the deferred passes
+-- (_scheduleAchievementsRefresh / _schedulePrefetchOtherModes) switched off.
+function ReadingInsightsPopup:_sleep_load()
+    self._sleep_sync = true
+    -- Forces _loadAndRebuild() to build the page even when the fresh numbers
+    -- equal the cached ones - this is the first (and only) build.
+    self._initial_loading = true
+    local ok, err = pcall(self._loadAndRebuild, self)
+    if not ok then
+        logger.warn("ReadingInsights sleep screen: load failed:", tostring(err))
+        self._initial_loading = false
+        if not self[1] then self:_buildUI() end
+        return
+    end
+
+    -- The achievements count: normally refreshed a beat after the open;
+    -- here it is done now, and the page rebuilt only if it changed.
+    if Achievements and VS.Opt.readShowAchievements() then
+        local before = self._ach_count or 0
+        pcall(Achievements.refreshIfChanged, VS.Opt.readAchievementRefresh())
+        local after = Achievements.earnedCount() or 0
+        if after ~= before then
+            self._ach_count = after
+            self:_buildUI()
+        end
+    end
 end
 
 function ReadingInsightsPopup:onSwipe(arg, ges_ev)

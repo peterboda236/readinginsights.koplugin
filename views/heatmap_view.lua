@@ -1418,6 +1418,11 @@ M.Popup = InputContainer:extend{
     modal        = true,
     popup_self   = nil,   -- the ReadingInsightsPopup, for data access
     periods_back = 0,     -- 0 = most recent half-year, ending today
+    -- Sleep-screen use (see lib/sleepscreen.lua): everything is queried and
+    -- drawn inside init(), and nothing is scheduled for later - a deferred
+    -- revalidation could otherwise fire while the device is already going
+    -- to sleep.
+    readonly     = false,
 }
 
 function M.Popup:init()
@@ -1433,8 +1438,23 @@ function M.Popup:init()
         self.key_events.AnyKeyPressed = { { Device.input.group.Any } }
     end
 
-    self:_rebuild()
-    self:_scheduleRevalidate()
+    if self.readonly then
+        -- Fresh data now, not stale-then-revalidate: only re-query when
+        -- something was read since the last real fetch (the same single
+        -- cheap check _scheduleRevalidate uses), otherwise the cached
+        -- numbers are already current.
+        local fresh = true
+        if Cache.ENABLE_CACHE then
+            local watermark = Data.getMaxStartTime()
+            if watermark and watermark <= (Cache._heatmap_watermark or 0) then
+                fresh = false
+            end
+        end
+        self:_rebuild(fresh)
+    else
+        self:_rebuild()
+        self:_scheduleRevalidate()
+    end
 end
 
 function M.Popup:_rebuild(force_fresh)

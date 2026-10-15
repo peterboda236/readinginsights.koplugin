@@ -641,9 +641,6 @@ msgstr "Utiliser comme veille"
 msgid "Reading insights sleep screen"
 msgstr "Veille Statistiques de lecture"
 
-msgid "Sleep-screen indicator"
-msgstr "Indicateur de veille"
-
 msgid "Off"
 msgstr "Désactivé"
 
@@ -671,14 +668,8 @@ msgstr "Instantané"
 msgid "Slight delay (0.1s)"
 msgstr "Léger délai (0,1 s)"
 
-msgid "sleeping…"
-msgstr "veille…"
-
 msgid "Indicator"
 msgstr "Indicateur"
-
-msgid "\"(sleeping…)\" after the title"
-msgstr "« (veille…) » après le titre"
 
 msgid "None"
 msgstr "Aucun"
@@ -2089,3 +2080,42 @@ msgstr "Ligne temps et pages"
 
 msgid "Comparison with previous 7 days row"
 msgstr "Ligne de comparaison avec les 7 jours précédents"
+
+msgid "Sleep screen"
+msgstr "Écran de veille"
+
+msgid "Content"
+msgstr "Contenu"
+
+msgid "Background"
+msgstr "Arrière-plan"
+
+msgid "Book cover"
+msgstr "Couverture du livre"
+
+msgid "Follow theme"
+msgstr "Suivre le thème"
+
+msgid "Custom image"
+msgstr "Image personnalisée"
+
+msgid "Image fit"
+msgstr "Ajustement de l'image"
+
+msgid "Fit"
+msgstr "Ajuster"
+
+msgid "Stretch"
+msgstr "Étirer"
+
+msgid "Zoom"
+msgstr "Zoom"
+
+msgid "Random"
+msgstr "Aléatoire"
+
+msgid "No images in {dir}"
+msgstr "Aucune image dans {dir}"
+
+msgid "Images are loaded from {dir}"
+msgstr "Les images sont chargées depuis {dir}"

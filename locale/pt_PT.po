@@ -641,9 +641,6 @@ msgstr "Usar como ecrã de suspensão"
 msgid "Reading insights sleep screen"
 msgstr "Ecrã de suspensão do Reading Insights"
 
-msgid "Sleep-screen indicator"
-msgstr "Indicador do ecrã de suspensão"
-
 msgid "Off"
 msgstr "Desativado"
 
@@ -671,14 +668,8 @@ msgstr "Instantâneo"
 msgid "Slight delay (0.1s)"
 msgstr "Ligeiro atraso (0,1s)"
 
-msgid "sleeping…"
-msgstr "a suspender…"
-
 msgid "Indicator"
 msgstr "Indicador"
-
-msgid "\"(sleeping…)\" after the title"
-msgstr "\"(a suspender…)\" após o título"
 
 msgid "None"
 msgstr "Nenhum"
@@ -2089,3 +2080,42 @@ msgstr "Linha de tempo e páginas"
 
 msgid "Comparison with previous 7 days row"
 msgstr "Linha de comparação com os 7 dias anteriores"
+
+msgid "Sleep screen"
+msgstr "Ecrã de suspensão"
+
+msgid "Content"
+msgstr "Conteúdo"
+
+msgid "Background"
+msgstr "Fundo"
+
+msgid "Book cover"
+msgstr "Capa do livro"
+
+msgid "Follow theme"
+msgstr "Seguir o tema"
+
+msgid "Custom image"
+msgstr "Imagem personalizada"
+
+msgid "Image fit"
+msgstr "Ajuste da imagem"
+
+msgid "Fit"
+msgstr "Ajustar"
+
+msgid "Stretch"
+msgstr "Esticar"
+
+msgid "Zoom"
+msgstr "Ampliar"
+
+msgid "Random"
+msgstr "Aleatório"
+
+msgid "No images in {dir}"
+msgstr "Sem imagens em {dir}"
+
+msgid "Images are loaded from {dir}"
+msgstr "As imagens são carregadas de {dir}"
