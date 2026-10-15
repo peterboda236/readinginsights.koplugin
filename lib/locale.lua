@@ -184,6 +184,18 @@ local function N_(singular, plural, n)
     return gettext.ngettext(singular, plural, n)
 end
 
+-- The name of the Reading insights popup. It has a key of its own so a
+-- language can name the popup differently from the plugin (hu: "Olvasási
+-- áttekintés"); a language without that key (English, where nothing is
+-- translated) shows the plugin's name instead of the key itself.
+local function insightsTitle()
+    local title = _("Reading insights popup title")
+    if title == "Reading insights popup title" then
+        title = _("Reading insights")
+    end
+    return title
+end
+
 local _cached_lang_base = nil
 local function getLangBase()
     if not _cached_lang_base then
@@ -575,6 +587,7 @@ return {
     pluginDir                  = pluginDir,
     _                          = _,
     N_                         = N_,
+    insightsTitle              = insightsTitle,
     getLangBase                = getLangBase,
     formatNumber               = formatNumber,
     formatCount                = formatCount,

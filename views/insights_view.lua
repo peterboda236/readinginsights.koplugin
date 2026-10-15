@@ -2569,11 +2569,7 @@ function ReadingInsightsPopup:_titleBarText()
     -- Popup header has its own translation key, so the Tools menu entry can
     -- stay "Reading insights" while the popup shows the localised title.
     -- Falls back to "Reading insights" if a language lacks the key.
-    local title = _("Reading insights popup title")
-    if title == "Reading insights popup title" then
-        title = _("Reading insights")
-    end
-    return title
+    return Locale.insightsTitle()
 end
 
 -- A string that changes whenever any of this plugin's settings (or the UI

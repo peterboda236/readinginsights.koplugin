@@ -88,7 +88,7 @@ M.DEFAULT_BACKGROUND = "cover"
 -- Menu order.
 function M.contents()
     return {
-        { id = "insights",      text = _("Reading insights popup title") },
+        { id = "insights",      text = Locale.insightsTitle() },
         { id = "heatmap",       text = _("Reading heatmap") },
         { id = "streak",        text = _("Reading streak") },
         { id = "book_progress", text = _("Book progress") },

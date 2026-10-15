@@ -40,7 +40,7 @@ function M.build(self, deps)
     -- time the menu opens (sub_item_table_func at the bottom), so a change
     -- shows up right away. The three book entries also need an open book.
     local popup_entries = {
-        { key = "insights",      label = _("Reading insights popup title"),
+        { key = "insights",      label = Locale.insightsTitle(),
           open = function() self:onShowReadingInsightsPopup() end },
         { key = "streak",        label = _("Reading streak"),
           open = function() self:onShowReadingStreakPopup() end },
