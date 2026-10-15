@@ -1274,8 +1274,8 @@ function M.build(self, deps)
     --   Appearance                 colors and fonts
     --   -------------------------
     --   one group per view         Reading insight popup, Heatmap & time of
-    --                              day, Book progress popup, Book info,
-    --                              Book progress calendar
+    --                              day, Book progress popup, Book progress
+    --                              calendar, Book info
     --   -------------------------
     --   Advanced settings          behaviour that isn't about one popup:
     --                              sleep screen, refresh, long durations,
@@ -1325,8 +1325,8 @@ function M.build(self, deps)
             keep_menu_open = true,
             sub_item_table = book_progress_sub_item_table,
         },
-        I.book_info,
         I.book_calendar_settings,
+        I.book_info,
         "-",
         group(_("Advanced settings"), {
             I.sleep_indicator, I.full_refresh, I.long_durations,
