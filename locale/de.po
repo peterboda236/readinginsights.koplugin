@@ -2069,9 +2069,6 @@ msgstr "Bewertung (0–5 Sterne)"
 msgid "Please enter a rating from 0 to 5"
 msgstr "Bitte eine Bewertung von 0 bis 5 eingeben"
 
-msgid "General"
-msgstr "Allgemein"
-
 msgid "Appearance"
 msgstr "Darstellung"
 

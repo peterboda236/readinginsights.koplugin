@@ -2081,9 +2081,6 @@ msgstr "Vékony folyamatsáv megjelenítése a könyv százaléka alatt."
 msgid "Loading ratings..."
 msgstr "Értékelések betöltése..."
 
-msgid "General"
-msgstr "Általános"
-
 msgid "Appearance"
 msgstr "Megjelenés"
 

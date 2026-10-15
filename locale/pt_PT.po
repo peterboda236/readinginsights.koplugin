@@ -2069,9 +2069,6 @@ msgstr "Por favor, introduza uma classificação de 0 a 5"
 msgid "Loading ratings..."
 msgstr "A carregar classificações..."
 
-msgid "General"
-msgstr "Geral"
-
 msgid "Appearance"
 msgstr "Aspeto"
 

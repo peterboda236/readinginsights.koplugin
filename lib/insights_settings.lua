@@ -923,7 +923,7 @@ function M.Opt.saveBookInfoCoverSize(value)
 end
 
 -- Tools > Reading insights: which "Show ..." entries are listed (Settings >
--- General > "Menu items"). All on by default; this only affects
+-- Advanced settings > "Menu items"). All on by default; this only affects
 -- the menu, the gesture / dispatcher actions keep working either way.
 M.Opt.MENU_ITEM_ORDER = {
     "insights", "streak", "heatmap", "records", "achievements",

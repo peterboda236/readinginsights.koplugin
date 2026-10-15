@@ -3,9 +3,9 @@ Reading Insights - the Tools menu.
 
 Builds the whole *Tools > Reading insights* entry: the "open a popup" actions
 (statistics popups, then the popups about the open book), the Settings submenu
-(General, Date & time, Appearance, then one group per view - Reading insight
-popup, Heatmap & time of day, Book progress popup, Book info, Book progress
-calendar), and the Updates and About entries. The Settings layout is spelled
+(Date & time, Appearance, one group per view - Reading insight popup,
+Heatmap & time of day, Book progress popup, Book info, Book progress
+calendar - and Advanced settings last), and the Updates and About entries. The Settings layout is spelled
 out in one place, under "Settings menu layout" near the end of M.build.
 
 This is ~600 lines of pure menu description - nested tables of text_func /
@@ -36,7 +36,7 @@ local M = {}
 
 function M.build(self, deps)
     -- The popup entries. Which of them are listed is set under
-    -- Settings > General > "Menu items"; the list is rebuilt each
+    -- Settings > Advanced settings > "Menu items"; the list is rebuilt each
     -- time the menu opens (sub_item_table_func at the bottom), so a change
     -- shows up right away. The three book entries also need an open book.
     local popup_entries = {
@@ -1270,15 +1270,16 @@ function M.build(self, deps)
 
     -- Settings menu layout, top to bottom:
     --
-    --   General                    behaviour that isn't about one popup:
-    --                              sleep screen, refresh, long durations,
-    --                              which popups the Tools menu lists
     --   Date & time                how dates, times and weeks are shown
     --   Appearance                 colors and fonts
     --   -------------------------
     --   one group per view         Reading insight popup, Heatmap & time of
     --                              day, Book progress popup, Book info,
     --                              Book progress calendar
+    --   -------------------------
+    --   Advanced settings          behaviour that isn't about one popup:
+    --                              sleep screen, refresh, long durations,
+    --                              which popups the Tools menu lists
     --
     -- Bar chart heights sit with the view they belong to: Reading insight
     -- popup > Bar chart height, Book progress popup > Bar chart height.
@@ -1310,11 +1311,6 @@ function M.build(self, deps)
     })
 
     local settings_sub_item_table = layout({
-        group(_("General"), {
-            I.sleep_indicator, I.full_refresh, I.long_durations,
-            "-",
-            I.menu_items,
-        }),
         I.date_time,
         group(_("Appearance"), { I.colors, I.fonts }),
         "-",
@@ -1331,6 +1327,12 @@ function M.build(self, deps)
         },
         I.book_info,
         I.book_calendar_settings,
+        "-",
+        group(_("Advanced settings"), {
+            I.sleep_indicator, I.full_refresh, I.long_durations,
+            "-",
+            I.menu_items,
+        }),
     })
 
     table.insert(sub_item_table, {

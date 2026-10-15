@@ -2069,9 +2069,6 @@ msgstr "Veuillez saisir une note de 0 à 5"
 msgid "Loading ratings..."
 msgstr "Chargement des notes..."
 
-msgid "General"
-msgstr "Général"
-
 msgid "Appearance"
 msgstr "Apparence"
 

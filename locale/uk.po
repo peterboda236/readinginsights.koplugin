@@ -2118,9 +2118,6 @@ msgstr "Будь ласка, введіть оцінку від 0 до 5"
 msgid "Loading ratings..."
 msgstr "Завантаження оцінок..."
 
-msgid "General"
-msgstr "Загальні"
-
 msgid "Appearance"
 msgstr "Вигляд"
 

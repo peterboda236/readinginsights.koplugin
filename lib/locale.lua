@@ -420,7 +420,7 @@ local function parseDateInput(str)
     return string.format("%04d-%02d-%02d", tonumber(y), tonumber(m), tonumber(d))
 end
 
--- Long-duration display (Settings ▸ General ▸ "Show long
+-- Long-duration display (Settings ▸ Advanced settings ▸ "Show long
 -- durations as days"). Off by default (existing "51:03"-style clock
 -- format is unchanged); when the user turns it on, any duration this
 -- plugin formats that reaches 24h or more is shown as a day count instead

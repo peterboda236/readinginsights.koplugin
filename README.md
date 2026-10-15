@@ -166,8 +166,6 @@ unticked keeps everything, so a later reinstall picks up where you left off.
 
 *Tools → Reading insights → Settings* lets you customise:
 
-- **General** — the sleep-screen indicator, full-screen refresh on open/close,
-  long durations as days, and *Menu items* (which popups the Tools menu lists).
 - **Date & time** — 12/24-hour clock, first day of the week, week numbers and
   the date format.
 - **Appearance** — **Colors** (a hex colour, or a touch colour wheel, for every
@@ -184,6 +182,9 @@ unticked keeps everything, so a later reinstall picks up where you left off.
   border, and the author and series lines. The title / author / series fonts
   are under *Fonts → Book info* (by default the same as the Book card plugin's).
 - **Book progress calendar** — what the day cells show.
+- **Advanced settings** — the sleep-screen indicator, full-screen refresh on
+  open/close, long durations as days, and *Menu items* (which popups the Tools
+  menu lists).
 
 The popups are also registered with `Dispatcher`, so you can assign them to
 gestures under *Settings → Taps and gestures*.

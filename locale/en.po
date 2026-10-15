@@ -2069,9 +2069,6 @@ msgstr "Show a thin progress bar under the book percentage."
 msgid "Loading ratings..."
 msgstr "Loading ratings..."
 
-msgid "General"
-msgstr "General"
-
 msgid "Appearance"
 msgstr "Appearance"
 

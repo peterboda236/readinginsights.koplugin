@@ -1792,9 +1792,6 @@ msgstr "请输入 0 到 5 的评分"
 msgid "Loading ratings..."
 msgstr "正在加载评分..."
 
-msgid "General"
-msgstr "常规"
-
 msgid "Appearance"
 msgstr "外观"
 
