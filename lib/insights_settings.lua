@@ -118,7 +118,7 @@ end
 -- Newer view options, kept on one table for the reason in the header: a
 -- field costs no local, a top-level `local` costs one of the 200.
 M.Opt = {
-    -- Bar-chart height mode (Settings > Advanced settings > "Bar chart
+    -- Bar-chart height mode (Settings > Reading insight popup > "Bar chart
     -- height" > "Automatic (Reading insights)").
     --
     -- true (default): the weekly and monthly bar heights are not taken from
@@ -173,7 +173,7 @@ M.Opt = {
     built_monthly = false,
 
     -- Whether the "Reading goal" section is shown at all (Settings >
-    -- Advanced settings > "Reading goal section"). On by default. When off
+    -- Reading insight popup > "Reading goal"). On by default. When off
     -- the section is skipped while building the popup *and* its
     -- finished-book count is never queried (see _loadAndRebuild), so
     -- turning it off also removes its share of the work on every open.
@@ -302,7 +302,7 @@ M.Opt = {
 
 }
 
--- Reading heatmap period length (Prefs ▸ Advanced settings ▸ how many
+-- Reading heatmap period length (Settings ▸ Heatmap & time of day ▸ how many
 -- months the heatmap grid shows at once - 3, 4, 6 or 12). Read by
 -- getHeatmapPeriodRange below every time a heatmap page is built, so a
 -- change takes effect the next time the popup (re)opens/pages.
@@ -322,7 +322,7 @@ function M.saveHeatmapMonthsSetting(value)
     M.saveNumSetting(M.SETTINGS_KEY_HEATMAP_MONTHS, value)
 end
 
--- Time-of-day heatmap hour format (Prefs ▸ Advanced settings ▸ Date & time
+-- Time-of-day heatmap hour format (Settings ▸ Date & time
 -- ▸ "Time format" - 24-hour or 12-hour AM/PM). Previously the hour header
 -- always showed 24-hour labels ("00".."21"); this is now an explicit,
 -- language-independent setting instead of silently following the
@@ -410,7 +410,7 @@ function M.saveFinishedOverrides(year, overrides)
     Prefs.save(M.finishedOverridesSettingsKey(year), overrides)
 end
 
--- Week start day for both reading heatmaps (Prefs ▸ Advanced settings ▸ Date
+-- Week start day for both reading heatmaps (Settings ▸ Date
 -- & time ▸ "First day of week" - Monday or Sunday). This is the same global
 -- Book progress calendar keys off, so it now lives in the shared
 -- Settings module (see settings.lua); these thin wrappers keep the existing
@@ -434,7 +434,7 @@ end
 
 -- Whether the Reading streak calendar and the Book progress calendar draw
 -- an extra "Week" column to the left of their day columns, showing each row's
--- ISO week number (Prefs ▸ Advanced settings ▸ Date & time ▸ "Show week
+-- ISO week number (Settings ▸ Date & time ▸ "Show week
 -- numbers"). Off by default so neither calendar gets narrower day cells for
 -- anyone who hasn't asked for this. Read by streak_calendar_view.lua and
 -- book_calendar_view.lua every time their month grid is (re)built.
@@ -550,7 +550,7 @@ function M.saveWeeklyGoalMinutes(value)
     Prefs.save(M.SETTINGS_KEY_WEEKLY_GOAL_MIN, value)
 end
 
--- "Last 7 days" section rows (Prefs > Advanced settings > Reading insight
+-- "Last 7 days" section rows (Settings > Reading insight
 -- popup > "Last 7 days"). The compact row (total + daily average of the
 -- selected chart mode, time or pages) is always shown. Two optional extras,
 -- both off by default and independent of each other:
@@ -579,7 +579,7 @@ function M.saveWeeklyVsPrev(value)
     M.saveBoolSetting(M.SETTINGS_KEY_WEEKLY_VS_PREV, value)
 end
 
--- "Last 7 days" bar order (Prefs ▸ Advanced settings ▸ Reading insight popup ▸
+-- "Last 7 days" bar order (Settings ▸ Reading insight popup ▸
 -- "Last 7 days chapter bar order"). The chart's data always arrives with index
 -- 1 = today; this only decides which end of the row that first bar is drawn
 -- at, so everything keyed off "bar 1 is today" (the highlight colour, the tap
@@ -923,7 +923,7 @@ function M.Opt.saveBookInfoCoverSize(value)
 end
 
 -- Tools > Reading insights: which "Show ..." entries are listed (Settings >
--- Advanced settings > "Menu items"). All on by default; this only affects
+-- General > "Menu items"). All on by default; this only affects
 -- the menu, the gesture / dispatcher actions keep working either way.
 M.Opt.MENU_ITEM_ORDER = {
     "insights", "streak", "heatmap", "records", "achievements",

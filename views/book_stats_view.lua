@@ -128,7 +128,7 @@ local function formatEventDateTime(timestamp, always_full)
     end
 
     -- The date itself follows the configured date format (Settings ▸
-    -- Advanced settings ▸ Date & time ▸ "Date format"); only where the
+    -- Settings ▸ Date & time ▸ "Date format"); only where the
     -- weekday goes stays language-bound, since Hungarian wants it after
     -- the date and in lower case ("2026. 06. 24., szerda").
     local date_str = Locale.formatDateFromTS(timestamp)

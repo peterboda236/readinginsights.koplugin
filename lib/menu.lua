@@ -1,11 +1,12 @@
 --[[
 Reading Insights - the Tools menu.
 
-Builds the whole *Tools > Reading insights* entry: the "show popup" actions,
-the Settings submenu (sleep-screen indicator, full-screen refresh, colors,
-fonts), the Advanced settings submenu below it (bar chart height, long
-durations, then one group per area - Date & time, Reading insight popup,
-Book progress calendar), and the Updates and About entries.
+Builds the whole *Tools > Reading insights* entry: the "open a popup" actions
+(statistics popups, then the popups about the open book), the Settings submenu
+(General, Date & time, Appearance, then one group per view - Reading insight
+popup, Heatmap & time of day, Book progress popup, Book info, Book progress
+calendar), and the Updates and About entries. The Settings layout is spelled
+out in one place, under "Settings menu layout" near the end of M.build.
 
 This is ~600 lines of pure menu description - nested tables of text_func /
 checked_func / callback - and it was the single largest thing in main.lua,
@@ -34,48 +35,47 @@ local _ = Locale._
 local M = {}
 
 function M.build(self, deps)
-    -- The "Show ..." entries. Which of them are listed is set under
-    -- Settings > Advanced settings > "Menu items"; the list is rebuilt each
+    -- The popup entries. Which of them are listed is set under
+    -- Settings > General > "Menu items"; the list is rebuilt each
     -- time the menu opens (sub_item_table_func at the bottom), so a change
     -- shows up right away. The three book entries also need an open book.
     local popup_entries = {
         { key = "insights",      label = _("Reading insights"),
-          text = _("Show Reading insights"),
           open = function() self:onShowReadingInsightsPopup() end },
         { key = "streak",        label = _("Reading streak"),
-          text = _("Show Reading streak"),
           open = function() self:onShowReadingStreakPopup() end },
         { key = "heatmap",       label = _("Reading heatmap"),
-          text = _("Show Reading heatmap"),
           open = function() self:onShowReadingHeatmapPopup() end },
         { key = "records",       label = _("Records"),
-          text = _("Show Records"),
           open = function() self:onShowReadingRecordsPopup() end },
         { key = "achievements",  label = _("Achievements"),
-          text = _("Show Achievements"),
           open = function() self:onShowReadingAchievements() end },
         { key = "book_progress", label = _("Book progress"), book = true,
-          text = _("Show Book progress"),
           open = function() self:onShowReadingStatsPopup() end },
         { key = "book_info",     label = _("Book info"), book = true,
-          text = _("Show Book info"),
           open = function() self:onShowBookInfoPopup() end },
         { key = "book_calendar", label = _("Book progress calendar"), book = true,
-          text = _("Show Book progress calendar"),
           open = function() self:onShowBookCalendarPopup() end },
     }
 
     local function buildPopupEntries()
         local items = {}
         local has_open_document = self:_hasOpenDocument()
+        local previous_was_book
         for _idx, e in ipairs(popup_entries) do
             if deps.ViewSettings.Opt.readMenuItem(e.key)
                 and (has_open_document or not e.book) then
+                -- Divider between the statistics popups and the popups
+                -- about the open book.
+                if #items > 0 and e.book and not previous_was_book then
+                    items[#items].separator = true
+                end
                 table.insert(items, {
-                    text = e.text,
+                    text = e.label,
                     keep_menu_open = false,
                     callback = e.open,
                 })
+                previous_was_book = e.book
             end
         end
         -- Separator after the "open a popup" entries, before the
@@ -87,7 +87,37 @@ function M.build(self, deps)
     -- Everything below the popup entries (Settings, Updates, About).
     local sub_item_table = {}
 
-    local settings_sub_item_table = {}
+    -- Every settings entry below is built once and stored by name in I; the
+    -- Settings menu is put together from them in one place at the end of
+    -- this function (see "Settings menu layout"), so moving an entry to
+    -- another group is a one-line change there and nothing depends on the
+    -- order in which the entries happen to be defined.
+    local I = {}
+
+    -- Lays out a list of entries: the string "-" puts a divider line under
+    -- the entry before it. Any divider an entry carried on its own is
+    -- dropped, so the dividers come from the layout alone.
+    local function layout(spec)
+        local out = {}
+        for _idx, v in ipairs(spec) do
+            if v == "-" then
+                if out[#out] then out[#out].separator = true end
+            else
+                v.separator = nil
+                out[#out + 1] = v
+            end
+        end
+        return out
+    end
+
+    -- A submenu entry made of a list of entries (see layout above).
+    local function group(text, spec)
+        return {
+            text = text,
+            keep_menu_open = true,
+            sub_item_table = layout(spec),
+        }
+    end
 
     -- Whether/how it's used as a sleep screen is normally set directly in
     -- KOReader's own Settings > Screen > Sleep screen menu (see the
@@ -103,27 +133,11 @@ function M.build(self, deps)
     -- way at all to turn this on. So the same control is duplicated here,
     -- inside our own Settings submenu, guaranteed to always work
     -- regardless of what core's menu looks like.
-    --[[
-    table.insert(settings_sub_item_table, {
-        text = _("Use as sleep screen"),
-        keep_menu_open = true,
-        checked_func = function()
-            return G_reader_settings:readSetting("screensaver_type") == deps.SCREENSAVER_TYPE_VALUE
-        end,
-        callback = function()
-            if G_reader_settings:readSetting("screensaver_type") == deps.SCREENSAVER_TYPE_VALUE then
-                G_reader_settings:saveSetting("screensaver_type", "disable")
-            else
-                G_reader_settings:saveSetting("screensaver_type", deps.SCREENSAVER_TYPE_VALUE)
-            end
-        end,
-    })
-    ]]--
 
     -- Sleep-screen indicator: the one setting here that is about the sleep
     -- screen rather than about the popups, so it sits at the top with a
     -- divider under it, above the appearance settings that follow.
-    table.insert(settings_sub_item_table, {
+    I.sleep_indicator = {
         text_func = function()
             local label_mode = deps.readScreensaverLabelMode()
             return _("Sleep-screen indicator") .. ": " ..
@@ -147,9 +161,9 @@ function M.build(self, deps)
                 callback = function() deps.saveScreensaverLabelMode("text") end,
             },
         },
-    })
+    }
 
-    table.insert(settings_sub_item_table, {
+    I.full_refresh = {
         text = _("Full-screen refresh on open/close"),
         keep_menu_open = true,
         -- Divider under it: the two entries above are behaviour, Colors and
@@ -161,7 +175,7 @@ function M.build(self, deps)
         callback = function()
             deps.ViewSettings.saveFullRefreshSetting(not deps.ViewSettings.readFullRefreshSetting())
         end,
-    })
+    }
 
     -- Bar-chart height settings: one entry per chart, each opening a
     -- SpinWidget (KOReader's standard numeric-value picker) with the
@@ -172,14 +186,6 @@ function M.build(self, deps)
     -- so they grey out while the automatic height mode is on (their stored
     -- value isn't used then, and is left untouched so switching back to
     -- manual brings it back).
-    -- Draws a divider under an entry. A one-line wrapper rather than an
-    -- eighth positional argument to buildBarHeightMenuEntry, whose parameter
-    -- list is already long enough to be easy to miscount.
-    local function withSeparator(entry)
-        entry.separator = true
-        return entry
-    end
-
     local function buildBarHeightMenuEntry(text, read_fn, save_fn, default_value, value_min, value_max, enabled_func)
         return {
             text_func = function()
@@ -212,37 +218,21 @@ function M.build(self, deps)
     -- Unified color settings for every chart/diagram and label in both
     -- popups (insights and stats). Any change here applies to both, next
     -- time each popup is (re)opened.
-    table.insert(settings_sub_item_table, {
+    I.colors = {
         text = _("Colors"),
         keep_menu_open = true,
         sub_item_table = deps.Colors.buildMenu(),
-    })
+    }
 
     -- Unified font settings (name + size) for every text role in both
     -- popups. Same idea as deps.Colors above. Any change here applies to both,
     -- next time each popup is (re)opened.
-    table.insert(settings_sub_item_table, {
+    I.fonts = {
         text = _("Fonts"),
         keep_menu_open = true,
         separator = true,
         sub_item_table = deps.Fonts.buildMenu(),
-    })
-
-    -- Settings menu layout, top to bottom:
-    --   Sleep-screen indicator, Full-screen refresh      (behaviour)
-    --   Colors, Fonts                                    (appearance)
-    --   ---------------------------------------------
-    --   Reading insight popup, Book progress popup,
-    --   Book progress calendar                           (one submenu per view)
-    --   ---------------------------------------------
-    --   Advanced settings                                (less commonly touched)
-    --
-    -- "Advanced settings" holds what applies to everything the plugin
-    -- draws: bar chart height, long durations as days, and the "Date &
-    -- time" group (how dates and times are spelled out anywhere). The
-    -- divider above the per-view block is the one set on the "Fonts"
-    -- entry; the divider under it is set on "Book progress calendar".
-    local advanced_settings_sub_item_table = {}
+    }
 
     -- "Menu items": tick the popups that should be listed under Tools >
     -- Reading insights (all of them by default).
@@ -259,83 +249,85 @@ function M.build(self, deps)
             end,
         })
     end
-    table.insert(advanced_settings_sub_item_table, {
+    I.menu_items = {
         text = _("Menu items"),
         help_text = _("Tick the popups that should be listed under Tools > Reading insights. The book popups only appear while a book is open."),
         keep_menu_open = true,
         separator = true,
         sub_item_table = menu_items_sub_item_table,
-    })
+    }
 
-    table.insert(advanced_settings_sub_item_table, {
+    -- Bar chart heights, now kept with the view each one belongs to:
+    --   Reading insight popup > Bar chart height   (automatic, Last 7 days, Months)
+    --   Book progress popup > Bar chart height     (chapters, skim bar)
+    --
+    -- Automatic is on by default: the two Reading insights charts size
+    -- themselves so the whole page fits the screen, which is both the best use
+    -- of the space and the only way to be sure the scroll bar never shows up.
+    -- Switching it off restores the two fixed values, which is why they stay
+    -- here (greyed out while automatic is on, so it's obvious they're not in
+    -- effect rather than simply being ignored).
+    local function barHeightAuto()
+        return deps.ViewSettings.Opt.readBarHeightAuto()
+    end
+    I.insights_heights = {
         text = _("Bar chart height"),
         keep_menu_open = true,
         sub_item_table = {
-            -- Grouping: the automatic toggle and the two Reading insights
-            -- entries it governs belong together, with the divider below
-            -- them - "Book progress: Chapters" is a different view's
-            -- setting and is always set by hand.
-            --
-            -- Automatic is on by default: the two charts size themselves so
-            -- the whole page fits the screen, which is both the best use of
-            -- the space and the only way to be sure the scroll bar never
-            -- shows up. Switching it off restores the two fixed values,
-            -- which is why they stay here (greyed out while automatic is
-            -- on, so it's obvious they're not in effect rather than simply
-            -- being ignored).
             {
-                -- Composed from the same two strings the entries below use,
-                -- so the name of the view can't end up worded one way here
-                -- and another way two rows down.
-                text = _("Automatic") .. " (" .. _("Reading insights") .. ")",
+                text = _("Automatic"),
                 help_text = _("Sizes the Reading insights bar charts so the page fits the screen without a scroll bar."),
                 keep_menu_open = true,
-                checked_func = function() return deps.ViewSettings.Opt.readBarHeightAuto() end,
+                separator = true,
+                checked_func = barHeightAuto,
                 callback = function(touchmenu_instance)
-                    deps.ViewSettings.Opt.saveBarHeightAuto(not deps.ViewSettings.Opt.readBarHeightAuto())
+                    deps.ViewSettings.Opt.saveBarHeightAuto(not barHeightAuto())
                     if touchmenu_instance then touchmenu_instance:updateItems() end
                 end,
             },
             buildBarHeightMenuEntry(
-                _("Reading insights") .. ": " .. _("Last 7 days"),
+                _("Last 7 days"),
                 deps.ViewSettings.readWeeklyBarHeightSetting,
                 deps.ViewSettings.saveWeeklyBarHeightSetting,
                 deps.ViewSettings.DEFAULT_WEEKLY_BAR_HEIGHT,
                 10, 200,
-                function() return not deps.ViewSettings.Opt.readBarHeightAuto() end
+                function() return not barHeightAuto() end
             ),
-            withSeparator(buildBarHeightMenuEntry(
-                _("Reading insights") .. ": " .. _("Months"),
+            buildBarHeightMenuEntry(
+                _("Months"),
                 deps.ViewSettings.readMonthlyBarHeightSetting,
                 deps.ViewSettings.saveMonthlyBarHeightSetting,
                 deps.ViewSettings.DEFAULT_MONTHLY_BAR_HEIGHT,
                 10, 200,
-                function() return not deps.ViewSettings.Opt.readBarHeightAuto() end
-            )),
+                function() return not barHeightAuto() end
+            ),
+        },
+    }
+    I.book_heights = {
+        text = _("Bar chart height"),
+        keep_menu_open = true,
+        sub_item_table = {
             buildBarHeightMenuEntry(
-                _("Book progress") .. ": " .. _("Chapters"),
+                _("Chapters"),
                 deps.ChapterBar.readHeightSetting,
                 deps.ChapterBar.saveHeightSetting,
                 deps.ChapterBar.DEFAULT_HEIGHT,
                 10, 200
             ),
-            -- The skim-style chapter bar's height lives here with the other
-            -- chart heights (it used to sit under Book progress popup >
-            -- Chapter bar style).
             buildBarHeightMenuEntry(
-                _("Book progress") .. ": " .. _("Skim bar"),
+                _("Skim bar"),
                 deps.SkimBar.readHeightSetting,
                 deps.SkimBar.saveHeightSetting,
                 deps.SkimBar.DEFAULT_HEIGHT,
                 deps.SkimBar.MIN_HEIGHT, deps.SkimBar.MAX_HEIGHT
             ),
         },
-    })
+    }
 
-    -- Affects every duration this plugin prints, in all four popups, so it
-    -- stays a flat entry up here instead of going into one of the
-    -- per-view groups below.
-    table.insert(advanced_settings_sub_item_table, {
+
+    -- Affects every duration this plugin prints, in all the popups, so it
+    -- lives under General rather than in one of the per-view groups.
+    I.long_durations = {
         text         = _("Show long durations (24h+) as days"),
         separator    = true,
         keep_menu_open = true,
@@ -343,11 +335,11 @@ function M.build(self, deps)
         callback     = function()
             deps.Locale.saveDurationDaysSetting(not deps.Locale.readDurationDaysSetting())
         end,
-    })
+    }
 
     -- "Date & time": how clock times and dates are spelled out, wherever
-    -- the plugin prints one. Filled in here and closed off (inserted into
-    -- Advanced settings) after the date-format entry further down.
+    -- the plugin prints one. Filled in here; the date-format entry is added
+    -- further down.
     local date_time_sub_item_table = {}
 
     -- Named "Time format" rather than after the one grid it currently
@@ -427,16 +419,15 @@ function M.build(self, deps)
     })
 
     -- "Reading insight popup": everything that changes what the insights
-    -- popup itself shows. Inserted into Advanced settings below, after the
-    -- "Date & time" group.
-    local insights_popup_sub_item_table = {}
+    -- popup itself shows. The entries are defined here and grouped under
+    -- "Settings menu layout" at the end.
 
     -- The reading-goal and achievements sections of the popup, each with its
     -- own checkbox. A hidden goal section isn't drawn or queried; the
     -- achievements list stays reachable via "Show Achievements" either way.
     do
         local Opt = deps.ViewSettings.Opt
-        table.insert(insights_popup_sub_item_table, {
+        I.goal = {
             text = _("Daily / weekly goal"),
             help_text = _("Show the daily and weekly reading time goals above \"Last 7 days\". Long press the section to set the goals."),
             keep_menu_open = true,
@@ -444,8 +435,8 @@ function M.build(self, deps)
             callback = function()
                 deps.ViewSettings.saveShowTimeGoals(not deps.ViewSettings.readShowTimeGoals())
             end,
-        })
-        table.insert(insights_popup_sub_item_table, {
+        }
+        I.goal_bar = {
             text = _("Daily / weekly goal bar"),
             help_text = _("Show a thin progress bar under the daily and weekly goal values."),
             keep_menu_open = true,
@@ -454,23 +445,23 @@ function M.build(self, deps)
             callback = function()
                 deps.ViewSettings.saveShowTimeGoalBar(not deps.ViewSettings.readShowTimeGoalBar())
             end,
-        })
-        table.insert(insights_popup_sub_item_table, {
+        }
+        I.reading_goal = {
             text = _("Reading goal"),
             keep_menu_open = true,
             checked_func = function() return Opt.readShowReadingGoal() end,
             callback = function() Opt.saveShowReadingGoal(not Opt.readShowReadingGoal()) end,
-        })
-        table.insert(insights_popup_sub_item_table, {
+        }
+        I.achievements = {
             text = _("Achievements"),
             keep_menu_open = true,
             separator = true,
             checked_func = function() return Opt.readShowAchievements() end,
             callback = function() Opt.saveShowAchievements(not Opt.readShowAchievements()) end,
-        })
+        }
     end
 
-    table.insert(insights_popup_sub_item_table, {
+    I.hamburger = {
         text = _("Hamburger menu"),
         help_text = _("Show the hamburger menu (top left of the title bar) with quick access to the streak, heatmap, records and achievements popups."),
         keep_menu_open = true,
@@ -478,9 +469,9 @@ function M.build(self, deps)
         callback = function()
             deps.ViewSettings.Opt.saveShowHamburgerMenu(not deps.ViewSettings.Opt.readShowHamburgerMenu())
         end,
-    })
+    }
 
-    table.insert(insights_popup_sub_item_table, {
+    I.heatmap_months = {
         text_func = function()
             local months = deps.ViewSettings.readHeatmapMonthsSetting()
             local label
@@ -521,9 +512,9 @@ function M.build(self, deps)
                 callback = function() deps.ViewSettings.saveHeatmapMonthsSetting(12) end,
             },
         },
-    })
+    }
 
-    table.insert(insights_popup_sub_item_table, {
+    I.time_of_day = {
         text_func = function()
             local style = deps.ViewSettings.readTimeOfDayViewSetting() == "heatmap"
                 and _("Heatmap")
@@ -551,9 +542,9 @@ function M.build(self, deps)
                 callback = function() deps.ViewSettings.saveTimeOfDayViewSetting("heatmap") end,
             },
         },
-    })
+    }
 
-    table.insert(insights_popup_sub_item_table, {
+    I.trend_order = {
         text_func = function()
             local order = deps.ViewSettings.readAscendingSetting()
                 and _("Oldest first")
@@ -585,7 +576,7 @@ function M.build(self, deps)
                 end,
             },
         },
-    })
+    }
 
     -- Which end of the "Last 7 days" bar chart today sits at. The default is
     -- what the chart always did before this setting existed - today on the
@@ -607,19 +598,19 @@ function M.build(self, deps)
                 callback = function() VSet.saveWeeklyBarOrderSetting(value) end,
             }
         end
-        table.insert(insights_popup_sub_item_table, {
+        I.today_side = {
             text_func = function()
                 local side = VSet.readWeeklyBarOrderSetting() == LAST
                     and _("Today on the right")
                     or  _("Today on the left")
-                return _("Last 7 days chapter bar order") .. ": " .. side
+                return _("Bar order") .. ": " .. side
             end,
             keep_menu_open = true,
             sub_item_table = {
                 orderEntry(FIRST, _("Today on the left")),
                 orderEntry(LAST,  _("Today on the right")),
             },
-        })
+        }
     end
 
     -- "Last 7 days" chart style: bars (default) or line with dots.
@@ -638,19 +629,19 @@ function M.build(self, deps)
                 callback = function() VSet.saveWeeklyStyleSetting(value) end,
             }
         end
-        table.insert(insights_popup_sub_item_table, {
+        I.weekly_style = {
             text_func = function()
                 local v = VSet.readWeeklyStyleSetting() == LINE
                     and _("Line with dots")
                     or  _("Bars")
-                return _("Last 7 days chart style") .. ": " .. v
+                return _("Chart style") .. ": " .. v
             end,
             keep_menu_open = true,
             sub_item_table = {
                 weeklyStyleEntry(BARS, _("Bars")),
                 weeklyStyleEntry(LINE, _("Line with dots")),
             },
-        })
+        }
     end
 
     -- Months (yearly) chart style: line with dots (default) or bars.
@@ -669,19 +660,19 @@ function M.build(self, deps)
                 callback = function() VSet.saveMonthlyStyleSetting(value) end,
             }
         end
-        table.insert(insights_popup_sub_item_table, {
+        I.monthly_style = {
             text_func = function()
                 local v = VSet.readMonthlyStyleSetting() == BARS
                     and _("Bars")
                     or  _("Line with dots")
-                return _("Months chart style") .. ": " .. v
+                return _("Chart style") .. ": " .. v
             end,
             keep_menu_open = true,
             sub_item_table = {
                 monthlyStyleEntry(LINE, _("Line with dots")),
                 monthlyStyleEntry(BARS, _("Bars")),
             },
-        })
+        }
     end
 
     -- Months (yearly) bar chart layout (bars style only): a single row with all 12 months
@@ -701,19 +692,19 @@ function M.build(self, deps)
                 callback = function() VSet.saveMonthlyLayoutSetting(value) end,
             }
         end
-        table.insert(insights_popup_sub_item_table, {
+        I.monthly_layout = {
             text_func = function()
                 local v = VSet.readMonthlyLayoutSetting() == TWO
                     and _("2 rows of 6 months")
                     or  _("12 months in one row")
-                return _("Months chart layout") .. ": " .. v
+                return _("Chart layout") .. ": " .. v
             end,
             keep_menu_open = true,
             sub_item_table = {
                 monthlyLayoutEntry(ONE, _("12 months in one row")),
                 monthlyLayoutEntry(TWO, _("2 rows of 6 months")),
             },
-        })
+        }
     end
 
     -- "Last 7 days" extras: the compact row (total + daily average) is
@@ -722,20 +713,20 @@ function M.build(self, deps)
     -- default).
     do
         local VSet = deps.ViewSettings
-        table.insert(insights_popup_sub_item_table, {
-            text = _("Last 7 days: time and pages row"),
+        I.weekly_extra_row = {
+            text = _("Time and pages row"),
             help_text = _("Show a second row with the other metric (pages when the chart shows time, time when it shows pages) below the total and daily average."),
             keep_menu_open = true,
             checked_func = function() return VSet.readWeeklyExtraRow() end,
             callback = function() VSet.saveWeeklyExtraRow(not VSet.readWeeklyExtraRow()) end,
-        })
-        table.insert(insights_popup_sub_item_table, {
-            text = _("Last 7 days: compared to previous 7 days"),
+        }
+        I.weekly_vs_prev = {
+            text = _("Comparison with previous 7 days row"),
             help_text = _("Below the chart, show how the total and the daily average changed compared to the 7 days before."),
             keep_menu_open = true,
             checked_func = function() return VSet.readWeeklyVsPrev() end,
             callback = function() VSet.saveWeeklyVsPrev(not VSet.readWeeklyVsPrev()) end,
-        })
+        }
     end
 
     -- How often achievements re-evaluate in the background: once a day
@@ -754,7 +745,7 @@ function M.build(self, deps)
                 callback = function() Opt.saveAchievementRefresh(value) end,
             }
         end
-        table.insert(insights_popup_sub_item_table, {
+        I.ach_refresh = {
             text_func = function()
                 local mode = Opt.readAchievementRefresh() == EVERY
                     and _("Every open")
@@ -766,7 +757,7 @@ function M.build(self, deps)
                 refreshEntry(DAILY, _("Once a day")),
                 refreshEntry(EVERY, _("Every open")),
             },
-        })
+        }
     end
 
     -- How every numeric date this plugin prints is spelled out (book
@@ -806,67 +797,21 @@ function M.build(self, deps)
         })
     end
 
-    -- "Date & time" closes off Advanced settings; the three per-view groups
-    -- go directly into the Settings menu, under Fonts.
-    table.insert(advanced_settings_sub_item_table, {
+    -- "Date & time" is a group of its own directly under Settings.
+    I.date_time = {
         text = _("Date & time"),
         keep_menu_open = true,
         sub_item_table = date_time_sub_item_table,
-    })
-
-    -- Group the "Reading insight popup" settings by what they affect, with a
-    -- separator line between the groups (the items above are built one by
-    -- one in the order they were added over time, so they are put in order
-    -- here, in one place):
-    --   1. what the popup shows: goals, achievements (+ refresh), hamburger menu
-    --   2. "Last 7 days": chart style, today's side, extra rows, 8-week trend order
-    --   3. yearly months chart: style, layout (bars)
-    --   4. heatmap and time of day
-    -- The numbers are the order in which the items were inserted above:
-    --    1 daily / weekly goal         9 Last 7 days: today's side
-    --    2 daily / weekly goal bar    10 Last 7 days: chart style
-    --    3 reading goal               11 months chart style
-    --    4 achievements               12 months chart layout
-    --    5 hamburger menu             13 Last 7 days: time and pages row
-    --    6 heatmap months             14 Last 7 days: compared to previous 7 days
-    --    7 time of day (chart/heatmap)15 achievements refresh
-    --    8 8-week chart order
-    -- If items were ever added or removed without updating this (the count
-    -- below), the list is left as it is rather than scrambled.
-    do
-        local t = insights_popup_sub_item_table
-        if #t == 15 then
-            local order = { 1, 2, 3, 4, 15, 5,   10, 9, 13, 14, 8,   11, 12,   6, 7 }
-            local grouped = {}
-            for pos, idx in ipairs(order) do
-                local item = t[idx]
-                item.separator = nil
-                grouped[pos] = item
-            end
-            for _idx, pos in ipairs({ 6, 11, 13 }) do
-                grouped[pos].separator = true
-            end
-            for k = #t, 1, -1 do t[k] = nil end
-            for pos, item in ipairs(grouped) do t[pos] = item end
-        end
-    end
-
-    table.insert(settings_sub_item_table, {
-        text = _("Reading insight popup"),
-        keep_menu_open = true,
-        sub_item_table = insights_popup_sub_item_table,
-    })
+    }
 
     -- "Book progress popup": what the Book progress popup itself shows.
     -- Two on/off toggles for optional rows, both on by default (see
     -- deps.ViewSettings.Opt.readShowChapterBar / readShowPaceDates and the
     -- gates in book_stats_view.lua).
-    local book_progress_sub_item_table = {}
-
     -- Where the popup sits: hanging from the top edge, full width (the
     -- original look), or as a bordered box in the middle of the screen at
     -- the same width as the Book progress calendar.
-    table.insert(book_progress_sub_item_table, {
+    I.bp_position = {
         text_func = function()
             local Opt = deps.ViewSettings.Opt
             local pos = (Opt.readBookPopupPosition() == Opt.BOOK_POPUP_POSITION_CENTER)
@@ -904,12 +849,12 @@ function M.build(self, deps)
                 end,
             },
         },
-    })
+    }
 
     -- "This book" section style: the original rows, or a donut (default)
     -- chart with the read percentage on the left and pages / time read /
     -- time left stacked on the right (widgets/donutwidget.lua).
-    table.insert(book_progress_sub_item_table, {
+    I.bp_style = {
         text_func = function()
             local Opt = deps.ViewSettings.Opt
             local style = (Opt.readBookSectionStyle() == Opt.BOOK_SECTION_STYLE_DONUT)
@@ -947,11 +892,11 @@ function M.build(self, deps)
                 end,
             },
         },
-    })
+    }
 
     -- Which parts of each section are shown. When every part of a section is
     -- off, its header disappears too (chapter section, "This book", "Pace").
-    table.insert(book_progress_sub_item_table, {
+    I.this_chapter = {
         text = _("This chapter"),
         help_text = _("Show the \"This chapter\" column (reading time or pages left in the chapter). If this and \"Next chapter\" are both off, the whole chapter section is hidden."),
         keep_menu_open = true,
@@ -959,9 +904,9 @@ function M.build(self, deps)
         callback = function()
             deps.ViewSettings.Opt.saveShowChapterCurrent(not deps.ViewSettings.Opt.readShowChapterCurrent())
         end,
-    })
+    }
 
-    table.insert(book_progress_sub_item_table, {
+    I.next_chapter = {
         text = _("Next chapter"),
         help_text = _("Show the \"Next chapter\" column. If this and \"This chapter\" are both off, the whole chapter section is hidden."),
         keep_menu_open = true,
@@ -969,13 +914,13 @@ function M.build(self, deps)
         callback = function()
             deps.ViewSettings.Opt.saveShowChapterNext(not deps.ViewSettings.Opt.readShowChapterNext())
         end,
-    })
+    }
 
     -- How many upcoming chapters that column's reading-time estimate covers.
     -- Only changes anything in the reading-time view (not the tap-to-toggle
     -- pages view), and only when a chapter after the next one actually
     -- exists - otherwise it quietly behaves like "1".
-    table.insert(book_progress_sub_item_table, {
+    I.next_count = {
         text = _("Next chapters shown"),
         help_text = _("How many upcoming chapters the \"Next chapter\" column's reading-time estimate covers. With \"2\", once a second chapter follows the next one, the header switches to \"Next 2 chapters\" and shows both chapters' times, e.g. \"00:10 | 00:28\". Falls back to a single chapter when there is no chapter after the next one, or no next chapter at all."),
         separator = true,
@@ -995,7 +940,7 @@ function M.build(self, deps)
                 callback = function() deps.ViewSettings.Opt.saveNextChapterCount(2) end,
             },
         },
-    })
+    }
 
 
     -- With the "Donut chart" Book section style the donut row always shows
@@ -1007,7 +952,7 @@ function M.build(self, deps)
         return Opt.readBookSectionStyle() == Opt.BOOK_SECTION_STYLE_DONUT
     end
 
-    table.insert(book_progress_sub_item_table, {
+    I.read_row = {
         text = _("Read row"),
         help_text = _("Show the row with the read percentage and page count in the \"This book\" section. If every part of the section is off, its header is hidden too."),
         keep_menu_open = true,
@@ -1016,9 +961,9 @@ function M.build(self, deps)
         callback = function()
             deps.ViewSettings.Opt.saveShowBookReadRow(not deps.ViewSettings.Opt.readShowBookReadRow())
         end,
-    })
+    }
 
-    table.insert(book_progress_sub_item_table, {
+    I.time_row = {
         text = _("Reading time row"),
         help_text = _("Show the row with the time read so far and the reading time left in the \"This book\" section. If every part of the section is off, its header is hidden too."),
         keep_menu_open = true,
@@ -1027,9 +972,9 @@ function M.build(self, deps)
         callback = function()
             deps.ViewSettings.Opt.saveShowBookTimeRow(not deps.ViewSettings.Opt.readShowBookTimeRow())
         end,
-    })
+    }
 
-    table.insert(book_progress_sub_item_table, {
+    I.chapter_bar = {
         text = _("Chapter bar"),
         help_text = _("Show the chapter bar chart in the \"This book\" section."),
         keep_menu_open = true,
@@ -1037,9 +982,9 @@ function M.build(self, deps)
         callback = function()
             deps.ViewSettings.Opt.saveShowChapterBar(not deps.ViewSettings.Opt.readShowChapterBar())
         end,
-    })
+    }
 
-    table.insert(book_progress_sub_item_table, {
+    I.chapter_count_row = {
         text = _("Chapter count row"),
         help_text = _("Show the number of chapters read and the typical chapter length under the chapter bar chart. Tap the typical chapter length in the popup to switch between time and pages."),
         keep_menu_open = true,
@@ -1047,7 +992,7 @@ function M.build(self, deps)
         callback = function()
             deps.ViewSettings.Opt.saveShowChapterCountRow(not deps.ViewSettings.Opt.readShowChapterCountRow())
         end,
-    })
+    }
 
     -- Chapter bar style: the per-chapter bar chart (default), or a single
     -- bar drawn like KOReader's "Skim to" dialog (widgets/skimbarwidget.lua),
@@ -1068,7 +1013,7 @@ function M.build(self, deps)
             }
         end
         local Opt = deps.ViewSettings.Opt
-        table.insert(book_progress_sub_item_table, {
+        I.chapter_bar_style = {
             text_func = function()
                 local name = (Opt.readChapterBarStyle() == Opt.CHAPTER_BAR_STYLE_SKIM)
                     and _("Skim bar") or _("Chapter bars")
@@ -1084,7 +1029,7 @@ function M.build(self, deps)
                     _("A single bar like KOReader's \"Skim to\" dialog: filled up to the current page, chapter separators and the position marker. Uses the active and inactive bar colors."),
                     Opt.CHAPTER_BAR_STYLE_SKIM),
             },
-        })
+        }
     end
 
     -- Chapters per page: how many chapter columns the chapter bar shows at
@@ -1142,7 +1087,7 @@ function M.build(self, deps)
                 })
             end,
         })
-        table.insert(book_progress_sub_item_table, {
+        I.chapters_per_page = {
             text_func = function()
                 if deps.ChapterBar.isAllChapters() then
                     return _("Chapters per page") .. ": " .. _("All chapters")
@@ -1152,13 +1097,13 @@ function M.build(self, deps)
             help_text = _("How many chapters the chapter bar shows at once before paging with the arrows."),
             keep_menu_open = true,
             sub_item_table = page_size_sub_item_table,
-        })
+        }
     end
 
     -- "Progress bar": the thin bar under the book percentage (lib/uikit.lua, UI.withCellBar / UI.buildRowBar). They use the chart's
     -- active / inactive bar colors (Colors menu), so there are no separate
     -- color or height settings.
-    table.insert(book_progress_sub_item_table, {
+    I.progress_bar = {
         text = _("Progress bar"),
         help_text = _("Show a thin progress bar under the book percentage."),
         keep_menu_open = true,
@@ -1166,9 +1111,9 @@ function M.build(self, deps)
         callback = function()
             deps.ViewSettings.Opt.saveShowCellBars(not deps.ViewSettings.Opt.readShowCellBars())
         end,
-    })
+    }
 
-    table.insert(book_progress_sub_item_table, {
+    I.read_today = {
         text = _("Read today row"),
         help_text = _("Show the row with today's reading time and the average time per day in the \"Pace\" section. If this and the started / expected finish row are both off, the whole \"Pace\" section is hidden."),
         keep_menu_open = true,
@@ -1176,9 +1121,9 @@ function M.build(self, deps)
         callback = function()
             deps.ViewSettings.Opt.saveShowPaceToday(not deps.ViewSettings.Opt.readShowPaceToday())
         end,
-    })
+    }
 
-    table.insert(book_progress_sub_item_table, {
+    I.pace_dates = {
         text = _("Started / expected finish row"),
         help_text = _("Show the \"started …\" and \"expected finish\" date row in the \"Pace\" section."),
         keep_menu_open = true,
@@ -1186,13 +1131,7 @@ function M.build(self, deps)
         callback = function()
             deps.ViewSettings.Opt.saveShowPaceDates(not deps.ViewSettings.Opt.readShowPaceDates())
         end,
-    })
-
-    table.insert(settings_sub_item_table, {
-        text = _("Book progress popup"),
-        keep_menu_open = true,
-        sub_item_table = book_progress_sub_item_table,
-    })
+    }
 
     -- "Book info" popup: which parts of the small cover + title / author /
     -- series popup are shown. Cover frame options (rounded corners, shadow,
@@ -1269,11 +1208,11 @@ function M.build(self, deps)
             _("Show the book's description under the author / series, as far down as the bottom of the cover, cut with an ellipsis when it does not fit. Tap it to read the full description. While this is on, the popup is as wide as it can be."), false),
     }
 
-    table.insert(settings_sub_item_table, {
+    I.book_info = {
         text = _("Book info"),
         keep_menu_open = true,
         sub_item_table = book_info_sub_item_table,
-    })
+    }
 
     local book_calendar_sub_item_table = {}
 
@@ -1322,17 +1261,76 @@ function M.build(self, deps)
         },
     })
 
-    table.insert(settings_sub_item_table, {
+    I.book_calendar_settings = {
         text = _("Book progress calendar"),
         keep_menu_open = true,
         separator = true,
         sub_item_table = book_calendar_sub_item_table,
+    }
+
+    -- Settings menu layout, top to bottom:
+    --
+    --   General                    behaviour that isn't about one popup:
+    --                              sleep screen, refresh, long durations,
+    --                              which popups the Tools menu lists
+    --   Date & time                how dates, times and weeks are shown
+    --   Appearance                 colors and fonts
+    --   -------------------------
+    --   one group per view         Reading insight popup, Heatmap & time of
+    --                              day, Book progress popup, Book info,
+    --                              Book progress calendar
+    --
+    -- Bar chart heights sit with the view they belong to: Reading insight
+    -- popup > Bar chart height, Book progress popup > Bar chart height.
+    local insights_popup_sub_item_table = layout({
+        I.hamburger,
+        "-",
+        I.goal, I.goal_bar, I.reading_goal, I.achievements, I.ach_refresh,
+        "-",
+        group(_("Last 7 days"), {
+            I.weekly_style, I.today_side, I.weekly_extra_row, I.weekly_vs_prev,
+            I.trend_order,
+        }),
+        group(_("Months"), { I.monthly_style, I.monthly_layout }),
+        I.insights_heights,
     })
 
-    table.insert(settings_sub_item_table, {
-        text = _("Advanced settings"),
-        keep_menu_open = true,
-        sub_item_table = advanced_settings_sub_item_table,
+    local book_progress_sub_item_table = layout({
+        I.bp_position, I.bp_style,
+        "-",
+        group(_("Chapters"), {
+            I.this_chapter, I.next_chapter, I.next_count,
+            "-",
+            I.chapter_bar, I.chapter_bar_style, I.chapters_per_page,
+            I.chapter_count_row,
+        }),
+        group(_("This book"), { I.read_row, I.time_row, I.progress_bar }),
+        group(_("Pace"), { I.read_today, I.pace_dates }),
+        I.book_heights,
+    })
+
+    local settings_sub_item_table = layout({
+        group(_("General"), {
+            I.sleep_indicator, I.full_refresh, I.long_durations,
+            "-",
+            I.menu_items,
+        }),
+        I.date_time,
+        group(_("Appearance"), { I.colors, I.fonts }),
+        "-",
+        {
+            text = _("Reading insight popup"),
+            keep_menu_open = true,
+            sub_item_table = insights_popup_sub_item_table,
+        },
+        group(_("Heatmap & time of day"), { I.heatmap_months, I.time_of_day }),
+        {
+            text = _("Book progress popup"),
+            keep_menu_open = true,
+            sub_item_table = book_progress_sub_item_table,
+        },
+        I.book_info,
+        I.book_calendar_settings,
     })
 
     table.insert(sub_item_table, {

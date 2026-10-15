@@ -7,7 +7,7 @@ widget the Book card plugin uses, widgets/coverframe.lua) and, to the right
 of it, the title, the author(s) and - when the book is part of one - the
 series.
 
-Opened from Tools > Reading insights > "Show Book info", from the
+Opened from Tools > Reading insights > "Book info", from the
 "Reading insights: book info" gesture/dispatcher action, and by tapping the
 "This book" header of the Book progress popup (see book_stats_view.lua).
 Book-view only: it needs an open document (see main.lua).
@@ -385,7 +385,7 @@ function BookInfoPopup:_buildUI()
     local stars_h = self.stars_widget:getSize().h
 
     -- "Finished: 2026-10-07", the date in the format chosen under Settings >
-    -- Advanced settings > Date & time; right-aligned on the stars' row.
+    -- Settings > Date & time; right-aligned on the stars' row.
     local finished_text
     if self.finished_ts and tonumber(self.finished_ts) and tonumber(self.finished_ts) > 0 then
         local d = Locale.formatDateFromTS(tonumber(self.finished_ts))

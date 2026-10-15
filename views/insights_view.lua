@@ -12,7 +12,7 @@ Sections, top to bottom:
   - Year          time, days read or books read + pages, per year
   - Monthly chart per-month bars; the header cycles hours/days/books
   - Reading goal  finished books vs. a per-year target (can be switched off
-                  in Settings > Advanced settings)
+                  in Settings > Reading insight popup)
   - All time    all-time totals
 
 Gestures:
@@ -37,7 +37,7 @@ don't flash the whole screen.
 
 Bar chart heights: by default both charts size themselves while the page is
 built so it fits one screen without a scroll bar - see _buildUI's fit loop,
-and Settings > Advanced settings > "Bar chart height" to turn it off.
+and Settings > Reading insight popup > "Bar chart height" to turn it off.
 ]]--
 
 local Blitbuffer = require("ffi/blitbuffer")
@@ -119,7 +119,7 @@ local formatNumber = Locale.formatNumber
 local formatCount  = Locale.formatCount
 
 -- Format a YYYY-MM-DD string in the configured date format (Settings ▸
--- Advanced settings ▸ Date & time ▸ "Date format" - see
+-- Settings ▸ Date & time ▸ "Date format" - see
 -- Locale.formatDate).
 -- no_trailing_dot: ignored (kept for compatibility); every date keeps its
 -- final dot, also the first date of a range.

@@ -2068,3 +2068,27 @@ msgstr "Por favor, introduza uma classificação de 0 a 5"
 
 msgid "Loading ratings..."
 msgstr "A carregar classificações..."
+
+msgid "General"
+msgstr "Geral"
+
+msgid "Appearance"
+msgstr "Aspeto"
+
+msgid "Heatmap & time of day"
+msgstr "Mapa de calor e período do dia"
+
+msgid "Chart style"
+msgstr "Estilo do gráfico"
+
+msgid "Chart layout"
+msgstr "Disposição do gráfico"
+
+msgid "Bar order"
+msgstr "Ordem das barras"
+
+msgid "Time and pages row"
+msgstr "Linha de tempo e páginas"
+
+msgid "Comparison with previous 7 days row"
+msgstr "Linha de comparação com os 7 dias anteriores"

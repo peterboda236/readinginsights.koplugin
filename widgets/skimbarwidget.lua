@@ -25,7 +25,7 @@ What differs from the stock widget is the colors:
 
   SkimBar.readHeightSetting() / SkimBar.saveHeightSetting(v) / SkimBar.DEFAULT_HEIGHT
       the bar's height in "points" (Settings > Advanced
-      settings > Bar chart height > "Book progress: Skim bar"), read on
+      settings > Book progress popup > Bar chart height > "Skim bar"), read on
       every build
   SkimBar.build(skim, full_width)
       skim         { percentage = 0..1, ticks = { page, ... }, last = page count }

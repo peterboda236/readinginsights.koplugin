@@ -2117,3 +2117,27 @@ msgstr "Будь ласка, введіть оцінку від 0 до 5"
 
 msgid "Loading ratings..."
 msgstr "Завантаження оцінок..."
+
+msgid "General"
+msgstr "Загальні"
+
+msgid "Appearance"
+msgstr "Вигляд"
+
+msgid "Heatmap & time of day"
+msgstr "Теплокарта і час доби"
+
+msgid "Chart style"
+msgstr "Стиль діаграми"
+
+msgid "Chart layout"
+msgstr "Розташування діаграми"
+
+msgid "Bar order"
+msgstr "Порядок стовпців"
+
+msgid "Time and pages row"
+msgstr "Рядок часу та сторінок"
+
+msgid "Comparison with previous 7 days row"
+msgstr "Рядок порівняння з попередніми 7 днями"

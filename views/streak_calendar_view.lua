@@ -60,7 +60,7 @@ local getLangBase  = Locale.getLangBase
 local formatCount  = Locale.formatCount
 
 -- Format a YYYY-MM-DD string in the configured date format (Settings ▸
--- Advanced settings ▸ Date & time ▸ "Date format" - see Locale.formatDate).
+-- Settings ▸ Date & time ▸ "Date format" - see Locale.formatDate).
 -- no_trailing_dot: ignored (kept for compatibility); every date keeps its
 -- final dot, also the first date of a range.
 local function formatDateForDisplay(date_str, no_trailing_dot)
@@ -158,7 +158,7 @@ local function streakNumColor(fill_hex)
     return (hexLuminance(fill_hex) < 128) and Blitbuffer.COLOR_WHITE or Blitbuffer.COLOR_BLACK
 end
 
--- Whether to show week numbers (Prefs ▸ Advanced settings ▸ Date & time ▸
+-- Whether to show week numbers (Settings ▸ Date & time ▸
 -- "Show week numbers"). Off by default.
 local function showWeekNumbers()
     return VS and VS.readShowWeekNumbers and VS.readShowWeekNumbers()

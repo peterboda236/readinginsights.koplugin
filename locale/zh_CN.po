@@ -1791,3 +1791,27 @@ msgstr "请输入 0 到 5 的评分"
 
 msgid "Loading ratings..."
 msgstr "正在加载评分..."
+
+msgid "General"
+msgstr "常规"
+
+msgid "Appearance"
+msgstr "外观"
+
+msgid "Heatmap & time of day"
+msgstr "热力图与时段"
+
+msgid "Chart style"
+msgstr "图表样式"
+
+msgid "Chart layout"
+msgstr "图表布局"
+
+msgid "Bar order"
+msgstr "柱状顺序"
+
+msgid "Time and pages row"
+msgstr "时间与页数行"
+
+msgid "Comparison with previous 7 days row"
+msgstr "与前 7 天对比行"

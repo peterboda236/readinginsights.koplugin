@@ -2068,3 +2068,27 @@ msgstr "Show a thin progress bar under the book percentage."
 
 msgid "Loading ratings..."
 msgstr "Loading ratings..."
+
+msgid "General"
+msgstr "General"
+
+msgid "Appearance"
+msgstr "Appearance"
+
+msgid "Heatmap & time of day"
+msgstr "Heatmap & time of day"
+
+msgid "Chart style"
+msgstr "Chart style"
+
+msgid "Chart layout"
+msgstr "Chart layout"
+
+msgid "Bar order"
+msgstr "Bar order"
+
+msgid "Time and pages row"
+msgstr "Time and pages row"
+
+msgid "Comparison with previous 7 days row"
+msgstr "Comparison with previous 7 days row"

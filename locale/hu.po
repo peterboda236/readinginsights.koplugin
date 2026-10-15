@@ -2080,3 +2080,27 @@ msgstr "Vékony folyamatsáv megjelenítése a könyv százaléka alatt."
 
 msgid "Loading ratings..."
 msgstr "Értékelések betöltése..."
+
+msgid "General"
+msgstr "Általános"
+
+msgid "Appearance"
+msgstr "Megjelenés"
+
+msgid "Heatmap & time of day"
+msgstr "Heatmap és napszak"
+
+msgid "Chart style"
+msgstr "Diagram stílusa"
+
+msgid "Chart layout"
+msgstr "Diagram elrendezése"
+
+msgid "Bar order"
+msgstr "Oszlopok sorrendje"
+
+msgid "Time and pages row"
+msgstr "Idő és oldalak sor"
+
+msgid "Comparison with previous 7 days row"
+msgstr "Összevetés az előző 7 nappal sor"

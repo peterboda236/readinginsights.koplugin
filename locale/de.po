@@ -2068,3 +2068,27 @@ msgstr "Bewertung (0–5 Sterne)"
 
 msgid "Please enter a rating from 0 to 5"
 msgstr "Bitte eine Bewertung von 0 bis 5 eingeben"
+
+msgid "General"
+msgstr "Allgemein"
+
+msgid "Appearance"
+msgstr "Darstellung"
+
+msgid "Heatmap & time of day"
+msgstr "Heatmap & Tageszeit"
+
+msgid "Chart style"
+msgstr "Diagrammstil"
+
+msgid "Chart layout"
+msgstr "Diagrammlayout"
+
+msgid "Bar order"
+msgstr "Reihenfolge der Balken"
+
+msgid "Time and pages row"
+msgstr "Zeile mit Zeit und Seiten"
+
+msgid "Comparison with previous 7 days row"
+msgstr "Zeile mit Vergleich zu den vorherigen 7 Tagen"

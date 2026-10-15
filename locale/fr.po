@@ -2068,3 +2068,27 @@ msgstr "Veuillez saisir une note de 0 à 5"
 
 msgid "Loading ratings..."
 msgstr "Chargement des notes..."
+
+msgid "General"
+msgstr "Général"
+
+msgid "Appearance"
+msgstr "Apparence"
+
+msgid "Heatmap & time of day"
+msgstr "Carte thermique et moment de la journée"
+
+msgid "Chart style"
+msgstr "Style du graphique"
+
+msgid "Chart layout"
+msgstr "Disposition du graphique"
+
+msgid "Bar order"
+msgstr "Ordre des barres"
+
+msgid "Time and pages row"
+msgstr "Ligne temps et pages"
+
+msgid "Comparison with previous 7 days row"
+msgstr "Ligne de comparaison avec les 7 jours précédents"

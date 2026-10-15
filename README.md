@@ -43,7 +43,7 @@ A full-screen overview of your whole reading history.
   earned, next to the name of the latest one. Tap to open the list.
 
   The reading goal and the achievements can each be switched on or off
-  separately (Settings → Advanced settings → Reading insight popup); both
+  separately (Settings → Reading insight popup); both
   are on by default.
 
 **Controls:** swipe to change year, tap headers/bars to drill in, long-press
@@ -54,7 +54,7 @@ Available everywhere (book view and file manager).
 ## 🔥 Reading streak
 
 Your current and best daily & weekly streaks in one popup, openable straight
-from *Tools → Reading insights → Show Reading streak* (or by tapping a streak
+from *Tools → Reading insights → Reading streak* (or by tapping a streak
 in the Reading insights popup).
 
 - A **calendar** of your reading with the streaks marked — page back through
@@ -91,7 +91,7 @@ A few examples:
 - **Night owl** — read between midnight and 4 a.m.
 
 Open the list from the Achievements cell, or via *Tools → Reading insights →
-Show Achievements*. Newly earned ones are marked with a **★** until you open
+Achievements*. Newly earned ones are marked with a **★** until you open
 the list. Once unlocked, an achievement is never lost. Available everywhere.
 
 ## 📖 Book progress
@@ -125,7 +125,7 @@ had no stars in the file manager gets them), and above the description the
 **pages read** (left) and the **reading time** (right). Without a cover (switched
 off, or the book has none) the popup is only as wide as its longest line needs.
 
-Open it from *Tools → Reading insights → Show Book info*, from a gesture
+Open it from *Tools → Reading insights → Book info*, from a gesture
 ("Reading insights: book info"), or by tapping the "This book" title in the
 Book progress popup (closing it then brings the Book progress popup back).
 Book view only. In the book lists (e.g. the books behind a month) a **tap** on a
@@ -166,19 +166,24 @@ unticked keeps everything, so a later reinstall picks up where you left off.
 
 *Tools → Reading insights → Settings* lets you customise:
 
-- **Colors** — a hex colour (or a touch colour wheel) for every bar, line and
-  label the popups draw.
-- **Fonts** — your own font and size for each text role.
-- **Reading insight popup / Book progress popup / Book progress calendar** —
-  one submenu per view: which sections each shows, the heatmap range,
-  achievement refresh frequency, the Book progress popup's position and
-  "This book" style (classic rows or a donut chart), and the calendar's
-  cell content.
+- **General** — the sleep-screen indicator, full-screen refresh on open/close,
+  long durations as days, and *Menu items* (which popups the Tools menu lists).
+- **Date & time** — 12/24-hour clock, first day of the week, week numbers and
+  the date format.
+- **Appearance** — **Colors** (a hex colour, or a touch colour wheel, for every
+  bar, line and label the popups draw) and **Fonts** (your own font and size
+  for each text role).
+- **Reading insight popup** — which sections it shows (goals, achievements,
+  hamburger menu), the *Last 7 days* and *Months* chart styles, and the bar
+  chart heights.
+- **Heatmap & time of day** — the heatmap range and the time-of-day view.
+- **Book progress popup** — its position and "This book" style (classic rows
+  or a donut chart), then one group per section: *This book*, *Pace* and
+  *Chapters* (chapter columns, chapter bar, chapters per page), plus *Bar chart height*.
 - **Book info** — show or hide the cover, its rounded corners, shadow and
   border, and the author and series lines. The title / author / series fonts
   are under *Fonts → Book info* (by default the same as the Book card plugin's).
-- **Advanced settings** — chart heights, long durations as days, and the
-  date/time and week-start formats.
+- **Book progress calendar** — what the day cells show.
 
 The popups are also registered with `Dispatcher`, so you can assign them to
 gestures under *Settings → Taps and gestures*.

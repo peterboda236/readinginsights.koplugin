@@ -10,7 +10,7 @@ A floating card showing personal reading records:
   - Next milestone               the next one ahead
 
 The values and their caching live in lib/records_data.lua; this file draws
-them. Opened from Tools > Reading insights > Show Records, or the
+them. Opened from Tools > Reading insights > Records, or the
 "reading_records_popup" gesture/dispatcher action - both available in reader
 and file manager view alike, since none of this is tied to an open book. Tap
 anywhere, swipe down or press any key to close; hold the "Records" title to

@@ -99,7 +99,7 @@ local MODES_MANUAL   = { "date", "rating" }
 -- the reader added themselves keep the "*" the checklist uses for the same
 -- meaning: set by hand, not by the statistics.
 -- A timestamp as a plain date, in the format picked under Settings ▸
--- Advanced settings ▸ Date & time ▸ "Date format" - the same one the
+-- Settings ▸ Date & time ▸ "Date format" - the same one the
 -- insights, records and stats popups print their dates in. Empty string
 -- for "no date known", so it simply leaves the column blank rather than
 -- printing an epoch.
@@ -769,7 +769,7 @@ local function editManualBook(year, entry, on_done)
                 hint        = _("Author"),
             },
             -- Shown and typed in the configured date format (Settings ▸
-            -- Advanced settings ▸ Date & time ▸ "Date format"), while the
+            -- Settings ▸ Date & time ▸ "Date format"), while the
             -- store keeps ISO either way - so an entry added under one
             -- format still reads back correctly after the setting is
             -- changed.

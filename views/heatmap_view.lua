@@ -159,7 +159,7 @@ function M.heatmapFixedNumCols()
 end
 
 -- Lays [start_t, end_t] out into week columns starting on the configured
--- week start day (Settings ▸ Advanced settings ▸ Date & time ▸ "First day
+-- week start day (Settings ▸ Date & time ▸ "First day
 -- of week" - see VS.weekStartWday), UI.padded at both ends so every column
 -- has a full 7 days
 -- (leading/trailing days outside the period are kept but marked
@@ -252,7 +252,7 @@ end
 -- Mon/Wed/Fri labels run down the left side of both heatmap grids, three
 -- rows apart, same as GitHub's contribution graph (the in-between rows
 -- get no label). Which row each label lands on depends on the configured
--- week start day (Settings ▸ Advanced settings ▸ Date & time ▸ "First day
+-- week start day (Settings ▸ Date & time ▸ "First day
 -- of week"): row 1 is Monday when weeks start on Monday (labels on rows
 -- 1/3/5), or Sunday when weeks start on Sunday (labels shift down a row,
 -- to rows 2/4/6).
@@ -324,7 +324,7 @@ function M.buildRangeHeatmapWidget(daily_map, start_t, end_t, fonts, max_width)
     -- grid past the popup's right edge.
     local min_cell   = Screen:scaleBySize(4)
     -- No upper cap: for shorter heatmap ranges (fewer columns - see
-    -- Settings ▸ Advanced settings ▸ Reading insight popup ▸ "Reading heatmap range"), the cells
+    -- Settings ▸ Reading insight popup ▸ "Reading heatmap range"), the cells
     -- grow proportionally to use the full available width instead of
     -- leaving empty space to the right of a small fixed-size grid.
     if cell_size < min_cell then cell_size = min_cell end
@@ -612,7 +612,7 @@ end
 
 -- Builds the hour-of-day label row + the 7-row/24-column "time of day"
 -- grid: one column per hour (0-23), one row per weekday (order and start
--- day set by Settings ▸ Advanced settings ▸ Date & time ▸ "First day of
+-- day set by Settings ▸ Date & time ▸ "First day of
 -- week" - see weekdayRowOrder/getWeekdayRowLabels; hour labels honour
 -- "Time format" - see formatHeatmapHourLabel), each cell shaded by total
 -- reading time in that weekday+hour slot relative to the busiest slot
@@ -648,7 +648,7 @@ function M.buildDayPartHeatmapWidget(weekday_hour_map, fonts, max_width)
 
     -- Hour labels every 3 columns ("00", "03", ... "21" in 24-hour format,
     -- or "12a", "3a", ... "9p" in 12-hour format - see
-    -- formatHeatmapHourLabel/Settings ▸ Advanced settings ▸ Date & time ▸
+    -- formatHeatmapHourLabel/Settings ▸ Date & time ▸
     -- "Time format"), same slot width as the grid below so each label lines up
     -- with its column, prefixed with a spacer matching the weekday-label
     -- column + gap.

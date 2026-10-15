@@ -22,8 +22,8 @@ the rest of the book-progress settings in the view).
       how many chapter columns one page shows (Settings > 
       Book progress popup > "Chapters per page"), read on every build
   ChapterBar.readHeightSetting() / ChapterBar.saveHeightSetting(v) / ChapterBar.DEFAULT_HEIGHT
-      the bar's height in "points" (Settings > Advanced settings > Bar
-      chart height > "Book progress: Chapters"), read on every build
+      the bar's height in "points" (Settings > Book progress popup > Bar
+      chart height > "Chapters"), read on every build
   ChapterBar.build(chapter_info, full_width, padding_h, offset_override,
                    on_prev, on_next)
       chapter_info    { current, total, page_counts, chapter_progress_ratio }
@@ -63,8 +63,8 @@ local Colors, Fonts, UI =
 local M = {}
 
 -- How many chapter columns one page of the bar shows. This is now a
--- user-adjustable setting (Settings ▸ Advanced settings ▸ Book progress
--- popup ▸ "Chapters per page"): the view pages the bar by exactly this much
+-- user-adjustable setting (Settings ▸ Book progress popup ▸ Chapters ▸
+-- "Chapters per page"): the view pages the bar by exactly this much
 -- on a swipe, and works out which page the current chapter falls on the same
 -- way, so both read it through M.readPageSizeSetting() rather than a
 -- constant. M.PAGE_SIZE stays as the default value (and the number the
@@ -127,8 +127,8 @@ function M.savePageSizeSetting(value)
     end
 end
 
--- Chapter-bar height setting (Settings ▸ Advanced settings ▸
--- "Bar chart height" ▸ "Book progress: Chapters"). Same "points" value
+-- Chapter-bar height setting (Settings ▸ Book progress popup ▸
+-- "Bar chart height ▸ Chapters"). Same "points" value
 -- previously hardcoded into Screen:scaleBySize(46) below; restoring the
 -- default reproduces the exact original look.
 local SETTINGS_KEY_HEIGHT = "reading_insights_chapter_bar_height"

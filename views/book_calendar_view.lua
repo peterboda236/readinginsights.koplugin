@@ -133,7 +133,7 @@ local function buildBookCalendarCellText(entry, progress_delta)
     return "+" .. formatCount(progress_delta) .. "%"
 end
 
--- Whether to show week numbers (Prefs ▸ Advanced settings ▸ Date & time ▸
+-- Whether to show week numbers (Settings ▸ Date & time ▸
 -- "Show week numbers"). Off by default. Shared with the Reading streak
 -- calendar (streak_calendar_view.lua), which has its own copy of this same
 -- one-line check since the two views don't otherwise share any locals.
