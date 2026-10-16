@@ -2073,7 +2073,7 @@ function ReadingInsightsPopup:onShowHamburgerMenu()
         shrink_unneeded_width  = true,
         buttons = {
             {{
-                text  = _("Show Reading streak"),
+                text  = _("Show Reading calendar"),
                 align = "left",
                 callback = function()
                     UIManager:close(dialog)

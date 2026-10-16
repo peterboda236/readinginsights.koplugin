@@ -807,7 +807,7 @@ msgid "Peak activity (100%)"
 msgstr "Activité maximale (100 %)"
 
 msgid "Reading streak calendar"
-msgstr "Calendrier des séries de lecture"
+msgstr "Calendrier de lecture"
 
 msgid "Daily streak day"
 msgstr "Jour de série quotidienne"
@@ -884,20 +884,17 @@ msgstr "Statistiques de lecture : records"
 msgid "Show Records"
 msgstr "Afficher les records"
 
-msgid "Show Reading streak"
-msgstr "Afficher la série de lecture"
+msgid "Show Reading calendar"
+msgstr "Afficher le calendrier de lecture"
 
 msgid "Menu items"
 msgstr "Éléments du menu"
 
-msgid "Reading streak"
-msgstr "Série de lecture"
-
 msgid "Tick the popups that should be listed under Tools > Reading insights. The book popups only appear while a book is open."
 msgstr "Cochez les fenêtres à afficher dans Outils > Reading insights. Les fenêtres du livre n'apparaissent que lorsqu'un livre est ouvert."
 
-msgid "Reading insights: reading streak"
-msgstr "Statistiques de lecture : série de lecture"
+msgid "Reading insights: reading calendar"
+msgstr "Statistiques de lecture : calendrier de lecture"
 
 msgid "Reading insights: reading heatmap"
 msgstr "Statistiques de lecture : carte thermique de lecture"
@@ -1715,8 +1712,8 @@ msgstr "Semaine"
 msgid "Show week numbers"
 msgstr "Afficher les numéros de semaine"
 
-msgid "Add a \"Week\" column with each row's week number to the reading streak and Book progress calendars."
-msgstr "Ajouter une colonne « Semaine » indiquant le numéro de semaine de chaque ligne aux calendriers de série de lecture et de progression du livre."
+msgid "Add a \"Week\" column with each row's week number to the Reading calendar and Book progress calendar."
+msgstr "Ajouter une colonne « Semaine » indiquant le numéro de semaine de chaque ligne au calendrier de lecture et au calendrier de progression du livre."
 
 msgid "Popup position"
 msgstr "Position de la popup"
@@ -2200,3 +2197,9 @@ msgstr "Impossible de dessiner l'image (voir le journal pour les détails)."
 
 msgid "Nothing to draw yet. Open a book and read a few pages first."
 msgstr "Rien à dessiner pour l'instant. Ouvrez un livre et lisez quelques pages."
+
+msgid "Show streak bar under covers"
+msgstr "Afficher la barre de série sous les couvertures"
+
+msgid "Show the streak line under the covers on the reading calendar. When off (default), the covers are shown larger."
+msgstr "Afficher la ligne de série sous les couvertures dans le calendrier de lecture. Désactivé (par défaut), les couvertures sont affichées plus grandes."

@@ -11,9 +11,9 @@ Data.calculateStreaks().
 Calendar day cells (see buildStreakMonthGrid), top to bottom:
   - the day number                small, centred at the top of the cell
   - the cover of the book read
-    most that day                 when several books were read the runner-up
-                                  sits behind it, like one book on another;
-                                  with more than two a "1+" / "2+" ... tag
+    most that day                 when several books were read up to two more
+                                  sit behind it, like books stacked;
+                                  with more than three a "+1" / "+2" ... tag
                                   at the bottom right counts the rest
   - the streak line               a line across the foot of the cell:
                                   dark (Colors.streakRead) = a day with reading,
@@ -172,6 +172,13 @@ end
 -- it from the available width before splitting the remainder into 7 equal
 -- day columns. Both are 0 when show_week is false, so the calendar lays out
 -- exactly as it did before this option existed.
+-- Whether to draw the streak line under the covers (Settings ▸ Date & time ▸
+-- "Show streak bar under covers"). Off by default: the covers then use the
+-- line's height too.
+local function showStreakBar()
+    return VS and VS.readShowStreakBar and VS.readShowStreakBar() or false
+end
+
 local WEEK_COL_SIDE_PAD = Screen:scaleBySize(4)
 local function weekColumnMetrics(show_week, small_font)
     if not show_week then return 0, 0 end
@@ -262,8 +269,9 @@ local COVER_PENDING = {}
 -- small thumbnail per book (JPEG, PNG when JPEG cannot be written) in
 -- <settings>/readinginsights/covercache/<md5>.jpg, plus an empty <md5>.none
 -- for a book that has no cover - so it is not opened again and again. Reading
--- a thumbnail is far quicker than opening the book. Delete the folder to
--- start over (e.g. after changing a book's cover).
+-- a thumbnail is far quicker than opening the book. A long press on the
+-- calendar's title (or deleting the folder) starts over, e.g. after changing a
+-- book's cover.
 local THUMB_W, THUMB_H = 300, 450
 local COVER_DIR
 local function coverDir()
@@ -275,6 +283,24 @@ local function coverDir()
         COVER_DIR = (lfs.attributes(d, "mode") == "directory") and d or false
     end
     return COVER_DIR or nil
+end
+
+-- Throws the whole cover cache away: the thumbnails (and "no cover" markers)
+-- on disk and the scaled covers in memory, so every cover is read again from
+-- its book. Used by a long press on the calendar's title.
+local function clearCoverCache()
+    local dir = coverDir()
+    if dir then
+        local ok, iter, dir_obj = pcall(lfs.dir, dir)
+        if ok and iter then
+            for name in iter, dir_obj do
+                if name:match("%.jpg$") or name:match("%.png$") or name:match("%.none$") then
+                    pcall(os.remove, dir .. "/" .. name)
+                end
+            end
+        end
+    end
+    COVER_CACHE, COVER_CACHE_N = {}, 0   -- dropped; the finalisers free them
 end
 
 -- The thumbnail's path without extension, nil when the book has no usable id.
@@ -333,7 +359,7 @@ local DayCell = Widget:extend{
     num_top    = 0,
     covers     = nil,
     faded      = false, -- a day of the previous / next month: covers drawn light
-    badge      = nil,   -- TextWidget with the "1+" tag
+    badge      = nil,   -- TextWidget with the "+1" tag
     bar_color  = nil,   -- streak line colour, nil = no line
     bar_h      = 0,
     round_l    = false, -- the line starts here (previous day has none): round its left end
@@ -462,7 +488,7 @@ end
 --     consecutive days of a week - while a small `row_gap` separates the week
 --     rows.
 local function buildStreakMonthGrid(year, month, read_set, fonts, cell_w, cell_h, week_start_wd,
-        show_week, week_col_w, day_books, cover_for)
+        show_week, week_col_w, day_books, cover_for, show_bar)
     local today_str = os.date("%Y-%m-%d")
     -- The day number is smaller than the Book progress calendar's: it only
     -- labels the cell, the cover is the picture.
@@ -536,13 +562,13 @@ local function buildStreakMonthGrid(year, month, read_set, fonts, cell_w, cell_h
     -- Cell metrics: number on top, streak line at the foot, the cover(s) in
     -- between.
     local pad     = Screen:scaleBySize(3)
-    local bar_h   = Screen:scaleBySize(5)
+    local bar_h   = show_bar and Screen:scaleBySize(5) or 0
     local num_top = Screen:scaleBySize(2)
     local num_h   = TextWidget:new{ text = "88", face = day_font }:getSize().h
     local area_top = num_top + num_h + pad
     local area_w   = cell_w - 2 * pad
     local area_h   = cell_h - area_top - bar_h - pad
-    -- The "N+" tag: smaller than before, in bold.
+    -- The "+N" tag: smaller than before, in bold.
     local badge_face = Fonts.getScaledFace("stats_label", 0.6)
     pcall(function()
         local sz = badge_face.orig_size or badge_face.size
@@ -553,12 +579,14 @@ local function buildStreakMonthGrid(year, month, read_set, fonts, cell_w, cell_h
     local back_off = Screen:scaleBySize(6)
 
     -- The covers of one day: back to front, cell-relative. One book is
-    -- centred in the free area; two (or more) are drawn as one book on another
-    -- - the runner-up peeks out behind the front one at the top right.
+    -- centred in the free area; two or three are drawn as one book on another
+    -- - the runners-up peek out behind the front one at the top right, a
+    -- step each. More than MAX_STACK books show a "+N" tag for the rest.
+    local MAX_STACK = 3
     local function dayCovers(books)
-        local n = #books
-        local two = n >= 2
-        local off = two and back_off or 0
+        local k = math.min(#books, MAX_STACK)
+        local steps = k - 1
+        local off = back_off * steps
         local bw, bh = area_w - off, area_h - off
         if bw < 8 or bh < 8 then return nil end
 
@@ -576,23 +604,38 @@ local function buildStreakMonthGrid(year, month, read_set, fonts, cell_w, cell_h
             return { bb = bb, w = w, h = h, title = book.title }
         end
 
-        -- Both covers are asked for before giving up on a pending one, so the
-        -- second book is queued for loading too (not only after paging).
-        local front = fit(books[1])
-        local back  = two and fit(books[2]) or nil
-        if front.pending or (back and back.pending) then return nil end
-        if not two then
+        -- All the shown covers are asked for before giving up on a pending
+        -- one, so every book is queued for loading too (not only after paging).
+        local list, pending = {}, false
+        for n = 1, k do
+            list[n] = fit(books[n])
+            if list[n].pending then pending = true end
+        end
+        if pending then return nil end
+        local front = list[1]
+        if k == 1 then
             front.x = pad + math.floor((area_w - front.w) / 2)
             front.y = area_top + math.floor((area_h - front.h) / 2)
             return { front }
         end
-        local gw = math.max(front.w, back.w) + off
-        local gh = math.max(front.h, back.h) + off
+        local mw, mh = 0, 0
+        for n = 1, k do
+            mw = math.max(mw, list[n].w)
+            mh = math.max(mh, list[n].h)
+        end
+        local gw, gh = mw + off, mh + off
         local gx = pad + math.floor((area_w - gw) / 2)
         local gy = area_top + math.floor((area_h - gh) / 2)
-        front.x, front.y = gx, gy + gh - front.h
-        back.x,  back.y  = gx + gw - back.w, gy
-        return { back, front }
+        -- Book n sits n-1 steps up and to the right of the front one.
+        local out = {}
+        for n = k, 1, -1 do
+            local c = list[n]
+            local d = (n - 1) * back_off
+            c.x = gx + d
+            c.y = gy + gh - c.h - d
+            out[#out + 1] = c
+        end
+        return out
     end
 
     -- The kind of streak line of any cell (also one outside the grid, e.g.
@@ -649,7 +692,9 @@ local function buildStreakMonthGrid(year, month, read_set, fonts, cell_w, cell_h
             local is_this_month = (cell_day >= 1 and cell_day <= days_in_month)
 
             local bar_color
-            if read_set[day_str] then
+            if not show_bar then
+                bar_color = nil
+            elseif read_set[day_str] then
                 bar_color = Colors.streakRead()
             elseif week_has_read then
                 bar_color = Colors.streakGap()
@@ -661,9 +706,9 @@ local function buildStreakMonthGrid(year, month, read_set, fonts, cell_w, cell_h
             local covers, badge
             if books and #books > 0 then
                 covers = dayCovers(books)
-                if #books > 2 then
+                if #books > MAX_STACK then
                     badge = TextWidget:new{
-                        text = tostring(#books - 2) .. "+",
+                        text = "+" .. tostring(#books - MAX_STACK),
                         face = badge_face,
                         fgcolor = Blitbuffer.COLOR_BLACK,
                     }
@@ -1363,6 +1408,7 @@ function StreakDatePopup:init()
     if Device:isTouchDevice() then
         self.ges_events.Tap   = { GestureRange:new{ ges = "tap",   range = self.dimen } }
         self.ges_events.Swipe = { GestureRange:new{ ges = "swipe", range = self.dimen } }
+        self.ges_events.Hold  = { GestureRange:new{ ges = "hold",  range = self.dimen } }
     end
     if Device:hasKeys() then
         self.key_events.AnyKeyPressed = { { Device.input.group.Any } }
@@ -1523,7 +1569,7 @@ function StreakDatePopup:_rebuild()
         fullscreen       = true,
         width            = screen_w,
         align            = "left",
-        title            = _("Reading streak"),
+        title            = _("Reading calendar"),
         close_callback   = function() UIManager:close(self) end,
         show_parent      = self,
         top_v_padding    = Size.padding.default,
@@ -1637,7 +1683,8 @@ function StreakDatePopup:_rebuild()
 
         local grid, grid_meta = buildStreakMonthGrid(mo.year, mo.month, self.read_set,
             fonts, cell_w, cell_h, self.week_start_wd, show_week, week_col_w,
-            self.day_books, function(book, w, h) return self:_coverFor(book, w, h, self.lazy_covers) end)
+            self.day_books, function(book, w, h) return self:_coverFor(book, w, h, self.lazy_covers) end,
+            showStreakBar())
         grid_meta.header_h = header_h
         grid_meta.drawn_w  = grid:getSize().w
         self._grid_meta = grid_meta
@@ -1870,6 +1917,23 @@ function StreakDatePopup:onTap(arg, ges_ev)
         end
     end
     UIManager:close(self)
+    return true
+end
+
+-- Long press on the title ("Reading calendar"): drop the cover cache and
+-- load every cover again. A long press anywhere else does nothing.
+function StreakDatePopup:onHold(arg, ges_ev)
+    local pos = ges_ev and ges_ev.pos
+    if not (pos and self._top_h and pos.y < self._top_h
+            and pos.x <= self.dimen.w - 2 * self._top_h) then
+        return true
+    end
+    clearCoverCache()
+    self._file_cache = nil
+    self._pending, self._pending_order = nil, nil
+    self:_rebuild()
+    UIManager:setDirty("all", function() return "ui", self.dimen end)
+    self:_schedulePending()
     return true
 end
 

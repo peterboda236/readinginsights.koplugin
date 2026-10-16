@@ -27,7 +27,7 @@ A full-screen overview of your whole reading history.
 
 - **Last 7 days** — average time and pages per day; tap either to see its 8-week trend.
 - **Streaks** — current and best daily & weekly streaks; tap any of them (or
-  see the separate [Reading streak](#-reading-streak) popup below).
+  see the separate [Reading calendar](#-reading-calendar) popup below).
 - **Yearly & monthly** — hours/days read and pages, navigable by year; a
   monthly bar chart you can tap to see the books behind each month.
 - **All-time totals** — cumulative hours and pages. Tap the "All time"
@@ -50,16 +50,18 @@ the title bar to force a data reload.
 
 Available everywhere (book view and file manager).
 
-## 🔥 Reading streak
+## 🔥 Reading calendar
 
 Your current and best daily & weekly streaks in one popup, openable straight
-from *Tools → Reading insights → Reading streak* (or by tapping a streak
+from *Tools → Reading insights → Reading calendar* (or by tapping a streak
 in the Reading insights popup).
 
 - A **calendar** of your reading with the streaks marked — page back through
   your whole history to your very first reading day.
 - **Current** and **best** streak side by side, each with its last read day
   and days | weeks. Tap a days or weeks cell to see that streak's date range.
+- **Long press** the calendar's title to throw away the cached covers and load them
+  again (e.g. after changing a book's cover).
 
 The calendar's colours (daily-streak days and weekly-streak gap days) and its
 week-start day (Monday or Sunday) are configurable in Settings. Available

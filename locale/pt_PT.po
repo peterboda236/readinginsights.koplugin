@@ -807,7 +807,7 @@ msgid "Peak activity (100%)"
 msgstr "Atividade máxima (100%)"
 
 msgid "Reading streak calendar"
-msgstr "Calendário da sequência de leitura"
+msgstr "Calendário de leitura"
 
 msgid "Daily streak day"
 msgstr "Dia da sequência diária"
@@ -884,20 +884,17 @@ msgstr "Reading Insights: recordes"
 msgid "Show Records"
 msgstr "Mostrar recordes"
 
-msgid "Show Reading streak"
-msgstr "Mostrar sequência de leitura"
+msgid "Show Reading calendar"
+msgstr "Mostrar calendário de leitura"
 
 msgid "Menu items"
 msgstr "Itens do menu"
 
-msgid "Reading streak"
-msgstr "Sequência de leitura"
-
 msgid "Tick the popups that should be listed under Tools > Reading insights. The book popups only appear while a book is open."
 msgstr "Assinale as janelas que devem aparecer em Ferramentas > Reading insights. As janelas do livro só aparecem com um livro aberto."
 
-msgid "Reading insights: reading streak"
-msgstr "Reading Insights: sequência de leitura"
+msgid "Reading insights: reading calendar"
+msgstr "Reading Insights: calendário de leitura"
 
 msgid "Reading insights: reading heatmap"
 msgstr "Reading Insights: mapa de calor de leitura"
@@ -1715,8 +1712,8 @@ msgstr "Semana"
 msgid "Show week numbers"
 msgstr "Mostrar números da semana"
 
-msgid "Add a \"Week\" column with each row's week number to the reading streak and Book progress calendars."
-msgstr "Adicionar uma coluna «Semana» com o número da semana de cada linha aos calendários de sequência de leitura e de progresso do livro."
+msgid "Add a \"Week\" column with each row's week number to the Reading calendar and Book progress calendar."
+msgstr "Adicionar uma coluna «Semana» com o número da semana de cada linha ao calendário de leitura e ao calendário de progresso do livro."
 
 msgid "Popup position"
 msgstr "Posição da janela"
@@ -2200,3 +2197,9 @@ msgstr "Não foi possível desenhar a imagem (veja o registo para detalhes)."
 
 msgid "Nothing to draw yet. Open a book and read a few pages first."
 msgstr "Ainda nada para desenhar. Abra um livro e leia algumas páginas."
+
+msgid "Show streak bar under covers"
+msgstr "Mostrar a barra de sequência sob as capas"
+
+msgid "Show the streak line under the covers on the reading calendar. When off (default), the covers are shown larger."
+msgstr "Mostrar a linha da sequência sob as capas no calendário de leitura. Quando desativado (predefinição), as capas são mostradas maiores."

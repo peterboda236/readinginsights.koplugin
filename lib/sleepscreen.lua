@@ -96,7 +96,7 @@ function M.contents()
     return {
         { id = "insights",      text = Locale.insightsTitle() },
         { id = "heatmap",       text = _("Reading heatmap") },
-        { id = "streak",        text = _("Reading streak") },
+        { id = "streak",        text = _("Reading calendar") },
         { id = "book_progress", text = _("Book progress") },
         { id = "book_calendar", text = _("Book progress calendar") },
         { id = "book_info",     text = _("Book info") },

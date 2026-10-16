@@ -445,7 +445,7 @@ function ReadingInsights:onDispatcherRegisterActions()
     Dispatcher:registerAction("reading_streak_popup", {
         category = "none",
         event    = "ShowReadingStreakPopup",
-        title    = _("Reading insights: reading streak"),
+        title    = _("Reading insights: reading calendar"),
         general  = true,
     })
     -- general = true: the heatmap is built from all-time reading data (see

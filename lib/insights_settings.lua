@@ -448,6 +448,21 @@ function M.saveShowWeekNumbers(value)
     M.saveBoolSetting(M.SETTINGS_KEY_SHOW_WEEK_NUMBERS, value)
 end
 
+-- Whether the Reading streak calendar draws the streak line (the dark
+-- "read day" / light "week with reading" bar) under the covers in each day
+-- cell. Off by default: without the line the covers get that height too and
+-- are shown larger. Read by streak_calendar_view.lua every time its month
+-- grid is (re)built.
+M.SETTINGS_KEY_SHOW_STREAK_BAR = "reading_insights_calendar_show_streak_bar"
+
+function M.readShowStreakBar()
+    return M.readBoolSetting(M.SETTINGS_KEY_SHOW_STREAK_BAR, false)
+end
+
+function M.saveShowStreakBar(value)
+    M.saveBoolSetting(M.SETTINGS_KEY_SHOW_STREAK_BAR, value)
+end
+
 M.INSIGHTS_MODE_KEY = "reading_insights_popup_mode"
 
 M.INSIGHTS_MODE_DAYS = "days"

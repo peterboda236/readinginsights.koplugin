@@ -801,7 +801,7 @@ msgid "Peak activity (100%)"
 msgstr "Peak activity (100%)"
 
 msgid "Reading streak calendar"
-msgstr "Reading streak calendar"
+msgstr "Reading calendar"
 
 msgid "Daily streak day"
 msgstr "Daily streak day"
@@ -878,20 +878,17 @@ msgstr "Reading insights: records"
 msgid "Show Records"
 msgstr "Show Records"
 
-msgid "Show Reading streak"
-msgstr "Show Reading streak"
+msgid "Show Reading calendar"
+msgstr "Show Reading calendar"
 
 msgid "Menu items"
 msgstr "Menu items"
 
-msgid "Reading streak"
-msgstr "Reading streak"
-
 msgid "Tick the popups that should be listed under Tools > Reading insights. The book popups only appear while a book is open."
 msgstr "Tick the popups that should be listed under Tools > Reading insights. The book popups only appear while a book is open."
 
-msgid "Reading insights: reading streak"
-msgstr "Reading insights: reading streak"
+msgid "Reading insights: reading calendar"
+msgstr "Reading insights: reading calendar"
 
 msgid "Reading insights: reading heatmap"
 msgstr "Reading insights: reading heatmap"
@@ -1685,8 +1682,8 @@ msgstr "Week"
 msgid "Show week numbers"
 msgstr "Show week numbers"
 
-msgid "Add a \"Week\" column with each row's week number to the reading streak and Book progress calendars."
-msgstr "Add a \"Week\" column with each row's week number to the reading streak and Book progress calendars."
+msgid "Add a \"Week\" column with each row's week number to the Reading calendar and Book progress calendar."
+msgstr "Add a \"Week\" column with each row's week number to the Reading calendar and Book progress calendar."
 
 msgid "Popup position"
 msgstr "Popup position"
@@ -2200,3 +2197,9 @@ msgstr "Could not draw the image (see the log for details)."
 
 msgid "Nothing to draw yet. Open a book and read a few pages first."
 msgstr "Nothing to draw yet. Open a book and read a few pages first."
+
+msgid "Show streak bar under covers"
+msgstr "Show streak bar under covers"
+
+msgid "Show the streak line under the covers on the reading calendar. When off (default), the covers are shown larger."
+msgstr "Show the streak line under the covers on the reading calendar. When off (default), the covers are shown larger."

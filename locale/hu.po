@@ -822,7 +822,7 @@ msgid "Peak activity (100%)"
 msgstr "Csúcsaktivitás (100%)"
 
 msgid "Reading streak calendar"
-msgstr "Olvasási széria naptár"
+msgstr "Olvasási naptár"
 
 msgid "Daily streak day"
 msgstr "Napi széria napja"
@@ -899,20 +899,17 @@ msgstr "Olvasási áttekintés: rekordok"
 msgid "Show Records"
 msgstr "Rekordok megjelenítése"
 
-msgid "Show Reading streak"
-msgstr "Olvasási széria megjelenítése"
+msgid "Show Reading calendar"
+msgstr "Olvasási naptár megjelenítése"
 
 msgid "Menu items"
 msgstr "Menüelemek"
 
-msgid "Reading streak"
-msgstr "Olvasási széria"
-
 msgid "Tick the popups that should be listed under Tools > Reading insights. The book popups only appear while a book is open."
 msgstr "Pipáld be, mely ablakok jelenjenek meg az Eszközök > Reading insights menüben. A könyves ablakok csak megnyitott könyvnél jelennek meg."
 
-msgid "Reading insights: reading streak"
-msgstr "Olvasási áttekintés: olvasási széria"
+msgid "Reading insights: reading calendar"
+msgstr "Olvasási áttekintés: olvasási naptár"
 
 msgid "Reading insights: reading heatmap"
 msgstr "Olvasási áttekintés: olvasási hőtérkép"
@@ -1718,8 +1715,8 @@ msgstr "Hét"
 msgid "Show week numbers"
 msgstr "Hetek számának megjelenítése"
 
-msgid "Add a \"Week\" column with each row's week number to the reading streak and Book progress calendars."
-msgstr "„Hét” oszlop hozzáadása, amely soronként a hét számát mutatja az olvasási széria és a könyv haladási naptárakon."
+msgid "Add a \"Week\" column with each row's week number to the Reading calendar and Book progress calendar."
+msgstr "„Hét” oszlop hozzáadása, amely soronként a hét számát mutatja az olvasási naptárban és a könyv haladási naptárban."
 
 msgid "Popup position"
 msgstr "Ablak helyzete"
@@ -2212,3 +2209,9 @@ msgstr "Nem sikerült megrajzolni a képet (a részletekért lásd a naplót)."
 
 msgid "Nothing to draw yet. Open a book and read a few pages first."
 msgstr "Még nincs mit megrajzolni. Nyiss meg egy könyvet, és olvass néhány oldalt."
+
+msgid "Show streak bar under covers"
+msgstr "Széria sáv megjelenítése a borítók alatt"
+
+msgid "Show the streak line under the covers on the reading calendar. When off (default), the covers are shown larger."
+msgstr "A széria vonalának megjelenítése a borítók alatt az olvasási naptárban. Kikapcsolva (alapértelmezett) a borítók nagyobbak."

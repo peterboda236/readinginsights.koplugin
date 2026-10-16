@@ -42,7 +42,7 @@ function M.build(self, deps)
     local popup_entries = {
         { key = "insights",      label = Locale.insightsTitle(),
           open = function() self:onShowReadingInsightsPopup() end },
-        { key = "streak",        label = _("Reading streak"),
+        { key = "streak",        label = _("Reading calendar"),
           open = function() self:onShowReadingStreakPopup() end },
         { key = "heatmap",       label = _("Reading heatmap"),
           open = function() self:onShowReadingHeatmapPopup() end },
@@ -496,13 +496,35 @@ function M.build(self, deps)
     -- ViewSettings.readShowWeekNumbers.
     table.insert(date_time_sub_item_table, {
         text = _("Show week numbers"),
-        help_text = _("Add a \"Week\" column with each row's week number to the reading streak and Book progress calendars."),
+        help_text = _("Add a \"Week\" column with each row's week number to the Reading calendar and Book progress calendar."),
         keep_menu_open = true,
         checked_func = function() return deps.ViewSettings.readShowWeekNumbers() end,
         callback = function()
             deps.ViewSettings.saveShowWeekNumbers(not deps.ViewSettings.readShowWeekNumbers())
         end,
     })
+
+    -- Reading calendar settings (the streak calendar).
+    local reading_calendar_sub_item_table = {}
+
+    -- The streak line under the covers on the Reading streak calendar. Off by
+    -- default - the covers are then drawn larger. See
+    -- ViewSettings.readShowStreakBar.
+    table.insert(reading_calendar_sub_item_table, {
+        text = _("Show streak bar under covers"),
+        help_text = _("Show the streak line under the covers on the reading calendar. When off (default), the covers are shown larger."),
+        keep_menu_open = true,
+        checked_func = function() return deps.ViewSettings.readShowStreakBar() end,
+        callback = function()
+            deps.ViewSettings.saveShowStreakBar(not deps.ViewSettings.readShowStreakBar())
+        end,
+    })
+
+    I.reading_calendar_settings = {
+        text = _("Reading calendar"),
+        keep_menu_open = true,
+        sub_item_table = reading_calendar_sub_item_table,
+    }
 
     -- "Reading insight popup": everything that changes what the insights
     -- popup itself shows. The entries are defined here and grouped under
@@ -1361,7 +1383,7 @@ function M.build(self, deps)
     --   -------------------------
     --   one group per view         Reading insight popup, Heatmap & time of
     --                              day, Book progress popup, Book progress
-    --                              calendar, Book info
+    --                              calendar, Reading calendar, Book info
     --   -------------------------
     --   Advanced settings          behaviour that isn't about one popup:
     --                              sleep screen, refresh, long durations,
@@ -1413,6 +1435,7 @@ function M.build(self, deps)
             keep_menu_open = true,
             sub_item_table = book_progress_sub_item_table,
         },
+        I.reading_calendar_settings,
         I.book_calendar_settings,
         I.book_info,
         "-",

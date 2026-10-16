@@ -835,7 +835,7 @@ msgid "Peak activity (100%)"
 msgstr "Пікова активність (100%)"
 
 msgid "Reading streak calendar"
-msgstr "Календар серії читання"
+msgstr "Календар читання"
 
 msgid "Daily streak day"
 msgstr "День щоденної серії"
@@ -919,20 +919,17 @@ msgstr "Аналітика читання: рекорди"
 msgid "Show Records"
 msgstr "Показати рекорди"
 
-msgid "Show Reading streak"
-msgstr "Показати серію читання"
+msgid "Show Reading calendar"
+msgstr "Показати календар читання"
 
 msgid "Menu items"
 msgstr "Пункти меню"
 
-msgid "Reading streak"
-msgstr "Серія читання"
-
 msgid "Tick the popups that should be listed under Tools > Reading insights. The book popups only appear while a book is open."
 msgstr "Позначте вікна, які мають відображатися в меню Інструменти > Reading insights. Вікна книги з’являються лише коли відкрито книгу."
 
-msgid "Reading insights: reading streak"
-msgstr "Аналітика читання: серія читання"
+msgid "Reading insights: reading calendar"
+msgstr "Аналітика читання: календар читання"
 
 msgid "Reading insights: reading heatmap"
 msgstr "Аналітика читання: теплокарта читання"
@@ -1764,8 +1761,8 @@ msgstr "Тиждень"
 msgid "Show week numbers"
 msgstr "Показувати номери тижнів"
 
-msgid "Add a \"Week\" column with each row's week number to the reading streak and Book progress calendars."
-msgstr "Додати стовпець «Тиждень» із номером тижня для кожного рядка до календарів серії читання та прогресу книги."
+msgid "Add a \"Week\" column with each row's week number to the Reading calendar and Book progress calendar."
+msgstr "Додати стовпець «Тиждень» із номером тижня для кожного рядка до календаря читання та календаря прогресу книги."
 
 msgid "Popup position"
 msgstr "Розташування вікна"
@@ -2249,3 +2246,9 @@ msgstr "Не вдалося намалювати зображення (подр�
 
 msgid "Nothing to draw yet. Open a book and read a few pages first."
 msgstr "Поки нічого малювати. Відкрийте книгу й прочитайте кілька сторінок."
+
+msgid "Show streak bar under covers"
+msgstr "Показувати смугу серії під обкладинками"
+
+msgid "Show the streak line under the covers on the reading calendar. When off (default), the covers are shown larger."
+msgstr "Показувати лінію серії під обкладинками в календарі читання. Коли вимкнено (за замовчуванням), обкладинки відображаються більшими."

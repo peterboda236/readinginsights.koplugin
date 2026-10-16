@@ -807,7 +807,7 @@ msgid "Peak activity (100%)"
 msgstr "Maximale Aktivität (100 %)"
 
 msgid "Reading streak calendar"
-msgstr "Kalender der Lesesträhne"
+msgstr "Lesekalender"
 
 msgid "Daily streak day"
 msgstr "Tag der Tagessträhne"
@@ -884,20 +884,17 @@ msgstr "Leseeinblicke: Rekorde"
 msgid "Show Records"
 msgstr "Rekorde anzeigen"
 
-msgid "Show Reading streak"
-msgstr "Lesesträhne anzeigen"
+msgid "Show Reading calendar"
+msgstr "Lesekalender anzeigen"
 
 msgid "Menu items"
 msgstr "Menüeinträge"
 
-msgid "Reading streak"
-msgstr "Lesestreak"
-
 msgid "Tick the popups that should be listed under Tools > Reading insights. The book popups only appear while a book is open."
 msgstr "Wähle die Popups aus, die unter Werkzeuge > Reading insights aufgelistet werden. Die Buch-Popups erscheinen nur, solange ein Buch geöffnet ist."
 
-msgid "Reading insights: reading streak"
-msgstr "Leseeinblicke: Lesesträhne"
+msgid "Reading insights: reading calendar"
+msgstr "Leseeinblicke: Lesekalender"
 
 msgid "Reading insights: reading heatmap"
 msgstr "Leseeinblicke: Lese-Heatmap"
@@ -1715,8 +1712,8 @@ msgstr "Woche"
 msgid "Show week numbers"
 msgstr "Wochennummern anzeigen"
 
-msgid "Add a \"Week\" column with each row's week number to the reading streak and Book progress calendars."
-msgstr "Eine Spalte „Woche“ mit der Wochennummer jeder Zeile zum Lesesträhnen- und Buchfortschritts-Kalender hinzufügen."
+msgid "Add a \"Week\" column with each row's week number to the Reading calendar and Book progress calendar."
+msgstr "Eine Spalte „Woche“ mit der Wochennummer jeder Zeile zum Lesekalender und zum Buchfortschritts-Kalender hinzufügen."
 
 msgid "Popup position"
 msgstr "Fensterposition"
@@ -2200,3 +2197,9 @@ msgstr "Das Bild konnte nicht gezeichnet werden (Details im Log)."
 
 msgid "Nothing to draw yet. Open a book and read a few pages first."
 msgstr "Noch nichts zu zeichnen. Öffne ein Buch und lies ein paar Seiten."
+
+msgid "Show streak bar under covers"
+msgstr "Balken der Lesesträhne unter den Covern anzeigen"
+
+msgid "Show the streak line under the covers on the reading calendar. When off (default), the covers are shown larger."
+msgstr "Die Linie der Lesesträhne unter den Covern im Lesekalender anzeigen. Wenn ausgeschaltet (Standard), werden die Cover größer dargestellt."
