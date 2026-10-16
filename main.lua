@@ -160,6 +160,21 @@ local function patchCoreScreensaver()
     if Screensaver._readinginsights_patched then return end
     Screensaver._readinginsights_patched = true
 
+    -- Core calls Screensaver:cleanup() exactly once, when the sleep screen is
+    -- really over: right away on wake-up, or only after the "Exit sleep
+    -- screen" gesture / the configured delay (see ScreenSaverWidget:
+    -- onCloseWidget and ScreenSaverLockWidget:onCloseWidget). That is the
+    -- moment our own popups have to go away - not the Resume event, which
+    -- comes much earlier when the wake-up is postponed.
+    local orig_cleanup = Screensaver.cleanup
+    Screensaver.cleanup = function(self, ...)
+        local ret = orig_cleanup(self, ...)
+        local close_ours = Screensaver._readinginsights_close
+        Screensaver._readinginsights_close = nil
+        if close_ours then pcall(close_ours) end
+        return ret
+    end
+
     local orig_setup = Screensaver.setup
     Screensaver.setup = function(self, event, event_message)
         if event ~= nil then
@@ -265,10 +280,14 @@ local AchievementsView = loadModule("views/achievements_view.lua",
 -- opened both from the insights page's streak cells and straight from the
 -- menu. Split out of insights_view.lua; it needs only the shared data/UI
 -- modules, so it loads first and is handed to the insights view below.
+-- Its day cells show the cover of the day's most-read book, read through
+-- BookInfoData (the Book info popup's cover loader), so that is loaded first.
+local BookInfoData = loadModule("lib/bookinfo_data.lua",
+    { Locale = Locale, BookStatsData = BookStatsData })
 local StreakCalendar = loadModule("views/streak_calendar_view.lua", {
     Locale = Locale, Colors = Colors, Fonts = Fonts, UI = UI,
     Data = InsightsData, Prefs = Prefs, VS = ViewSettings,
-    BookList = BookList,
+    BookList = BookList, BookInfoData = BookInfoData, Ratings = Ratings,
 })
 
 -- Records: the queries and their cache (lib/records_data.lua, loaded above
@@ -304,8 +323,6 @@ local StatsPopup = loadModule("views/book_stats_view.lua", {
 -- joined with a language-appropriate "and", the series line, the cover
 -- image) lives in lib/bookinfo_data.lua; the cover's rounded, shadowed
 -- frame is drawn by widgets/coverframe.lua (the Book card plugin's widget).
-local BookInfoData = loadModule("lib/bookinfo_data.lua",
-    { Locale = Locale, BookStatsData = BookStatsData })
 local CoverFrame   = loadModule("widgets/coverframe.lua")
 local BookInfo = loadModule("views/book_info_view.lua", {
     Locale = Locale, Colors = Colors, Fonts = Fonts, VS = ViewSettings,
@@ -634,6 +651,33 @@ function ReadingInsights:_screensaverShouldShow()
     return G_reader_settings:readSetting("screensaver_type") == SCREENSAVER_TYPE_VALUE
 end
 
+-- Moves core's sleep screen widgets (the "Sleep screen message" and the
+-- "Exit sleep screen" gesture lock) to the top of UIManager's window stack,
+-- above our own modal popups, and makes the message transparent so that our
+-- page stays visible under it (core would otherwise paint its background
+-- over the whole screen and skip painting everything below).
+local function raiseCoreScreensaverWidgets()
+    local Screensaver = require("ui/screensaver")
+    local stack = UIManager._window_stack
+    if type(stack) ~= "table" then return end
+    local message, lock = Screensaver.screensaver_widget, Screensaver.screensaver_lock_widget
+    if message then
+        message.covers_fullscreen = false
+        pcall(function() if message[1] then message[1].background = nil end end)
+    end
+    for _, w in ipairs({ message or false, lock or false }) do
+        if w then
+            for i = #stack, 1, -1 do
+                if stack[i].widget == w then
+                    table.insert(stack, table.remove(stack, i))
+                    break
+                end
+            end
+        end
+    end
+    if message then UIManager:setDirty(message, "full") end
+end
+
 --[[
 Sleep-screen integration.
 
@@ -666,9 +710,17 @@ function ReadingInsights:onSuspend()
     -- Runs every query and paints the page before returning (see
     -- lib/sleepscreen.lua): core only schedules the actual suspend after
     -- this event has been handled, so nothing is left half-drawn.
-    local ok, shown = pcall(SleepScreen.show, self.ui)
+    -- before_paint: KOReader's own "Sleep screen message" widget and the
+    -- "Exit sleep screen" gesture lock widget were shown first (core runs
+    -- before this event) and our popups are modal too, so they landed ABOVE
+    -- them: the message was hidden (and only flashed up when the popups were
+    -- closed) and the gesture lock never saw the gesture. Put core's widgets
+    -- back on top before the one and only repaint.
+    local ok, shown = pcall(SleepScreen.show, self.ui, raiseCoreScreensaverWidgets)
     if ok then
         self._screensaver_widgets = shown
+        local Screensaver = require("ui/screensaver")
+        Screensaver._readinginsights_close = function() self:_closeSleepScreen() end
     else
         logger.warn("ReadingInsights: sleep screen failed:", tostring(shown))
     end
@@ -882,10 +934,26 @@ function ReadingInsights:_imageExportSubItems()
     return items
 end
 
+-- Closes our sleep screen popups (once; safe to call repeatedly).
+function ReadingInsights:_closeSleepScreen()
+    local widgets = self._screensaver_widgets
+    self._screensaver_widgets = nil
+    require("ui/screensaver")._readinginsights_close = nil
+    if widgets then SleepScreen.close(widgets) end
+end
+
 function ReadingInsights:onResume()
     if self._screensaver_widgets then
-        SleepScreen.close(self._screensaver_widgets)
-        self._screensaver_widgets = nil
+        -- When core is still holding the sleep screen (the message, or the
+        -- gesture lock waiting for "Exit sleep screen", or a delayed close),
+        -- it is NOT over yet: Screensaver:cleanup() (hooked above) closes our
+        -- popups when it is. Closing them here made the file manager appear
+        -- straight away and left the exit gesture with nothing to exit.
+        local Screensaver = require("ui/screensaver")
+        if not (Screensaver.screensaver_widget or Screensaver.screensaver_lock_widget
+                or Screensaver.delayed_close) then
+            self:_closeSleepScreen()
+        end
     end
     -- Wake-from-sleep also fires a silent background update check, mirroring
     -- bookshelf.koplugin. Updater's own 1-hour internal cache prevents

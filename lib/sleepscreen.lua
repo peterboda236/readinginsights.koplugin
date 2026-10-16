@@ -43,7 +43,8 @@ could fire while the device is already going to sleep), the widgets are
 shown and the screen is repainted with UIManager:forceRePaint(). Only then
 does the Suspend handler return.
 
-  SleepScreen.show(ui)   -> list of the widgets that were shown (bottom
+  SleepScreen.show(ui, before_paint)
+                         -> list of the widgets that were shown (bottom
                             first), to hand to SleepScreen.close()
   SleepScreen.close(list)
   SleepScreen.preview(ui, touchmenu_instance)
@@ -461,7 +462,7 @@ local function showHeatmap(ui)
 end
 
 local function showStreak(ui)
-    return Streak.show(InsightsData.calculateStreaks())
+    return Streak.show(InsightsData.calculateStreaks(), { sync = true })
 end
 
 local function showRecords(ui)
@@ -554,7 +555,7 @@ local BUILDERS = {
 -- Entry points
 -- ---------------------------------------------------------------------
 
-function M.show(ui)
+function M.show(ui, before_paint)
     -- 1. The running session is still only in memory: write it to the
     --    statistics database first, so every query below sees it.
     pcall(InsightsData.flushStatsToDB, ui)
@@ -601,6 +602,10 @@ function M.show(ui)
         end
     end
     if popup then shown[#shown + 1] = popup end
+
+    -- Optional hook (main.lua: put core's own sleep screen widgets back on
+    -- top of what was just shown).
+    if before_paint then pcall(before_paint) end
 
     -- 3. Paint it now, synchronously - before the Suspend handler returns,
     --    and therefore before core schedules the actual suspend.
