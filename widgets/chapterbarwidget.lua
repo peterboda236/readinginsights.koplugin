@@ -241,16 +241,16 @@ function M.build(chapter_info, full_width, padding_h, offset_override, on_prev, 
                 local unread_h = bh - read_h
                 table.insert(bar_row, VerticalGroup:new{
                     align = "left",
-                    VerticalSpan:new{ height = col_h_max - bh },
+                    VerticalSpan:new{ width = math.max(0, col_h_max - bh) },
                     unread_h > 0 and Colors.newBar(bar_w, unread_h, Colors.inactiveBar())
-                        or VerticalSpan:new{ height = 0 },
+                        or VerticalSpan:new{ width = 0 },
                     read_h > 0 and Colors.newBar(bar_w, read_h, Colors.activeBar())
-                        or VerticalSpan:new{ height = 0 },
+                        or VerticalSpan:new{ width = 0 },
                 })
             else
                 table.insert(bar_row, VerticalGroup:new{
                     align = "left",
-                    VerticalSpan:new{ height = col_h_max - bh },
+                    VerticalSpan:new{ width = math.max(0, col_h_max - bh) },
                     Colors.newBar(bar_w, bh, ch_idx < current and Colors.activeBar() or Colors.inactiveBar()),
                 })
             end
@@ -283,14 +283,14 @@ function M.build(chapter_info, full_width, padding_h, offset_override, on_prev, 
             margin         = 0,
             VerticalGroup:new{
                 align = "left",
-                VerticalSpan:new{ height = top_pad },
+                VerticalSpan:new{ width = math.max(0, top_pad) },
                 HorizontalGroup:new{
                     align = "center",
                     HorizontalSpan:new{ width = inner_pad },
                     tw,
                     HorizontalSpan:new{ width = inner_pad },
                 },
-                VerticalSpan:new{ height = col_h_max - gh - top_pad },
+                VerticalSpan:new{ width = math.max(0, col_h_max - gh - top_pad) },
             },
         }
     end

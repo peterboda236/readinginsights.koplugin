@@ -77,7 +77,7 @@ local formatDate = Locale.formatDate
 -- ---------------------------------------------------------------------------
 -- UI building helpers
 -- ---------------------------------------------------------------------------
-local ROW_PADDING = Size.padding.default
+local ROW_PADDING = Size.padding.small
 
 local function getCachedFonts()
     return {

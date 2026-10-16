@@ -458,18 +458,18 @@ function BookInfoPopup:_buildUI()
     else
         table.insert(text_col, self.stars_frame)
     end
-    table.insert(text_col, VerticalSpan:new{ width = S(4) })
+    table.insert(text_col, VerticalSpan:new{ width = Size.padding.small })
     table.insert(text_col, textBlock(
         self.info.title or "", title_face, Colors.value(), text_w, 4))
 
     if show_author then
-        table.insert(text_col, VerticalSpan:new{ width = S(6) })
+        table.insert(text_col, VerticalSpan:new{ width = Size.padding.default })
         table.insert(text_col, textBlock(
             self.info.authors, author_face, Colors.label(), text_w, 3))
     end
 
     if series_line then
-        table.insert(text_col, VerticalSpan:new{ width = S(4) })
+        table.insert(text_col, VerticalSpan:new{ width = Size.padding.small })
         table.insert(text_col, textBlock(
             series_line, series_face, Colors.label(), text_w, 2))
     end
