@@ -2120,3 +2120,83 @@ msgstr "Keine Bilder in {dir}"
 msgid "Images are loaded from {dir}"
 msgstr "Bilder werden geladen aus {dir}"
 
+msgid "Preview"
+msgstr "Vorschau"
+
+msgid "Nothing to preview."
+msgstr "Nichts zur Vorschau vorhanden."
+
+msgid "Image export (Android wallpaper / PocketBook logo)"
+msgstr "Bildexport (Android-Hintergrundbild / PocketBook-Logo)"
+
+msgid "Save as image, kept up to date"
+msgstr "Als Bild speichern, stets aktuell"
+
+msgid "Also save when opening a book"
+msgstr "Auch beim Öffnen eines Buchs speichern"
+
+msgid "Image format"
+msgstr "Bildformat"
+
+msgid "Refresh interval"
+msgstr "Aktualisierungsintervall"
+
+msgid "Every 5 minutes"
+msgstr "Alle 5 Minuten"
+
+msgid "Every 15 minutes"
+msgstr "Alle 15 Minuten"
+
+msgid "Every 30 minutes"
+msgstr "Alle 30 Minuten"
+
+msgid "Every hour"
+msgstr "Jede Stunde"
+
+msgid "min"
+msgstr "Min."
+
+msgid "Also copy to folder"
+msgstr "Auch in Ordner kopieren"
+
+msgid "Also copy to a shared folder…"
+msgstr "Auch in einen freigegebenen Ordner kopieren…"
+
+msgid "Choose a folder to also save the image to"
+msgstr "Wähle einen Ordner, in dem das Bild ebenfalls gespeichert werden soll"
+
+msgid "Image will also be copied to:\n{path}\n\nOn Android, point your system wallpaper picker (or a wallpaper-changer app) at this folder."
+msgstr "Das Bild wird außerdem kopiert nach:\n{path}\n\nUnter Android richte die System-Hintergrundbildauswahl (oder eine Wallpaper-Wechsler-App) auf diesen Ordner."
+
+msgid "Stop copying to that extra folder"
+msgstr "Kopieren in diesen zusätzlichen Ordner beenden"
+
+msgid "Also save as PocketBook power-off / boot logo"
+msgstr "Auch als PocketBook-Ausschalt-/Boot-Logo speichern"
+
+msgid "Save image now"
+msgstr "Bild jetzt speichern"
+
+msgid "Image saved to: {path}"
+msgstr "Bild gespeichert unter: {path}"
+
+msgid "Image updated."
+msgstr "Bild aktualisiert."
+
+msgid "Could not update the image."
+msgstr "Bild konnte nicht aktualisiert werden."
+
+msgid "Could not create the image export folder."
+msgstr "Der Bildexportordner konnte nicht erstellt werden."
+
+msgid "Could not write the image file."
+msgstr "Die Bilddatei konnte nicht geschrieben werden."
+
+msgid "On Android, KOReader's own sleep screen never shows, because locking the screen hands over to Android's own lock screen. Turn this on and Reading insights keeps a picture of the sleep screen (same content and background as set under Sleep screen) on disk, refreshed automatically; set that picture as your Android wallpaper the normal way, or point a wallpaper-changer app at the folder below."
+msgstr "Unter Android erscheint der Ruhebildschirm von KOReader nie, weil beim Sperren des Bildschirms der Android-Sperrbildschirm übernimmt. Schalte dies ein, und Reading insights hält ein Bild des Ruhebildschirms (mit demselben Inhalt und Hintergrund wie unter Ruhebildschirm eingestellt) auf dem Gerät bereit und aktualisiert es automatisch; setze dieses Bild wie gewohnt als Android-Hintergrundbild oder richte eine Hintergrundwechsel-App auf den Ordner unten aus."
+
+msgid "Could not draw the image (see the log for details)."
+msgstr "Das Bild konnte nicht gezeichnet werden (Details im Log)."
+
+msgid "Nothing to draw yet. Open a book and read a few pages first."
+msgstr "Noch nichts zu zeichnen. Öffne ein Buch und lies ein paar Seiten."

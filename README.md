@@ -232,3 +232,13 @@ AGPL-3.0 — see [LICENSE](LICENSE)
 
 ## Support
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/peterboda236)
+
+
+## Image export (Android wallpaper / PocketBook logo)
+
+*Tools > Reading insights > Settings > Image export* saves the sleep screen
+(same Content / Background / Image fit settings) as a PNG, JPG or BMP file
+that refreshes itself: on a timer, when a book is opened or closed, and on
+suspend. It is drawn offscreen, so nothing flashes while reading. On Android
+set the file (or a folder, via "Also copy to a shared folder") as wallpaper;
+on PocketBook it can also be written as the power-off / boot logo.

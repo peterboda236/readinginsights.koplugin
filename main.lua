@@ -336,6 +336,23 @@ local SleepScreen = loadModule("lib/sleepscreen.lua", {
     InsightsData = InsightsData, LastBook = LastBook,
 })
 
+-- The sleep screen as an image file (PNG / JPG / BMP) that keeps itself up
+-- to date: for Android (system wallpaper) and PocketBook (power-off / boot
+-- logo), where KOReader's own sleep screen never shows - lib/imageexport.lua.
+local ImageExport = loadModule("lib/imageexport.lua", {
+    Locale = Locale, Prefs = Prefs, SleepScreen = SleepScreen,
+})
+
+-- Seconds to wait after a book has finished opening before exporting, so the
+-- Statistics plugin has loaded the book's data first.
+local OPEN_EXPORT_DELAY = 3
+
+-- The ReaderUI of the book being read, for the timer (which can fire from
+-- either plugin instance and must not hold on to a UI that has been closed).
+-- Set when a book is ready, dropped when it closes; nil in the file manager,
+-- where the book popups fall back to the last book read.
+local export_ui = nil
+
 --[[
 Plugin wiring.
 
@@ -569,6 +586,10 @@ function ReadingInsights:init()
 
     self.ui.menu:registerToMainMenu(self)
     self:onDispatcherRegisterActions()
+    -- Image export (lib/imageexport.lua): resume the periodic refresh if it
+    -- was left on from a previous session. Guarded by a global flag so only
+    -- one of the reader / file manager instantiations runs the timer.
+    self:_startImageExportTimer()
     -- Silent wake-time check also fires once at startup (opt-in via
     -- "Notify on wake when update available"), so a newly-available update
     -- can surface without waiting for the first suspend/resume cycle.
@@ -630,6 +651,12 @@ the wake key itself can't dismiss it early while the device is still
 "asleep"; onResume below is what actually closes it again.
 ]]--
 function ReadingInsights:onSuspend()
+    -- Refresh the exported image first, whatever the sleep screen setting is:
+    -- on Android / PocketBook that file is what ends up being shown.
+    if ImageExport.isEnabled() then
+        local ok, err = ImageExport.write(self.ui, true)
+        if not ok then logger.warn("ReadingInsights: image export on suspend failed:", err) end
+    end
     if not self:_screensaverShouldShow() then return end
     if self._screensaver_widgets then return end -- already showing
     if Device:hasEinkScreen() then
@@ -656,6 +683,203 @@ function ReadingInsights:onCloseDocument()
     -- The book is still open at this point: keep what its popups show, for
     -- the sleep screen in the file manager.
     if self:_hasOpenDocument() then pcall(LastBook.capture, self.ui) end
+    self:_cancelOpenExport()
+    if ImageExport.isEnabled() and self:_hasOpenDocument() then
+        self:refreshExportedImage(true)
+    end
+    export_ui = nil
+end
+
+-- ---------------------------------------------------------------------------
+-- Image export (lib/imageexport.lua): the sleep screen as a PNG / JPG / BMP
+-- file, refreshed on a timer and on the events below, for use outside
+-- KOReader's own sleep screen (chiefly: as the Android wallpaper, or the
+-- PocketBook power-off / boot logo). It is drawn offscreen, so refreshing it
+-- while reading never shows anything.
+-- ---------------------------------------------------------------------------
+
+function ReadingInsights:refreshExportedImage(quiet)
+    -- `not quiet` = the user asked for it: also let PocketBook adopt the boot logo.
+    local ok, err = ImageExport.write(self.ui, not quiet)
+    if not quiet then
+        if ok then
+            UIManager:show(InfoMessage:new{ text = _("Image updated."), timeout = 2 })
+        else
+            UIManager:show(InfoMessage:new{
+                text = err or _("Could not update the image."),
+                timeout = 3,
+            })
+        end
+    elseif not ok then
+        logger.warn("ReadingInsights: image export failed:", err)
+    end
+    return ok
+end
+
+function ReadingInsights:_scheduleImageExportTimer()
+    if not ImageExport.isEnabled() then
+        _G._readinginsights_export_timer_active = false
+        return
+    end
+    UIManager:scheduleIn(ImageExport.interval(), function()
+        if not ImageExport.isEnabled() then
+            _G._readinginsights_export_timer_active = false
+            return
+        end
+        local ui = export_ui
+        if ui and not ui.document then ui = nil end
+        local ok, err = ImageExport.write(ui)
+        if not ok then logger.warn("ReadingInsights: periodic image export failed:", err) end
+        self:_scheduleImageExportTimer()
+    end)
+end
+
+function ReadingInsights:_startImageExportTimer()
+    if _G._readinginsights_export_timer_active then return end
+    if not ImageExport.isEnabled() then return end
+    _G._readinginsights_export_timer_active = true
+    self:_scheduleImageExportTimer()
+end
+
+-- Export once right after a book has been opened (not only on the timer), so
+-- the picture shows the book you just started. Delayed slightly, and
+-- cancelled if the book is closed again before it fires.
+function ReadingInsights:_cancelOpenExport()
+    if self._open_export_task then
+        UIManager:unschedule(self._open_export_task)
+        self._open_export_task = nil
+    end
+end
+
+function ReadingInsights:onReaderReady()
+    self:_cancelOpenExport()
+    export_ui = self.ui
+    if not (ImageExport.isEnabled() and ImageExport.exportOnOpen()) then return end
+    local ui = self.ui
+    self._open_export_task = function()
+        self._open_export_task = nil
+        if not (ImageExport.isEnabled() and ImageExport.exportOnOpen()) then return end
+        if not (ui and ui.document) then return end
+        self:refreshExportedImage(true)
+    end
+    UIManager:scheduleIn(OPEN_EXPORT_DELAY, self._open_export_task)
+end
+
+-- The submenu: Tools > Reading insights > Settings > Image export.
+function ReadingInsights:_imageExportSubItems()
+    local outer = self
+    local items = {
+        {
+            text = _("Save as image, kept up to date"),
+            checked_func = ImageExport.isEnabled,
+            keep_menu_open = true,
+            callback = function()
+                local turning_on = not ImageExport.isEnabled()
+                ImageExport.setEnabled(turning_on)
+                if turning_on then
+                    outer:_startImageExportTimer()
+                    outer:refreshExportedImage(true)
+                end
+            end,
+            separator = true,
+        },
+        {
+            text = _("On Android, KOReader's own sleep screen never shows, because "
+                .. "locking the screen hands over to Android's own lock screen. "
+                .. "Turn this on and Reading insights keeps a picture of the sleep "
+                .. "screen (same content and background as set under Sleep screen) "
+                .. "on disk, refreshed automatically; set that picture as your "
+                .. "Android wallpaper the normal way, or point a wallpaper-changer "
+                .. "app at the folder below."),
+            enabled = false,
+            separator = true,
+        },
+        {
+            text = _("Also save when opening a book"),
+            checked_func = ImageExport.exportOnOpen,
+            enabled_func = ImageExport.isEnabled,
+            keep_menu_open = true,
+            callback = function()
+                ImageExport.setExportOnOpen(not ImageExport.exportOnOpen())
+            end,
+        },
+        {
+            text_func = function()
+                return _("Image format") .. ": " .. ImageExport.formatLabel()
+            end,
+            enabled_func = ImageExport.isEnabled,
+            sub_item_table_func = function()
+                return ImageExport.buildFormatMenu(function()
+                    outer:refreshExportedImage(true)
+                end)
+            end,
+        },
+        {
+            text_func = function()
+                return _("Refresh interval") .. ": " .. ImageExport.intervalLabel()
+            end,
+            enabled_func = ImageExport.isEnabled,
+            sub_item_table_func = function() return ImageExport.buildIntervalMenu() end,
+        },
+        {
+            text_func = function()
+                local custom = Prefs.read(ImageExport.SETTING_SAVE_PATH, "")
+                if type(custom) == "string" and custom ~= "" then
+                    return _("Also copy to folder") .. ": " .. custom
+                end
+                return _("Also copy to a shared folder\xE2\x80\xA6")
+            end,
+            keep_menu_open = true,
+            callback = function(touchmenu_instance)
+                UIManager:show(ImageExport.buildPathChooser(function(path)
+                    outer:refreshExportedImage(false)
+                    local msg = _("Image will also be copied to:\n{path}\n\nOn Android, point your system wallpaper picker (or a wallpaper-changer app) at this folder.")
+                    UIManager:show(InfoMessage:new{
+                        text = (msg:gsub("{path}", function() return path end)),
+                        timeout = 6,
+                    })
+                    if touchmenu_instance then touchmenu_instance:updateItems() end
+                end))
+            end,
+        },
+        {
+            text = _("Stop copying to that extra folder"),
+            enabled_func = function() return ImageExport.customFile() ~= nil end,
+            keep_menu_open = true,
+            callback = function(touchmenu_instance)
+                ImageExport.clearCustomPath()
+                if touchmenu_instance then touchmenu_instance:updateItems() end
+            end,
+            separator = true,
+        },
+        {
+            text = _("Save image now"),
+            keep_menu_open = true,
+            callback = function() outer:refreshExportedImage(false) end,
+        },
+        {
+            text_func = function()
+                local msg = _("Image saved to: {path}")
+                return (msg:gsub("{path}", function() return ImageExport.outputFile() end))
+            end,
+            enabled = false,
+        },
+    }
+
+    -- Only offered on PocketBook devices (elsewhere the option is hidden).
+    if ImageExport.isPocketBook() then
+        table.insert(items, #items - 1, {
+            text = _("Also save as PocketBook power-off / boot logo"),
+            checked_func = ImageExport.pocketBookEnabled,
+            enabled_func = ImageExport.isEnabled,
+            keep_menu_open = true,
+            callback = function()
+                ImageExport.setPocketBookEnabled(not ImageExport.pocketBookEnabled())
+                if ImageExport.pocketBookEnabled() then outer:refreshExportedImage(false) end
+            end,
+        })
+    end
+    return items
 end
 
 function ReadingInsights:onResume()

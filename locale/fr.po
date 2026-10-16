@@ -2119,3 +2119,84 @@ msgstr "Aucune image dans {dir}"
 
 msgid "Images are loaded from {dir}"
 msgstr "Les images sont chargées depuis {dir}"
+
+msgid "Preview"
+msgstr "Aperçu"
+
+msgid "Nothing to preview."
+msgstr "Rien à prévisualiser."
+
+msgid "Image export (Android wallpaper / PocketBook logo)"
+msgstr "Export d'image (fond d'écran Android / logo PocketBook)"
+
+msgid "Save as image, kept up to date"
+msgstr "Enregistrer comme image, tenue à jour"
+
+msgid "Also save when opening a book"
+msgstr "Enregistrer également à l'ouverture d'un livre"
+
+msgid "Image format"
+msgstr "Format d'image"
+
+msgid "Refresh interval"
+msgstr "Intervalle de rafraîchissement"
+
+msgid "Every 5 minutes"
+msgstr "Toutes les 5 minutes"
+
+msgid "Every 15 minutes"
+msgstr "Toutes les 15 minutes"
+
+msgid "Every 30 minutes"
+msgstr "Toutes les 30 minutes"
+
+msgid "Every hour"
+msgstr "Toutes les heures"
+
+msgid "min"
+msgstr "min"
+
+msgid "Also copy to folder"
+msgstr "Copier également dans un dossier"
+
+msgid "Also copy to a shared folder…"
+msgstr "Copier également dans un dossier partagé…"
+
+msgid "Choose a folder to also save the image to"
+msgstr "Choisissez un dossier dans lequel enregistrer également l'image"
+
+msgid "Image will also be copied to:\n{path}\n\nOn Android, point your system wallpaper picker (or a wallpaper-changer app) at this folder."
+msgstr "L'image sera également copiée vers :\n{path}\n\nSous Android, pointez votre sélecteur de fond d'écran système (ou une application de changement de fond d'écran) vers ce dossier."
+
+msgid "Stop copying to that extra folder"
+msgstr "Arrêter de copier vers ce dossier supplémentaire"
+
+msgid "Also save as PocketBook power-off / boot logo"
+msgstr "Enregistrer également comme logo d'extinction / démarrage PocketBook"
+
+msgid "Save image now"
+msgstr "Enregistrer l'image maintenant"
+
+msgid "Image saved to: {path}"
+msgstr "Image enregistrée dans : {path}"
+
+msgid "Image updated."
+msgstr "Image mise à jour."
+
+msgid "Could not update the image."
+msgstr "Impossible de mettre à jour l'image."
+
+msgid "Could not create the image export folder."
+msgstr "Impossible de créer le dossier d'exportation d'image."
+
+msgid "Could not write the image file."
+msgstr "Impossible d'écrire le fichier image."
+
+msgid "On Android, KOReader's own sleep screen never shows, because locking the screen hands over to Android's own lock screen. Turn this on and Reading insights keeps a picture of the sleep screen (same content and background as set under Sleep screen) on disk, refreshed automatically; set that picture as your Android wallpaper the normal way, or point a wallpaper-changer app at the folder below."
+msgstr "Sous Android, l'écran de veille de KOReader ne s'affiche jamais, car le verrouillage de l'écran laisse la main à l'écran de verrouillage d'Android. Activez cette option : Reading insights conserve sur le disque une image de l'écran de veille (même contenu et même fond que dans Écran de veille), actualisée automatiquement ; définissez cette image comme fond d'écran Android de la manière habituelle, ou pointez une application de changement de fond d'écran vers le dossier ci-dessous."
+
+msgid "Could not draw the image (see the log for details)."
+msgstr "Impossible de dessiner l'image (voir le journal pour les détails)."
+
+msgid "Nothing to draw yet. Open a book and read a few pages first."
+msgstr "Rien à dessiner pour l'instant. Ouvrez un livre et lisez quelques pages."

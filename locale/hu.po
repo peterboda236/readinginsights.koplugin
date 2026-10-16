@@ -2132,3 +2132,83 @@ msgstr "Nincs kép itt: {dir}"
 msgid "Images are loaded from {dir}"
 msgstr "A képek innen töltődnek be: {dir}"
 
+msgid "Preview"
+msgstr "Előnézet"
+
+msgid "Nothing to preview."
+msgstr "Nincs mit megjeleníteni."
+
+msgid "Image export (Android wallpaper / PocketBook logo)"
+msgstr "Kép exportálása (Android háttérkép / PocketBook logó)"
+
+msgid "Save as image, kept up to date"
+msgstr "Mentés képként, folyamatosan frissítve"
+
+msgid "Also save when opening a book"
+msgstr "Mentés könyv megnyitásakor is"
+
+msgid "Image format"
+msgstr "Képformátum"
+
+msgid "Refresh interval"
+msgstr "Frissítési gyakoriság"
+
+msgid "Every 5 minutes"
+msgstr "5 percenként"
+
+msgid "Every 15 minutes"
+msgstr "15 percenként"
+
+msgid "Every 30 minutes"
+msgstr "30 percenként"
+
+msgid "Every hour"
+msgstr "Óránként"
+
+msgid "min"
+msgstr "perc"
+
+msgid "Also copy to folder"
+msgstr "Másolás ide is"
+
+msgid "Also copy to a shared folder…"
+msgstr "Másolás egy megosztott mappába is…"
+
+msgid "Choose a folder to also save the image to"
+msgstr "Válaszd ki a mappát, ahova a kép is bekerüljön"
+
+msgid "Image will also be copied to:\n{path}\n\nOn Android, point your system wallpaper picker (or a wallpaper-changer app) at this folder."
+msgstr "A kép ide is bemásolódik:\n{path}\n\nAndroidon a rendszer háttérkép-választóját (vagy egy háttérkép-váltogató appot) irányítsd erre a mappára."
+
+msgid "Stop copying to that extra folder"
+msgstr "Extra mappába másolás leállítása"
+
+msgid "Also save as PocketBook power-off / boot logo"
+msgstr "Mentés PocketBook kikapcsolási / boot logóként is"
+
+msgid "Save image now"
+msgstr "Kép mentése most"
+
+msgid "Image saved to: {path}"
+msgstr "A kép ide mentődik: {path}"
+
+msgid "Image updated."
+msgstr "A kép frissült."
+
+msgid "Could not update the image."
+msgstr "A kép frissítése nem sikerült."
+
+msgid "Could not create the image export folder."
+msgstr "Nem sikerült létrehozni a kép exportálási mappáját."
+
+msgid "Could not write the image file."
+msgstr "Nem sikerült írni a képfájlt."
+
+msgid "On Android, KOReader's own sleep screen never shows, because locking the screen hands over to Android's own lock screen. Turn this on and Reading insights keeps a picture of the sleep screen (same content and background as set under Sleep screen) on disk, refreshed automatically; set that picture as your Android wallpaper the normal way, or point a wallpaper-changer app at the folder below."
+msgstr "Androidon a KOReader saját alvóképernyője sosem jelenik meg, mert a képernyő zárolásakor az Android saját zárolási képernyője veszi át az irányítást. Kapcsold be ezt, és a Reading insights egy képet tart a lemezen az alvóképernyőről (ugyanazzal a tartalommal és háttérrel, mint amit az Alvóképernyő alatt beállítottál), automatikusan frissítve; ezt a képet a szokásos módon állítsd be Android háttérképnek, vagy irányíts egy háttérképváltó alkalmazást az alábbi mappára."
+
+msgid "Could not draw the image (see the log for details)."
+msgstr "Nem sikerült megrajzolni a képet (a részletekért lásd a naplót)."
+
+msgid "Nothing to draw yet. Open a book and read a few pages first."
+msgstr "Még nincs mit megrajzolni. Nyiss meg egy könyvet, és olvass néhány oldalt."

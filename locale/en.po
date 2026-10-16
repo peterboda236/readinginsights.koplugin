@@ -2120,3 +2120,83 @@ msgstr "No images in {dir}"
 msgid "Images are loaded from {dir}"
 msgstr "Images are loaded from {dir}"
 
+msgid "Preview"
+msgstr "Preview"
+
+msgid "Nothing to preview."
+msgstr "Nothing to preview."
+
+msgid "Image export (Android wallpaper / PocketBook logo)"
+msgstr "Image export (Android wallpaper / PocketBook logo)"
+
+msgid "Save as image, kept up to date"
+msgstr "Save as image, kept up to date"
+
+msgid "Also save when opening a book"
+msgstr "Also save when opening a book"
+
+msgid "Image format"
+msgstr "Image format"
+
+msgid "Refresh interval"
+msgstr "Refresh interval"
+
+msgid "Every 5 minutes"
+msgstr "Every 5 minutes"
+
+msgid "Every 15 minutes"
+msgstr "Every 15 minutes"
+
+msgid "Every 30 minutes"
+msgstr "Every 30 minutes"
+
+msgid "Every hour"
+msgstr "Every hour"
+
+msgid "min"
+msgstr "min"
+
+msgid "Also copy to folder"
+msgstr "Also copy to folder"
+
+msgid "Also copy to a shared folder…"
+msgstr "Also copy to a shared folder…"
+
+msgid "Choose a folder to also save the image to"
+msgstr "Choose a folder to also save the image to"
+
+msgid "Image will also be copied to:\n{path}\n\nOn Android, point your system wallpaper picker (or a wallpaper-changer app) at this folder."
+msgstr "Image will also be copied to:\n{path}\n\nOn Android, point your system wallpaper picker (or a wallpaper-changer app) at this folder."
+
+msgid "Stop copying to that extra folder"
+msgstr "Stop copying to that extra folder"
+
+msgid "Also save as PocketBook power-off / boot logo"
+msgstr "Also save as PocketBook power-off / boot logo"
+
+msgid "Save image now"
+msgstr "Save image now"
+
+msgid "Image saved to: {path}"
+msgstr "Image saved to: {path}"
+
+msgid "Image updated."
+msgstr "Image updated."
+
+msgid "Could not update the image."
+msgstr "Could not update the image."
+
+msgid "Could not create the image export folder."
+msgstr "Could not create the image export folder."
+
+msgid "Could not write the image file."
+msgstr "Could not write the image file."
+
+msgid "On Android, KOReader's own sleep screen never shows, because locking the screen hands over to Android's own lock screen. Turn this on and Reading insights keeps a picture of the sleep screen (same content and background as set under Sleep screen) on disk, refreshed automatically; set that picture as your Android wallpaper the normal way, or point a wallpaper-changer app at the folder below."
+msgstr "On Android, KOReader's own sleep screen never shows, because locking the screen hands over to Android's own lock screen. Turn this on and Reading insights keeps a picture of the sleep screen (same content and background as set under Sleep screen) on disk, refreshed automatically; set that picture as your Android wallpaper the normal way, or point a wallpaper-changer app at the folder below."
+
+msgid "Could not draw the image (see the log for details)."
+msgstr "Could not draw the image (see the log for details)."
+
+msgid "Nothing to draw yet. Open a book and read a few pages first."
+msgstr "Nothing to draw yet. Open a book and read a few pages first."
