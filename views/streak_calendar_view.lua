@@ -1073,7 +1073,7 @@ function StreakHistoryPopup:_rebuild()
         arrow_probe:free()
         label_probe:free()
         local date_probe  = TextWidget:new{ text = "0", face = fonts.small }
-        self._row_gap = Screen:scaleBySize(6)
+        self._row_gap = 0 -- no gap between the day rows
         self._row_unit_h = date_probe:getSize().h + self._row_gap
         date_probe:free()
         self._info_left_w, self._info_range_w, self._info_row_h = self:_measureInfo(fonts)
@@ -1213,11 +1213,11 @@ function StreakHistoryPopup:_rebuild()
 
     local rows = VerticalGroup:new{}
     local row_h = nil
-    local row_gap = Screen:scaleBySize(6)
+    local row_gap = 0 -- no gap between the day rows
     for i, date_str in ipairs(page_days) do
         local row, h = self:_buildRow(date_str, self.stats[date_str], max_value, fonts)
         row_h = row_h or h
-        if i > 1 then table.insert(rows, VerticalSpan:new{ width = row_gap }) end
+        if i > 1 and row_gap > 0 then table.insert(rows, VerticalSpan:new{ width = row_gap }) end
         table.insert(rows, row)
     end
     row_h = row_h or Screen:scaleBySize(20)
