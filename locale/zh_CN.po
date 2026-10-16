@@ -1845,3 +1845,84 @@ msgstr "{dir} 中没有图片"
 
 msgid "Images are loaded from {dir}"
 msgstr "图片从 {dir} 加载"
+
+msgid "Preview"
+msgstr "预览"
+
+msgid "Nothing to preview."
+msgstr "没有可预览的内容。"
+
+msgid "Image export (Android wallpaper / PocketBook logo)"
+msgstr "图片导出（Android 壁纸 / PocketBook 标志）"
+
+msgid "Save as image, kept up to date"
+msgstr "保存为图片，并保持更新"
+
+msgid "Also save when opening a book"
+msgstr "打开图书时也保存"
+
+msgid "Image format"
+msgstr "图片格式"
+
+msgid "Refresh interval"
+msgstr "刷新间隔"
+
+msgid "Every 5 minutes"
+msgstr "每 5 分钟"
+
+msgid "Every 15 minutes"
+msgstr "每 15 分钟"
+
+msgid "Every 30 minutes"
+msgstr "每 30 分钟"
+
+msgid "Every hour"
+msgstr "每小时"
+
+msgid "min"
+msgstr "分钟"
+
+msgid "Also copy to folder"
+msgstr "同时复制到文件夹"
+
+msgid "Also copy to a shared folder…"
+msgstr "同时复制到共享文件夹…"
+
+msgid "Choose a folder to also save the image to"
+msgstr "选择一个也用于保存图片的文件夹"
+
+msgid "Image will also be copied to:\n{path}\n\nOn Android, point your system wallpaper picker (or a wallpaper-changer app) at this folder."
+msgstr "图片也会被复制到：\n{path}\n\n在 Android 上，请将系统壁纸选择器（或换壁纸应用）指向此文件夹。"
+
+msgid "Stop copying to that extra folder"
+msgstr "停止复制到该附加文件夹"
+
+msgid "Also save as PocketBook power-off / boot logo"
+msgstr "同时保存为 PocketBook 关机 / 开机 Logo"
+
+msgid "Save image now"
+msgstr "立即保存图片"
+
+msgid "Image saved to: {path}"
+msgstr "图片已保存到：{path}"
+
+msgid "Image updated."
+msgstr "图片已更新。"
+
+msgid "Could not update the image."
+msgstr "无法更新图片。"
+
+msgid "Could not create the image export folder."
+msgstr "无法创建图片导出文件夹。"
+
+msgid "Could not write the image file."
+msgstr "无法写入图片文件。"
+
+msgid "On Android, KOReader's own sleep screen never shows, because locking the screen hands over to Android's own lock screen. Turn this on and Reading insights keeps a picture of the sleep screen (same content and background as set under Sleep screen) on disk, refreshed automatically; set that picture as your Android wallpaper the normal way, or point a wallpaper-changer app at the folder below."
+msgstr "在 Android 上，KOReader 自带的休眠屏保永远不会显示，因为锁屏时会由 Android 自己的锁屏界面接管。开启此项后，Reading insights 会在磁盘上保存一张休眠屏保图片（内容和背景与“休眠屏保”中的设置相同）并自动刷新；请按常规方式将该图片设为 Android 壁纸，或让壁纸切换应用指向下方的文件夹。"
+
+msgid "Could not draw the image (see the log for details)."
+msgstr "无法绘制图片（详情见日志）。"
+
+msgid "Nothing to draw yet. Open a book and read a few pages first."
+msgstr "暂无可绘制的内容。请先打开一本书并阅读几页。"

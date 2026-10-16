@@ -43,9 +43,13 @@ could fire while the device is already going to sleep), the widgets are
 shown and the screen is repainted with UIManager:forceRePaint(). Only then
 does the Suspend handler return.
 
-  SleepScreen.show(ui)   -> list of the widgets that were shown (bottom
+  SleepScreen.show(ui, before_paint)
+                         -> list of the widgets that were shown (bottom
                             first), to hand to SleepScreen.close()
   SleepScreen.close(list)
+  SleepScreen.preview(ui, touchmenu_instance)
+                         -> the same screen, shown on demand from the menu;
+                            a tap, a swipe or the Back key closes it again
 ]]--
 
 local deps = ...
@@ -71,6 +75,8 @@ local Geom            = require("ui/geometry")
 local Screen          = Device.screen
 local UIManager       = require("ui/uimanager")
 local Widget          = require("ui/widget/widget")
+local GestureRange    = require("ui/gesturerange")
+local InputContainer  = require("ui/widget/container/inputcontainer")
 local lfs             = require("libs/libkoreader-lfs")
 local logger          = require("logger")
 
@@ -456,7 +462,7 @@ local function showHeatmap(ui)
 end
 
 local function showStreak(ui)
-    return Streak.show(InsightsData.calculateStreaks())
+    return Streak.show(InsightsData.calculateStreaks(), { sync = true })
 end
 
 local function showRecords(ui)
@@ -549,7 +555,7 @@ local BUILDERS = {
 -- Entry points
 -- ---------------------------------------------------------------------
 
-function M.show(ui)
+function M.show(ui, before_paint)
     -- 1. The running session is still only in memory: write it to the
     --    statistics database first, so every query below sees it.
     pcall(InsightsData.flushStatsToDB, ui)
@@ -597,6 +603,10 @@ function M.show(ui)
     end
     if popup then shown[#shown + 1] = popup end
 
+    -- Optional hook (main.lua: put core's own sleep screen widgets back on
+    -- top of what was just shown).
+    if before_paint then pcall(before_paint) end
+
     -- 3. Paint it now, synchronously - before the Suspend handler returns,
     --    and therefore before core schedules the actual suspend.
     pcall(function() UIManager:forceRePaint() end)
@@ -605,6 +615,219 @@ function M.show(ui)
     end)
 
     return shown
+end
+
+-- ---------------------------------------------------------------------
+-- Offscreen rendering (used by lib/imageexport.lua)
+-- ---------------------------------------------------------------------
+
+-- Frees a widget that was built but never shown. The usual onCloseWidget
+-- handlers are NOT run: they ask for a screen refresh, and nothing of this
+-- was ever on the screen.
+local function discard(w)
+    if not w then return end
+    w._closed = true
+    pcall(function()
+        if w.scroll_container and w.scroll_container.free then
+            w.scroll_container:free()
+        end
+    end)
+    pcall(function() if w.free then w:free() end end)
+end
+
+-- Builds the sleep screen exactly like show() does - same content, same
+-- background, same fit - but paints it into a bitmap of its own instead of
+-- onto the screen, so it can run at any time (while reading, on a timer)
+-- without flashing anything. Returns the bitmap (caller owns it and must
+-- free it), or nil + a reason: "nodata" (nothing can be drawn right now) or
+-- "render" (drawing failed).
+--
+-- The builders above call UIManager:show() as part of building; for the
+-- duration of the build that call only collects the widget, so nothing
+-- reaches the screen and no refresh is scheduled. Readonly popups load and
+-- draw everything inside init() (see ReadingInsightsPopup), so once the
+-- builder has returned the widget is complete and can be painted at once.
+function M.renderToBlitbuffer(ui)
+    pcall(InsightsData.flushStatsToDB, ui)
+
+    local content = M.readContent()
+    local orig_show = UIManager.show
+    UIManager.show = function() end
+
+    local popup, page
+    local ok_build, err_build = pcall(function()
+        local function build(content_id)
+            local builder = BUILDERS[content_id] or showInsights
+            local bg
+            if content_id ~= "insights" then
+                local kind = M.readBackground()
+                local src_bb
+                if kind == "cover" then
+                    src_bb = loadCover(ui)
+                elseif kind == "custom" then
+                    src_bb = loadWallpaper()
+                end
+                bg = buildBackground(src_bb)
+            end
+            local ok, p = pcall(builder, ui)
+            if not ok then
+                logger.warn("ReadingInsights image export:", content_id, "failed:", tostring(p))
+                p = nil
+            end
+            return p, bg
+        end
+
+        popup, page = build(content)
+        if not popup then
+            -- Same fallback as show(): the insights window.
+            discard(page)
+            page = nil
+            if content ~= "insights" then
+                local ok2, p2 = pcall(showInsights, ui)
+                popup = ok2 and p2 or nil
+            end
+        end
+    end)
+    UIManager.show = orig_show
+
+    if not ok_build then
+        logger.warn("ReadingInsights image export: build failed:", tostring(err_build))
+        discard(popup)
+        discard(page)
+        return nil, "render"
+    end
+    if not popup then
+        discard(page)
+        return nil, "nodata"
+    end
+
+    local w, h = Screen:getWidth(), Screen:getHeight()
+    local bb_type
+    pcall(function() bb_type = Screen.bb and Screen.bb:getType() end)
+
+    -- Blitbuffer.new(w, h, type) is a plain constructor (not a method).
+    local ok_bb, bb
+    if bb_type then ok_bb, bb = pcall(Blitbuffer.new, w, h, bb_type) end
+    if not (ok_bb and bb) then ok_bb, bb = pcall(Blitbuffer.new, w, h) end
+    if not (ok_bb and bb) then
+        logger.warn("ReadingInsights image export: no offscreen bitmap:", tostring(bb))
+        discard(popup)
+        discard(page)
+        return nil, "render"
+    end
+
+    local ok_paint, err_paint = pcall(function()
+        bb:paintRect(0, 0, w, h, Blitbuffer.COLOR_WHITE)
+        if page then page:paintTo(bb, 0, 0) end
+        popup:paintTo(bb, 0, 0)
+        -- KOReader's night mode inverts what the screen paints (see the
+        -- header). A bitmap of our own is not inverted by anything, so do
+        -- it here: the file then looks like what the screen would show.
+        if Screen.night_mode and bb.invertRect then
+            bb:invertRect(0, 0, w, h)
+        end
+    end)
+    discard(popup)
+    discard(page)
+    if not ok_paint then
+        pcall(function() bb:free() end)
+        logger.warn("ReadingInsights image export: paint failed:", tostring(err_paint))
+        return nil, "render"
+    end
+    return bb
+end
+
+-- ---------------------------------------------------------------------
+-- Preview (menu entry: Sleep screen > Preview)
+-- ---------------------------------------------------------------------
+
+-- The preview is the sleep screen rendered offscreen (the same bitmap the
+-- image export writes) and shown in one self-contained full-screen widget.
+-- Building the real popups on the screen and closing them again went wrong
+-- for some of them (the book progress popup could not be closed), and
+-- closed the menu; a single bitmap widget has neither problem. The menu
+-- stays open underneath and is there again when the preview is closed.
+local PreviewImage = InputContainer:extend{ bb = nil, on_close = nil }
+
+function PreviewImage:init()
+    self.dimen = Geom:new{ x = 0, y = 0, w = Screen:getWidth(), h = Screen:getHeight() }
+    self.covers_fullscreen = true
+    if Device:isTouchDevice() then
+        self.ges_events = {
+            Tap   = { GestureRange:new{ ges = "tap",   range = self.dimen } },
+            Swipe = { GestureRange:new{ ges = "swipe", range = self.dimen } },
+            Hold  = { GestureRange:new{ ges = "hold",  range = self.dimen } },
+        }
+    end
+    if Device:hasKeys() then
+        self.key_events = { AnyKey = { { Device.input.group.Any } } }
+    end
+end
+
+function PreviewImage:getSize()
+    return self.dimen
+end
+
+function PreviewImage:paintTo(target, x, y)
+    self.dimen.x, self.dimen.y = x, y
+    if not self.bb then return end
+    local w, h = self.bb:getWidth(), self.bb:getHeight()
+    -- The bitmap already has night mode applied (see renderToBlitbuffer);
+    -- the screen applies it once more, so undo it while blitting.
+    if Screen.night_mode and target.invertblitFrom then
+        target:invertblitFrom(self.bb, x, y, 0, 0, w, h)
+    else
+        target:blitFrom(self.bb, x, y, 0, 0, w, h)
+    end
+end
+
+function PreviewImage:_close()
+    if self._closed then return true end
+    self._closed = true
+    if self.on_close then self.on_close() end
+    return true
+end
+
+PreviewImage.onTap    = PreviewImage._close
+PreviewImage.onSwipe  = PreviewImage._close
+PreviewImage.onHold   = PreviewImage._close
+PreviewImage.onAnyKey = PreviewImage._close
+
+function PreviewImage:onCloseWidget()
+    if self.bb then
+        pcall(function() self.bb:free() end)
+        self.bb = nil
+    end
+end
+
+local preview_widget   -- what is on the screen right now, if anything
+
+local function closePreview()
+    local w = preview_widget
+    preview_widget = nil
+    if not w then return end
+    UIManager:close(w)
+    UIManager:setDirty("all", "full")
+end
+
+-- Shows the sleep screen the way it would be drawn on suspend, with the
+-- current settings. Tap, swipe, hold or any key closes it.
+function M.preview(ui, touchmenu_instance)
+    if preview_widget then return end
+    UIManager:nextTick(function()
+        if preview_widget then return end
+        local ok, bb = pcall(M.renderToBlitbuffer, ui)
+        if not ok or not bb then
+            logger.warn("ReadingInsights sleep screen: preview failed:", tostring(bb))
+            UIManager:show(require("ui/widget/infomessage"):new{
+                text = _("Nothing to preview."),
+                timeout = 2,
+            })
+            return
+        end
+        preview_widget = PreviewImage:new{ bb = bb, on_close = closePreview }
+        UIManager:show(preview_widget, "full")
+    end)
 end
 
 -- Closes what show() returned, top-most first.

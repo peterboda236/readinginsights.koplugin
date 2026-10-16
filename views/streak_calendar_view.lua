@@ -8,12 +8,20 @@ same popup is opened from there (tapping any streak cell) and straight from the
 Tools menu, both via M.show(streaks) with the table from
 Data.calculateStreaks().
 
-Calendar cell shading (see buildStreakMonthGrid):
-  - a day with reading            daily-streak fill (Colors.streakRead)
-  - another day in a week that
-    had any reading                weekly-streak gap fill (Colors.streakGap)
-  - a day in a week with no
-    reading at all                 white
+Calendar day cells (see buildStreakMonthGrid), top to bottom:
+  - the day number                small, centred at the top of the cell
+  - the cover of the book read
+    most that day                 when several books were read the runner-up
+                                  sits behind it, like one book on another;
+                                  with more than two a "1+" / "2+" ... tag
+                                  at the bottom right counts the rest
+  - the streak line               a line across the foot of the cell:
+                                  dark (Colors.streakRead) = a day with reading,
+                                  light (Colors.streakGap) = another day of a
+                                  week that had any reading, none = a week
+                                  with no reading at all
+
+The popup fills the whole screen.
 
 Gestures on the popup:
   - Tap a ‹ / › arrow, swipe left/right, or Left/Right keys   page one month
@@ -27,6 +35,8 @@ the database.
 ]]--
 
 local Blitbuffer = require("ffi/blitbuffer")
+local DataStorage = require("datastorage")
+local lfs = require("libs/libkoreader-lfs")
 local CenterContainer = require("ui/widget/container/centercontainer")
 local Device = require("device")
 local FrameContainer = require("ui/widget/container/framecontainer")
@@ -40,9 +50,11 @@ local RightContainer = require("ui/widget/container/rightcontainer")
 local Size = require("ui/size")
 local TextBoxWidget = require("ui/widget/textboxwidget")
 local TextWidget = require("ui/widget/textwidget")
+local TitleBar = require("ui/widget/titlebar")
 local UIManager = require("ui/uimanager")
 local VerticalGroup = require("ui/widget/verticalgroup")
 local VerticalSpan = require("ui/widget/verticalspan")
+local Widget = require("ui/widget/widget")
 local Screen = Device.screen
 local InfoMessage = require("ui/widget/infomessage")
 
@@ -52,6 +64,10 @@ local InfoMessage = require("ui/widget/infomessage")
 local deps = ...
 local Locale, Colors, Fonts, UI, Data, Prefs, VS, BookList =
     deps.Locale, deps.Colors, deps.Fonts, deps.UI, deps.Data, deps.Prefs, deps.VS, deps.BookList
+-- Cover loading for the calendar's day cells: the file of a book (by its
+-- checksum / title) and the cover read from it - the same two the Book info
+-- popup uses for a row of a book list.
+local BookInfoData, Ratings = deps.BookInfoData, deps.Ratings
 local T = require("ffi/util").template
 
 local _            = Locale._
@@ -142,22 +158,6 @@ local function streakMonthShape(year, month, week_start_wd)
     return days_in_month, lead_blanks
 end
 
--- Relative luminance (0..255) of a "#RRGGBB" hex string.
-local function hexLuminance(hex)
-    local n = tostring(hex):gsub("#", "")
-    local r = tonumber(n:sub(1, 2), 16) or 0
-    local g = tonumber(n:sub(3, 4), 16) or 0
-    local b = tonumber(n:sub(5, 6), 16) or 0
-    return 0.299 * r + 0.587 * g + 0.114 * b
-end
-
--- Day-number color that stays legible on a given cell fill: white on a dark
--- fill, black on a light one. Keeps the number readable on the dark read-day
--- cell without needing a separate color setting.
-local function streakNumColor(fill_hex)
-    return (hexLuminance(fill_hex) < 128) and Blitbuffer.COLOR_WHITE or Blitbuffer.COLOR_BLACK
-end
-
 -- Whether to show week numbers (Settings ▸ Date & time ▸
 -- "Show week numbers"). Off by default.
 local function showWeekNumbers()
@@ -181,35 +181,301 @@ local function weekColumnMetrics(show_week, small_font)
     return col_w, prefix_w
 end
 
+-- The stand-in for a book without a (readable) cover: a light card
+-- with a book icon and, under it, the first few characters of the title in a
+-- small face (cut with an ellipsis when too long for the card).
+local NOCOVER_FILL   = 0xEC
+local NOCOVER_STROKE = 0x6E
+local function paintNoCover(bb, x, y, w, h, title)
+    if w < 2 or h < 2 then return end
+    local stroke = Blitbuffer.Color8(NOCOVER_STROKE)
+    local line   = math.max(1, Screen:scaleBySize(1))
+
+    -- Card: filled, then outlined (square corners).
+    bb:paintRect(x, y, w, h, Blitbuffer.Color8(NOCOVER_FILL))
+    bb:paintBorder(x, y, w, h, line, stroke)
+
+    -- Too small for any detail.
+    if w < Screen:scaleBySize(26) or h < Screen:scaleBySize(34) then return end
+
+    -- Title text, small; only when there is one and it fits under the icon.
+    local icon_w = math.floor(math.min(w * 0.36, h * 0.28))
+    local icon_h = math.floor(icon_w * 1.2)
+    local gap    = math.floor(icon_h * 0.3)
+    local tw
+    local pad = math.max(2, math.floor(w * 0.08))
+    if type(title) == "string" and title ~= "" then
+        -- Fixed size 8 (the smallest size the plugin's fonts use), whatever
+        -- the font size settings are.
+        local face
+        pcall(function() face = require("ui/font"):getFace("NotoSans-Regular.ttf", 8) end)
+        face = face or Fonts.getScaledFace("stats_label", 0.4)
+        local okt, widget = pcall(TextWidget.new, TextWidget, {
+            text = title, face = face, max_width = w - 2 * pad,
+            fgcolor = Blitbuffer.Color8(0x40),
+        })
+        if okt and widget then tw = widget end
+    end
+    local th = tw and tw:getSize().h or 0
+    local total = icon_h + (tw and (gap + th) or 0)
+    if tw and total > h - 2 * pad then
+        tw:free(); tw = nil; total = icon_h
+    end
+
+    local iy = y + math.floor((h - total) / 2)
+    local ix = x + math.floor((w - icon_w) / 2)
+    local t  = math.max(1, math.floor(icon_w / 11))
+
+    -- Book icon: outlined volume, a spine line near the left edge and the
+    -- page block's line near the bottom.
+    pcall(bb.paintBorder, bb, ix, iy, icon_w, icon_h, t, stroke, math.max(1, math.floor(icon_w * 0.1)))
+    bb:paintRect(ix + math.floor(icon_w * 0.28), iy, t, icon_h, stroke)
+    bb:paintRect(ix + math.floor(icon_w * 0.28), iy + icon_h - math.floor(icon_h * 0.22), icon_w - math.floor(icon_w * 0.28), t, stroke)
+
+    if tw then
+        local sz = tw:getSize()
+        tw:paintTo(bb, x + math.floor((w - sz.w) / 2), iy + icon_h + gap)
+        tw:free()
+    end
+end
+
+-- The calendar can be paged into the future; this is where it stops (32-bit
+-- os.time() cannot go past 2038).
+local LAST_CALENDAR_YEAR = 2037
+
+-- Caches that outlive one popup, so opening the calendar again is quick.
+--   COVER_CACHE  scaled covers, key "md5|WxH" -> blitbuffer, or false when the
+--                book has no readable cover. Not freed explicitly: dropping
+--                the reference lets the blitbuffer's own finaliser free it,
+--                so a popup still on screen can never lose a cover under it.
+--   DATA_CACHE   the reading data of the whole history (month list, days read,
+--                books per day). Reused until a new reading record appears
+--                (MAX(start_time) moves) or the date changes - the two big
+--                queries over the whole statistics table are what made the
+--                window slow to open.
+local COVER_CACHE, COVER_CACHE_N, COVER_CACHE_MAX = {}, 0, 150
+local DATA_CACHE = nil
+-- Returned by the cover callback for a cover that is not loaded yet.
+local COVER_PENDING = {}
+
+-- Covers are also kept on disk, so they survive a restart of KOReader: one
+-- small thumbnail per book (JPEG, PNG when JPEG cannot be written) in
+-- <settings>/readinginsights/covercache/<md5>.jpg, plus an empty <md5>.none
+-- for a book that has no cover - so it is not opened again and again. Reading
+-- a thumbnail is far quicker than opening the book. Delete the folder to
+-- start over (e.g. after changing a book's cover).
+local THUMB_W, THUMB_H = 300, 450
+local COVER_DIR
+local function coverDir()
+    if COVER_DIR == nil then
+        local d = DataStorage:getSettingsDir() .. "/readinginsights/covercache"
+        if lfs.attributes(d, "mode") ~= "directory" then
+            pcall(require("util").makePath, d .. "/")
+        end
+        COVER_DIR = (lfs.attributes(d, "mode") == "directory") and d or false
+    end
+    return COVER_DIR or nil
+end
+
+-- The thumbnail's path without extension, nil when the book has no usable id.
+local function diskBase(book)
+    local md5 = book and book.md5
+    if type(md5) ~= "string" or not md5:match("^%x+$") then return nil end
+    local dir = coverDir()
+    return dir and (dir .. "/" .. md5) or nil
+end
+
+-- Scales `bb` to fit w x h, aspect kept (never enlarging with no_upscale).
+-- Frees `bb`.
+local function scaleTo(bb, w, h, no_upscale)
+    local rw, rh = bb:getWidth(), bb:getHeight()
+    local scale = math.min(w / rw, h / rh)
+    if no_upscale and scale > 1 then scale = 1 end
+    local nw = math.max(1, math.floor(rw * scale))
+    local nh = math.max(1, math.floor(rh * scale))
+    return require("ui/renderimage"):scaleBlitBuffer(bb, nw, nh, true)
+end
+
+local function readThumb(base)
+    for _i, ext in ipairs({ ".jpg", ".png" }) do
+        local f = base .. ext
+        if lfs.attributes(f, "mode") == "file" then
+            local ok, bb = pcall(function()
+                return require("ui/renderimage"):renderImageFile(f, false)
+            end)
+            if ok and bb then return bb end
+        end
+    end
+    return nil
+end
+
+local function writeThumb(base, bb)
+    local jpg = base .. ".jpg"
+    pcall(bb.writeToFile, bb, jpg, "jpg", 85)
+    local size = lfs.attributes(jpg, "size")
+    if size and size > 0 then return end
+    pcall(os.remove, jpg)
+    pcall(bb.writeToFile, bb, base .. ".png", "png")
+end
+
+local function markNoCover(base)
+    local f = io.open(base .. ".none", "w")
+    if f then f:close() end
+end
+
+-- One day cell of the calendar, painted in one go (see the header comment for
+-- what it holds). `covers` lists what to draw, back to front:
+--   { bb = <scaled cover or nil for the placeholder>, x, y, w, h }  (cell-relative)
+local DayCell = Widget:extend{
+    cell_w     = 0,
+    cell_h     = 0,
+    num_widget = nil,
+    num_top    = 0,
+    covers     = nil,
+    faded      = false, -- a day of the previous / next month: covers drawn light
+    badge      = nil,   -- TextWidget with the "1+" tag
+    bar_color  = nil,   -- streak line colour, nil = no line
+    bar_h      = 0,
+    round_l    = false, -- the line starts here (previous day has none): round its left end
+    round_r    = false, -- the line ends here (next day has none): round its right end
+    under_l    = nil,   -- colour of the light line the rounded left end sits on
+    under_r    = nil,   -- same for the right end
+}
+
+function DayCell:getSize()
+    return Geom:new{ w = self.cell_w, h = self.cell_h }
+end
+
+function DayCell:paintTo(bb, x, y)
+    local w, h = self.cell_w, self.cell_h
+    self.dimen = Geom:new{ x = x, y = y, w = w, h = h }
+    bb:paintRect(x, y, w, h, Blitbuffer.COLOR_WHITE)
+
+    for _i, c in ipairs(self.covers or {}) do
+        local cx, cy = x + c.x, y + c.y
+        if c.bb then
+            bb:blitFrom(c.bb, cx, cy, 0, 0, c.w, c.h)
+            -- like ImageWidget: a picture is not inverted by night mode
+            if Screen.night_mode then bb:invertRect(cx, cy, c.w, c.h) end
+        else
+            paintNoCover(bb, cx, cy, c.w, c.h, c.title)
+        end
+        if self.faded then
+            -- Night mode inverts the whole screen afterwards, so the
+            -- "lighter" blend has to be the opposite one there.
+            if Screen.night_mode then
+                bb:darkenRect(cx, cy, c.w, c.h, 0.6)
+            else
+                bb:lightenRect(cx, cy, c.w, c.h, 0.6)
+            end
+        end
+        if c.bb then
+            bb:paintBorder(cx, cy, c.w, c.h, Size.line.thin,
+                self.faded and Blitbuffer.COLOR_GRAY or Blitbuffer.COLOR_BLACK)
+        end
+    end
+
+    if self.num_widget then
+        local nw = self.num_widget:getSize().w
+        self.num_widget:paintTo(bb, x + math.floor((w - nw) / 2), y + self.num_top)
+    end
+
+    if self.badge then
+        local bs  = self.badge:getSize()
+        local pad   = Screen:scaleBySize(2)   -- left / right
+        local pad_v = 0                       -- above / below: just the text's own line space
+        local bw, bh = bs.w + 2 * pad, bs.h + 2 * pad_v
+        local bx = x + w - bw - Screen:scaleBySize(1)
+        local by = y + h - self.bar_h - bh - Screen:scaleBySize(1)
+        -- On the bottom right corner of the front cover (the last one drawn),
+        -- inside it, not beside it.
+        local front = self.covers and self.covers[#self.covers]
+        if front and front.w and front.w > 0 then
+            local inset = Size.line.thin
+            bx = x + front.x + front.w - bw - inset
+            by = y + front.y + front.h - bh - inset
+        end
+        bb:paintRect(bx, by, bw, bh, Blitbuffer.COLOR_WHITE)
+        bb:paintBorder(bx, by, bw, bh, Size.line.thin, Blitbuffer.COLOR_BLACK)
+        self.badge:paintTo(bb, bx + pad, by + pad_v)
+    end
+
+    if self.bar_color and self.bar_h > 0 then
+        -- A day of the previous / next month: the line is half as thick and
+        -- lighter, still sitting on the cell's bottom edge. The covers keep
+        -- their place (they are laid out for the full-thickness line).
+        local bh = self.bar_h
+        if self.faded then bh = math.max(1, math.floor(bh / 2)) end
+        local by = y + h - bh
+        local rl = self.round_l and bh > 1
+        local rr = self.round_r and bh > 1
+        -- A streak starting / ending next to the light weekly line: that line
+        -- runs on under the rounded end, so the end does not leave a notch.
+        local cap = math.ceil(bh / 2) + 1
+        if rl and self.under_l then
+            bb:paintRect(x, by, cap, bh, self.under_l)
+        end
+        if rr and self.under_r then
+            bb:paintRect(x + w - cap, by, cap, bh, self.under_r)
+        end
+        -- The line row by row; a rounded end starts further in on the rows
+        -- near the top / bottom edge (a half circle of the line's thickness).
+        local rad = bh / 2
+        for i = 0, bh - 1 do
+            local inset = 0
+            if rl or rr then
+                local dy = (i + 0.5) - rad
+                inset = math.floor(rad - math.sqrt(math.max(0, rad * rad - dy * dy)) + 0.5)
+            end
+            local lx = x + (rl and inset or 0)
+            local rx = x + w - (rr and inset or 0)
+            if rx > lx then
+                bb:paintRect(lx, by + i, rx - lx, 1, self.bar_color)
+            end
+        end
+        if self.faded then
+            -- Night mode inverts the whole screen afterwards, so the
+            -- "lighter" blend is the opposite one there.
+            if Screen.night_mode then
+                bb:darkenRect(x, by, w, bh, 0.6)
+            else
+                bb:lightenRect(x, by, w, bh, 0.6)
+            end
+        end
+    end
+end
+
 -- One month's grid of day cells for the streak-date popup calendar (weekday
 -- header row + week rows; the month/year title lives in the paging header
 -- built separately - see buildStreakCalHeader/StreakDatePopup below).
---   read_set: { ["YYYY-MM-DD"] = true } days that had reading during the streak.
---     A day in read_set is drawn as a daily-streak cell (Colors.streakRead).
---     Any OTHER day that shares its calendar week (row) with a read day is
---     drawn as a weekly-streak gap cell (Colors.streakGap) - once a week has
---     any reading its weekly streak is secured, so the rest of that week is
---     shaded to show it. Days in a week with no reading at all stay white. The
---     day number is drawn on each cell in a color chosen for legibility (see
---     streakNumColor), gray for adjacent-month days, bold on today.
---   cell, week_start_wd: shared sizing/layout computed once by the caller.
---     Day squares (side `cell`) sit flush horizontally - no gap between the
+--   read_set: { ["YYYY-MM-DD"] = true } days that had reading.
+--     A day in read_set gets the dark streak line (Colors.streakRead). Any
+--     OTHER day that shares its calendar week (row) with a read day gets the
+--     light one (Colors.streakGap) - once a week has any reading its weekly
+--     streak is secured, so the rest of that week is marked to show it. Days
+--     in a week with no reading at all get no line.
+--   day_books: { ["YYYY-MM-DD"] = { book, ... } } most-read first (see
+--     Data.getDayBooksInRange); cover_for(book, w, h) -> a cover scaled to fit
+--     w x h, or nil. Only days of the shown month get covers.
+--   cell_w, cell_h, week_start_wd: shared sizing/layout computed once by the
+--     caller. Day cells sit flush horizontally - no gap between the
 --     consecutive days of a week - while a small `row_gap` separates the week
---     rows, so each week reads as one solid strip.
-local function buildStreakMonthGrid(year, month, read_set, fonts, cell, week_start_wd, show_week, week_col_w)
+--     rows.
+local function buildStreakMonthGrid(year, month, read_set, fonts, cell_w, cell_h, week_start_wd,
+        show_week, week_col_w, day_books, cover_for)
     local today_str = os.date("%Y-%m-%d")
-    -- Day-number face matches the Book progress calendar's day cells
-    -- (Fonts.getFace("stats_label")/getBoldFace) rather than this popup's
-    -- own "insights_small" - the two calendars are meant to look alike.
-    local day_font  = Fonts.getFace("stats_label")
+    -- The day number is smaller than the Book progress calendar's: it only
+    -- labels the cell, the cover is the picture.
+    local day_font  = Fonts.getScaledFace("stats_label", 0.8)
     local bold_face = Fonts.getBoldFace("stats_label")
-    -- Clear white band between week rows (days within a week stay flush). Drawn
-    -- as an explicit full-width white bar rather than a zero-width VerticalSpan:
-    -- a zero-width child gets dropped from this centered VerticalGroup's height,
-    -- which both swallowed the row gap and left the grid under-reporting its
-    -- size (so the divider below it crept up over the calendar).
+    pcall(function()
+        local Font = require("ui/font")
+        local sz = day_font.orig_size or day_font.size
+        if sz then bold_face = Font:getFace("NotoSans-Bold.ttf", sz) or bold_face end
+    end)
+
     local week_prefix_w = show_week and (week_col_w + 2 * WEEK_COL_SIDE_PAD + Size.line.thin) or 0
-    local grid_w  = week_prefix_w + 7 * cell
+    local grid_w  = week_prefix_w + 7 * cell_w
     local row_gap = Screen:scaleBySize(6)
     local grid = VerticalGroup:new{ align = "center" }
     -- Geometry + dates of the day cells, handed back to the caller so it can
@@ -218,15 +484,12 @@ local function buildStreakMonthGrid(year, month, read_set, fonts, cell, week_sta
     --   row_pitch  distance between the tops of two consecutive week rows
     --   dates[r][c] the "YYYY-MM-DD" of week row r (1..6), column c (1..7)
     local day_meta = {
-        cell = cell, grid_w = grid_w, week_prefix_w = week_prefix_w,
-        row_pitch = cell + row_gap, dates = {},
+        cell_w = cell_w, cell_h = cell_h, grid_w = grid_w, week_prefix_w = week_prefix_w,
+        row_pitch = cell_h + row_gap, dates = {},
     }
 
     -- The optional "Week" column prefix: a gray label/number cell, then a
-    -- thin gray separator line, then a bit of breathing room either side -
-    -- built fresh for each row (header or day row) at the given height, so
-    -- the separator only ever spans one row at a time (the white row_gap
-    -- bars between weeks already provide a natural break in the line).
+    -- thin gray separator line, then a bit of breathing room either side.
     local function weekPrefix(text, height, is_bold)
         if not show_week then return nil end
         local label = TextWidget:new{
@@ -253,7 +516,7 @@ local function buildStreakMonthGrid(year, month, read_set, fonts, cell, week_sta
         local wd = ((week_start_wd + i) % 7) + 1
         local label_w = TextWidget:new{ text = _(STREAK_WEEKDAY_SHORT[wd]), face = fonts.small, fgcolor = Colors.label() }
         table.insert(header_row, CenterContainer:new{
-            dimen = Geom:new{ w = cell, h = label_w:getSize().h }, label_w,
+            dimen = Geom:new{ w = cell_w, h = label_w:getSize().h }, label_w,
         })
     end
     table.insert(grid, header_row)
@@ -270,11 +533,85 @@ local function buildStreakMonthGrid(year, month, read_set, fonts, cell, week_sta
             os.time{ year = year, month = month, day = cell_day, hour = 12 })
     end
 
+    -- Cell metrics: number on top, streak line at the foot, the cover(s) in
+    -- between.
+    local pad     = Screen:scaleBySize(3)
+    local bar_h   = Screen:scaleBySize(5)
+    local num_top = Screen:scaleBySize(2)
+    local num_h   = TextWidget:new{ text = "88", face = day_font }:getSize().h
+    local area_top = num_top + num_h + pad
+    local area_w   = cell_w - 2 * pad
+    local area_h   = cell_h - area_top - bar_h - pad
+    -- The "N+" tag: smaller than before, in bold.
+    local badge_face = Fonts.getScaledFace("stats_label", 0.6)
+    pcall(function()
+        local sz = badge_face.orig_size or badge_face.size
+        if sz then
+            badge_face = require("ui/font"):getFace("NotoSans-Bold.ttf", sz) or badge_face
+        end
+    end)
+    local back_off = Screen:scaleBySize(6)
+
+    -- The covers of one day: back to front, cell-relative. One book is
+    -- centred in the free area; two (or more) are drawn as one book on another
+    -- - the runner-up peeks out behind the front one at the top right.
+    local function dayCovers(books)
+        local n = #books
+        local two = n >= 2
+        local off = two and back_off or 0
+        local bw, bh = area_w - off, area_h - off
+        if bw < 8 or bh < 8 then return nil end
+
+        local function fit(book)
+            local bb = cover_for and cover_for(book, bw, bh) or nil
+            if bb == COVER_PENDING then return { pending = true, w = 0, h = 0 } end
+            local w, h
+            if bb then
+                w, h = bb:getWidth(), bb:getHeight()
+            else
+                h = bh
+                w = math.floor(h * 2 / 3)
+                if w > bw then w = bw; h = math.floor(w * 3 / 2) end
+            end
+            return { bb = bb, w = w, h = h, title = book.title }
+        end
+
+        -- Both covers are asked for before giving up on a pending one, so the
+        -- second book is queued for loading too (not only after paging).
+        local front = fit(books[1])
+        local back  = two and fit(books[2]) or nil
+        if front.pending or (back and back.pending) then return nil end
+        if not two then
+            front.x = pad + math.floor((area_w - front.w) / 2)
+            front.y = area_top + math.floor((area_h - front.h) / 2)
+            return { front }
+        end
+        local gw = math.max(front.w, back.w) + off
+        local gh = math.max(front.h, back.h) + off
+        local gx = pad + math.floor((area_w - gw) / 2)
+        local gy = area_top + math.floor((area_h - gh) / 2)
+        front.x, front.y = gx, gy + gh - front.h
+        back.x,  back.y  = gx + gw - back.w, gy
+        return { back, front }
+    end
+
+    -- The kind of streak line of any cell (also one outside the grid, e.g.
+    -- the day before the first cell): "read" for a read day, "gap" for another
+    -- day of a week with reading, nil for none. Used to find where the line
+    -- (of either kind) starts and ends, so those ends can be rounded.
+    local grid_start = 1 - lead_blanks
+    local function barKindAt(cell_day)
+        if read_set[cellDate(cell_day)] then return "read" end
+        local row_base = grid_start + math.floor((cell_day - grid_start) / 7) * 7
+        for col = 0, 6 do
+            if read_set[cellDate(row_base + col)] then return "gap" end
+        end
+        return nil
+    end
+
     -- Fixed six-week grid: always 6 rows starting from the first day's row, so
     -- every month is the same height. Leading cells show the previous month's
-    -- tail, trailing cells the next month's start. Days of the shown month get a
-    -- legible day number (even future / not-yet-read ones); the adjacent months'
-    -- days get a gray number so they read as faint context only.
+    -- tail, trailing cells the next month's start (faded covers).
     local start_cell_day = 1 - lead_blanks
     for r = 0, 5 do
         if r > 0 then
@@ -283,7 +620,7 @@ local function buildStreakMonthGrid(year, month, read_set, fonts, cell, week_sta
         local base = start_cell_day + r * 7
 
         -- Did this calendar week (row) have any reading? If so, its remaining
-        -- days are shaded as weekly-streak gap days. Checked across the row's
+        -- days get the light (weekly-streak) line. Checked across the row's
         -- real dates, so a read day in an adjacent month still counts.
         local week_has_read = false
         for col = 0, 6 do
@@ -303,35 +640,58 @@ local function buildStreakMonthGrid(year, month, read_set, fonts, cell, week_sta
             local ry = tonumber(row_date:sub(1, 4))
             local rm = tonumber(row_date:sub(6, 7))
             local rd = tonumber(row_date:sub(9, 10))
-            table.insert(row, weekPrefix(tostring(Locale.isoWeekNumber(ry, rm, rd)), cell))
+            table.insert(row, weekPrefix(tostring(Locale.isoWeekNumber(ry, rm, rd)), cell_h))
         end
         for col = 0, 6 do
             local cell_day = base + col
             local day_str  = cellDate(cell_day)
             day_meta.dates[r + 1][col + 1] = day_str
             local is_this_month = (cell_day >= 1 and cell_day <= days_in_month)
-            -- Read day -> daily-streak fill; other day in a week with reading ->
-            -- weekly-streak gap fill; everything else -> white.
-            local fill_color, fill_hex
+
+            local bar_color
             if read_set[day_str] then
-                fill_color, fill_hex = Colors.streakRead(), Colors.getHex("streak_read")
+                bar_color = Colors.streakRead()
             elseif week_has_read then
-                fill_color, fill_hex = Colors.streakGap(), Colors.getHex("streak_gap")
-            else
-                fill_color, fill_hex = Blitbuffer.COLOR_WHITE, "#FFFFFF"
+                bar_color = Colors.streakGap()
             end
-            -- Shown-month days keep a legible (auto-contrast) number; the
-            -- previous/next month's days are drawn gray as context only.
-            local num_color = is_this_month and streakNumColor(fill_hex) or Blitbuffer.COLOR_GRAY
-            local num_w = TextWidget:new{
-                text = tostring(tonumber(day_str:sub(9, 10))),
-                face = (day_str == today_str) and bold_face or day_font,
-                fgcolor = num_color,
-            }
-            table.insert(row, OverlapGroup:new{
-                dimen = Geom:new{ w = cell, h = cell },
-                Colors.newBar(cell, cell, fill_color),
-                CenterContainer:new{ dimen = Geom:new{ w = cell, h = cell }, num_w },
+
+            -- The previous / next month's days (the grey numbers) show their
+            -- covers too, just faded.
+            local books = day_books and day_books[day_str] or nil
+            local covers, badge
+            if books and #books > 0 then
+                covers = dayCovers(books)
+                if #books > 2 then
+                    badge = TextWidget:new{
+                        text = tostring(#books - 2) .. "+",
+                        face = badge_face,
+                        fgcolor = Blitbuffer.COLOR_BLACK,
+                    }
+                end
+            end
+
+            local kind = bar_color and barKindAt(cell_day) or nil
+            table.insert(row, DayCell:new{
+                cell_w = cell_w, cell_h = cell_h,
+                num_widget = TextWidget:new{
+                    text = tostring(tonumber(day_str:sub(9, 10))),
+                    face = (day_str == today_str) and bold_face or day_font,
+                    fgcolor = is_this_month and Blitbuffer.COLOR_BLACK or Blitbuffer.COLOR_GRAY,
+                },
+                num_top   = num_top,
+                faded     = not is_this_month,
+                covers    = covers,
+                badge     = badge,
+                bar_color = bar_color,
+                bar_h     = bar_h,
+                -- The dark streak line is rounded where the streak starts /
+                -- ends (the day before / after is not a read day); the light
+                -- weekly line where it starts / ends with no line next to it.
+                -- Beside a light line the rounded end is laid on it.
+                round_l   = (bar_color and barKindAt(cell_day - 1) ~= kind) and (kind == "read" or barKindAt(cell_day - 1) == nil) and true or false,
+                round_r   = (bar_color and barKindAt(cell_day + 1) ~= kind) and (kind == "read" or barKindAt(cell_day + 1) == nil) and true or false,
+                under_l   = (kind == "read" and barKindAt(cell_day - 1) == "gap") and Colors.streakGap() or nil,
+                under_r   = (kind == "read" and barKindAt(cell_day + 1) == "gap") and Colors.streakGap() or nil,
             })
         end
         table.insert(grid, row)
@@ -986,8 +1346,9 @@ local function showDayBooks(date_str)
     BookList.showBookList(title, books, nil, findStatsPlugin(), { modal = true })
 end
 
--- The streaks popup itself: a modal box laying out (top to bottom) one pageable
--- calendar month with the reading/streaks marked, then current and best streak
+-- The streaks popup itself: a full-screen modal laying out (top to bottom) one
+-- pageable calendar month - each day with its number, the cover of the book
+-- read most that day and the streak line - then current and best streak
 -- side by side (name, date range, days | weeks). The calendar pages one month
 -- at a time (‹ / › arrows, swipe, or Left/Right keys); any other tap/swipe/key
 -- dismisses the popup. All the display data is precomputed by showStreaksPopup
@@ -1019,46 +1380,264 @@ function StreakDatePopup:_centeredRect(widget)
     }
 end
 
+-- The file of a book of the statistics DB (by checksum, else guessed from its
+-- title / author - fine for a cover), nil when unknown. Remembered per popup.
+function StreakDatePopup:_fileOf(book)
+    self._file_cache = self._file_cache or {}
+    local key = tostring(book.md5 or book.id_book)
+    local hit = self._file_cache[key]
+    if hit ~= nil then return hit or nil end
+    local file
+    if Ratings and Ratings.fileFor and book.md5 and book.md5 ~= "" then
+        local ok, f = pcall(Ratings.fileFor, book.md5, book.title, book.authors)
+        if ok then file = f end
+    end
+    self._file_cache[key] = file or false
+    return file
+end
+
+-- The cover of a book scaled to fit w x h (aspect kept), nil when the book has
+-- no readable cover. Opening a book to read its cover is slow, so each result
+-- (also a "no cover" one) is kept in COVER_CACHE across popups.
+-- With `cached_only` a cover that is not in the cache yet is not loaded:
+-- COVER_PENDING is returned and the cover is queued for _loadPending().
+function StreakDatePopup:_coverFor(book, w, h, cached_only)
+    local key = tostring(book.md5 or book.id_book) .. "|" .. w .. "x" .. h
+    local hit = COVER_CACHE[key]
+    if hit ~= nil then return hit or nil end
+
+    local function remember(v)
+        if COVER_CACHE_N >= COVER_CACHE_MAX then
+            COVER_CACHE, COVER_CACHE_N = {}, 0   -- dropped; the finalisers free them
+        end
+        COVER_CACHE[key] = v or false
+        COVER_CACHE_N = COVER_CACHE_N + 1
+        return v
+    end
+
+    -- On disk: quick (a small picture), so it is also done for the first paint.
+    local base = diskBase(book)
+    if base then
+        if lfs.attributes(base .. ".none", "mode") == "file" then
+            return remember(nil)
+        end
+        local thumb = readThumb(base)
+        if thumb then
+            local ok, res = pcall(scaleTo, thumb, w, h)
+            if ok and res then return remember(res) end
+        end
+    end
+
+    if cached_only then
+        self._pending = self._pending or {}
+        if not self._pending[key] then
+            self._pending[key] = { book = book, w = w, h = h }
+            self._pending_order = self._pending_order or {}
+            table.insert(self._pending_order, key)
+        end
+        return COVER_PENDING
+    end
+
+    -- Slow: open the book and read its cover; keep a thumbnail of it on disk.
+    local scaled
+    local file = self:_fileOf(book)
+    if file and BookInfoData and BookInfoData.getCover then
+        local ok, raw = pcall(BookInfoData.getCover, nil, file)
+        if ok and raw then
+            local ok2, res = pcall(function()
+                local thumb = scaleTo(raw, THUMB_W, THUMB_H, true)   -- frees raw
+                if base then writeThumb(base, thumb) end
+                return scaleTo(thumb, w, h)                          -- frees thumb
+            end)
+            if ok2 and res then
+                scaled = res
+            else
+                pcall(function() raw:free() end)
+            end
+        elseif ok and base and lfs.attributes(file, "mode") == "file" then
+            -- The book is there but has no cover: remember that.
+            markNoCover(base)
+        end
+    end
+    return remember(scaled)
+end
+
+-- Loads the covers the first paint had to leave out, one book per UI tick (so
+-- the popup stays usable), then rebuilds and repaints once.
+function StreakDatePopup:_loadPending()
+    self._pending_task = nil
+    if self._closed then return end
+    local order = self._pending_order
+    if not order or #order == 0 then return end
+    local key = table.remove(order, 1)
+    local item = self._pending and self._pending[key]
+    if self._pending then self._pending[key] = nil end
+    if item then pcall(self._coverFor, self, item.book, item.w, item.h) end
+    if #order > 0 then
+        self._pending_task = function() self:_loadPending() end
+        UIManager:scheduleIn(0.01, self._pending_task)
+    else
+        self._pending, self._pending_order = nil, nil
+        self:_rebuild()
+        UIManager:setDirty(self, function() return "ui", self.dimen end)
+        -- Anything the rebuild still found missing is loaded the same way.
+        self:_schedulePending()
+    end
+end
+
+function StreakDatePopup:_schedulePending()
+    if self._pending_task then
+        UIManager:unschedule(self._pending_task)
+        self._pending_task = nil
+    end
+    if self._pending_order and #self._pending_order > 0 then
+        self._pending_task = function() self:_loadPending() end
+        UIManager:scheduleIn(0.05, self._pending_task)
+    end
+end
+
+function StreakDatePopup:_freeCovers()
+    -- Nothing to free: covers live in COVER_CACHE for the next opening.
+    self._closed = true
+    if self._pending_task then
+        UIManager:unschedule(self._pending_task)
+        self._pending_task = nil
+    end
+    self._pending, self._pending_order = nil, nil
+end
+
 function StreakDatePopup:_rebuild()
     local fonts  = self.fonts
     local layout = self.layout
     local col_w  = self.col_width
     local cont_w = self.content_width
     local inner_padding = self.inner_padding
+    local screen_w, screen_h = self.dimen.w, self.dimen.h
+    -- Covers not loaded yet are collected again by this build.
+    self._pending, self._pending_order = nil, nil
+
+    -- Title bar like the Reading insights window's: the title on the left,
+    -- an X to close on the right, and a line under it. The calendar and the
+    -- streak section live in the screen below it.
+    local title_bar = TitleBar:new{
+        fullscreen       = true,
+        width            = screen_w,
+        align            = "left",
+        title            = _("Reading streak"),
+        close_callback   = function() UIManager:close(self) end,
+        show_parent      = self,
+        top_v_padding    = Size.padding.default,
+        bottom_v_padding = Size.padding.default,
+    }
+    local title_sep = UI.padded(inner_padding,
+        Colors.newBar(screen_w - 2 * inner_padding, Size.line.thick, Colors.separator()))
+    local top_h = title_bar:getSize().h + title_sep:getSize().h
+    self._top_h = top_h
+    -- The page's bottom edge: the streak section sits right on it (just this
+    -- much air under it), the calendar above takes the space that is left.
+    local bottom_pad = Size.padding.default
+
+    -- Everything below the calendar is built first, so its height is known
+    -- and the calendar's day cells can take all the rest of the screen:
+    --   the most recent reading day (left-aligned), the divider line, then the
+    --   current / best streak section.
+    local tail = {}
+    -- (The "Last read: <date>" line used to sit here; it is gone so the
+    -- calendar above gets its height - larger covers.)
+    table.insert(tail, Colors.newBar(cont_w, Size.padding.large, Blitbuffer.COLOR_WHITE))
+    table.insert(tail, Colors.newBar(cont_w, Size.line.thick, Colors.separator()))
+    table.insert(tail, VerticalSpan:new{ height = Size.padding.large })
+
+    -- Current and best streak side by side.
+    --   [ Current streak | Best streak ]   section headers
+    --   ---------------------------------   thin divider
+    --   [ days | weeks   | days | weeks ]
+    -- The days|weeks value line (fonts.value) is the tallest of the three text
+    -- roles here, so its line height sets a single row height (row_h) that the
+    -- section-header row above is also pinned to.
+    local inner_gap = math.floor(layout.column_gap / 2)
+    local half_col  = math.floor((col_w - inner_gap) / 2)
+    local row_h = buildValueLine(fonts.value, fonts.label, half_col, "0", N_("day", "days", 0)):getSize().h
+
+    local cur_hdr  = TextWidget:new{ text = _("Current streak"), face = fonts.section, fgcolor = Colors.section() }
+    local best_hdr = TextWidget:new{ text = _("Best streak"),    face = fonts.section, fgcolor = Colors.section() }
+    -- Everything from here through the days|weeks row is the tappable
+    -- "Current streak" / "Best streak" section (see the streak_zones block
+    -- below): remembering where it starts lets that block measure its
+    -- on-screen height without hardcoding every row/spacer size twice.
+    local tail_streak_start = #tail + 1
+    table.insert(tail, UI.buildTwoColRow(
+        UI.fixedCol(cur_hdr,  col_w, row_h),
+        UI.fixedCol(best_hdr, col_w, row_h),
+        layout))
+    table.insert(tail, VerticalSpan:new{ height = Size.padding.large })
+    table.insert(tail, Colors.newBar(cont_w, Size.line.thin, Colors.separator()))
+    table.insert(tail, VerticalSpan:new{ height = Size.padding.large })
+
+    -- Stats row: each streak's column split into days | weeks, at row_h.
+    local function daysWeeksCell(days, weeks)
+        local dline = buildValueLine(fonts.value, fonts.label, half_col, formatCount(days),  N_("day",  "days",  days))
+        local wline = buildValueLine(fonts.value, fonts.label, half_col, formatCount(weeks), N_("week", "weeks", weeks))
+        return HorizontalGroup:new{
+            align = "center",
+            UI.fixedCol(dline, half_col, row_h),
+            UI.buildColumnSeparator(inner_gap, row_h),
+            UI.fixedCol(wline, half_col, row_h),
+        }
+    end
+    table.insert(tail, UI.buildTwoColRow(
+        daysWeeksCell(self.cur_days,  self.cur_weeks),
+        daysWeeksCell(self.best_days, self.best_weeks),
+        layout))
+    local tail_streak_end = #tail
+    local tail_h = 0
+    for _i, w in ipairs(tail) do tail_h = tail_h + w:getSize().h end
 
     local content = VerticalGroup:new{ align = "left" }
 
-    -- Calendar page on top: one month of the streak, with the days that had
-    -- reading marked, and a ‹ / › paging header. Its arrow tap zones are placed
-    -- from the header's on-screen position below; since the calendar is the
-    -- first thing in the box, that header sits right under the box padding.
+    -- Calendar page on top: one month with the days' covers and streak lines,
+    -- and a ‹ / › paging header. Its arrow tap zones are placed from the
+    -- header's on-screen position below; since the calendar is the first thing
+    -- in the box, that header sits right under the box padding.
     self._nav_zones = {}
     self._day_zones = {}
     self._cell_zones = {}
     self._grid_meta = nil
     self._left_w, self._right_w, self._header_h = nil, nil, 0
     if self.months and #self.months > 0 then
-        -- Day squares sit flush (no gap between days), so the whole grid is
-        -- exactly 7 cells wide; cell size is a seventh of the content width -
-        -- unless cal_cell_override is set (see showStreaksPopup's landscape
-        -- handling below), in which case the calendar is drawn smaller than
-        -- the box and centered within it, so the box itself can stay full
-        -- width for the streak figures below without the grid overflowing
-        -- the screen's height.
         local show_week = showWeekNumbers()
         local week_col_w, week_prefix_w = weekColumnMetrics(show_week, fonts.small)
-        local cell = self.cal_cell_override or math.floor((cont_w - week_prefix_w) / 7)
+        local cell_w = math.floor((cont_w - week_prefix_w) / 7)
         local mo   = self.months[self.month_index]
         local is_hu = (getLangBase() == "hu")
         local title_str = is_hu
             and string.format("%04d. %s", mo.year, MONTH_NAMES_FULL_HU_LC[mo.month])
             or  (MONTH_NAMES_FULL[mo.month] .. " " .. tostring(mo.year))
         local prev_available = self.month_index > 1
+        -- Not closed at the end: the calendar pages on into the future
+        -- (months are added as needed, see _goToMonth), up to the last year
+        -- 32-bit os.time() can handle.
         local next_available = self.month_index < #self.months
+            or mo.year < LAST_CALENDAR_YEAR or mo.month < 12
         local header, left_w, right_w, header_h =
             buildStreakCalHeader(title_str, cont_w, fonts.section, prev_available, next_available)
+
+        -- The day cells take the screen height that is left: all of it minus
+        -- the paddings, the month header, the weekday row, the gaps between
+        -- the six week rows and the streak section below. Never more than
+        -- four times as tall as wide, never so small that a cover cannot be told.
+        local row_gap = Screen:scaleBySize(6)
+        local weekday_h = TextWidget:new{ text = _(STREAK_WEEKDAY_SHORT[1]), face = fonts.small }:getSize().h
+            + Size.padding.small
+        local avail = screen_h - top_h - inner_padding - bottom_pad - header_h - Size.padding.default
+            - weekday_h - 5 * row_gap - tail_h - Screen:scaleBySize(4)
+        local cell_h = math.floor(avail / 6)
+        cell_h = math.min(cell_h, cell_w * 4)   -- only a sanity cap: the cells take the whole free height
+        cell_h = math.max(cell_h, Screen:scaleBySize(22))
+
         local grid, grid_meta = buildStreakMonthGrid(mo.year, mo.month, self.read_set,
-            fonts, cell, self.week_start_wd, show_week, week_col_w)
+            fonts, cell_w, cell_h, self.week_start_wd, show_week, week_col_w,
+            self.day_books, function(book, w, h) return self:_coverFor(book, w, h, self.lazy_covers) end)
         grid_meta.header_h = header_h
         grid_meta.drawn_w  = grid:getSize().w
         self._grid_meta = grid_meta
@@ -1073,83 +1652,71 @@ function StreakDatePopup:_rebuild()
         self._header_h = header_h
         self._left_w   = prev_available and left_w or nil
         self._right_w  = next_available and right_w or nil
+        -- The arrows keep their width when hidden, so the title between them
+        -- is always the same stretch of the header (its tap zone, below).
+        self._hdr_left_w, self._hdr_right_w = left_w, right_w
     end
 
-    -- Once, right under the calendar: the most recent reading day (left-aligned). Then the
-    -- divider line, then the current / best streak section.
-    table.insert(content, VerticalSpan:new{ height = Size.padding.default })
-    local last_read_w = TextWidget:new{ text = self.last_read_str, face = fonts.label, fgcolor = Colors.label() }
-    table.insert(content, UI.fixedCol(last_read_w, cont_w))
-    -- Explicit white spacer (not a VerticalSpan) so there is a clear gap
-    -- between the line above and the divider line below it.
-    table.insert(content, Colors.newBar(cont_w, Size.padding.large, Blitbuffer.COLOR_WHITE))
-    table.insert(content, Colors.newBar(cont_w, Size.line.thick, Colors.separator()))
-    table.insert(content, VerticalSpan:new{ height = Size.padding.large })
+    -- Whatever height the day cells could not use (they are capped, and
+    -- rounded down) goes into a white gap between the calendar and the
+    -- streak section, so that section ends at the bottom of the screen.
+    local head_n = #content
+    local head_h = 0
+    for i = 1, head_n do head_h = head_h + content[i]:getSize().h end
+    local gap_h = math.max(1, screen_h - top_h - inner_padding - bottom_pad - head_h - tail_h)
+    table.insert(content, Colors.newBar(cont_w, gap_h, Blitbuffer.COLOR_WHITE))
+    head_n = head_n + 1
+    for _i, w in ipairs(tail) do table.insert(content, w) end
+    local streak_section_start_idx = head_n + tail_streak_start
+    local streak_section_end_idx   = head_n + tail_streak_end
 
-    -- Below the calendar: current and best streak side by side.
-    --   [ Current streak | Best streak ]   section headers
-    --   ---------------------------------   thin divider
-    --   [ days | weeks   | days | weeks ]
-    -- The days|weeks value line (fonts.value) is the tallest of the three text
-    -- roles here, so its line height sets a single row height (row_h) that the
-    -- section-header row above is also pinned to - both rows then read as
-    -- the same height, with their text vertically centred.
-    local inner_gap = math.floor(layout.column_gap / 2)
-    local half_col  = math.floor((col_w - inner_gap) / 2)
-    local row_h = buildValueLine(fonts.value, fonts.label, half_col, "0", N_("day", "days", 0)):getSize().h
-
-    local cur_hdr  = TextWidget:new{ text = _("Current streak"), face = fonts.section, fgcolor = Colors.section() }
-    local best_hdr = TextWidget:new{ text = _("Best streak"),    face = fonts.section, fgcolor = Colors.section() }
-    -- Everything from here through the days|weeks row below is the tappable
-    -- "Current streak" / "Best streak" section (see the streak_zones block
-    -- near the end of this function): remembering where it starts in
-    -- `content` lets that block measure its on-screen height without
-    -- hardcoding every row/spacer size here a second time.
-    local streak_section_start_idx = #content + 1
-    table.insert(content, UI.buildTwoColRow(
-        UI.fixedCol(cur_hdr,  col_w, row_h),
-        UI.fixedCol(best_hdr, col_w, row_h),
-        layout))
-    table.insert(content, VerticalSpan:new{ height = Size.padding.large })
-    table.insert(content, Colors.newBar(cont_w, Size.line.thin, Colors.separator()))
-    table.insert(content, VerticalSpan:new{ height = Size.padding.large })
-
-    -- Stats row: each streak's column split into days | weeks, at row_h.
-    local function daysWeeksCell(days, weeks)
-        local dline = buildValueLine(fonts.value, fonts.label, half_col, formatCount(days),  N_("day",  "days",  days))
-        local wline = buildValueLine(fonts.value, fonts.label, half_col, formatCount(weeks), N_("week", "weeks", weeks))
-        return HorizontalGroup:new{
-            align = "center",
-            UI.fixedCol(dline, half_col, row_h),
-            UI.buildColumnSeparator(inner_gap, row_h),
-            UI.fixedCol(wline, half_col, row_h),
-        }
-    end
-    table.insert(content, UI.buildTwoColRow(
-        daysWeeksCell(self.cur_days,  self.cur_weeks),
-        daysWeeksCell(self.best_days, self.best_weeks),
-        layout))
-    local streak_section_end_idx = #content
-
+    -- Full-screen white page, the padded content centred on it.
     self.box_content = FrameContainer:new{
         background     = Blitbuffer.COLOR_WHITE,
-        bordersize     = Size.border.window,
-        radius         = Size.radius.window,
+        bordersize     = 0,
+        radius         = 0,
+        margin         = 0,
         padding_top    = inner_padding,
-        padding_bottom = inner_padding,
+        padding_bottom = bottom_pad,
         padding_left   = inner_padding,
         padding_right  = inner_padding,
         content,
     }
-    self[1] = CenterContainer:new{ dimen = self.dimen, self.box_content }
+    self[1] = OverlapGroup:new{
+        dimen = Geom:new{ w = screen_w, h = screen_h },
+        Colors.newBar(screen_w, screen_h, Blitbuffer.COLOR_WHITE),
+        VerticalGroup:new{
+            align = "left",
+            title_bar,
+            title_sep,
+            CenterContainer:new{
+                dimen = Geom:new{ w = screen_w, h = screen_h - top_h },
+                self.box_content,
+            },
+        },
+    }
 
     -- Absolute tap zones for the ‹ / › arrows, computed from geometry (same
     -- approach as the Book progress calendar's header).
-    local box_rect = self:_centeredRect(self.box_content)
-    local border_w = Size.border.window
-    local header_x = box_rect.x + border_w + inner_padding
-    local header_y = box_rect.y + border_w + inner_padding
+    -- The box is centred in the screen below the title bar.
+    local box_size = self.box_content:getSize()
+    local box_rect = Geom:new{
+        x = math.floor((screen_w - box_size.w) / 2),
+        y = top_h + math.floor((screen_h - top_h - box_size.h) / 2),
+        w = box_size.w, h = box_size.h,
+    }
+    local header_x = box_rect.x + inner_padding
+    local header_y = box_rect.y + inner_padding
     local tap_pad  = Screen:scaleBySize(14)
+    -- Tapping the month title jumps to the current month.
+    if self._hdr_left_w and self._hdr_right_w then
+        table.insert(self._nav_zones, {
+            dimen = Geom:new{ x = header_x + self._hdr_left_w + tap_pad, y = header_y - tap_pad,
+                w = cont_w - self._hdr_left_w - self._hdr_right_w - 2 * tap_pad,
+                h = self._header_h + 2 * tap_pad },
+            today = true,
+        })
+    end
     if self._left_w then
         table.insert(self._nav_zones, {
             dimen = Geom:new{ x = header_x - tap_pad, y = header_y - tap_pad,
@@ -1180,9 +1747,9 @@ function StreakDatePopup:_rebuild()
                 if date then
                     table.insert(self._day_zones, {
                         dimen = Geom:new{
-                            x = grid_x + gm.week_prefix_w + c * gm.cell,
+                            x = grid_x + gm.week_prefix_w + c * gm.cell_w,
                             y = grid_y + r * gm.row_pitch,
-                            w = gm.cell, h = gm.cell,
+                            w = gm.cell_w, h = gm.cell_h,
                         },
                         date = date,
                     })
@@ -1194,9 +1761,8 @@ function StreakDatePopup:_rebuild()
     -- Tap zones for the "Current streak" / "Best streak" columns themselves
     -- - tapping either opens that streak's per-day history popup (see
     -- StreakDatePopup:onTap below). Measured from the actual laid-out
-    -- widgets (streak_section_start_idx/_end_idx above) rather than a second
-    -- copy of every row/spacer height, so this can't silently drift out of
-    -- sync with the section it's supposed to cover.
+    -- widgets rather than a second copy of every row/spacer height, so this
+    -- can't silently drift out of sync with the section it covers.
     local function sumHeights(list, from_idx, to_idx)
         local h = 0
         for i = from_idx, to_idx do h = h + list[i]:getSize().h end
@@ -1233,28 +1799,51 @@ end
 
 function StreakDatePopup:_goToMonth(delta)
     local n = self.months and #self.months or 0
+    if n == 0 then return true end
     local idx = self.month_index + delta
-    if idx < 1 or idx > n then return true end
-    local old_rect = self:_centeredRect(self.box_content)
+    if idx < 1 then return true end
+    -- Past the last month with data: add the following months on the fly.
+    while idx > #self.months do
+        local last = self.months[#self.months]
+        local y, m = last.year, last.month + 1
+        if m > 12 then m = 1; y = y + 1 end
+        if y > LAST_CALENDAR_YEAR then return true end
+        table.insert(self.months, { year = y, month = m })
+    end
     self.month_index = idx
     self:_rebuild()
-    local new_rect = self:_centeredRect(self.box_content)
-    local x1 = math.min(old_rect.x, new_rect.x)
-    local y1 = math.min(old_rect.y, new_rect.y)
-    local x2 = math.max(old_rect.x + old_rect.w, new_rect.x + new_rect.w)
-    local y2 = math.max(old_rect.y + old_rect.h, new_rect.y + new_rect.h)
-    UIManager:setDirty("all", function()
-        return "ui", Geom:new{ x = x1, y = y1, w = x2 - x1, h = y2 - y1 }
-    end)
+    -- The popup is full screen, so a page change repaints all of it.
+    UIManager:setDirty("all", function() return "ui", self.dimen end)
+    self:_schedulePending()
+    return true
+end
+
+-- Jumps to the page of the current calendar month.
+function StreakDatePopup:_goToToday()
+    local year, month = tonumber(os.date("%Y")), tonumber(os.date("%m"))
+    for i, mo in ipairs(self.months or {}) do
+        if mo.year == year and mo.month == month then
+            if i == self.month_index then return true end
+            return self:_goToMonth(i - self.month_index)
+        end
+    end
     return true
 end
 
 function StreakDatePopup:onTap(arg, ges_ev)
     if ges_ev then
         local x, y = ges_ev.pos.x, ges_ev.pos.y
+        -- Title bar: only the X (right end) closes; the title itself does nothing.
+        if self._top_h and y < self._top_h then
+            if x > self.dimen.w - 2 * self._top_h then
+                UIManager:close(self)
+            end
+            return true
+        end
         for _, zone in ipairs(self._nav_zones or {}) do
             local d = zone.dimen
             if x >= d.x and x <= d.x + d.w and y >= d.y and y <= d.y + d.h then
+                if zone.today then return self:_goToToday() end
                 return self:_goToMonth(zone.delta)
             end
         end
@@ -1301,29 +1890,34 @@ function StreakDatePopup:onAnyKeyPressed(_, key)
 end
 
 function StreakDatePopup:onShow()
-    UIManager:setDirty(self, function() return "ui", self:_centeredRect(self.box_content) end)
+    UIManager:setDirty(self, function() return "ui", self.dimen end)
+    self:_schedulePending()
     return true
 end
 
 function StreakDatePopup:onCloseWidget()
-    UIManager:setDirty(nil, function() return "ui", self:_centeredRect(self.box_content) end)
+    self:_freeCovers()
+    UIManager:setDirty(nil, function() return "ui", self.dimen end)
 end
 
 -- The combined streak popup: current and best streak side by side, above a
 -- calendar of your reading with the streaks marked. Opened by tapping any of
 -- the streak cells on the insights page, and from the menu - always the same
 -- popup. `streaks` is the table from Data.calculateStreaks().
-local function showStreaksPopup(streaks)
+local function showStreaksPopup(streaks, opts)
     streaks = streaks or {}
+    -- opts.sync: load every cover before the first paint (the sleep screen is
+    -- painted once, right before the device sleeps - nothing may arrive later).
+    opts = opts or {}
     local fonts = getCachedFonts()
     local inner_padding = Size.padding.large
     local column_gap = Size.padding.large
     local screen_w = Screen:getWidth()
     local screen_h = Screen:getHeight()
 
-    -- Fixed 94%-of-screen-wide box, like the book progress calendar and the
-    -- reading heatmap.
-    local box_width = math.floor(screen_w * 0.94)
+    -- Full screen: the box is as wide as the screen (the day cells need every
+    -- pixel for the covers).
+    local box_width = screen_w
     local layout = UI.buildLayout(box_width - 2 * inner_padding, 0, column_gap)
     local col_width = layout.col_width
     local content_width = layout.content_width
@@ -1343,28 +1937,50 @@ local function showStreaksPopup(streaks)
     -- today, so the whole history pages through with its reading marked. The
     -- read set covers the whole shown span. Falls back to the earliest streak
     -- start (or today) if the first-reading month can't be read.
+    -- The result is cached (DATA_CACHE) until a new reading record shows up.
     local today     = os.date("%Y-%m-%d")
-    local range_end = today
-    local yr = Data.getYearRange()
-    local list_start = (yr and yr.min_year)
-        and string.format("%04d-%02d-01", yr.min_year, yr.min_month or 1)
-        or nil
-    if not list_start then
-        local starts = {}
-        if streaks.current_days_dates and streaks.current_days_dates.start then
-            starts[#starts + 1] = streaks.current_days_dates.start
+    local watermark = Data.getMaxStartTime() or 0
+    local cached = DATA_CACHE
+    local months, read_set, day_books
+    if cached and cached.today == today and cached.watermark == watermark then
+        months, read_set, day_books = cached.months, cached.read_set, cached.day_books
+    else
+        local range_end = today
+        local yr = Data.getYearRange()
+        local list_start = (yr and yr.min_year)
+            and string.format("%04d-%02d-01", yr.min_year, yr.min_month or 1)
+            or nil
+        if not list_start then
+            local starts = {}
+            if streaks.current_days_dates and streaks.current_days_dates.start then
+                starts[#starts + 1] = streaks.current_days_dates.start
+            end
+            if streaks.best_days_dates and streaks.best_days_dates.start then
+                starts[#starts + 1] = streaks.best_days_dates.start
+            end
+            table.sort(starts)
+            list_start = starts[1] or today
         end
-        if streaks.best_days_dates and streaks.best_days_dates.start then
-            starts[#starts + 1] = streaks.best_days_dates.start
-        end
-        table.sort(starts)
-        list_start = starts[1] or today
-    end
-    if list_start > range_end then list_start = range_end end
+        if list_start > range_end then list_start = range_end end
 
-    local months        = streakMonthList(list_start, range_end)
-    local read_set      = months and (Data.getReadingDaysInRange(list_start, range_end) or {}) or {}
+        months = streakMonthList(list_start, range_end)
+        -- The books read on each day (most read first), for the covers in the
+        -- day cells: one query for the whole span, so paging never asks again.
+        day_books = months and (Data.getDayBooksInRange(list_start, range_end) or {}) or {}
+        -- A day has reading exactly when it has a book: no second scan of the
+        -- statistics table needed for the "days read" set.
+        read_set = {}
+        for d in pairs(day_books) do read_set[d] = true end
+        DATA_CACHE = { today = today, watermark = watermark,
+                       months = months, read_set = read_set, day_books = day_books }
+    end
     local week_start_wd = (Prefs and Prefs.weekStartWday and Prefs.weekStartWday()) or 1
+
+    local popup_months
+    if months then
+        popup_months = {}
+        for i, mo in ipairs(months) do popup_months[i] = mo end
+    end
 
     local popup = StreakDatePopup:new{
         fonts         = fonts,
@@ -1381,110 +1997,14 @@ local function showStreaksPopup(streaks)
         best_weeks    = streaks.best_weeks    or 0,
 
         read_set      = read_set,
-        months        = months,
+        day_books     = day_books,
+        -- A copy: the popup appends future months to it, the cached list
+        -- must stay as it is.
+        months        = popup_months,
         week_start_wd = week_start_wd,
         month_index   = months and #months or 1,
+        lazy_covers   = not opts.sync,
     }
-
-    -- Landscape: the calendar's day squares are exactly content_width / 7 on
-    -- a side (buildStreakMonthGrid), so scaling them to a wide landscape
-    -- screen's width makes the 6-week grid taller than the screen. :new()
-    -- above already built it once at the normal (width-based) box size; if
-    -- that actually comes out taller than 94% of the screen height, shrink
-    -- just the calendar's day-cell size until the grid fits that instead,
-    -- and rebuild - the box itself stays at its normal full width (so the
-    -- date range and streak figures below the calendar keep all the room
-    -- they had before), with the now-smaller calendar centered inside it.
-    if UI.isLandscapeScreen() then
-        local target_h = math.floor(screen_h * 0.94)
-        local measured_h = popup.box_content:getSize().h
-        if measured_h > target_h then
-            -- Every element in the box other than the 6 calendar week rows
-            -- has a fixed height, independent of the cell size; each week
-            -- row is exactly one cell tall. So shrinking the cell size by d
-            -- shrinks the total height by close to 6 * d - solve for the d
-            -- that closes the gap, then rebuild once with that smaller cell
-            -- size. A couple of extra pixels are shaved off on top, as a
-            -- margin against the rounding math.floor() introduces along
-            -- the way.
-            local _week_col_w, week_prefix_w = weekColumnMetrics(showWeekNumbers(), fonts.small)
-            local normal_cell = math.floor((content_width - week_prefix_w) / 7)
-            local delta_cell = math.ceil((measured_h - target_h) / 6) + 2
-            popup.cal_cell_override = math.max(
-                normal_cell - delta_cell, Screen:scaleBySize(24))
-            popup:_rebuild()
-        end
-
-        -- Then narrow the box itself, still landscape only: at 94% of a wide
-        -- screen it is mostly empty space around the (height-limited)
-        -- calendar. Shrink it to the narrowest width that still keeps
-        --   - the calendar (week column + 7 day squares) whole,
-        --   - the month title and its paging arrows on one line,
-        --   - the "Last read" line on one line,
-        --   - "Current streak" / "Best streak" on one line, and each
-        --     "<n> days | <n> weeks" figure on one line (the number and its
-        --     unit side by side, never wrapped).
-        -- The calendar keeps the cell size settled above (cal_cell_override
-        -- is set explicitly so it doesn't shrink along with the width), and
-        -- the box is rebuilt once at the new width. Widths are measured from
-        -- the real text in the current fonts/language, so nothing here
-        -- depends on how long a particular string happens to be.
-        local function textW(text, face)
-            local w = TextWidget:new{ text = text, face = face }
-            local width = w:getSize().w
-            pcall(function() w:free() end)
-            return width
-        end
-
-        local _week_col_w, week_prefix_w = weekColumnMetrics(showWeekNumbers(), fonts.small)
-        local cell = popup.cal_cell_override or math.floor((content_width - week_prefix_w) / 7)
-        local need = week_prefix_w + 7 * cell
-
-        -- Calendar header: widest month title + the two arrow slots (same
-        -- slot width as buildStreakCalHeader).
-        local arrow_pad = Size.padding.default
-        local slot_w = math.max(textW("\xe2\x80\xb9", fonts.section), textW("\xe2\x80\xba", fonts.section)) + 2 * arrow_pad
-        local title_w = 0
-        for m = 1, 12 do
-            local title = (getLangBase() == "hu")
-                and string.format("%04d. %s", 2026, MONTH_NAMES_FULL_HU_LC[m])
-                or  (MONTH_NAMES_FULL[m] .. " 2026")
-            title_w = math.max(title_w, textW(title, fonts.section))
-        end
-        need = math.max(need, title_w + 2 * slot_w + 2 * arrow_pad)
-
-        need = math.max(need, textW(last_read_str, fonts.label))
-
-        -- Streak columns. One column holds "days | weeks": each half must fit
-        -- its number + gap + unit (the same arrangement buildValueLine uses),
-        -- and the pair is two halves plus the small separator between them.
-        local inner_gap = math.floor(layout.column_gap / 2)
-        local half_need = 0
-        for _i, f in ipairs({
-            { popup.cur_days,  "day",  "days"  }, { popup.cur_weeks,  "week", "weeks" },
-            { popup.best_days, "day",  "days"  }, { popup.best_weeks, "week", "weeks" },
-        }) do
-            local n = f[1]
-            local line_w = textW(formatCount(n), fonts.value) + Size.padding.large
-                + textW(N_(f[2], f[3], n), fonts.label)
-            half_need = math.max(half_need, line_w)
-        end
-        half_need = half_need + Size.padding.small   -- rounding safety
-        local col_need = 2 * half_need + 2 * inner_gap + Size.line.medium
-        col_need = math.max(col_need,
-            textW(_("Current streak"), fonts.section), textW(_("Best streak"), fonts.section))
-        need = math.max(need, 2 * col_need + layout.separator_width)
-
-        need = math.ceil(need)
-        if need < content_width then
-            local new_layout = UI.buildLayout(need, 0, column_gap)
-            popup.layout            = new_layout
-            popup.col_width         = new_layout.col_width
-            popup.content_width     = new_layout.content_width
-            popup.cal_cell_override = cell
-            popup:_rebuild()
-        end
-    end
 
     UIManager:show(popup)
     return popup
@@ -1500,6 +2020,6 @@ end
 --                          streak ("current" or "best") - what the streak
 --                          cells on the insights page open now.
 return {
-    show        = showStreaksPopup,
+    show        = showStreaksPopup,   -- show(streaks, { sync = true } for the sleep screen)
     showHistory = showStreakHistory,
 }

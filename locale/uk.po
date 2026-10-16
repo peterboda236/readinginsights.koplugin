@@ -2168,3 +2168,84 @@ msgstr "Немає зображень у {dir}"
 
 msgid "Images are loaded from {dir}"
 msgstr "Зображення завантажуються з {dir}"
+
+msgid "Preview"
+msgstr "Попередній перегляд"
+
+msgid "Nothing to preview."
+msgstr "Немає що переглядати."
+
+msgid "Image export (Android wallpaper / PocketBook logo)"
+msgstr "Експорт зображення (шпалери Android / логотип PocketBook)"
+
+msgid "Save as image, kept up to date"
+msgstr "Зберігати як зображення, що завжди актуальне"
+
+msgid "Also save when opening a book"
+msgstr "Також зберігати під час відкриття книги"
+
+msgid "Image format"
+msgstr "Формат зображення"
+
+msgid "Refresh interval"
+msgstr "Інтервал оновлення"
+
+msgid "Every 5 minutes"
+msgstr "Кожні 5 хвилин"
+
+msgid "Every 15 minutes"
+msgstr "Кожні 15 хвилин"
+
+msgid "Every 30 minutes"
+msgstr "Кожні 30 хвилин"
+
+msgid "Every hour"
+msgstr "Щогодини"
+
+msgid "min"
+msgstr "хв"
+
+msgid "Also copy to folder"
+msgstr "Також копіювати до папки"
+
+msgid "Also copy to a shared folder…"
+msgstr "Також копіювати до спільної папки…"
+
+msgid "Choose a folder to also save the image to"
+msgstr "Виберіть папку, куди також зберігати зображення"
+
+msgid "Image will also be copied to:\n{path}\n\nOn Android, point your system wallpaper picker (or a wallpaper-changer app) at this folder."
+msgstr "Зображення також буде скопійовано до:\n{path}\n\nНа Android вкажіть цю папку в системному виборі шпалер (або в застосунку для зміни шпалер)."
+
+msgid "Stop copying to that extra folder"
+msgstr "Припинити копіювання до цієї додаткової папки"
+
+msgid "Also save as PocketBook power-off / boot logo"
+msgstr "Також зберігати як логотип вимкнення / завантаження PocketBook"
+
+msgid "Save image now"
+msgstr "Зберегти зображення зараз"
+
+msgid "Image saved to: {path}"
+msgstr "Зображення збережено до: {path}"
+
+msgid "Image updated."
+msgstr "Зображення оновлено."
+
+msgid "Could not update the image."
+msgstr "Не вдалося оновити зображення."
+
+msgid "Could not create the image export folder."
+msgstr "Не вдалося створити папку експорту зображення."
+
+msgid "Could not write the image file."
+msgstr "Не вдалося записати файл зображення."
+
+msgid "On Android, KOReader's own sleep screen never shows, because locking the screen hands over to Android's own lock screen. Turn this on and Reading insights keeps a picture of the sleep screen (same content and background as set under Sleep screen) on disk, refreshed automatically; set that picture as your Android wallpaper the normal way, or point a wallpaper-changer app at the folder below."
+msgstr "На Android власний екран сну KOReader ніколи не з'являється, бо при блокуванні екрана керування переходить до екрана блокування Android. Увімкніть це, і Reading insights зберігатиме на диску зображення екрана сну (з тим самим вмістом і тлом, що задані в розділі Екран сну), яке оновлюється автоматично; встановіть це зображення шпалерами Android у звичайний спосіб або вкажіть застосунку для зміни шпалер папку нижче."
+
+msgid "Could not draw the image (see the log for details)."
+msgstr "Не вдалося намалювати зображення (подробиці в журналі)."
+
+msgid "Nothing to draw yet. Open a book and read a few pages first."
+msgstr "Поки нічого малювати. Відкрийте книгу й прочитайте кілька сторінок."

@@ -409,6 +409,43 @@ function M.getDailyStatsInRange(start_date, end_date)
     end)
 end
 
+-- The books read on each day of a "YYYY-MM-DD" date range (inclusive), most
+-- read first: { ["YYYY-MM-DD"] = { { id_book, md5, title, authors, seconds },
+-- ... } }. Used by the streak calendar to put the cover of the day's most-read
+-- book (and the runner-up behind it) into the day's cell. One grouped query for
+-- the whole range, so paging the calendar never touches the database again.
+function M.getDayBooksInRange(start_date, end_date)
+    local days = {}
+    if not start_date or not end_date then return days end
+    return StatsDb.withDb(days, function(conn)
+        local sql = string.format([[
+            SELECT date(ps.start_time, 'unixepoch', 'localtime') AS d,
+                   ps.id_book, book.md5, book.title, book.authors,
+                   SUM(ps.duration) AS secs
+            FROM page_stat ps
+            JOIN book ON ps.id_book = book.id
+            WHERE date(ps.start_time, 'unixepoch', 'localtime') BETWEEN '%s' AND '%s'
+            GROUP BY d, ps.id_book
+            ORDER BY d ASC, secs DESC, ps.id_book ASC
+        ]], start_date, end_date)
+        StatsDb.withStatement(conn, sql, function(stmt)
+            for row in stmt:rows() do
+                local d = row[1]
+                local list = days[d]
+                if not list then list = {}; days[d] = list end
+                list[#list + 1] = {
+                    id_book = tonumber(row[2]),
+                    md5     = row[3],
+                    title   = row[4],
+                    authors = row[5],
+                    seconds = tonumber(row[6]) or 0,
+                }
+            end
+        end)
+        return days
+    end)
+end
+
 -- Number of calendar days between two "YYYY-MM-DD" dates, inclusive.
 function M.daysBetweenInclusive(start_date, end_date)
     local sy, sm, sd = M.parseDateYMD(start_date)

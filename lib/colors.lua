@@ -497,7 +497,7 @@ function M.buildMenu(on_change)
         table.insert(streak_sub_item_table, colorItem(key, on_change))
     end
     table.insert(sub_item_table, {
-        text = _("Reading streak calendar"),
+        text = _("Reading streak"),
         keep_menu_open = true,
         sub_item_table = streak_sub_item_table,
     })

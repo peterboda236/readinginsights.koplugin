@@ -161,6 +161,15 @@ function M.build(self, deps)
         return ""
     end
 
+    -- Image export: the sleep screen as a self-refreshing PNG / JPG / BMP
+    -- file (Android wallpaper, PocketBook power-off / boot logo) - see
+    -- lib/imageexport.lua and ReadingInsights:_imageExportSubItems().
+    I.image_export = {
+        text = _("Image export (Android wallpaper / PocketBook logo)"),
+        keep_menu_open = true,
+        sub_item_table_func = function() return self:_imageExportSubItems() end,
+    }
+
     local SS = deps.SleepScreen
     I.sleep_screen = {
         text = _("Sleep screen"),
@@ -188,6 +197,17 @@ function M.build(self, deps)
                         G_reader_settings:saveSetting("readinginsights_sleep_prev_type", current or "disable")
                         G_reader_settings:saveSetting("screensaver_type", deps.SCREENSAVER_TYPE_VALUE)
                     end
+                end,
+            },
+            {
+                -- Draws the sleep screen as it is set up right now, so
+                -- the settings below can be tried without putting the
+                -- device to sleep. Tap anywhere (or press Back) to close.
+                text = _("Preview"),
+                keep_menu_open = true,
+                separator = true,
+                callback = function(touchmenu_instance)
+                    SS.preview(self.ui, touchmenu_instance)
                 end,
             },
             {
@@ -223,7 +243,9 @@ function M.build(self, deps)
                     }
                     return items
                 end)(),
+                separator = true,
             },
+            I.image_export,
         },
     }
 

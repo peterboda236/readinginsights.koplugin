@@ -2119,3 +2119,84 @@ msgstr "Sem imagens em {dir}"
 
 msgid "Images are loaded from {dir}"
 msgstr "As imagens são carregadas de {dir}"
+
+msgid "Preview"
+msgstr "Pré-visualização"
+
+msgid "Nothing to preview."
+msgstr "Nada para pré-visualizar."
+
+msgid "Image export (Android wallpaper / PocketBook logo)"
+msgstr "Exportação de imagem (papel de parede Android / logótipo PocketBook)"
+
+msgid "Save as image, kept up to date"
+msgstr "Guardar como imagem, mantida atualizada"
+
+msgid "Also save when opening a book"
+msgstr "Guardar também ao abrir um livro"
+
+msgid "Image format"
+msgstr "Formato de imagem"
+
+msgid "Refresh interval"
+msgstr "Intervalo de atualização"
+
+msgid "Every 5 minutes"
+msgstr "A cada 5 minutos"
+
+msgid "Every 15 minutes"
+msgstr "A cada 15 minutos"
+
+msgid "Every 30 minutes"
+msgstr "A cada 30 minutos"
+
+msgid "Every hour"
+msgstr "A cada hora"
+
+msgid "min"
+msgstr "min"
+
+msgid "Also copy to folder"
+msgstr "Copiar também para a pasta"
+
+msgid "Also copy to a shared folder…"
+msgstr "Copiar também para uma pasta partilhada…"
+
+msgid "Choose a folder to also save the image to"
+msgstr "Escolha uma pasta onde também guardar a imagem"
+
+msgid "Image will also be copied to:\n{path}\n\nOn Android, point your system wallpaper picker (or a wallpaper-changer app) at this folder."
+msgstr "A imagem também será copiada para:\n{path}\n\nNo Android, aponte o seletor de papel de parede do sistema (ou uma aplicação de mudança de papel de parede) para esta pasta."
+
+msgid "Stop copying to that extra folder"
+msgstr "Parar de copiar para essa pasta extra"
+
+msgid "Also save as PocketBook power-off / boot logo"
+msgstr "Guardar também como logótipo de desligar/arranque do PocketBook"
+
+msgid "Save image now"
+msgstr "Guardar imagem agora"
+
+msgid "Image saved to: {path}"
+msgstr "Imagem guardada em: {path}"
+
+msgid "Image updated."
+msgstr "Imagem atualizada."
+
+msgid "Could not update the image."
+msgstr "Não foi possível atualizar a imagem."
+
+msgid "Could not create the image export folder."
+msgstr "Não foi possível criar a pasta de exportação de imagem."
+
+msgid "Could not write the image file."
+msgstr "Não foi possível escrever o ficheiro de imagem."
+
+msgid "On Android, KOReader's own sleep screen never shows, because locking the screen hands over to Android's own lock screen. Turn this on and Reading insights keeps a picture of the sleep screen (same content and background as set under Sleep screen) on disk, refreshed automatically; set that picture as your Android wallpaper the normal way, or point a wallpaper-changer app at the folder below."
+msgstr "No Android, o ecrã de suspensão do KOReader nunca aparece, porque ao bloquear o ecrã o controlo passa para o ecrã de bloqueio do Android. Ative esta opção e o Reading insights mantém no disco uma imagem do ecrã de suspensão (com o mesmo conteúdo e fundo definidos em Ecrã de suspensão), atualizada automaticamente; defina essa imagem como fundo do Android da forma habitual, ou aponte uma aplicação de mudança de fundos para a pasta abaixo."
+
+msgid "Could not draw the image (see the log for details)."
+msgstr "Não foi possível desenhar a imagem (veja o registo para detalhes)."
+
+msgid "Nothing to draw yet. Open a book and read a few pages first."
+msgstr "Ainda nada para desenhar. Abra um livro e leia algumas páginas."
