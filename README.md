@@ -1,18 +1,17 @@
 ### 📊 Reading insights plugin
 
-<img width="255" height="340" alt="FileManager_2026-10-11_125526" src="https://github.com/user-attachments/assets/00326dea-6755-4487-ba47-2c33b77adac4" />
-<img width="255" height="340" alt="FileManager_2026-07-17_152344" src="https://github.com/user-attachments/assets/4a3d2fb9-cc51-4342-a952-36f23bb1925c" />
+<img width="255" height="340" alt="FileManager_2026-10-16_090136" src="https://github.com/user-attachments/assets/738dcedb-fb2b-4e1f-af6f-0e898d0b62bd" />
+<img width="255" height="340" alt="FileManager_2026-10-16_090148" src="https://github.com/user-attachments/assets/2cadd5ab-5b2b-4a87-be59-b8073b9fd9b3" />
 <img width="255" height="340" alt="Reader_Sebastian Bergman 6  - Egyetlen igazsag - Hjorth, Michael   Rosenfeldt, Hans #p(458) epub_p222_2026-10-10_164231" src="https://github.com/user-attachments/assets/d180c3ae-e731-48c5-90be-0564d0bb2a3d" />
 
 <br/><br/>
 <img width="255" height="340" alt="Reader chapter view" src="https://github.com/user-attachments/assets/371b3119-119a-4ccb-9660-a63879996c48" />
 <img width="255" height="340" alt="FileManager_2026-10-10_164145" src="https://github.com/user-attachments/assets/57bd2fc4-29d7-4bd9-b56a-e4cef901a9b0" />
-<img width="255" height="340" alt="FileManager_2026-10-10_164210" src="https://github.com/user-attachments/assets/e1168ec4-9e7a-40f3-9ac4-693f13facbd2" />
+<img width="255" height="340" alt="FileManager_2026-07-17_152344" src="https://github.com/user-attachments/assets/4a3d2fb9-cc51-4342-a952-36f23bb1925c" />
 
 More screenshots
 
 <img width="192" height="256" alt="Book progress popup" src="https://github.com/user-attachments/assets/52f851b7-8955-4739-b3a7-96ff8c2cbfe6" />
-<img width="192" height="256" alt="FileManager_2026-10-10_164210" src="https://github.com/user-attachments/assets/e1168ec4-9e7a-40f3-9ac4-693f13facbd2" />
 <img width="192" height="256" alt="FileManager_2026-10-10_164220" src="https://github.com/user-attachments/assets/66805663-9ae3-43c3-bf71-877f1c6038ad" />
 <img width="192" height="256" alt="FileManager_2026-07-27_074133" src="https://github.com/user-attachments/assets/de2d7a78-a657-40cf-8628-f0787a827147" />
 <img width="192" height="256" alt="Reader_Sebastian Bergman 6  - Egyetlen igazsag - Hjorth, Michael   Rosenfeldt, Hans #p(458) epub_p222_2026-10-10_164254" src="https://github.com/user-attachments/assets/b887e10c-5a26-4177-88f6-ab938f6baf54" />
