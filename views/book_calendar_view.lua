@@ -118,8 +118,8 @@ end
 -- Progress bar of a day outside the month being shown (the grey days at the
 -- start / end of the grid): like the Reading streak calendar's faded days it
 -- is half as thick, sits on the bottom edge of its slot, and is lightened.
--- Night mode inverts the whole screen afterwards, so the "lighter" blend has
--- to be the opposite one there.
+-- The same blend works in night mode too: the screen is inverted afterwards,
+-- so fading towards white becomes fading towards the dark background.
 local FadedBar = Widget:extend{
     width = 0, height = 0,   -- the slot (same as a normal bar's)
     thick = 1,               -- the drawn thickness, at the bottom of the slot
@@ -143,11 +143,7 @@ function FadedBar:paintTo(bb, x, y)
     end
     rect(x, self.fill_w, self.active)
     rect(x + self.fill_w, self.width - self.fill_w, self.inactive)
-    if Screen.night_mode then
-        bb:darkenRect(x, by, self.width, self.thick, 0.6)
-    else
-        bb:lightenRect(x, by, self.width, self.thick, 0.6)
-    end
+    bb:lightenRect(x, by, self.width, self.thick, 0.6)
 end
 
 -- "+13%" for a day that moved the reader forward by whole percent points,

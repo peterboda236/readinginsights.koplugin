@@ -387,13 +387,10 @@ function DayCell:paintTo(bb, x, y)
             paintNoCover(bb, cx, cy, c.w, c.h, c.title)
         end
         if self.faded then
-            -- Night mode inverts the whole screen afterwards, so the
-            -- "lighter" blend has to be the opposite one there.
-            if Screen.night_mode then
-                bb:darkenRect(cx, cy, c.w, c.h, 0.6)
-            else
-                bb:lightenRect(cx, cy, c.w, c.h, 0.6)
-            end
+            -- Blend towards the page background. Night mode inverts the
+            -- whole buffer afterwards (white background -> black), so the
+            -- same "lighten" blend fades the cover towards black there.
+            bb:lightenRect(cx, cy, c.w, c.h, 0.6)
         end
         if c.bb then
             bb:paintBorder(cx, cy, c.w, c.h, Size.line.thin,
@@ -460,13 +457,9 @@ function DayCell:paintTo(bb, x, y)
             end
         end
         if self.faded then
-            -- Night mode inverts the whole screen afterwards, so the
-            -- "lighter" blend is the opposite one there.
-            if Screen.night_mode then
-                bb:darkenRect(x, by, w, bh, 0.6)
-            else
-                bb:lightenRect(x, by, w, bh, 0.6)
-            end
+            -- Same blend in night mode: the inversion afterwards turns the
+            -- fade towards white into a fade towards the dark background.
+            bb:lightenRect(x, by, w, bh, 0.6)
         end
     end
 end
