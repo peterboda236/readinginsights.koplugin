@@ -309,13 +309,13 @@ function M.addSectionWithRow(sections, header_widget, row, layout, opts)
     end
 
     table.insert(sections, header_widget)
-    table.insert(sections, VerticalSpan:new{ height = Size.padding.default })
+    table.insert(sections, VerticalSpan:new{ width = Size.padding.small })
     if add_divider and not no_top_line then
         table.insert(sections, M.padded(layout.padding_h,
             Colors.newBar(layout.content_width, Size.line.thin, Colors.separator())))
     end
     table.insert(sections, pad_row and M.padded(layout.padding_h, row) or row)
-    table.insert(sections, VerticalSpan:new{ height = Size.padding.large })
+    table.insert(sections, VerticalSpan:new{ width = Size.padding.small })
     if add_divider and not no_bottom_line then
         local bottom_line_size = bottom_line_thin and Size.line.thin or Size.line.thick
         table.insert(sections, M.padded(layout.padding_h,

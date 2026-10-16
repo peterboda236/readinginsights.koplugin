@@ -1436,7 +1436,10 @@ function M.build(self, deps)
             sub_item_table = book_progress_sub_item_table,
         },
         I.reading_calendar_settings,
-        I.book_calendar_settings,
+        -- Hidden for now: the cell content (percent / time / pages) is switched
+        -- by tapping a day in the Book progress calendar, and the last choice
+        -- is remembered. The item (I.book_calendar_settings) is kept above.
+        -- I.book_calendar_settings,
         I.book_info,
         "-",
         group(_("Advanced settings"), {

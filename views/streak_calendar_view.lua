@@ -916,6 +916,83 @@ function StreakHistoryPopup:_centeredRect(widget)
     }
 end
 
+-- The summary block at the bottom of the popup: one "value unit | range" row
+-- per entry of self.info (the streak's length in days and in weeks, each with
+-- the dates it spans), styled like the value rows of the insights page - a
+-- bold value, a plain unit next to it, a vertical separator, then the label-
+-- font text. Each entry: { value = "123", unit = "days", range = "..." }.
+-- Natural width of the left ("123 days") column, the widest range text and
+-- the height of one row - measured once from the real strings and fonts.
+function StreakHistoryPopup:_measureInfo(fonts)
+    local left_w, range_w, row_h = 0, 0, 0
+    for _, r in ipairs(self.info or {}) do
+        local v  = TextWidget:new{ text = r.value, face = fonts.value }
+        local u  = TextWidget:new{ text = r.unit,  face = fonts.label }
+        local rg = TextWidget:new{ text = r.range, face = fonts.label }
+        left_w  = math.max(left_w, v:getSize().w + Size.padding.large + u:getSize().w)
+        range_w = math.max(range_w, rg:getSize().w)
+        row_h   = math.max(row_h, v:getSize().h, u:getSize().h, rg:getSize().h)
+        v:free() u:free() rg:free()
+    end
+    -- A little slack so the unit's TextBoxWidget never wraps on rounding.
+    left_w = left_w + Screen:scaleBySize(4)
+    return left_w, range_w, row_h
+end
+
+-- Width taken by the vertical separator between the two columns of an info row.
+local function infoSeparatorWidth()
+    return 2 * Size.padding.large + Size.line.medium
+end
+
+-- Height of the whole info block (divider + rows), 0 when there is none.
+function StreakHistoryPopup:_infoHeight()
+    if not self.info or #self.info == 0 then return 0 end
+    return Size.padding.large + Size.line.thin + Size.padding.default
+        + #self.info * self._info_row_h
+end
+
+-- Rows per page: the usual page size, but never more than the screen can
+-- hold together with the title, the range header and the info block below
+-- the rows. Looked up on every rebuild (like streakHistoryPageSize) so a
+-- rotation is picked up too.
+function StreakHistoryPopup:_pageSize()
+    local base = streakHistoryPageSize()
+    if not self._row_unit_h then return base end
+    local fixed = 2 * (self.inner_padding + Size.border.window)
+        + self._title_h + Size.padding.small
+        + self._range_h_est + Size.padding.default + Size.line.thin + Size.padding.default
+        + self:_infoHeight()
+        + Screen:scaleBySize(24)
+    local fit = math.floor((Screen:getHeight() - fixed + self._row_gap) / self._row_unit_h)
+    return math.max(3, math.min(base, fit))
+end
+
+function StreakHistoryPopup:_buildInfo(cont_w, fonts)
+    if not self.info or #self.info == 0 then return nil end
+    local sep_w   = infoSeparatorWidth()
+    -- The separator sits at 1/4 of the row width (its centre), so the left
+    -- column is a quarter minus half the separator - unless the "123 days"
+    -- text is wider than that.
+    local left_w  = math.max(self._info_left_w, math.floor(cont_w / 4 - sep_w / 2))
+    local right_w = math.max(Screen:scaleBySize(20), cont_w - left_w - sep_w)
+    local row_h   = self._info_row_h
+
+    local group = VerticalGroup:new{ align = "left" }
+    for _, r in ipairs(self.info) do
+        local value_line = buildValueLine(fonts.value, fonts.label, left_w, r.value, r.unit)
+        local range = TextWidget:new{
+            text = r.range, face = fonts.label, fgcolor = Colors.label(), max_width = right_w,
+        }
+        table.insert(group, HorizontalGroup:new{
+            align = "center",
+            UI.fixedCol(value_line, left_w, row_h),
+            UI.buildColumnSeparator(Size.padding.large, row_h),
+            UI.fixedCol(range, right_w, row_h),
+        })
+    end
+    return group
+end
+
 -- One "date | bar | value" row. bar_w is the bar's own pixel width (already
 -- sized to leave room for the date and value columns); max_value is the
 -- largest value (seconds or pages, whichever self.metric is) across every
@@ -991,6 +1068,23 @@ function StreakHistoryPopup:_rebuild()
 
         self._col_gap = Size.padding.default
 
+        -- Vertical budget for _pageSize(): the title, the row height + gap
+        -- and the info block below the rows (see _measureInfo).
+        local title_probe = TextWidget:new{ text = self.title_str, face = fonts.section }
+        self._title_h = title_probe:getSize().h
+        title_probe:free()
+        local arrow_probe = TextWidget:new{ text = "\xe2\x80\xb9", face = fonts.section }
+        local label_probe = TextWidget:new{ text = "0", face = fonts.label }
+        self._range_h_est = math.max(arrow_probe:getSize().h, label_probe:getSize().h)
+            + Screen:scaleBySize(4)
+        arrow_probe:free()
+        label_probe:free()
+        local date_probe  = TextWidget:new{ text = "0", face = fonts.small }
+        self._row_gap = Screen:scaleBySize(6)
+        self._row_unit_h = date_probe:getSize().h + self._row_gap
+        date_probe:free()
+        self._info_left_w, self._info_range_w, self._info_row_h = self:_measureInfo(fonts)
+
         -- Landscape only: the box doesn't need most of a wide screen. Limit
         -- it to 50% of the screen width - or, if that is too little, to the
         -- narrowest width at which everything still fits:
@@ -1015,7 +1109,7 @@ function StreakHistoryPopup:_rebuild()
 
             local need = textW(self.title_str, fonts.section)
 
-            local ps, n = streakHistoryPageSize(), #self.days
+            local ps, n = self:_pageSize(), #self.days
             local range_w = textW("\xE2\x80\x93", fonts.label)
             for first = 1, n, ps do
                 local last = math.min(first + ps - 1, n)
@@ -1027,6 +1121,16 @@ function StreakHistoryPopup:_rebuild()
 
             need = math.max(need, self._date_col_w + self._value_col_w
                 + 2 * self._col_gap + Screen:scaleBySize(60))
+
+            -- The info rows below: "123 days | <date range>".
+            if self.info and #self.info > 0 then
+                local sep_w = infoSeparatorWidth()
+                -- separator at 1/4: left text must fit in the first quarter,
+                -- the range in the remaining three quarters.
+                need = math.max(need,
+                    4 * (self._info_left_w + sep_w / 2),
+                    (4 / 3) * (self._info_range_w + sep_w / 2) + Screen:scaleBySize(4))
+            end
 
             local half_content = math.floor(Screen:getWidth() * 0.5) - 2 * self.inner_padding
             self.content_width = math.min(self.content_width, math.max(half_content, math.ceil(need)))
@@ -1059,7 +1163,7 @@ function StreakHistoryPopup:_rebuild()
 
     -- This page's slice of the (newest-first) day list.
     local total_days = #self.days
-    local page_size  = streakHistoryPageSize()
+    local page_size  = self:_pageSize()
     self._total_pages = math.max(1, math.ceil(total_days / page_size))
     if self.page_index < 1 then self.page_index = 1 end
     if self.page_index > self._total_pages then self.page_index = self._total_pages end
@@ -1074,7 +1178,7 @@ function StreakHistoryPopup:_rebuild()
     table.insert(content, CenterContainer:new{
         dimen = Geom:new{ w = cont_w, h = title:getSize().h }, title,
     })
-    table.insert(content, VerticalSpan:new{ height = Size.padding.small })
+    table.insert(content, VerticalSpan:new{ width = Size.padding.small })
 
     -- Date range this page covers ("Sep 13 – Sep 22"), with ‹ / › paging
     -- arrows when there's more than one page - the day list is newest-first,
@@ -1110,9 +1214,9 @@ function StreakHistoryPopup:_rebuild()
     self._range_left_w  = range_left_w
     self._range_right_w = range_right_w
 
-    table.insert(content, VerticalSpan:new{ height = Size.padding.default })
+    table.insert(content, VerticalSpan:new{ width = Size.padding.small })
     table.insert(content, Colors.newBar(cont_w, Size.line.thin, Colors.separator()))
-    table.insert(content, VerticalSpan:new{ height = Size.padding.default })
+    table.insert(content, VerticalSpan:new{ width = Size.padding.small })
 
     local rows = VerticalGroup:new{}
     local row_h = nil
@@ -1125,6 +1229,16 @@ function StreakHistoryPopup:_rebuild()
     end
     row_h = row_h or Screen:scaleBySize(20)
     table.insert(content, rows)
+
+    -- Bottom block: this streak's length in days and in weeks, each with the
+    -- dates it spans, below a divider.
+    local info = self:_buildInfo(cont_w, fonts)
+    if info then
+        table.insert(content, VerticalSpan:new{ width = Size.padding.small })
+        table.insert(content, Colors.newBar(cont_w, Size.line.thin, Colors.separator()))
+        table.insert(content, VerticalSpan:new{ width = Size.padding.small })
+        table.insert(content, info)
+    end
 
     self.box_content = FrameContainer:new{
         background     = Blitbuffer.COLOR_WHITE,
@@ -1276,7 +1390,7 @@ end
 -- or scrolling through hundreds of rows for a months-long streak. It always
 -- opens on page 1, i.e. the newest end of the streak (StreakHistoryPopup:init
 -- already defaults page_index to 1, so nothing needs setting here).
-local function showHistoryPopup(title_str, days, stats)
+local function showHistoryPopup(title_str, days, stats, info)
     local fonts = getCachedFonts()
     local inner_padding = Size.padding.large
     local screen_w = Screen:getWidth()
@@ -1290,6 +1404,7 @@ local function showHistoryPopup(title_str, days, stats)
         title_str       = title_str,
         days            = days,
         stats           = stats,
+        info            = info,
         metric          = VS.readStreakHistoryMetricSetting(),
     })
 end
@@ -1300,6 +1415,24 @@ end
 -- ReadingInsightsPopup's tap_cd/tap_cw/tap_bd/tap_bw in insights_view.lua);
 -- the combined calendar popup above (M.show) stays reachable from the
 -- hamburger menu and the Tools-menu entry.
+-- "<from> – <to>" in the configured date format for a streak's stored dates
+-- ({ start, end_ }); "–" when there are none. A weekly streak is stored as the
+-- start dates of its first and last week, so its range ends on the last day of
+-- that final week (for the running week that is its upcoming last day, not
+-- today). `unit` is "days" or "weeks".
+local function streakRangeText(dates, unit)
+    local dash = "\xE2\x80\x93"
+    if not (dates and dates.start) then return dash end
+    local from_date, to_date = dates.start, dates.end_
+    if unit == "weeks" then
+        local y, m, d = Data.parseDateYMD(to_date)
+        if y then
+            to_date = os.date("%Y-%m-%d", os.time{ year = y, month = m, day = d, hour = 12 } + 6 * 86400)
+        end
+    end
+    return formatDateForDisplay(from_date, true) .. " " .. dash .. " " .. formatDateForDisplay(to_date)
+end
+
 local function showStreakHistory(streaks, which)
     streaks = streaks or {}
     local dates_key = (which == "best") and "best_days_dates" or "current_days_dates"
@@ -1315,39 +1448,18 @@ local function showStreakHistory(streaks, which)
     local stats = Data.getDailyStatsInRange(dates.start, dates.end_)
     local title_str = (which == "best") and _("Best streak") or _("Current streak")
 
-    showHistoryPopup(title_str, days, stats)
-end
+    -- "123 days | <range>" and "17 weeks | <range>" for the bottom of the popup.
+    local prefix = (which == "best") and "best" or "current"
+    local n_days  = streaks[prefix .. "_days"]  or #days
+    local n_weeks = streaks[prefix .. "_weeks"] or 0
+    local info = {
+        { value = formatCount(n_days),  unit = N_("day",  "days",  n_days),
+          range = streakRangeText(dates, "days") },
+        { value = formatCount(n_weeks), unit = N_("week", "weeks", n_weeks),
+          range = streakRangeText(streaks[prefix .. "_weeks_dates"], "weeks") },
+    }
 
--- Tapping a streak's days or weeks cell: a notice with both its daily and its
--- weekly length and date range:
---   3 days / <range> / 1 week / <range>
--- `which` is "current" or "best". A weekly streak is stored as the start dates
--- of its first and last week, so its range ends on the last day of that final
--- week (for the running week that is its upcoming last day, not today). A
--- part with no streak shows "-" as its range.
-local function showStreakRange(streaks, which)
-    streaks = streaks or {}
-    local dash = "\xE2\x80\x93"
-    local function part(unit)
-        local dates = streaks[which .. "_" .. unit .. "_dates"]
-        local n = streaks[which .. "_" .. unit] or 0
-        local unit_label = (unit == "weeks") and N_("week", "weeks", n) or N_("day", "days", n)
-        local range = dash
-        if dates and dates.start then
-            local from_date, to_date = dates.start, dates.end_
-            if unit == "weeks" then
-                local y, m, d = Data.parseDateYMD(to_date)
-                if y then
-                    to_date = os.date("%Y-%m-%d", os.time{ year = y, month = m, day = d, hour = 12 } + 6 * 86400)
-                end
-            end
-            range = formatDateForDisplay(from_date, true) .. " " .. dash .. " " .. formatDateForDisplay(to_date)
-        end
-        return formatCount(n) .. " " .. unit_label .. "\n" .. range
-    end
-    UIManager:show(InfoMessage:new{
-        text = part("days") .. "\n" .. part("weeks"),
-    })
+    showHistoryPopup(title_str, days, stats, info)
 end
 
 -- KOReader's statistics plugin (its getBookStat() builds the per-book stats
@@ -1592,7 +1704,7 @@ function StreakDatePopup:_rebuild()
     -- calendar above gets its height - larger covers.)
     table.insert(tail, Colors.newBar(cont_w, Size.padding.large, Blitbuffer.COLOR_WHITE))
     table.insert(tail, Colors.newBar(cont_w, Size.line.thick, Colors.separator()))
-    table.insert(tail, VerticalSpan:new{ height = Size.padding.large })
+    table.insert(tail, VerticalSpan:new{ width = Size.padding.small })
 
     -- Current and best streak side by side.
     --   [ Current streak | Best streak ]   section headers
@@ -1616,9 +1728,9 @@ function StreakDatePopup:_rebuild()
         UI.fixedCol(cur_hdr,  col_w, row_h),
         UI.fixedCol(best_hdr, col_w, row_h),
         layout))
-    table.insert(tail, VerticalSpan:new{ height = Size.padding.large })
+    table.insert(tail, VerticalSpan:new{ width = Size.padding.small })
     table.insert(tail, Colors.newBar(cont_w, Size.line.thin, Colors.separator()))
-    table.insert(tail, VerticalSpan:new{ height = Size.padding.large })
+    table.insert(tail, VerticalSpan:new{ width = Size.padding.small })
 
     -- Stats row: each streak's column split into days | weeks, at row_h.
     local function daysWeeksCell(days, weeks)
@@ -1647,7 +1759,6 @@ function StreakDatePopup:_rebuild()
     -- in the box, that header sits right under the box padding.
     self._nav_zones = {}
     self._day_zones = {}
-    self._cell_zones = {}
     self._grid_meta = nil
     self._left_w, self._right_w, self._header_h = nil, nil, 0
     if self.months and #self.months > 0 then
@@ -1690,7 +1801,7 @@ function StreakDatePopup:_rebuild()
         self._grid_meta = grid_meta
 
         table.insert(content, header)
-        table.insert(content, VerticalSpan:new{ height = Size.padding.default })
+        table.insert(content, VerticalSpan:new{ width = Size.padding.small })
         -- Center the day grid (a few px narrower than cont_w after rounding)
         -- under the full-width header.
         table.insert(content, CenterContainer:new{
@@ -1821,27 +1932,6 @@ function StreakDatePopup:_rebuild()
         { dimen = Geom:new{ x = header_x, y = section_y, w = col_w, h = section_h }, which = "current" },
         { dimen = Geom:new{ x = header_x + cont_w - col_w, y = section_y, w = col_w, h = section_h }, which = "best" },
     }
-
-    -- The days | weeks cells (the last row of that section): tapping one shows
-    -- that streak's date range instead of opening the history. Checked before
-    -- _streak_zones in onTap, so the rest of the section still opens it.
-    local stats_h = content[streak_section_end_idx]:getSize().h
-    local stats_y = section_y + section_h - stats_h
-    local half_w  = math.floor(col_w / 2)
-    self._cell_zones = {}
-    for _i, col in ipairs({
-        { which = "current", x = header_x },
-        { which = "best",    x = header_x + cont_w - col_w },
-    }) do
-        table.insert(self._cell_zones, {
-            dimen = Geom:new{ x = col.x, y = stats_y, w = half_w, h = stats_h },
-            which = col.which, unit = "days",
-        })
-        table.insert(self._cell_zones, {
-            dimen = Geom:new{ x = col.x + half_w, y = stats_y, w = col_w - half_w, h = stats_h },
-            which = col.which, unit = "weeks",
-        })
-    end
 end
 
 function StreakDatePopup:_goToMonth(delta)
@@ -1892,13 +1982,6 @@ function StreakDatePopup:onTap(arg, ges_ev)
             if x >= d.x and x <= d.x + d.w and y >= d.y and y <= d.y + d.h then
                 if zone.today then return self:_goToToday() end
                 return self:_goToMonth(zone.delta)
-            end
-        end
-        for _, zone in ipairs(self._cell_zones or {}) do
-            local d = zone.dimen
-            if x >= d.x and x < d.x + d.w and y >= d.y and y <= d.y + d.h then
-                showStreakRange(self.streaks, zone.which)
-                return true
             end
         end
         for _, zone in ipairs(self._streak_zones or {}) do

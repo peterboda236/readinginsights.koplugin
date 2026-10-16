@@ -711,7 +711,7 @@ local function buildSections(stats, fonts, layout, popup)
         local chapters_header = UI.padded(layout.padding_h,
             UI.buildSectionHeader(fonts.section, _("Chapters"), layout.content_width, 0, Colors.headerBg()))
         table.insert(sections, chapters_header)
-        table.insert(sections, VerticalSpan:new{ height = Size.padding.default })
+        table.insert(sections, VerticalSpan:new{ width = Size.padding.small })
         table.insert(sections, UI.padded(layout.padding_h,
             Colors.newBar(layout.content_width, Size.line.thin, Colors.separator())))
         storeChapterBarOnPopup()
@@ -755,7 +755,7 @@ local function buildSections(stats, fonts, layout, popup)
                 Colors.newBar(layout.content_width, Size.line.thin, Colors.separator())))
             table.insert(sections, UI.padded(layout.padding_h,
                 UI.buildTwoColRow(read_cell, avg_cell, layout)))
-            table.insert(sections, VerticalSpan:new{ height = Size.padding.default })
+            table.insert(sections, VerticalSpan:new{ width = Size.padding.small })
         end
     end
 
@@ -801,7 +801,7 @@ local function buildSections(stats, fonts, layout, popup)
             -- percentage (that cell only), then the reading-time row.
             if show_read_row then addReadRow() end
             if show_read_row and show_time_row then
-                table.insert(this_book_rows, VerticalSpan:new{ height = Size.padding.default })
+                table.insert(this_book_rows, VerticalSpan:new{ width = Size.padding.small })
             end
             if show_time_row then addTimeRow() end
         end
@@ -811,13 +811,13 @@ local function buildSections(stats, fonts, layout, popup)
             -- then the reading rows (if any).
             storeChapterBarOnPopup()
             table.insert(sections, this_book_header)
-            table.insert(sections, VerticalSpan:new{ height = Size.padding.default })
+            table.insert(sections, VerticalSpan:new{ width = Size.padding.small })
             table.insert(sections, UI.padded(layout.padding_h,
                 Colors.newBar(layout.content_width, Size.line.thin, Colors.separator())))
             table.insert(sections, skim_bar)
             if this_book_rows then
                 table.insert(sections, UI.padded(layout.padding_h, this_book_rows))
-                table.insert(sections, VerticalSpan:new{ height = Size.padding.large })
+                table.insert(sections, VerticalSpan:new{ width = Size.padding.small })
             end
         elseif this_book_rows then
             UI.addSectionWithRow(
@@ -846,7 +846,7 @@ local function buildSections(stats, fonts, layout, popup)
         local pace_header = tappableWrap(pace_header_content, pace_header_content:getSize().w)
         if popup then popup._pace_header = pace_header end
         table.insert(sections, pace_header)
-        table.insert(sections, VerticalSpan:new{ height = Size.padding.default })
+        table.insert(sections, VerticalSpan:new{ width = Size.padding.small })
         table.insert(sections, UI.padded(layout.padding_h,
             Colors.newBar(layout.full_width - 2 * layout.padding_h, Size.line.thin, Colors.separator())))
 
@@ -880,9 +880,9 @@ local function buildSections(stats, fonts, layout, popup)
                     popup._started_widget = started_tap
                     popup._finish_widget  = finish_tap
                 end
-                table.insert(sections, VerticalSpan:new{ height = Size.padding.small })
+                table.insert(sections, VerticalSpan:new{ width = Size.padding.small })
                 table.insert(sections, UI.padded(layout.padding_h, UI.buildTwoColRow(started_tap, finish_tap, layout)))
-                table.insert(sections, VerticalSpan:new{ height = Size.padding.default })
+                table.insert(sections, VerticalSpan:new{ width = Size.padding.small })
             elseif started_widget then
                 local started_full_widget = buildValueLine(
                     fonts.value, fonts.label, layout.full_width - 2 * layout.padding_h,
@@ -890,9 +890,9 @@ local function buildSections(stats, fonts, layout, popup)
                 )
                 local started_tap = tappableWrap(started_full_widget, layout.full_width - 2 * layout.padding_h)
                 if popup then popup._started_widget = started_tap end
-                table.insert(sections, VerticalSpan:new{ height = Size.padding.small })
+                table.insert(sections, VerticalSpan:new{ width = Size.padding.small })
                 table.insert(sections, UI.padded(layout.padding_h, started_tap))
-                table.insert(sections, VerticalSpan:new{ height = Size.padding.default })
+                table.insert(sections, VerticalSpan:new{ width = Size.padding.small })
             elseif stats.finish_days_left then
                 local finish_widget = buildValueLine(
                     fonts.value, fonts.label, layout.full_width - 2 * layout.padding_h,
@@ -902,9 +902,9 @@ local function buildSections(stats, fonts, layout, popup)
                 )
                 local finish_tap = tappableWrap(finish_widget, layout.full_width - 2 * layout.padding_h)
                 if popup then popup._finish_widget = finish_tap end
-                table.insert(sections, VerticalSpan:new{ height = Size.padding.small })
+                table.insert(sections, VerticalSpan:new{ width = Size.padding.small })
                 table.insert(sections, UI.padded(layout.padding_h, finish_tap))
-                table.insert(sections, VerticalSpan:new{ height = Size.padding.default })
+                table.insert(sections, VerticalSpan:new{ width = Size.padding.small })
             end
         end
     end

@@ -826,7 +826,7 @@ function BookCalendarPopup:_rebuild()
         local content = VerticalGroup:new{
             align = "center",
             title_row,
-            VerticalSpan:new{ height = Size.padding.default },
+            VerticalSpan:new{ width = Size.padding.small },
             grid,
         }
 
@@ -984,6 +984,16 @@ function BookCalendarPopup:_showDayDetail(day, data, year, month, delta)
     })
 end
 
+-- Next cell content: percent -> time -> pages -> percent. Saved, then the
+-- current month is redrawn.
+local CELL_MODE_NEXT = { percent = "time", time = "pages", pages = "percent" }
+
+function BookCalendarPopup:_cycleCellMode()
+    local cur = readCalendarCellModeSetting()
+    saveCalendarCellModeSetting(CELL_MODE_NEXT[cur] or "percent")
+    return self:_showMonth(self.year, self.month)
+end
+
 function BookCalendarPopup:_goToMonth(delta)
     local m = self.month + delta
     local y = self.year
@@ -1028,7 +1038,15 @@ function BookCalendarPopup:onTap(arg, ges_ev)
         end
         for _, cell in ipairs(self._day_cells or {}) do
             if UI.hitTest(cell.frame, x, y) then
-                self:_showDayDetail(cell.day, cell.data, cell.year, cell.month, cell.delta)
+                -- A tap on a day never closes the popup. A day with reading
+                -- data cycles the cell content (percent -> time -> pages ->
+                -- percent) and the choice is saved, so the calendar opens
+                -- with the last used one next time. A day without reading
+                -- data does nothing.
+                local d = cell.data
+                if d and d.pages and d.pages > 0 then
+                    self:_cycleCellMode()
+                end
                 return true
             end
         end

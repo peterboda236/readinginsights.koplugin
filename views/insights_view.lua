@@ -707,7 +707,7 @@ local function buildDotLineChart(o)
     return VerticalGroup:new{
         align = "center",
         chart_area,
-        VerticalSpan:new{ height = Size.padding.small },
+        VerticalSpan:new{ width = Size.padding.small },
         axis_labels_row,
     }
 end
@@ -938,7 +938,7 @@ local function buildMonthlyChart(popup_self, monthly_data, layout, fonts)
         return VerticalGroup:new{
             align = "center",
             bars_row,
-            VerticalSpan:new{ height = Size.padding.small },
+            VerticalSpan:new{ width = Size.padding.small },
             month_labels_row,
         }
     end
@@ -952,7 +952,7 @@ local function buildMonthlyChart(popup_self, monthly_data, layout, fonts)
         end
         if #row_data > 0 then
             if row_index > 0 then
-                table.insert(chart, VerticalSpan:new{ height = Size.padding.default })
+                table.insert(chart, VerticalSpan:new{ width = Size.padding.small })
             end
             table.insert(chart, createBarRow(row_data))
             row_index = row_index + 1
@@ -1127,7 +1127,7 @@ local function buildWeeklyChart(popup_self, daily_data, layout, fonts, mode)
     return VerticalGroup:new{
         align = "center",
         bars_row,
-        VerticalSpan:new{ height = Size.padding.small },
+        VerticalSpan:new{ width = Size.padding.small },
         day_labels_row,
     }
 end
@@ -1344,7 +1344,7 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
             local last_week_content = VerticalGroup:new{ align = "left" }
             for idx, row in ipairs(last_week_rows) do
                 if idx > 1 then
-                    table.insert(last_week_content, VerticalSpan:new{ height = Size.padding.default })
+                    table.insert(last_week_content, VerticalSpan:new{ width = Size.padding.small })
                 end
                 table.insert(last_week_content, UI.padded(layout.padding_h, row))
             end
@@ -1352,11 +1352,11 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
             -- reads as visually separated from the daily bar chart below it
             -- (mirrors the thin divider used under the yearly figures,
             -- above the monthly chart).
-            table.insert(last_week_content, VerticalSpan:new{ height = Size.padding.default })
+            table.insert(last_week_content, VerticalSpan:new{ width = Size.padding.small })
             table.insert(last_week_content, UI.padded(layout.padding_h,
                 Colors.newBar(layout.content_width, Size.line.thin, Colors.separator())))
             if weekly_chart then
-                table.insert(last_week_content, VerticalSpan:new{ height = Size.padding.default })
+                table.insert(last_week_content, VerticalSpan:new{ width = Size.padding.small })
                 table.insert(last_week_content, UI.padded(layout.padding_h, weekly_chart))
             end
 
@@ -1433,10 +1433,10 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
                     buildValueLine(fonts.value, fonts.label, layout.col_width, d_total_val, d_total_unit),
                     buildValueLine(fonts.value, fonts.label, layout.col_width, d_avg_val,   d_avg_unit),
                     layout)
-                table.insert(last_week_content, VerticalSpan:new{ height = Size.padding.default })
+                table.insert(last_week_content, VerticalSpan:new{ width = Size.padding.small })
                 table.insert(last_week_content, UI.padded(layout.padding_h,
                     Colors.newBar(layout.content_width, Size.line.thin, Colors.separator())))
-                table.insert(last_week_content, VerticalSpan:new{ height = Size.padding.default })
+                table.insert(last_week_content, VerticalSpan:new{ width = Size.padding.small })
                 table.insert(last_week_content, UI.padded(layout.padding_h, vs_row))
             end
 
@@ -1812,9 +1812,9 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
             local right_cell = dataCell(right_line, openFinished)
             addHold(right_cell, openFinishedMenu)
 
-            table.insert(sections, VerticalSpan:new{ height = Size.padding.default })
+            table.insert(sections, VerticalSpan:new{ width = Size.padding.small })
             table.insert(sections, wrapRow(UI.buildTwoColRow(left_cell, right_cell, layout)))
-            table.insert(sections, VerticalSpan:new{ height = Size.padding.large })
+            table.insert(sections, VerticalSpan:new{ width = Size.padding.small })
             table.insert(sections, UI.padded(layout.padding_h,
                 Colors.newBar(layout.content_width, Size.line.thick, Colors.separator())))
         end
@@ -2265,9 +2265,9 @@ function ReadingInsightsPopup:showWeeklyTrendPopup(metric)
     local content = VerticalGroup:new{
         align = "center",
         title_centered,
-        VerticalSpan:new{ height = Size.padding.default },
+        VerticalSpan:new{ width = Size.padding.small },
         value_centered,
-        VerticalSpan:new{ height = Size.padding.large },
+        VerticalSpan:new{ width = Size.padding.small },
         chart_widget,
     }
 

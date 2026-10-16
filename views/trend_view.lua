@@ -232,7 +232,7 @@ function M.buildLine8WeekChart(weeks, metric, chart_width, fonts)
     return VerticalGroup:new{
         align = "center",
         chart_area,
-        VerticalSpan:new{ height = Size.padding.small },
+        VerticalSpan:new{ width = Size.padding.small },
         date_labels_row,
     }
 end

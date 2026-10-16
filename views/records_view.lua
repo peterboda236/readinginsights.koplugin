@@ -376,12 +376,12 @@ function RecordsPopup:_buildUI()
             HorizontalSpan:new{ width = row_pad },
             title_row,
         },
-        VerticalSpan:new{ height = Size.padding.default },
+        VerticalSpan:new{ width = Size.padding.small },
         HorizontalGroup:new{
             HorizontalSpan:new{ width = row_pad },
             Colors.newBar(inner_w, Size.line.thick, Colors.separator()),
         },
-        VerticalSpan:new{ height = Size.padding.large },
+        VerticalSpan:new{ width = Size.padding.small },
         rows,
     }
 

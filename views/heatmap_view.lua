@@ -547,7 +547,7 @@ function M.buildRangeHeatmapWidget(daily_map, start_t, end_t, fonts, max_width)
     local widget = VerticalGroup:new{
         align = "left",
         labels_row_final,
-        VerticalSpan:new{ height = Size.padding.small },
+        VerticalSpan:new{ width = Size.padding.small },
     }
     for row = 1, 7 do
         local row_group = HorizontalGroup:new{ align = "center" }
@@ -682,7 +682,7 @@ function M.buildDayPartHeatmapWidget(weekday_hour_map, fonts, max_width)
     local widget = VerticalGroup:new{
         align = "left",
         labels_row,
-        VerticalSpan:new{ height = Size.padding.small },
+        VerticalSpan:new{ width = Size.padding.small },
     }
     for row = 1, 7 do
         local wd = row_order[row]
@@ -848,7 +848,7 @@ function M.buildDayPartChartWidget(weekday_hour_map, fonts, max_width, mode)
         local axis = VerticalGroup:new{
             align = "center",
             TextWidget:new{ text = dp.name(), face = fonts.small, fgcolor = Colors.small() },
-            VerticalSpan:new{ height = Size.padding.small },
+            VerticalSpan:new{ width = Size.padding.small },
             TextWidget:new{ text = daypartRangeLabel(dp.h_start, dp.h_end), face = fonts.small, fgcolor = Colors.label() },
         }
         table.insert(labels_row, CenterContainer:new{
@@ -865,7 +865,7 @@ function M.buildDayPartChartWidget(weekday_hour_map, fonts, max_width, mode)
     local widget = VerticalGroup:new{
         align = "left",
         bars_row,
-        VerticalSpan:new{ height = Size.padding.default },
+        VerticalSpan:new{ width = Size.padding.small },
         labels_row,
     }
 
@@ -899,7 +899,8 @@ function M.buildWeekdayChartWidget(weekday_hour_map, fonts, max_width, mode)
 
     local col_gap = Screen:scaleBySize(6)
     local col_w   = math.floor((max_width - (num_bars - 1) * col_gap) / num_bars)
-    local chart_h = math.floor(Screen:scaleBySize(VS.Opt.weeklyBarHeight()) * 0.6)
+    -- Same maximum bar height as the "When you read" chart above.
+    local chart_h = Screen:scaleBySize(VS.Opt.weeklyBarHeight())
     local min_bar = Screen:scaleBySize(2)
 
     local sample_val = TextWidget:new{ text = "0:00", face = fonts.small }
@@ -1245,7 +1246,7 @@ local function buildBox(popup_self, periods_back, force_fresh, width_override, d
             sectionSeparator(),
             VerticalSpan:new{ width = LEGEND_GAP },
             week_caption,
-            VerticalSpan:new{ height = Size.padding.small },
+            VerticalSpan:new{ width = Size.padding.small },
             leftAlign(weekday_widget),
         }
     end
@@ -1284,9 +1285,9 @@ local function buildBox(popup_self, periods_back, force_fresh, width_override, d
     local content = VerticalGroup:new{
         align = "center",
         calendar_header,
-        VerticalSpan:new{ height = Size.padding.large + Size.padding.default },
+        VerticalSpan:new{ width = Size.padding.small },
         caption(_("Reading calendar")),
-        VerticalSpan:new{ height = Size.padding.small },
+        VerticalSpan:new{ width = Size.padding.small },
         leftAlign(calendar_widget),
     }
 
@@ -1306,7 +1307,7 @@ local function buildBox(popup_self, periods_back, force_fresh, width_override, d
         table.insert(content, VerticalSpan:new{ width = LEGEND_GAP })
         when_caption = caption(_("When you read"))
         table.insert(content, when_caption)
-        table.insert(content, VerticalSpan:new{ height = Size.padding.small })
+        table.insert(content, VerticalSpan:new{ width = Size.padding.small })
         table.insert(content, leftAlign(day_part_widget))
         if peak_line then
             table.insert(content, VerticalSpan:new{ width = Size.padding.default })
@@ -1321,7 +1322,7 @@ local function buildBox(popup_self, periods_back, force_fresh, width_override, d
         table.insert(content, sectionSeparator())
         table.insert(content, VerticalSpan:new{ width = LEGEND_GAP })
         table.insert(content, caption(_("When you read")))
-        table.insert(content, VerticalSpan:new{ height = Size.padding.small })
+        table.insert(content, VerticalSpan:new{ width = Size.padding.small })
         table.insert(content, leftAlign(day_part_widget))
         if peak_line then
             table.insert(content, VerticalSpan:new{ width = Size.padding.default })
