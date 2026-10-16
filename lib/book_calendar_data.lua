@@ -16,6 +16,7 @@ widget, so it can be exercised without KOReader's UI.
   CalendarData.getBookDailyProgressDeltaForMonth(book_id, year, month, total_pages, live_page)
   CalendarData.getBookLastReadYearMonth(book_id)
   CalendarData.getBookStartedTimestamp(book_id)
+  CalendarData.getBookPages(book_id)
   CalendarData.bookCalendarMonthHasData(book_id, year, month)
 ]]--
 
@@ -116,6 +117,28 @@ function M.getBookStartedTimestamp(book_id)
             end
         end)
         return ts
+    end)
+end
+
+-- The page count the page_stat rows are expressed in: the statistics DB
+-- rescales every recorded page to book.pages (see the page_stat view), so a
+-- day's "last page reached" only makes sense measured against THIS number -
+-- not against the live document's page count, which can differ (a changed
+-- font size / layout, a page map, hidden flows) and would make the daily
+-- percentages add up to something other than 100%. nil if unknown.
+function M.getBookPages(book_id)
+    if not book_id then return nil end
+    return StatsDb.withDb(nil, function(conn)
+        local pages
+        StatsDb.withStatement(conn, string.format(
+            "SELECT pages FROM book WHERE id = %d", book_id), function(stmt)
+            for row in stmt:rows() do
+                pages = tonumber(row[1])
+                break
+            end
+        end)
+        if pages and pages > 0 then return pages end
+        return nil
     end)
 end
 

@@ -37,6 +37,7 @@ local TextWidget      = require("ui/widget/textwidget")
 local UIManager       = require("ui/uimanager")
 local VerticalGroup   = require("ui/widget/verticalgroup")
 local VerticalSpan    = require("ui/widget/verticalspan")
+local Widget          = require("ui/widget/widget")
 local Screen          = Device.screen
 
 -- Shared modules, passed in as one named table by main.lua (see there).
@@ -114,6 +115,50 @@ end
 --                          "Duration format" setting (Prefs ▸ Time and
 --                          date) is set to - see Locale.formatTimeHHMM above.
 -- Returns "" for days with no reading, in any mode.
+-- Progress bar of a day outside the month being shown (the grey days at the
+-- start / end of the grid): like the Reading streak calendar's faded days it
+-- is half as thick, sits on the bottom edge of its slot, and is lightened.
+-- Night mode inverts the whole screen afterwards, so the "lighter" blend has
+-- to be the opposite one there.
+local FadedBar = Widget:extend{
+    width = 0, height = 0,   -- the slot (same as a normal bar's)
+    thick = 1,               -- the drawn thickness, at the bottom of the slot
+    fill_w = 0,
+    active = nil, inactive = nil,
+}
+
+function FadedBar:getSize()
+    return Geom:new{ w = self.width, h = self.height }
+end
+
+function FadedBar:paintTo(bb, x, y)
+    local by = y + self.height - self.thick
+    local function rect(rx, rw, color)
+        if rw <= 0 or not color then return end
+        if Blitbuffer.isColor8(color) then
+            bb:paintRect(rx, by, rw, self.thick, color)
+        else
+            bb:paintRectRGB32(rx, by, rw, self.thick, color)
+        end
+    end
+    rect(x, self.fill_w, self.active)
+    rect(x + self.fill_w, self.width - self.fill_w, self.inactive)
+    if Screen.night_mode then
+        bb:darkenRect(x, by, self.width, self.thick, 0.6)
+    else
+        bb:lightenRect(x, by, self.width, self.thick, 0.6)
+    end
+end
+
+-- "+13%" for a day that moved the reader forward by whole percent points,
+-- "<1%" when the day was read but rounded to no visible progress (instead
+-- of a misleading "+0%").
+local function percentText(progress_delta)
+    if not progress_delta then return "" end
+    if progress_delta < 1 then return "<1%" end
+    return "+" .. formatCount(progress_delta) .. "%"
+end
+
 local function buildBookCalendarCellText(entry, progress_delta)
     if not entry or not entry.pages or entry.pages <= 0 then return "" end
 
@@ -129,8 +174,7 @@ local function buildBookCalendarCellText(entry, progress_delta)
         return time_td.value .. unit
     end
 
-    if not progress_delta then return "" end
-    return "+" .. formatCount(progress_delta) .. "%"
+    return percentText(progress_delta)
 end
 
 -- Whether to show week numbers (Settings ▸ Date & time ▸
@@ -195,7 +239,7 @@ end
 -- otherwise take (right of the day number). When both would apply to the
 -- same cell, the checkmark wins and the finish_day flag is suppressed for
 -- that cell - see is_book_finished_day below.
-local function buildBookCalendarGrid(daily_map, year, month, day_font, small_font, content_width, total_pages, cumulative_ratios, finish_day, start_day, progress_deltas)
+local function buildBookCalendarGrid(daily_map, year, month, day_font, small_font, content_width, total_pages, cumulative_ratios, finish_day, start_day, progress_deltas, adjacent)
     local week_start_wd = Prefs.weekStartWday() -- 0=Sun, 1=Mon
     local gap    = Screen:scaleBySize(2)
     local cols   = 7
@@ -204,10 +248,71 @@ local function buildBookCalendarGrid(daily_map, year, month, day_font, small_fon
     local cell_w = math.floor((content_width - week_prefix_w - (cols - 1) * gap) / cols)
     local cell_h = math.floor(cell_w * 1.15) -- room for day number + percent line + bottom progress bar
 
-    local bar_h   = Screen:scaleBySize(4)
+    local bar_h   = Screen:scaleBySize(5) -- as thick as the streak calendar's line
     local bar_pad = Screen:scaleBySize(3)
     local bar_w   = cell_w - 2 * bar_pad
+    -- Day number: same size as on the Reading streak calendar (0.8 x the
+    -- "stats_label" face, bold for today), pinned to the top of the cell and
+    -- centered horizontally.
+    day_font = Fonts.getScaledFace("stats_label", 0.8)
     local day_font_bold = Fonts.getBoldFace("stats_label")
+    pcall(function()
+        local Font = require("ui/font")
+        local sz = day_font.orig_size or day_font.size
+        if sz then day_font_bold = Font:getFace("NotoSans-Bold.ttf", sz) or day_font_bold end
+    end)
+    local num_top = Screen:scaleBySize(2)
+    -- The ▷ / ⚐ / ✓ markers next to the day number are smaller than the
+    -- other small text.
+    local icon_font = Fonts.getScaledFace("insights_small", 0.7)
+
+    -- Fixed heights for the day-number and percent lines. An empty
+    -- TextWidget (unread day) can measure shorter than one with text, and a
+    -- bold number is taller than a regular one, which used to make the day
+    -- number sit at a different height in read / unread / today cells. Every
+    -- cell now reserves the same height for both lines.
+    local day_line_h = math.max(
+        TextWidget:new{ text = "88", face = day_font }:getSize().h,
+        TextWidget:new{ text = "88", face = day_font_bold }:getSize().h)
+    -- The "+x%" line is only digits and signs (no descenders), so its box is
+    -- cut short at the bottom: the text then sits right on the progress bar
+    -- under it instead of floating above a gap of empty descender space.
+    local pct_full_h = TextWidget:new{ text = "+<1%", face = small_font }:getSize().h
+    local pct_line_h = math.max(1, pct_full_h - Screen:scaleBySize(4))
+    -- NB: VerticalSpan's size property is "width" (a "height" field is
+    -- ignored and the span falls back to its 16px default), which made the
+    -- empty bar slot of unread days taller than the real bar of read days and
+    -- pushed the day number to a different height. White ColorBars have an
+    -- exact size, so every cell reserves precisely the same room.
+    local function spacer(h)
+        return Colors.newBar(1, h, Blitbuffer.COLOR_WHITE)
+    end
+    local function fixedLine(widget, h)
+        return CenterContainer:new{ dimen = Geom:new{ w = cell_w, h = h }, widget }
+    end
+    -- The two layers of a cell: the day number pinned to the top, and the
+    -- "+x%" line with the progress bar right under it, centered
+    -- horizontally and vertically. Returned as { top_layer, middle_layer } for the cell's
+    -- OverlapGroup.
+    local function centeredLayer(num_widget, pct_widget, bar_widget)
+        local top = VerticalGroup:new{
+            align = "center",
+            spacer(num_top),
+            fixedLine(num_widget, day_line_h),
+        }
+        -- The block is centered vertically in the cell.
+        local gap = Screen:scaleBySize(1)
+        local block_h = pct_line_h + gap + bar_h
+        local block_top = math.max(0, math.floor((cell_h - block_h) / 2))
+        local middle = VerticalGroup:new{
+            align = "center",
+            spacer(block_top),
+            fixedLine(pct_widget, pct_line_h),
+            spacer(gap),
+            bar_widget,
+        }
+        return { top, middle }
+    end
 
     -- The optional "Week" column prefix: a gray label/number cell, then a
     -- thin gray separator line, then a bit of breathing room either side -
@@ -277,26 +382,58 @@ local function buildBookCalendarGrid(daily_map, year, month, day_font, small_fon
             local cell_day = day + col - 1
             if cell_day < 1 or cell_day > days_in_month then
                 -- Adjacent-month day (previous month's tail / next month's
-                -- start): show its date in gray as context, with no progress
-                -- bar, flag or border, and don't make it tappable.
+                -- start): shown faded, like the Reading streak calendar
+                -- does - grey number, grey "+x%" line, a thinner, lighter
+                -- progress bar. Not tappable.
                 local adj_t   = os.time{ year = year, month = month, day = cell_day, hour = 12 }
                 local adj_num = TextWidget:new{
                     text = tostring(tonumber(os.date("%d", adj_t))),
                     face = (os.date("%Y-%m-%d", adj_t) == today_str) and day_font_bold or day_font,
                     fgcolor = Blitbuffer.COLOR_GRAY,
                 }
-                local adj_inner = VerticalGroup:new{
-                    align = "center",
+                local adj_data
+                local adj_day = tonumber(os.date("%d", adj_t))
+                if adjacent then
+                    adj_data = (cell_day < 1) and adjacent.prev or adjacent.next
+                end
+                local adj_text, adj_ratio = "", nil
+                if adj_data then
+                    adj_text = buildBookCalendarCellText(adj_data.daily[adj_day], adj_data.deltas[adj_day])
+                    adj_ratio = adj_data.ratios[adj_day]
+                end
+                local adj_bar
+                if adj_ratio and adj_ratio > 0 then
+                    adj_bar = FadedBar:new{
+                        width = bar_w, height = bar_h,
+                        thick = math.max(1, math.floor(bar_h / 2)),
+                        fill_w = math.max(1, math.floor(bar_w * adj_ratio)),
+                        active = Colors.activeBar(), inactive = Colors.inactiveBar(),
+                    }
+                else
+                    adj_bar = spacer(bar_h)
+                end
+                local adj_inner = centeredLayer(
                     adj_num,
-                    TextWidget:new{ text = "", face = small_font, fgcolor = Colors.value() },
-                    VerticalSpan:new{ height = bar_pad },
-                    VerticalSpan:new{ height = bar_h },
+                    TextWidget:new{ text = adj_text, face = small_font, fgcolor = Blitbuffer.COLOR_GRAY, forced_height = pct_line_h },
+                    adj_bar)
+                local adj_tappable = FrameContainer:new{
+                    background = Blitbuffer.COLOR_WHITE,
+                    bordersize = 0, padding = 0, margin = 0,
+                    dimen      = Geom:new{ w = cell_w, h = cell_h },
+                    OverlapGroup:new{
+                        dimen = Geom:new{ w = cell_w, h = cell_h },
+                        Colors.newBar(cell_w, cell_h, Blitbuffer.COLOR_WHITE),
+                        adj_inner[1],
+                        adj_inner[2],
+                    },
                 }
-                table.insert(row, OverlapGroup:new{
-                    dimen = Geom:new{ w = cell_w, h = cell_h },
-                    Colors.newBar(cell_w, cell_h, Blitbuffer.COLOR_WHITE),
-                    CenterContainer:new{ dimen = Geom:new{ w = cell_w, h = cell_h }, adj_inner },
+                table.insert(day_cells, {
+                    frame = adj_tappable, day = adj_day,
+                    year = tonumber(os.date("%Y", adj_t)), month = tonumber(os.date("%m", adj_t)),
+                    data = adj_data and adj_data.daily[adj_day] or nil,
+                    delta = adj_data and adj_data.deltas[adj_day] or nil,
                 })
+                table.insert(row, adj_tappable)
             else
                 local entry     = daily_map[cell_day]
                 local day_str   = string.format("%04d-%02d-%02d", year, month, cell_day)
@@ -313,7 +450,7 @@ local function buildBookCalendarGrid(daily_map, year, month, day_font, small_fon
                 -- Always include the percent line (even blank) so the day
                 -- number sits at the same vertical spot in every cell,
                 -- whether or not that day has a "+%" underneath it.
-                local pct_w = TextWidget:new{ text = pct_text, face = small_font, fgcolor = Colors.value() }
+                local pct_w = TextWidget:new{ text = pct_text, face = small_font, fgcolor = Colors.value(), forced_height = pct_line_h }
 
                 -- Bottom progress bar: how far into the book this day's
                 -- reading got (cumulative), out of the whole book. Days
@@ -333,7 +470,7 @@ local function buildBookCalendarGrid(daily_map, year, month, day_font, small_fon
                             or HorizontalSpan:new{ width = 0 },
                     }
                 else
-                    bar_row = VerticalSpan:new{ height = bar_h }
+                    bar_row = spacer(bar_h)
                 end
 
                 -- The book counts as *finished as of this day* when the
@@ -350,19 +487,16 @@ local function buildBookCalendarGrid(daily_map, year, month, day_font, small_fon
                 -- by *actual* recorded progress.
                 local is_book_finished_day = (ratio ~= nil and ratio >= 0.99)
 
-                local cell_inner = VerticalGroup:new{
-                    align = "center",
-                    day_num_w,
-                    pct_w,
-                    VerticalSpan:new{ height = bar_pad },
-                    bar_row,
-                }
+                -- Day number at the top (centered horizontally); the "+x%"
+                -- line and the progress bar under it form one block that is
+                -- centered in the cell, vertically as well - the same spots
+                -- in every cell.
+                local cell_inner = centeredLayer(day_num_w, pct_w, bar_row)
                 local cell_content = OverlapGroup:new{
                     dimen = Geom:new{ w = cell_w, h = cell_h },
                     Colors.newBar(cell_w, cell_h, Blitbuffer.COLOR_WHITE),
-                    CenterContainer:new{
-                        dimen = Geom:new{ w = cell_w, h = cell_h }, cell_inner,
-                    },
+                    cell_inner[1],
+                    cell_inner[2],
                 }
                 if is_finish_day and not is_book_finished_day then
                     -- Flag glyph placed immediately to the right of the
@@ -384,7 +518,7 @@ local function buildBookCalendarGrid(daily_map, year, month, day_font, small_fon
                     local flag_pad = Screen:scaleBySize(2)
                     local flag_glyph = TextWidget:new{
                         text = "\xe2\x9a\x90", -- ⚐ WHITE FLAG
-                        face = small_font,
+                        face = icon_font,
                         fgcolor = Colors.value(),
                     }
                     local flag_size   = flag_glyph:getSize()
@@ -416,7 +550,7 @@ local function buildBookCalendarGrid(daily_map, year, month, day_font, small_fon
                     local flag_pad = Screen:scaleBySize(2)
                     local flag_glyph = TextWidget:new{
                         text = "\xe2\x96\xb7", -- ▷ WHITE RIGHT-POINTING TRIANGLE
-                        face = small_font,
+                        face = icon_font,
                         fgcolor = Colors.value(),
                     }
                     local flag_size    = flag_glyph:getSize()
@@ -445,7 +579,7 @@ local function buildBookCalendarGrid(daily_map, year, month, day_font, small_fon
                     local check_pad = Screen:scaleBySize(2)
                     local check_glyph = TextWidget:new{
                         text = "\xe2\x9c\x93", -- ✓ CHECK MARK
-                        face = small_font,
+                        face = icon_font,
                         fgcolor = Colors.value(),
                     }
                     local check_size  = check_glyph:getSize()
@@ -482,7 +616,10 @@ local function buildBookCalendarGrid(daily_map, year, month, day_font, small_fon
                     dimen      = Geom:new{ w = cell_w, h = cell_h },
                     cell_content,
                 }
-                table.insert(day_cells, { frame = cell_tappable, day = cell_day, data = entry })
+                table.insert(day_cells, {
+                    frame = cell_tappable, day = cell_day, year = year, month = month,
+                    data = entry, delta = progress_deltas and progress_deltas[cell_day],
+                })
                 table.insert(row, cell_tappable)
             end
             if col < 7 then table.insert(row, HorizontalSpan:new{ width = gap }) end
@@ -559,6 +696,11 @@ local function monthIsAfter(y1, m1, y2, m2)
     return (y1 > y2) or (y1 == y2 and m1 > m2)
 end
 
+-- The calendar pages freely into the past and the future; these are only the
+-- limits os.time()/os.date() can handle (32-bit time_t: 1970..2037).
+local FIRST_CALENDAR_YEAR = 1971
+local LAST_CALENDAR_YEAR  = 2037
+
 local BookCalendarPopup = InputContainer:extend{
     modal     = true,
     ui        = nil,
@@ -608,60 +750,66 @@ function BookCalendarPopup:_rebuild()
         and string.format("%04d. %s", self.year, MONTH_FULL_HU_LC[self.month])
         or  (_(MONTH_FULL[self.month]) .. " " .. tostring(self.year))
 
-    -- Next month is hidden once we're on the current calendar month - UNLESS
-    -- this book has an estimated finish date in a later month, in which case
-    -- paging is allowed up to that month, so the projected finish day (see
-    -- finish_day below) is actually reachable. Same bound _goToMonth
-    -- enforces for swipe/key navigation.
-    local now = os.date("*t")
-    local max_year, max_month = now.year, now.month
-    local finish_year, finish_month, finish_day_of_month
+    -- Both arrows are always shown: the calendar pages back into the past
+    -- and forward into the future without limit (within what os.time can
+    -- represent), whether or not the book has reading in that month.
+    local prev_available = (self.year > FIRST_CALENDAR_YEAR) or (self.month > 1)
+    local next_available = (self.year < LAST_CALENDAR_YEAR) or (self.month < 12)
+
+    -- Only pass finish_day / start_day through when that date actually falls
+    -- in the month currently being rendered.
+    local finish_day, start_day
     if self.finish_timestamp then
         local ft = os.date("*t", self.finish_timestamp)
-        finish_year, finish_month, finish_day_of_month = ft.year, ft.month, ft.day
-        if monthIsAfter(finish_year, finish_month, max_year, max_month) then
-            max_year, max_month = finish_year, finish_month
-        end
+        if ft.year == self.year and ft.month == self.month then finish_day = ft.day end
     end
-    local next_available = monthIsAfter(max_year, max_month, self.year, self.month)
-
-    -- Only pass finish_day through when the finish date actually falls in
-    -- the month currently being rendered.
-    local finish_day = (finish_year == self.year and finish_month == self.month)
-        and finish_day_of_month or nil
-
-    -- Same filtering for the started date's day-of-month - only passed
-    -- through to the grid when it falls in the month currently rendered.
-    local start_year, start_month, start_day_of_month
     if self.started_timestamp then
         local st = os.date("*t", self.started_timestamp)
-        start_year, start_month, start_day_of_month = st.year, st.month, st.day
+        if st.year == self.year and st.month == self.month then start_day = st.day end
     end
-    local start_day = (start_year == self.year and start_month == self.month)
-        and start_day_of_month or nil
-
-    -- Previous month is hidden if this book has no reading recorded there
-    -- (same bound _goToMonth enforces for swipe/key navigation), so the
-    -- calendar can't be paged back into empty months.
-    local prev_month, prev_year = self.month - 1, self.year
-    if prev_month < 1 then prev_month = 12; prev_year = prev_year - 1 end
-    local prev_available = CalendarData.bookCalendarMonthHasData(self.book_id, prev_year, prev_month)
 
     local daily_map = CalendarData.getBookDailyStatsForMonth(self.book_id, self.year, self.month)
     -- The page the reader is on right now, when this popup is for the book
     -- that is open: the statistics DB lags one page behind it (the current
     -- page is only recorded once you leave it), so today's numbers use this
     -- to match the Book progress popup.
+    --
+    -- The recorded pages are in the statistics DB's own scale (book.pages),
+    -- so the percentages are measured against that, not against the live
+    -- document's page count (which can differ and made the days add up to
+    -- less than 100%). The live page is converted into the same scale.
+    local total_pages = CalendarData.getBookPages(self.book_id) or self.total_pages
     local live_page
     local stats_plugin = self.ui and self.ui.statistics
     if stats_plugin and stats_plugin.id_curr_book == self.book_id then
-        live_page = (BookProgress.counts(self.ui))
+        local cur, tot = BookProgress.counts(self.ui)
+        if cur and tot and tot > 0 then
+            live_page = math.max(1, math.floor(cur / tot * total_pages + 0.5))
+        end
     end
     local cumulative_ratios = CalendarData.getBookCumulativeProgressForMonth(
-        self.book_id, self.year, self.month, self.total_pages, live_page)
+        self.book_id, self.year, self.month, total_pages, live_page)
     local progress_deltas = CalendarData.getBookDailyProgressDeltaForMonth(
-        self.book_id, self.year, self.month, self.total_pages, live_page)
+        self.book_id, self.year, self.month, total_pages, live_page)
     self._progress_deltas = progress_deltas
+
+    -- The grey days at the start / end of the grid belong to the neighbouring
+    -- months: fetch their values too, so they can be shown faded.
+    local function neighbourData(y, m)
+        if y < FIRST_CALENDAR_YEAR or y > LAST_CALENDAR_YEAR then return nil end
+        return {
+            daily  = CalendarData.getBookDailyStatsForMonth(self.book_id, y, m),
+            ratios = CalendarData.getBookCumulativeProgressForMonth(
+                self.book_id, y, m, total_pages, live_page),
+            deltas = CalendarData.getBookDailyProgressDeltaForMonth(
+                self.book_id, y, m, total_pages, live_page),
+        }
+    end
+    local pm, py = self.month - 1, self.year
+    if pm < 1 then pm = 12; py = py - 1 end
+    local nm, ny = self.month + 1, self.year
+    if nm > 12 then nm = 1; ny = ny + 1 end
+    local adjacent = { prev = neighbourData(py, pm), next = neighbourData(ny, nm) }
 
     -- Everything below depends on content_width. Built by a local function
     -- so it can be called a second time, at a narrower width, if the first
@@ -673,12 +821,12 @@ function BookCalendarPopup:_rebuild()
 
         local grid, day_cells = buildBookCalendarGrid(
             daily_map, self.year, self.month, day_font, small_font, content_width, self.total_pages, cumulative_ratios,
-            finish_day, start_day, progress_deltas)
+            finish_day, start_day, progress_deltas, adjacent)
 
         local content = VerticalGroup:new{
             align = "center",
             title_row,
-            VerticalSpan:new{ height = Size.padding.large },
+            VerticalSpan:new{ height = Size.padding.default },
             grid,
         }
 
@@ -762,6 +910,16 @@ function BookCalendarPopup:_rebuild()
     local tap_pad  = Screen:scaleBySize(14)
 
     self._nav_zones = {}
+    -- Tapping the month title jumps back to the current month.
+    table.insert(self._nav_zones, {
+        dimen = Geom:new{
+            x = header_x + left_w + tap_pad,
+            y = header_y - tap_pad,
+            w = math.max(1, content_width - left_w - right_w - 2 * tap_pad),
+            h = header_h + 2 * tap_pad,
+        },
+        today = true,
+    })
     if left_arrow_frame then
         table.insert(self._nav_zones, {
             dimen = Geom:new{
@@ -807,8 +965,8 @@ function BookCalendarPopup:onCloseWidget()
     end)
 end
 
-function BookCalendarPopup:_showDayDetail(day, data)
-    local t = os.time{ year = self.year, month = self.month, day = day, hour = 12 }
+function BookCalendarPopup:_showDayDetail(day, data, year, month, delta)
+    local t = os.time{ year = year or self.year, month = month or self.month, day = day, hour = 12 }
     local date_str = Locale.formatDateFromTS(t)
 
     if not data or (not data.pages or data.pages == 0) then
@@ -819,8 +977,7 @@ function BookCalendarPopup:_showDayDetail(day, data)
     local pages_line = "+" .. formatCount(data.pages) .. " " .. N_("page", "pages", data.pages)
     local time_td     = Locale.formatTimeHHMM(data.duration)
     local time_line   = time_td.value .. (time_td.unit ~= "" and (" " .. time_td.unit) or "")
-    local delta = self._progress_deltas and self._progress_deltas[day]
-    local percent_line = delta and ("+" .. formatCount(delta) .. "%") or ""
+    local percent_line = percentText(delta)
 
     UIManager:show(InfoMessage:new{
         text = date_str .. "\n" .. pages_line .. " · " .. percent_line .. " · " .. time_line,
@@ -832,21 +989,18 @@ function BookCalendarPopup:_goToMonth(delta)
     local y = self.year
     while m < 1 do m = m + 12; y = y - 1 end
     while m > 12 do m = m - 12; y = y + 1 end
-    -- Don't navigate past the current calendar month - unless this book's
-    -- estimated finish date falls in a later month, matching the arrow
-    -- availability computed in _rebuild.
-    local now = os.date("*t")
-    local max_year, max_month = now.year, now.month
-    if self.finish_timestamp then
-        local ft = os.date("*t", self.finish_timestamp)
-        if monthIsAfter(ft.year, ft.month, max_year, max_month) then
-            max_year, max_month = ft.year, ft.month
-        end
-    end
-    if monthIsAfter(y, m, max_year, max_month) then return true end
-    -- Don't navigate back into a month with no reading recorded for this book.
-    if delta < 0 and not CalendarData.bookCalendarMonthHasData(self.book_id, y, m) then return true end
+    if y < FIRST_CALENDAR_YEAR or y > LAST_CALENDAR_YEAR then return true end
+    return self:_showMonth(y, m)
+end
 
+-- Jumps to the current calendar month.
+function BookCalendarPopup:_goToToday()
+    local now = os.date("*t")
+    if now.year == self.year and now.month == self.month then return true end
+    return self:_showMonth(now.year, now.month)
+end
+
+function BookCalendarPopup:_showMonth(y, m)
     local old_rect = self:_centeredRect(self.box_content)
     self.year, self.month = y, m
     self:_rebuild()
@@ -868,12 +1022,13 @@ function BookCalendarPopup:onTap(arg, ges_ev)
         for _, zone in ipairs(self._nav_zones or {}) do
             if zone.dimen and x >= zone.dimen.x and x <= zone.dimen.x + zone.dimen.w
                and y >= zone.dimen.y and y <= zone.dimen.y + zone.dimen.h then
+                if zone.today then return self:_goToToday() end
                 return self:_goToMonth(zone.delta)
             end
         end
         for _, cell in ipairs(self._day_cells or {}) do
             if UI.hitTest(cell.frame, x, y) then
-                self:_showDayDetail(cell.day, cell.data)
+                self:_showDayDetail(cell.day, cell.data, cell.year, cell.month, cell.delta)
                 return true
             end
         end
