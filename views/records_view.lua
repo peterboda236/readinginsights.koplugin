@@ -115,7 +115,7 @@ local function buildRecordRow(fonts, icon_glyph, label_text, value_text, sub_tex
     local right_col = VerticalGroup:new{ align = "right" }
     table.insert(right_col, value_w)
     if sub_w then
-        table.insert(right_col, VerticalSpan:new{ height = 1 })
+        table.insert(right_col, VerticalSpan:new{ width = 1 })
         table.insert(right_col, sub_w)
     end
     local right_size = right_col:getSize()

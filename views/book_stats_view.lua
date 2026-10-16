@@ -246,6 +246,25 @@ end
 -- When show_next is false (no next chapter), the "Next chapter" label is
 -- omitted, leaving that side blank instead of showing a misleading header.
 local function buildChapterHeaders(font_section, layout, left_text, right_text)
+    -- Both headers shown: same two-column grid as the value row under them
+    -- (column / vertical divider / column), on one continuous header band,
+    -- so the divider runs through the header row too.
+    if right_text and right_text ~= "" then
+        local left_header  = UI.buildSectionHeader(font_section, left_text or "", layout.col_width, 0, Colors.headerBg())
+        local right_header = UI.buildSectionHeader(font_section, right_text, layout.col_width, 0, Colors.headerBg())
+        local header_h = left_header:getSize().h
+        return UI.padded(layout.padding_h, FrameContainer:new{
+            background = Colors.headerBg(),
+            bordersize = 0,
+            padding    = 0,
+            HorizontalGroup:new{
+                align = "center",
+                UI.fixedCol(left_header, layout.col_width),
+                UI.buildColumnSeparator(layout.column_gap, header_h),
+                UI.fixedCol(right_header, layout.col_width),
+            },
+        })
+    end
     local left_width           = layout.col_width + math.floor(layout.separator_width / 2)
     local right_width          = layout.content_width - left_width
     local next_chapter_padding = math.ceil(layout.separator_width / 2)
@@ -605,7 +624,8 @@ local function buildSections(stats, fonts, layout, popup)
             popup._chapter_values  = chapter_values
         end
         sectionSeparator()
-        UI.addSectionWithRow(sections, chapter_headers, chapter_values, layout, { no_bottom_line = true })
+        UI.addSectionWithRow(sections, chapter_headers, chapter_values, layout,
+            { no_bottom_line = true, gap_above_row = true })
     end
 
     local chapter_page_size = stats.chapter_info
@@ -753,6 +773,7 @@ local function buildSections(stats, fonts, layout, popup)
             if popup then popup._chapter_avg_cell = avg_cell end
             table.insert(sections, UI.padded(layout.padding_h,
                 Colors.newBar(layout.content_width, Size.line.thin, Colors.separator())))
+            table.insert(sections, VerticalSpan:new{ width = Size.padding.small })
             table.insert(sections, UI.padded(layout.padding_h,
                 UI.buildTwoColRow(read_cell, avg_cell, layout)))
             table.insert(sections, VerticalSpan:new{ width = Size.padding.small })
@@ -825,7 +846,7 @@ local function buildSections(stats, fonts, layout, popup)
                 this_book_header,
                 this_book_rows,
                 layout,
-                { no_bottom_line = true }
+                { no_bottom_line = true, gap_above_row = true }
             )
         end
     end
@@ -849,6 +870,7 @@ local function buildSections(stats, fonts, layout, popup)
         table.insert(sections, VerticalSpan:new{ width = Size.padding.small })
         table.insert(sections, UI.padded(layout.padding_h,
             Colors.newBar(layout.full_width - 2 * layout.padding_h, Size.line.thin, Colors.separator())))
+        table.insert(sections, VerticalSpan:new{ width = Size.padding.small })
 
         if show_pace_today then
             local pace_row_content = UI.buildTwoColRow(days_col2, pace_col2, layout)
@@ -857,6 +879,7 @@ local function buildSections(stats, fonts, layout, popup)
                 popup._pace_row = pace_row
             end
             table.insert(sections, UI.padded(layout.padding_h, pace_row))
+            table.insert(sections, VerticalSpan:new{ width = Size.padding.small })
         end
 
         -- Last row: "started N days ago" | "N days of reading left".
@@ -880,7 +903,6 @@ local function buildSections(stats, fonts, layout, popup)
                     popup._started_widget = started_tap
                     popup._finish_widget  = finish_tap
                 end
-                table.insert(sections, VerticalSpan:new{ width = Size.padding.small })
                 table.insert(sections, UI.padded(layout.padding_h, UI.buildTwoColRow(started_tap, finish_tap, layout)))
                 table.insert(sections, VerticalSpan:new{ width = Size.padding.small })
             elseif started_widget then
@@ -890,7 +912,6 @@ local function buildSections(stats, fonts, layout, popup)
                 )
                 local started_tap = tappableWrap(started_full_widget, layout.full_width - 2 * layout.padding_h)
                 if popup then popup._started_widget = started_tap end
-                table.insert(sections, VerticalSpan:new{ width = Size.padding.small })
                 table.insert(sections, UI.padded(layout.padding_h, started_tap))
                 table.insert(sections, VerticalSpan:new{ width = Size.padding.small })
             elseif stats.finish_days_left then
@@ -902,7 +923,6 @@ local function buildSections(stats, fonts, layout, popup)
                 )
                 local finish_tap = tappableWrap(finish_widget, layout.full_width - 2 * layout.padding_h)
                 if popup then popup._finish_widget = finish_tap end
-                table.insert(sections, VerticalSpan:new{ width = Size.padding.small })
                 table.insert(sections, UI.padded(layout.padding_h, finish_tap))
                 table.insert(sections, VerticalSpan:new{ width = Size.padding.small })
             end

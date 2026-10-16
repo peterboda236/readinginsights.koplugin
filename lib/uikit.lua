@@ -120,9 +120,9 @@ function M.buildColumnSeparator(column_gap, height)
         HorizontalSpan:new{ width = column_gap },
         VerticalGroup:new{
             align = "center",
-            VerticalSpan:new{ height = v_padding },
+            VerticalSpan:new{ width = v_padding },
             Colors.newBar(Size.line.medium, height - 2 * v_padding, Colors.separator()),
-            VerticalSpan:new{ height = v_padding },
+            VerticalSpan:new{ width = v_padding },
         },
         HorizontalSpan:new{ width = column_gap },
     }
@@ -292,6 +292,9 @@ end
 --   no_bottom_line   = true   skip the thick line under the row
 --   bottom_line_thin = true   draw the line under the row thin instead of
 --                             thick (ignored if no_bottom_line is set)
+--   gap_above_row    = true   a Size.padding.small gap between the divider
+--                             and the row (the gap below the row is always
+--                             there)
 -- Anything other than a table is ignored, so an older call that passed a
 -- stray extra argument can't turn into an indexing error here.
 function M.addSectionWithRow(sections, header_widget, row, layout, opts)
@@ -300,12 +303,14 @@ function M.addSectionWithRow(sections, header_widget, row, layout, opts)
     local no_bottom_line   = false
     local no_top_line      = false
     local bottom_line_thin = false
+    local gap_above_row    = false
     if type(opts) == "table" then
         if opts.pad_row          == false then pad_row          = false end
         if opts.add_divider      == false then add_divider      = false end
         if opts.no_bottom_line   == true  then no_bottom_line   = true  end
         if opts.no_top_line      == true  then no_top_line      = true  end
         if opts.bottom_line_thin == true  then bottom_line_thin = true  end
+        if opts.gap_above_row    == true  then gap_above_row    = true  end
     end
 
     table.insert(sections, header_widget)
@@ -313,6 +318,9 @@ function M.addSectionWithRow(sections, header_widget, row, layout, opts)
     if add_divider and not no_top_line then
         table.insert(sections, M.padded(layout.padding_h,
             Colors.newBar(layout.content_width, Size.line.thin, Colors.separator())))
+    end
+    if gap_above_row then
+        table.insert(sections, VerticalSpan:new{ width = Size.padding.small })
     end
     table.insert(sections, pad_row and M.padded(layout.padding_h, row) or row)
     table.insert(sections, VerticalSpan:new{ width = Size.padding.small })

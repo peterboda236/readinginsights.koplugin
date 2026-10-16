@@ -1284,7 +1284,7 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
             valueCell(goalText(week_secs,  weekly_goal_secs), editWeekly, showWeeklyStreak, week_secs, weekly_goal_secs),
             layout)
 
-        UI.addSectionWithRow(sections, goal_header, goal_row, layout, {})
+        UI.addSectionWithRow(sections, goal_header, goal_row, layout, { gap_above_row = true })
     end
 
     do
@@ -1457,7 +1457,7 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
 
             UI.addSectionWithRow(sections,
                 tappable_last_week_header,
-                last_week_content, layout, { pad_row = false })
+                last_week_content, layout, { pad_row = false, gap_above_row = true })
         end
     end
 
@@ -1476,48 +1476,6 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
         function(n) return N_("day",  "days",  n) end, _("No streak"))
     local bw_val, bw_unit = streakDisplay(streaks.best_weeks,
         function(n) return N_("week", "weeks", n) end, _("No streak"))
-
-    -- Two-column streak header (tappable: shows date range for that streak).
-    local streak_header_left  = UI.buildSectionHeader(fonts.section, _("Current streak"), layout.col_width, 0, HEADER_BG())
-    local streak_header_right = UI.buildSectionHeader(fonts.section, _("Best streak"),    layout.col_width, 0, HEADER_BG())
-    local sep_h = streak_header_left:getSize().h
-
-    local tap_current_header = InputContainer:new{
-        dimen = Geom:new{ x=0, y=0, w=layout.col_width, h=streak_header_left:getSize().h },
-        streak_header_left,
-    }
-    tap_current_header.ges_events = { Tap = { GestureRange:new{ ges="tap", range=tap_current_header.dimen } } }
-    function tap_current_header:onTap()
-        Streak.show(streaks)
-        return true
-    end
-
-    local tap_best_header = InputContainer:new{
-        dimen = Geom:new{ x=0, y=0, w=layout.col_width, h=streak_header_right:getSize().h },
-        streak_header_right,
-    }
-    tap_best_header.ges_events = { Tap = { GestureRange:new{ ges="tap", range=tap_best_header.dimen } } }
-    function tap_best_header:onTap()
-        Streak.show(streaks)
-        return true
-    end
-
-    -- The HorizontalSpan that used to sit inside this FrameContainer (as
-    -- the left inset) is now the outer UI.padded wrap below instead, so the
-    -- gray background itself is inset to match the section's divider
-    -- lines, rather than bleeding out to the screen edge the way a plain
-    -- white background could get away with unnoticed.
-    local streak_combined_header = UI.padded(layout.padding_h, FrameContainer:new{
-        background = HEADER_BG(),
-        bordersize = 0,
-        padding    = 0,
-        HorizontalGroup:new{
-            align = "center",
-            UI.fixedCol(tap_current_header, layout.col_width),
-            UI.buildColumnSeparator(layout.column_gap, sep_h),
-            UI.fixedCol(tap_best_header,    layout.col_width),
-        },
-    })
 
     -- Single data row: each Current/Best column is split into a days sub-cell
     -- and a weeks sub-cell (tappable, each shows its own date range), giving
@@ -1569,6 +1527,48 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
 
     local streak_data_row = UI.buildTwoColRow(current_cell, best_cell, layout)
 
+    -- Two-column streak header (tappable: shows date range for that streak).
+    local streak_header_left  = UI.buildSectionHeader(fonts.section, _("Current streak"), layout.col_width, 0, HEADER_BG())
+    local streak_header_right = UI.buildSectionHeader(fonts.section, _("Best streak"),    layout.col_width, 0, HEADER_BG())
+    local sep_h = streak_header_left:getSize().h
+
+    local tap_current_header = InputContainer:new{
+        dimen = Geom:new{ x=0, y=0, w=layout.col_width, h=streak_header_left:getSize().h },
+        streak_header_left,
+    }
+    tap_current_header.ges_events = { Tap = { GestureRange:new{ ges="tap", range=tap_current_header.dimen } } }
+    function tap_current_header:onTap()
+        Streak.show(streaks)
+        return true
+    end
+
+    local tap_best_header = InputContainer:new{
+        dimen = Geom:new{ x=0, y=0, w=layout.col_width, h=streak_header_right:getSize().h },
+        streak_header_right,
+    }
+    tap_best_header.ges_events = { Tap = { GestureRange:new{ ges="tap", range=tap_best_header.dimen } } }
+    function tap_best_header:onTap()
+        Streak.show(streaks)
+        return true
+    end
+
+    -- The HorizontalSpan that used to sit inside this FrameContainer (as
+    -- the left inset) is now the outer UI.padded wrap below instead, so the
+    -- gray background itself is inset to match the section's divider
+    -- lines, rather than bleeding out to the screen edge the way a plain
+    -- white background could get away with unnoticed.
+    local streak_combined_header = UI.padded(layout.padding_h, FrameContainer:new{
+        background = HEADER_BG(),
+        bordersize = 0,
+        padding    = 0,
+        HorizontalGroup:new{
+            align = "center",
+            UI.fixedCol(tap_current_header, layout.col_width),
+            UI.buildColumnSeparator(layout.column_gap, sep_h),
+            UI.fixedCol(tap_best_header,    layout.col_width),
+        },
+    })
+
     local streak_rows = VerticalGroup:new{
         align = "left",
         FrameContainer:new{
@@ -1580,7 +1580,7 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
 
     UI.addSectionWithRow(sections,
         streak_combined_header,
-        streak_rows, layout, { pad_row = false })
+        streak_rows, layout, { pad_row = false, gap_above_row = true })
 
     local year_header = UI.padded(layout.padding_h,
         buildYearHeader(popup_self, fonts.section, fonts.label, layout, year_range, popup_self.selected_year))
@@ -1588,7 +1588,7 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
 
     local chart = buildMonthlyChart(popup_self, monthly_data, layout, fonts)
 
-    UI.addSectionWithRow(sections, year_header, yearly_row, layout, { pad_row = false, no_bottom_line = not chart, bottom_line_thin = true })
+    UI.addSectionWithRow(sections, year_header, yearly_row, layout, { pad_row = false, no_bottom_line = not chart, bottom_line_thin = true, gap_above_row = true })
 
     if chart then
         local chart_header_text = (popup_self.mode == VS.INSIGHTS_MODE_HOURS
@@ -1852,7 +1852,7 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
             UI.addSectionWithRow(sections,
                 paddedTwoColHeader(ach_title, latest_title, HEADER_BG()),
                 wrapRow(UI.buildTwoColRow(left_cell, right_cell, layout)),
-                layout, { pad_row = false })
+                layout, { pad_row = false, gap_above_row = true })
         end
     end -- if show_goal or show_ach
 
@@ -1914,7 +1914,7 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
 
         UI.addSectionWithRow(sections,
             tappable_total_read_header,
-            all_time_row, layout, { no_bottom_line = true })
+            all_time_row, layout, { no_bottom_line = true, gap_above_row = true })
     end
 
     return sections

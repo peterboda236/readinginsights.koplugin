@@ -345,7 +345,7 @@ local function buildBookCalendarGrid(daily_map, year, month, day_font, small_fon
         if i < 6 then table.insert(header_row, HorizontalSpan:new{ width = gap }) end
     end
     table.insert(grid, header_row)
-    table.insert(grid, VerticalSpan:new{ height = gap * 2 })
+    table.insert(grid, VerticalSpan:new{ width = gap * 2 })
 
     local first_ts = os.time{ year = year, month = month, day = 1, hour = 12 }
     local first_wd = tonumber(os.date("%w", first_ts)) -- 0=Sun..6=Sat
@@ -621,7 +621,7 @@ local function buildBookCalendarGrid(daily_map, year, month, day_font, small_fon
             if col < 7 then table.insert(row, HorizontalSpan:new{ width = gap }) end
         end
         table.insert(grid, row)
-        table.insert(grid, VerticalSpan:new{ height = gap })
+        table.insert(grid, VerticalSpan:new{ width = gap })
     end
 
     return grid, day_cells

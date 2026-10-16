@@ -1217,7 +1217,7 @@ function StreakHistoryPopup:_rebuild()
     for i, date_str in ipairs(page_days) do
         local row, h = self:_buildRow(date_str, self.stats[date_str], max_value, fonts)
         row_h = row_h or h
-        if i > 1 then table.insert(rows, VerticalSpan:new{ height = row_gap }) end
+        if i > 1 then table.insert(rows, VerticalSpan:new{ width = row_gap }) end
         table.insert(rows, row)
     end
     row_h = row_h or Screen:scaleBySize(20)
