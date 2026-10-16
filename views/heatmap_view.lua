@@ -944,7 +944,7 @@ function M.buildWeekdayChartWidget(weekday_hour_map, fonts, max_width, mode)
     return VerticalGroup:new{
         align = "left",
         bars_row,
-        VerticalSpan:new{ width = Size.padding.default },
+        VerticalSpan:new{ width = Size.padding.small },
         labels_row,
     }
 end
@@ -1216,7 +1216,7 @@ local function buildBox(popup_self, periods_back, force_fresh, width_override, d
     -- the same distance the popup keeps between its content and its frame.
     -- (VerticalSpan takes its height from `width`; `height = ...` is ignored
     -- and reserves no space at all.)
-    local LEGEND_GAP = inner_padding
+    local LEGEND_GAP = Size.padding.small
     local function sectionSeparator()
         return LineWidget:new{
             dimen      = Geom:new{ w = content_width, h = Size.line.thin },
@@ -1310,7 +1310,7 @@ local function buildBox(popup_self, periods_back, force_fresh, width_override, d
         table.insert(content, VerticalSpan:new{ width = Size.padding.small })
         table.insert(content, leftAlign(day_part_widget))
         if peak_line then
-            table.insert(content, VerticalSpan:new{ width = Size.padding.default })
+            table.insert(content, VerticalSpan:new{ width = Size.padding.small })
             table.insert(content, peak_line)
         end
     else
@@ -1325,7 +1325,7 @@ local function buildBox(popup_self, periods_back, force_fresh, width_override, d
         table.insert(content, VerticalSpan:new{ width = Size.padding.small })
         table.insert(content, leftAlign(day_part_widget))
         if peak_line then
-            table.insert(content, VerticalSpan:new{ width = Size.padding.default })
+            table.insert(content, VerticalSpan:new{ width = Size.padding.small })
             table.insert(content, peak_line)
         end
         table.insert(content, VerticalSpan:new{ width = LEGEND_GAP })

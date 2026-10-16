@@ -177,7 +177,6 @@ function M.build(chapter_info, full_width, padding_h, offset_override, on_prev, 
         return col_h_max
     end
 
-    local v_pad      = Size.padding.large
     local arrow_face = Fonts.getFace("stats_arrow")
     local inner_pad  = Size.padding.default
 
@@ -351,9 +350,7 @@ function M.build(chapter_info, full_width, padding_h, offset_override, on_prev, 
 
     local result = VerticalGroup:new{
         align = "left",
-        VerticalSpan:new{ height = v_pad },
         fixed_bar_row,
-        VerticalSpan:new{ height = v_pad },
     }
     result._on_swipe_left  = can_go_right and on_next or nil
     result._on_swipe_right = can_go_left  and on_prev or nil

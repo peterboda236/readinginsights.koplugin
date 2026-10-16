@@ -365,7 +365,7 @@ local function buildDonutBookRow(stats, fonts, layout, show_pages, show_times)
     -- distance from the lines around the row (and from the ends of the
     -- column divider) as the text has. The ring plus that padding is as
     -- tall as the right-hand stack.
-    local v_pad    = Size.padding.default
+    local v_pad    = Size.padding.small
     local diameter = math.min(right:getSize().h - 2 * v_pad, math.floor(layout.col_width * 0.52))
     diameter = math.max(diameter, Screen:scaleBySize(48))
 
