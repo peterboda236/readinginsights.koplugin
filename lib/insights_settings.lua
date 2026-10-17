@@ -153,6 +153,12 @@ M.Opt = {
     -- boundaries and show up as a one-pixel mismatch between the charts.
     auto_height = nil,
 
+    -- Auto mode only: whole pixels (not enough for another bar point) that
+    -- the fit hands to the monthly chart, as a spacer under it, so the page
+    -- ends exactly at the bottom of the screen. Remembered between builds
+    -- like auto_height; 0 = none.
+    monthly_extra_px = 0,
+
     -- Landscape only: the text scale the last fit settled on (< 1 when the
     -- page had to shrink its fonts to lose the scroll bar), kept as the
     -- first guess for the next build. nil = fonts at their configured size.

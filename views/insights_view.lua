@@ -1624,6 +1624,20 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
     local yearly_row  = buildYearlyRow(popup_self, yearly_stats, fonts, layout)
 
     local chart = buildMonthlyChart(popup_self, monthly_data, layout, fonts)
+    -- The few pixels the auto-fit could not hand out as whole bar points
+    -- (see _buildUI's fit) go here, under the monthly chart, so the page
+    -- ends exactly at the bottom of the screen. The bars themselves stay
+    -- the same height as the weekly chart's.
+    if chart and VS.Opt.readBarHeightAuto() then
+        local extra_px = VS.Opt.monthly_extra_px or 0
+        if extra_px > 0 then
+            chart = VerticalGroup:new{
+                align = "left",
+                chart,
+                VerticalSpan:new{ width = extra_px },
+            }
+        end
+    end
 
     UI.addSectionWithRow(sections, year_header, yearly_row, layout, { pad_row = false, no_bottom_line = not chart, bottom_line_thin = true, gap_above_row = true })
 
@@ -2681,11 +2695,18 @@ function ReadingInsightsPopup:_buildUI()
     -- Returns the group plus its total height, which is what the auto-fit
     -- loop below compares against the screen height.
     local auto_fit    = VS.Opt.readBarHeightAuto()
-    local bottom_span = auto_fit and Size.padding.large or nil
+    -- Auto mode: what is left under the last row is the same as under the
+    -- Reading calendar's streak section (Size.padding.default in total; the
+    -- section already ends with a Size.padding.small gap of its own).
+    local bottom_span = auto_fit and math.max(0, Size.padding.default - Size.padding.small) or nil
+    -- Extra pixels in force during the latest buildContent() (see the fit).
+    local built_extra = 0
 
     local function buildContent()
         VS.Opt.built_weekly  = false
         VS.Opt.built_monthly = false
+        if not auto_fit then VS.Opt.monthly_extra_px = 0 end
+        built_extra = VS.Opt.monthly_extra_px or 0
 
         local sections = buildInsightsSections(
             self,
@@ -2733,7 +2754,11 @@ function ReadingInsightsPopup:_buildUI()
             title_bar_inner,
             UI.padded(layout.padding_h, Colors.newBar(layout.content_width, Size.line.thick, Colors.separator())),
             sections,
-            VerticalSpan:new{ height = bottom_span or title_bar_h },
+            -- VerticalSpan reads `width` (a `height` field is ignored, which
+            -- left this spacer at 0 px). Without a monthly chart to take
+            -- the extra pixels they end up here.
+            VerticalSpan:new{ width = (bottom_span or title_bar_h)
+                + (VS.Opt.built_monthly and 0 or built_extra) },
         }
         return group, group:getSize().h
     end
@@ -2757,18 +2782,24 @@ function ReadingInsightsPopup:_buildUI()
         local px_per_point = Screen:scaleBySize(1000) / 1000
         if px_per_point <= 0 then px_per_point = 1 end
 
+        local function rebuild()
+            local discarded = content
+            content, content_h = buildContent()
+            -- Free the measured-then-thrown-away build; failure here is
+            -- harmless (worst case it's collected later), so it must never
+            -- take the popup down with it.
+            pcall(function() if discarded.free then discarded:free() end end)
+        end
+
         for _ = 1, 4 do
             local n_charts = (VS.Opt.built_weekly and 1 or 0) + (VS.Opt.built_monthly and 1 or 0)
             if n_charts == 0 then break end -- nothing adjustable on this page
 
-            local slack_px = screen_h - content_h
-            -- Good enough: it fits, with less than two points of growth
-            -- left over - one for the granularity of a single point of bar
-            -- height, one for the safety point taken off below. Without
-            -- that second point every reopen would see the safety point as
-            -- room to grow, hand it back, take it off again, and pay for
-            -- two extra builds to end up exactly where it started.
-            if slack_px >= 0 and slack_px < px_per_point * n_charts * 2 then break end
+            -- Room the page has with the extra pixels taken back out: the
+            -- bar points are fitted first, the extra pixels only take up
+            -- what a whole point (per chart) cannot.
+            local slack_px = screen_h - content_h + built_extra
+            if slack_px >= 0 and slack_px < px_per_point * n_charts then break end
 
             local delta_points = math.floor(slack_px / (px_per_point * n_charts))
             if delta_points == 0 then
@@ -2788,31 +2819,31 @@ function ReadingInsightsPopup:_buildUI()
             if new_height == current then break end
 
             VS.Opt.auto_height = new_height
+            VS.Opt.monthly_extra_px = 0
             adjusted = true
-
-            local discarded = content
-            content, content_h = buildContent()
-            -- Free the measured-then-thrown-away build; failure here is
-            -- harmless (worst case it's collected later), so it must never
-            -- take the popup down with it.
-            pcall(function() if discarded.free then discarded:free() end end)
+            rebuild()
         end
 
-        -- One point of headroom on top of the fit. The loop stops at the
-        -- largest height that still measured as fitting, which leaves the
-        -- page exactly as tall as the screen - close enough to the edge
-        -- that a font or spacing that rounds differently on some other
-        -- device would tip it into showing a scroll bar. Giving the bars a
-        -- point back costs a few pixels of chart and removes that risk.
-        --
-        -- Only when this build actually adjusted something: on later opens
-        -- the loop breaks immediately with the remembered height, and
-        -- subtracting again each time would shrink the charts away.
-        if adjusted and (VS.Opt.auto_height or 0) > VS.Opt.AUTO_MIN then
-            VS.Opt.auto_height = VS.Opt.auto_height - 1
-            local discarded = content
-            content, content_h = buildContent()
-            pcall(function() if discarded.free then discarded:free() end end)
+        -- Whole pixels that did not make a bar point: hand them to the
+        -- monthly chart (under it) so the page is exactly one screen tall
+        -- and its last row lands where the Reading calendar's does. Only a
+        -- small remainder is handed out - if the heights are clamped and
+        -- much room is left, the page stays short as before.
+        local n_charts = (VS.Opt.built_weekly and 1 or 0) + (VS.Opt.built_monthly and 1 or 0)
+        local slack_px = screen_h - content_h + built_extra
+        local want_extra = 0
+        if n_charts > 0 and slack_px >= 0 and slack_px <= px_per_point * n_charts * 2 then
+            want_extra = slack_px
+        end
+        if want_extra ~= built_extra then
+            VS.Opt.monthly_extra_px = want_extra
+            rebuild()
+            -- The extra is plain pixels, so this should fit exactly; if it
+            -- somehow overflows, take it back rather than show a scroll bar.
+            if content_h > screen_h and want_extra > 0 then
+                VS.Opt.monthly_extra_px = 0
+                rebuild()
+            end
         end
     end
 

@@ -810,7 +810,22 @@ local function buildStreakCalHeader(title_str, content_width, section_font, prev
         HorizontalSpan:new{ width = side_r },
         right_widget,
     }
-    return header_row, left_widget:getSize().w, right_widget:getSize().w, header_row:getSize().h
+
+    -- Same small padding above and below the text as every other section
+    -- header (UI.buildSectionHeader). The height returned below includes it,
+    -- and every tap zone is computed from that returned height, so the
+    -- arrows' and the title's zones keep covering the whole header.
+    local padded_header = FrameContainer:new{
+        background     = nil,
+        bordersize     = 0,
+        margin         = 0,
+        padding_top    = Size.padding.small,
+        padding_bottom = Size.padding.small,
+        padding_left   = 0,
+        padding_right  = 0,
+        header_row,
+    }
+    return padded_header, left_widget:getSize().w, right_widget:getSize().w, padded_header:getSize().h
 end
 
 
@@ -1699,30 +1714,29 @@ function StreakDatePopup:_rebuild()
     -- calendar above gets its height - larger covers.)
     table.insert(tail, Colors.newBar(cont_w, Size.padding.large, Blitbuffer.COLOR_WHITE))
     table.insert(tail, Colors.newBar(cont_w, Size.line.thick, Colors.separator()))
-    table.insert(tail, VerticalSpan:new{ width = Size.padding.small })
+    -- (No separate gap here: the standard section header below carries its
+    -- own small padding above and below its text, like in every other view.)
 
     -- Current and best streak side by side.
     --   [ Current streak | Best streak ]   section headers
     --   ---------------------------------   thin divider
     --   [ days | weeks   | days | weeks ]
-    -- The days|weeks value line (fonts.value) is the tallest of the three text
-    -- roles here, so its line height sets a single row height (row_h) that the
-    -- section-header row above is also pinned to.
+    -- The days|weeks value line (fonts.value) sets the height (row_h) of the
+    -- value row, so both streaks' cells are the same height.
     local inner_gap = math.floor(layout.column_gap / 2)
     local half_col  = math.floor((col_w - inner_gap) / 2)
     local row_h = buildValueLine(fonts.value, fonts.label, half_col, "0", N_("day", "days", 0)):getSize().h
 
-    local cur_hdr  = TextWidget:new{ text = _("Current streak"), face = fonts.section, fgcolor = Colors.section() }
-    local best_hdr = TextWidget:new{ text = _("Best streak"),    face = fonts.section, fgcolor = Colors.section() }
+    -- The shared section header (UI.buildSectionHeader), exactly as on the
+    -- Reading insights page and the Book progress popup.
+    local cur_hdr  = UI.buildSectionHeader(fonts.section, _("Current streak"), col_w, 0, Colors.headerBg())
+    local best_hdr = UI.buildSectionHeader(fonts.section, _("Best streak"),    col_w, 0, Colors.headerBg())
     -- Everything from here through the days|weeks row is the tappable
     -- "Current streak" / "Best streak" section (see the streak_zones block
     -- below): remembering where it starts lets that block measure its
     -- on-screen height without hardcoding every row/spacer size twice.
     local tail_streak_start = #tail + 1
-    table.insert(tail, UI.buildTwoColRow(
-        UI.fixedCol(cur_hdr,  col_w, row_h),
-        UI.fixedCol(best_hdr, col_w, row_h),
-        layout))
+    table.insert(tail, UI.buildTwoColRow(cur_hdr, best_hdr, layout))
     table.insert(tail, VerticalSpan:new{ width = Size.padding.small })
     table.insert(tail, Colors.newBar(cont_w, Size.line.thin, Colors.separator()))
     table.insert(tail, VerticalSpan:new{ width = Size.padding.small })

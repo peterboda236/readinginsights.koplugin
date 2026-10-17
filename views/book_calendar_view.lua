@@ -684,7 +684,22 @@ local function buildBookCalendarHeader(title_str, content_width, section_font, p
         right_widget,
     }
 
-    return header_row, left_frame, right_frame, left_widget:getSize().w, right_widget:getSize().w, header_row:getSize().h
+    -- Same small padding above and below the text as every other section
+    -- header (UI.buildSectionHeader). The height returned below includes it,
+    -- and every tap zone is computed from that returned height, so the
+    -- arrows' and the title's zones keep covering the whole header.
+    local padded_header = FrameContainer:new{
+        background     = nil,
+        bordersize     = 0,
+        margin         = 0,
+        padding_top    = Size.padding.small,
+        padding_bottom = Size.padding.small,
+        padding_left   = 0,
+        padding_right  = 0,
+        header_row,
+    }
+
+    return padded_header, left_frame, right_frame, left_widget:getSize().w, right_widget:getSize().w, padded_header:getSize().h
 end
 
 -- True if year/month (y1, m1) is chronologically after (y2, m2).
