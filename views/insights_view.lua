@@ -576,9 +576,11 @@ end
 --                     that haven't happened yet. Default: all.
 --   o.chart_width, o.plot_height, o.fonts
 --
--- Neighbouring values only move (one up a row, alternating) when they would
--- overlap, so compact values like "0:04" never move. The curve, the dots and
--- the values are all placed from the same coordinates, so they line up.
+-- Every value stands above its dot, and moves up just as far as it takes for
+-- the curve not to run through it (Trend.clearLabelTops); neighbouring
+-- values only move (one more row up) when they would overlap each other, so
+-- compact values like "0:04" never do. The curve, the dots and the values
+-- are all placed from the same coordinates, so they line up.
 local function buildDotLineChart(o)
     local n_cols     = #o.ratios
     local n_vis      = math.max(0, math.min(o.visible or n_cols, n_cols))
@@ -589,11 +591,19 @@ local function buildDotLineChart(o)
 
     local sample_label = TextWidget:new{ text = "0", face = font_small }
     local label_height = sample_label:getSize().h
+    -- The empty strip under the digits' baseline inside a value's box.
+    local label_descent = math.max(0, label_height - sample_label:getBaseline())
     sample_label:free()
 
     local dot_size   = tonumber(Screen:scaleBySize(8))
     local baseline_h = Size.line.medium
     local label_gap  = tonumber(Screen:scaleBySize(4))
+    -- Air between the digits' baseline and the curve. The box is taller than
+    -- the digits: digits and colons leave the whole strip under their
+    -- baseline empty, so the curve may run through all of it; a value with a
+    -- hanging letter ("12 p") only gets half of it.
+    local label_air  = tonumber(Screen:scaleBySize(1)) + 2
+    local margins    = {}
 
     local label_ws = {}
     for i = first_vis, n_vis do
@@ -616,7 +626,31 @@ local function buildDotLineChart(o)
         end
         if levels[i] == 1 then any_raised = true end
     end
-    local label_area_h = any_raised and (label_height * 2) or label_height
+
+    -- Where every value goes, measured from the top of the plot (the room
+    -- above the highest one is added afterwards): above its dot, higher
+    -- where the curve would cut through it.
+    local pre_pts, widths, vis_index = {}, {}, {}
+    for i = first_vis, n_vis do
+        local dot_y_from_bottom = math.floor(o.ratios[i] * (plot_height - dot_size))
+        local space_above = math.max(0, plot_height - dot_size - dot_y_from_bottom)
+        pre_pts[#pre_pts + 1] = {
+            x = (i - 1) * col_width + math.floor(col_width / 2),
+            y = space_above + math.floor(dot_size / 2),
+        }
+        widths[#widths + 1] = label_ws[i]
+        vis_index[i] = #pre_pts
+        margins[#pre_pts] = label_air - (Trend.hasDescender(o.value_strs[i])
+            and math.floor(label_descent / 2) or label_descent)
+    end
+    local pre_tops = Trend.clearLabelTops(pre_pts, widths, label_height, dot_size, margins,
+        tonumber(Screen:scaleBySize(2)))
+    local min_top = 0
+    for i = first_vis, n_vis do
+        local t = pre_tops[vis_index[i]] - levels[i] * label_height
+        if t < min_top then min_top = t end
+    end
+    local label_area_h = -min_top + Size.padding.tiny
     local total_col_h  = plot_height + label_area_h + baseline_h
 
     local columns_row     = HorizontalGroup:new{ align = "bottom" }
@@ -651,7 +685,7 @@ local function buildDotLineChart(o)
             local value_label = TextWidget:new{ text = o.value_strs[i], face = font_small, fgcolor = Colors.small() }
             value_label.overlap_offset = {
                 pt.x - math.floor(label_ws[i] / 2),
-                pt.y - math.floor(dot_size / 2) - label_height - levels[i] * label_height,
+                label_area_h + pre_tops[vis_index[i]] - levels[i] * label_height,
             }
             value_labels[#value_labels + 1] = value_label
         end

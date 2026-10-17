@@ -218,11 +218,87 @@ local function saveShowAvg(value)
     end
 end
 
+-- True if the text has letters that hang below the baseline (g j p q y , ;),
+-- which fill the empty strip under the digits in the label's box.
+function M.hasDescender(text)
+    return (text or ""):find("[gjpqy,;]") ~= nil
+end
+
+-- Where to put the value labels so that no line runs through them. Each label
+-- stands above its dot; if the line (to the neighbouring points) rises into
+-- the label's box, the label goes up by exactly as many pixels as it takes
+-- to clear the line. `pts` are the chart's points in x order ({x, y}, y
+-- growing downwards), `widths` the label widths, same order. Returns the y of
+-- every label's top edge in the same coordinates as `pts` (negative = above
+-- the chart's top edge: the caller makes room for the highest one).
+-- The line is taken as straight segments between the points. `margin` is the
+-- air kept between the label's box and the line (negative: the line may run
+-- that far into the box); one number for all labels, or a table with one per
+-- label. `inset` (default 0) is the empty margin at the left and right of the
+-- text inside its box, which the line may cross.
+function M.clearLabelTops(pts, widths, label_height, dot_size, margin, inset)
+    inset = inset or 0
+    local function marginOf(k)
+        if type(margin) == "table" then return margin[k] or 0 end
+        return margin or 0
+    end
+    local n = #pts
+    local tops = {}
+    if n == 0 then return tops end
+    local half = math.floor(dot_size / 2)
+
+    local function lineY(x)
+        if x <= pts[1].x then return pts[1].y end
+        if x >= pts[n].x then return pts[n].y end
+        for k = 1, n - 1 do
+            local a, b = pts[k], pts[k + 1]
+            if x >= a.x and x <= b.x then
+                if b.x == a.x then return math.min(a.y, b.y) end
+                return a.y + (b.y - a.y) * (x - a.x) / (b.x - a.x)
+            end
+        end
+        return pts[n].y
+    end
+
+    for k = 1, n do
+        local x0 = pts[k].x - math.floor(widths[k] / 2) + inset
+        local x1 = pts[k].x - math.floor(widths[k] / 2) + widths[k] - inset
+        -- The highest the line gets across the label's width (the smaller y).
+        local line_top = math.min(pts[k].y, lineY(x0), lineY(x1))
+        for j = 1, n do
+            if pts[j].x > x0 and pts[j].x < x1 and pts[j].y < line_top then
+                line_top = pts[j].y
+            end
+        end
+        local bottom = math.min(pts[k].y - half, line_top - marginOf(k))
+        tops[k] = bottom - label_height
+    end
+
+    -- Neighbouring points at the same height (a flat stretch, e.g. two months
+    -- with the same value) keep their labels in one row: all of them take the
+    -- highest top of the group. Going higher never brings the line back in.
+    local k = 1
+    while k <= n do
+        local j = k
+        while j < n and math.abs(pts[j + 1].y - pts[k].y) <= 1 do j = j + 1 end
+        if j > k then
+            local highest = tops[k]
+            for q = k + 1, j do
+                if tops[q] < highest then highest = tops[q] end
+            end
+            for q = k, j do tops[q] = highest end
+        end
+        k = j + 1
+    end
+    return tops
+end
+
 -- The chart: one line through the weekly totals. The daily average of a week
 -- is always 1/7 of its total, so it follows the very same curve - it gets no
 -- line of its own, only its value. Above every dot stands one value: the
 -- week's total, or - after a tap on the chart - its daily average ("Ø 1:12");
--- the choice is saved. The dots are painted by the line widget itself, from
+-- the choice is saved. A value moves up just as far as it takes for the line
+-- not to run through it (M.clearLabelTops). The dots are painted by the line widget itself, from
 -- the same coordinates as the line, so they sit exactly on it. The weeks'
 -- start dates are under the baseline.
 function M.buildTrendChart(weeks, kind, chart_width, fonts)
@@ -240,6 +316,8 @@ function M.buildTrendChart(weeks, kind, chart_width, fonts)
 
     local sample_label = TextWidget:new{ text = "0", face = font_small }
     local label_height = sample_label:getSize().h
+    -- The empty strip under the digits' baseline inside a value's box.
+    local label_descent = math.max(0, label_height - sample_label:getBaseline())
     sample_label:free()
 
     local total_vals, total_strs, avg_strs = {}, {}, {}
@@ -252,15 +330,51 @@ function M.buildTrendChart(weeks, kind, chart_width, fonts)
     end
     if max_value <= 0 then max_value = 1 end
 
-    local half    = math.floor(dot_size / 2)
-    -- Room above the highest dot for its value.
-    local top_pad = label_height
-    local total_h = top_pad + plot_height + baseline_h
-    local usable  = plot_height - dot_size
+    local half      = math.floor(dot_size / 2)
+    -- Air between the digits' baseline and the line (the box is taller than
+    -- the digits, see label_descent above).
+    local label_gap = tonumber(Screen:scaleBySize(1)) + 2
+    local usable    = plot_height - dot_size
     local area_w  = num_points * col_width
 
     -- Ascending = oldest week leftmost; descending = newest leftmost.
     local ascending = VS.readAscendingSetting()
+
+    -- Label text per column (the daily average with a "Ø" prefix, dropped when
+    -- the column is too narrow for it) and its widths. The room above the
+    -- highest dot / raised label is worked out first, from points measured
+    -- from the top of the plot (the headroom is added to them afterwards).
+    local avg_texts, widths, pre_pts = {}, {}, {}
+    for col = 1, num_points do
+        local i = ascending and col or (num_points - col + 1)
+        local probe = TextWidget:new{ text = "Ø " .. avg_strs[i], face = font_small }
+        avg_texts[col] = (probe:getSize().w > col_width) and avg_strs[i] or ("Ø " .. avg_strs[i])
+        probe:free()
+        local tw = TextWidget:new{ text = total_strs[i], face = font_small }
+        local aw = TextWidget:new{ text = avg_texts[col], face = font_small }
+        widths[col] = math.max(tw:getSize().w, aw:getSize().w)
+        tw:free(); aw:free()
+        local dy = math.floor((total_vals[i] / max_value) * usable)
+        pre_pts[col] = {
+            x = (col - 1) * col_width + math.floor(col_width / 2),
+            y = (plot_height - dot_size - dy) + half,
+        }
+    end
+    -- Digits and colons leave the whole strip under their baseline empty, so
+    -- the line may run through all of it; a label with a hanging letter
+    -- ("12 p") only gets half.
+    local margins = {}
+    for col = 1, num_points do
+        local i = ascending and col or (num_points - col + 1)
+        local hangs = M.hasDescender(total_strs[i]) or M.hasDescender(avg_texts[col])
+        margins[col] = label_gap - (hangs and math.floor(label_descent / 2) or label_descent)
+    end
+    local pre_tops = M.clearLabelTops(pre_pts, widths, label_height, dot_size, margins,
+        tonumber(Screen:scaleBySize(2)))
+    local min_top = 0
+    for _c, t in ipairs(pre_tops) do if t < min_top then min_top = t end end
+    local top_pad = -min_top + Size.padding.tiny
+    local total_h = top_pad + plot_height + baseline_h
 
     local points, dots = {}, {}
     local total_layer = OverlapGroup:new{ dimen = Geom:new{ w = area_w, h = total_h } }
@@ -280,8 +394,7 @@ function M.buildTrendChart(weeks, kind, chart_width, fonts)
     for col = 1, num_points do
         local i  = ascending and col or (num_points - col + 1)
         local cx = (col - 1) * col_width + math.floor(col_width / 2)
-        local dy = math.floor((total_vals[i] / max_value) * usable)
-        local cy = top_pad + (plot_height - dot_size - dy) + half  -- dot centre
+        local cy = top_pad + pre_pts[col].y  -- dot centre
 
         points[col] = { x = cx, y = cy }
         -- The current week (the last one in time) has the active colour, the
@@ -289,16 +402,11 @@ function M.buildTrendChart(weeks, kind, chart_width, fonts)
         dots[col]   = { x = cx, y = cy, size = dot_size,
                         color = (i == num_points) and Colors.activeBar() or Colors.inactiveBar() }
 
-        local top_y = cy - half - label_height
+        -- Both values go to the same place: just above the dot, or higher
+        -- if the line would run through them there.
+        local top_y = top_pad + pre_tops[col]
         addLabel(total_layer, total_strs[i], cx, top_y)
-
-        -- Daily average with a "Ø" prefix, dropped when the column is too
-        -- narrow for it.
-        local avg_text = "Ø " .. avg_strs[i]
-        local probe = TextWidget:new{ text = avg_text, face = font_small }
-        if probe:getSize().w > col_width then avg_text = avg_strs[i] end
-        probe:free()
-        addLabel(avg_layer, avg_text, cx, top_y)
+        addLabel(avg_layer,   avg_texts[col], cx, top_y)
 
         local date_lbl = TextWidget:new{ text = formatShortDate(weeks[i].start_date), face = font_small, fgcolor = Colors.small() }
         table.insert(date_labels_row, CenterContainer:new{
