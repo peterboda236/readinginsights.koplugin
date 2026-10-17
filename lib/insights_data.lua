@@ -1767,12 +1767,19 @@ function M.getTimeGoalStreak(kind, goal_secs)
 end
 
 -- Returns an array of 8 weekly buckets (index 1 = oldest of the 8 weeks,
--- index 8 = current week), each { start_date, end_date, seconds, pages }.
+-- index 8 = current week), each { start_date, end_date, seconds, pages, days }.
+-- The weeks are whole calendar weeks, starting on the shared "week start day"
+-- (Monday / Sunday): seven full weeks plus the current one, which runs from
+-- its first day up to today. `days` is how many days the bucket spans (7, or
+-- fewer for the current week), so averages divide by the right number.
 -- Mirrors the de-duplication logic used by getLastWeekAll, just over a
--- wider 56-day window split into 7-day chunks.
+-- wider window split into weekly chunks.
 function M.getLast8WeeksData()
+    local week_wd = weekStartWday()
     local minute = Cache.currentMinute()
-    local cached_val = Cache.getMinuteCache(Cache._cache, "last8weeks", "last8weeks_minute", minute)
+    local cache_key  = "last8weeks_cal" .. week_wd
+    local minute_key = "last8weeks_cal_minute" .. week_wd
+    local cached_val = Cache.getMinuteCache(Cache._cache, cache_key, minute_key, minute)
     if cached_val then
         return cached_val
     end
@@ -1788,17 +1795,23 @@ function M.getLast8WeeksData()
         return os.time{ year = now_t.year, month = now_t.month, day = now_t.day + day_offset,
                         hour = 0, min = 0, sec = 0 }
     end
-    local today_midnight  = localMidnight(0)
-    local period_start_ts = localMidnight(-(8 * 7 - 1))
+    local today_midnight = localMidnight(0)
+
+    -- Days since the current week began (0 on its first day).
+    local today_wday = tonumber(os.date("%w", today_midnight))  -- 0=Sun..6=Sat
+    local into_week  = (week_wd == 0) and today_wday or ((today_wday + 6) % 7)
+    local period_start_ts = localMidnight(-into_week - 7 * 7)
 
     local weeks = {}
     for w = 1, 8 do
-        local end_offset   = -(8 - w) * 7
+        local start_offset = -into_week - (8 - w) * 7
+        local is_current   = (w == 8)
         weeks[w] = {
-            start_date = os.date("%Y-%m-%d", localMidnight(end_offset - 6)),
-            end_date   = os.date("%Y-%m-%d", localMidnight(end_offset)),
+            start_date = os.date("%Y-%m-%d", localMidnight(start_offset)),
+            end_date   = os.date("%Y-%m-%d", localMidnight(is_current and 0 or start_offset + 6)),
             seconds    = 0,
             pages      = 0,
+            days       = is_current and (into_week + 1) or 7,
         }
     end
 
@@ -1826,7 +1839,11 @@ function M.getLast8WeeksData()
                 if y then
                     local day_ts = os.time({ year = y, month = m, day = d })
                     local diff_days = math.floor((today_midnight - day_ts) / 86400 + 0.5)
-                    local week_from_end = math.floor(diff_days / 7)  -- 0 = current week
+                    -- 0 = current week, 1 = the week before it, ...
+                    local week_from_end = 0
+                    if diff_days > into_week then
+                        week_from_end = math.ceil((diff_days - into_week) / 7)
+                    end
                     local w = 8 - week_from_end
                     if w >= 1 and w <= 8 then
                         weeks[w].seconds = weeks[w].seconds + secs
@@ -1837,7 +1854,7 @@ function M.getLast8WeeksData()
         end)
     end)
 
-    Cache.setMinuteCache(Cache._cache, Cache._stale_cache, "last8weeks", "last8weeks_minute", minute, weeks)
+    Cache.setMinuteCache(Cache._cache, Cache._stale_cache, cache_key, minute_key, minute, weeks)
     return weeks
 end
 

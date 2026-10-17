@@ -82,12 +82,12 @@ end
 local function formatWeekValue(metric, week_entry)
     if metric == "time_total" or metric == "time_avg" then
         local secs = week_entry.seconds or 0
-        if metric == "time_avg" then secs = secs / 7 end
+        if metric == "time_avg" then secs = secs / (week_entry.days or 7) end
         return Locale.formatDuration(secs, true), secs
     else
         local pages = week_entry.pages or 0
         if metric == "pages_avg" then
-            pages = roundAvgPages(pages / 7)
+            pages = roundAvgPages(pages / (week_entry.days or 7))
             return formatNumber(pages, pages ~= math.floor(pages) and 1 or 0), pages
         end
         return formatCount(pages), pages
@@ -109,16 +109,22 @@ function M.trendTitle(_metric)
     return _("8-week reading trend")
 end
 
--- "May 6" / "máj. 6." style label using the same month names as the monthly chart.
+-- Week start date without the year, in the configured date format (the
+-- plugin's "Date format" setting): 09.30. | 30/09 | 9/30 (and 09-30 for the
+-- ISO style).
 local function formatShortDate(date_str)
     local y, m, d = date_str:match("^(%d+)-(%d+)-(%d+)$")
     if not y then return date_str end
-    local month_name = MONTH_NAMES_SHORT[tonumber(m)] or m
-    if getLangBase() == "hu" then
-        return month_name .. " " .. tostring(tonumber(d)) .. "."
-    else
-        return month_name .. " " .. tostring(tonumber(d))
+    m, d = tonumber(m), tonumber(d)
+    local fmt = Locale.readDateFormatSetting and Locale.readDateFormatSetting()
+    if fmt == "ymd_dot" then
+        return string.format("%02d.%02d.", m, d)
+    elseif fmt == "ymd_dash" then
+        return string.format("%02d-%02d", m, d)
+    elseif fmt == "mdy_slash" then
+        return string.format("%d/%d", m, d)
     end
+    return string.format("%02d/%02d", d, m)
 end
 
 -- Bold value + plain unit, like the value/label cells of the insights page.
@@ -159,7 +165,9 @@ function M.buildSummaryRow(weeks, kind, width, fonts)
         total_secs  = total_secs  + (w.seconds or 0)
         total_pages = total_pages + (w.pages or 0)
     end
-    local days = 7 * #weeks
+    local days = 0
+    for _i, w in ipairs(weeks) do days = days + (w.days or 7) end
+    if days <= 0 then days = 1 end
 
     local left_val, left_unit, right_val, right_unit
     if kind == "pages" then
@@ -276,7 +284,10 @@ function M.buildTrendChart(weeks, kind, chart_width, fonts)
         local cy = top_pad + (plot_height - dot_size - dy) + half  -- dot centre
 
         points[col] = { x = cx, y = cy }
-        dots[col]   = { x = cx, y = cy, size = dot_size, color = Colors.activeBar() }
+        -- The current week (the last one in time) has the active colour, the
+        -- earlier weeks the inactive one.
+        dots[col]   = { x = cx, y = cy, size = dot_size,
+                        color = (i == num_points) and Colors.activeBar() or Colors.inactiveBar() }
 
         local top_y = cy - half - label_height
         addLabel(total_layer, total_strs[i], cx, top_y)
@@ -306,7 +317,7 @@ function M.buildTrendChart(weeks, kind, chart_width, fonts)
         LineChartWidget:new{
             width = area_w, height = total_h,
             points = points, dots = dots,
-            line_color = Colors.trendLine(), thickness = 2,
+            line_color = Colors.activeBar(), thickness = 2,
         },
         showing_avg and avg_layer or total_layer,
     }
