@@ -218,10 +218,14 @@ local function saveShowAvg(value)
     end
 end
 
--- True if the text has letters that hang below the baseline (g j p q y , ;),
--- which fill the empty strip under the digits in the label's box.
+-- True if the text has characters that reach below the baseline and so use
+-- the empty strip under the digits in the label's box: g j p q y Q , ; and
+-- every non-ASCII character (accented letters with tails, and the "Ø" of the
+-- averages, whose slash overshoots the baseline). Only digits, ":", "." and
+-- spaces are safe.
 function M.hasDescender(text)
-    return (text or ""):find("[gjpqy,;]") ~= nil
+    text = text or ""
+    return text:find("[gjpqyQ,;]") ~= nil or text:find("[\128-\255]") ~= nil
 end
 
 -- Where to put the value labels so that no line runs through them. Each label
@@ -344,7 +348,14 @@ function M.buildTrendChart(weeks, kind, chart_width, fonts)
     -- the column is too narrow for it) and its widths. The room above the
     -- highest dot / raised label is worked out first, from points measured
     -- from the top of the plot (the headroom is added to them afterwards).
-    local avg_texts, widths, pre_pts = {}, {}, {}
+    local avg_texts, pre_pts = {}, {}
+    local widths, margins = {}, {}
+    -- Digits and colons leave the whole strip under their baseline empty, so
+    -- the line may run through all of it; a label with a character that
+    -- reaches below the baseline ("12 p", the "Ø") only gets half.
+    local function marginFor(text)
+        return label_gap - (M.hasDescender(text) and math.floor(label_descent / 2) or label_descent)
+    end
     for col = 1, num_points do
         local i = ascending and col or (num_points - col + 1)
         local probe = TextWidget:new{ text = "Ø " .. avg_strs[i], face = font_small }
@@ -352,22 +363,18 @@ function M.buildTrendChart(weeks, kind, chart_width, fonts)
         probe:free()
         local tw = TextWidget:new{ text = total_strs[i], face = font_small }
         local aw = TextWidget:new{ text = avg_texts[col], face = font_small }
-        widths[col] = math.max(tw:getSize().w, aw:getSize().w)
+        -- One place per week for both values, worked out from the longer
+        -- variant ("Ø 01:10" with its extra characters): its width, and the
+        -- more careful of the two margins. The plain total takes the same
+        -- place, so it doesn't jump when switching.
+        widths[col]  = math.max(tw:getSize().w, aw:getSize().w)
+        margins[col] = math.max(marginFor(total_strs[i]), marginFor(avg_texts[col]))
         tw:free(); aw:free()
         local dy = math.floor((total_vals[i] / max_value) * usable)
         pre_pts[col] = {
             x = (col - 1) * col_width + math.floor(col_width / 2),
             y = (plot_height - dot_size - dy) + half,
         }
-    end
-    -- Digits and colons leave the whole strip under their baseline empty, so
-    -- the line may run through all of it; a label with a hanging letter
-    -- ("12 p") only gets half.
-    local margins = {}
-    for col = 1, num_points do
-        local i = ascending and col or (num_points - col + 1)
-        local hangs = M.hasDescender(total_strs[i]) or M.hasDescender(avg_texts[col])
-        margins[col] = label_gap - (hangs and math.floor(label_descent / 2) or label_descent)
     end
     local pre_tops = M.clearLabelTops(pre_pts, widths, label_height, dot_size, margins,
         tonumber(Screen:scaleBySize(2)))
