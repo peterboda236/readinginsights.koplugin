@@ -1929,3 +1929,6 @@ msgstr "在封面下方显示连续记录条"
 
 msgid "Show the streak line under the covers on the reading calendar. When off (default), the covers are shown larger."
 msgstr "在阅读日历中于封面下方显示连续记录线。关闭时（默认），封面会显示得更大。"
+
+msgid "8-week reading trend"
+msgstr "8 周阅读趋势"

@@ -2252,3 +2252,6 @@ msgstr "Показувати смугу серії під обкладинкам
 
 msgid "Show the streak line under the covers on the reading calendar. When off (default), the covers are shown larger."
 msgstr "Показувати лінію серії під обкладинками в календарі читання. Коли вимкнено (за замовчуванням), обкладинки відображаються більшими."
+
+msgid "8-week reading trend"
+msgstr "Тенденція читання за 8 тижнів"

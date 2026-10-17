@@ -2215,3 +2215,6 @@ msgstr "Széria sáv megjelenítése a borítók alatt"
 
 msgid "Show the streak line under the covers on the reading calendar. When off (default), the covers are shown larger."
 msgstr "A széria vonalának megjelenítése a borítók alatt az olvasási naptárban. Kikapcsolva (alapértelmezett) a borítók nagyobbak."
+
+msgid "8-week reading trend"
+msgstr "8 hetes olvasási trend"

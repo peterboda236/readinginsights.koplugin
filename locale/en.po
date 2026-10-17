@@ -2203,3 +2203,6 @@ msgstr "Show streak bar under covers"
 
 msgid "Show the streak line under the covers on the reading calendar. When off (default), the covers are shown larger."
 msgstr "Show the streak line under the covers on the reading calendar. When off (default), the covers are shown larger."
+
+msgid "8-week reading trend"
+msgstr "8-week reading trend"

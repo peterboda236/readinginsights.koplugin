@@ -2203,3 +2203,6 @@ msgstr "Balken der Lesesträhne unter den Covern anzeigen"
 
 msgid "Show the streak line under the covers on the reading calendar. When off (default), the covers are shown larger."
 msgstr "Die Linie der Lesesträhne unter den Covern im Lesekalender anzeigen. Wenn ausgeschaltet (Standard), werden die Cover größer dargestellt."
+
+msgid "8-week reading trend"
+msgstr "Lesetrend der letzten 8 Wochen"

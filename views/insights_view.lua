@@ -965,6 +965,9 @@ end
 -- Any tap / swipe / key dismisses; onShow/onCloseWidget mark the popup box
 -- region dirty. All five come from the shared helper (see popuputil.lua).
 PopupUtil.makeDismissable(Trend.Popup, function(self) return self.box_content.dimen end)
+-- ...except its tap: a tap on the chart switches totals / averages, any other
+-- tap closes the popup (see Trend.popupOnTap).
+Trend.Popup.onTap = Trend.popupOnTap
 
 -- Weekly bar chart: 7 bars, index 1 = today, index 7 = 6 days ago. Which end
 -- of the row today is drawn at follows the "Last 7 days chapter bar order"
@@ -2224,8 +2227,9 @@ local function getFinishedBooksForYearCombined(popup_self, year)
     return sortByLastRead(result)
 end
 
--- Build and show the 8-week trend popup for the given metric:
--- "time_total" | "pages_total" | "time_avg" | "pages_avg".
+-- Build and show the 8-week trend popup. Any of "time_total" | "time_avg"
+-- opens the time chart (total + daily average), any of "pages_total" |
+-- "pages_avg" the pages chart - so it follows what the tapped value showed.
 function ReadingInsightsPopup:showWeeklyTrendPopup(metric)
     local weeks = Data.getLast8WeeksData()
     if not weeks or #weeks == 0 then
@@ -2250,26 +2254,7 @@ function ReadingInsightsPopup:showWeeklyTrendPopup(metric)
     local box_width   = math.floor(Screen:getWidth() * 0.94)
     local chart_width = box_width - 2 * inner_padding
 
-    local title_w = TextWidget:new{ text = Trend.trendTitle(metric), face = fonts.section, fgcolor = Colors.section() }
-    local title_centered = CenterContainer:new{
-        dimen = Geom:new{ w = chart_width, h = title_w:getSize().h }, title_w,
-    }
-
-    local value_w = TextWidget:new{ text = Trend.totalForMetric(metric, weeks), face = fonts.value, fgcolor = Colors.value() }
-    local value_centered = CenterContainer:new{
-        dimen = Geom:new{ w = chart_width, h = value_w:getSize().h }, value_w,
-    }
-
-    local chart_widget = Trend.buildLine8WeekChart(weeks, metric, chart_width, fonts)
-
-    local content = VerticalGroup:new{
-        align = "center",
-        title_centered,
-        VerticalSpan:new{ width = Size.padding.small },
-        value_centered,
-        VerticalSpan:new{ width = Size.padding.small },
-        chart_widget,
-    }
+    local content, chart_handle = Trend.buildContent(weeks, metric, chart_width, fonts)
 
     local box = FrameContainer:new{
         background     = Blitbuffer.COLOR_WHITE,
@@ -2282,7 +2267,7 @@ function ReadingInsightsPopup:showWeeklyTrendPopup(metric)
         content,
     }
 
-    UIManager:show(Trend.Popup:new{ box_content = box })
+    UIManager:show(Trend.Popup:new{ box_content = box, chart_handle = chart_handle })
 end
 
 function ReadingInsightsPopup:getBooksForMonth(year_month)

@@ -2203,3 +2203,6 @@ msgstr "Afficher la barre de série sous les couvertures"
 
 msgid "Show the streak line under the covers on the reading calendar. When off (default), the covers are shown larger."
 msgstr "Afficher la ligne de série sous les couvertures dans le calendrier de lecture. Désactivé (par défaut), les couvertures sont affichées plus grandes."
+
+msgid "8-week reading trend"
+msgstr "Tendance de lecture sur 8 semaines"
