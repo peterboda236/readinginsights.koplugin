@@ -1675,7 +1675,9 @@ function StreakDatePopup:_rebuild()
         width            = screen_w,
         align            = "left",
         title            = _("Reading calendar"),
-        close_callback   = function() UIManager:close(self) end,
+        -- No X on the sleep screen (opts.readonly), as in the Reading
+        -- insights window: there is nothing to close by tapping it.
+        close_callback   = (not self.readonly) and function() UIManager:close(self) end or nil,
         show_parent      = self,
         top_v_padding    = Size.padding.default,
         bottom_v_padding = Size.padding.default,
@@ -2048,6 +2050,7 @@ local function showStreaksPopup(streaks, opts)
     streaks = streaks or {}
     -- opts.sync: load every cover before the first paint (the sleep screen is
     -- painted once, right before the device sleeps - nothing may arrive later).
+    -- opts.readonly: sleep-screen use - the title bar has no close X.
     opts = opts or {}
     local fonts = getCachedFonts()
     local inner_padding = Size.padding.large
@@ -2144,6 +2147,7 @@ local function showStreaksPopup(streaks, opts)
         week_start_wd = week_start_wd,
         month_index   = months and #months or 1,
         lazy_covers   = not opts.sync,
+        readonly      = opts.readonly or false,
     }
 
     UIManager:show(popup)
@@ -2160,6 +2164,6 @@ end
 --                          streak ("current" or "best") - what the streak
 --                          cells on the insights page open now.
 return {
-    show        = showStreaksPopup,   -- show(streaks, { sync = true } for the sleep screen)
+    show        = showStreaksPopup,   -- show(streaks, { sync = true, readonly = true } for the sleep screen)
     showHistory = showStreakHistory,
 }

@@ -462,7 +462,7 @@ local function showHeatmap(ui)
 end
 
 local function showStreak(ui)
-    return Streak.show(InsightsData.calculateStreaks(), { sync = true })
+    return Streak.show(InsightsData.calculateStreaks(), { sync = true, readonly = true })
 end
 
 local function showRecords(ui)
