@@ -23,6 +23,7 @@ Centralises the font choices used by every popup, so there is exactly one
   bookinfo_author   "Book info" popup: author line
   bookinfo_series   "Book info" popup: series / #index line
   bookinfo_description  "Book info" popup: description text
+  bookinfo_stats    "Book info" popup: pages read / reading time line
 
 Each role has its own font *name* and *size*, independently configurable -
 unlike Colors (colors.lua), section/value/label/small are NOT shared
@@ -94,7 +95,7 @@ local _ = Locale._
 local INSIGHTS_KEYS = { "insights_section", "insights_value", "insights_label", "insights_small" }
 local STATS_KEYS     = { "stats_section", "stats_value", "stats_label", "stats_arrow" }
 local RECORDS_KEYS   = { "records_value", "records_label", "records_small" }
-local BOOKINFO_KEYS  = { "bookinfo_title", "bookinfo_author", "bookinfo_series", "bookinfo_description" }
+local BOOKINFO_KEYS  = { "bookinfo_title", "bookinfo_author", "bookinfo_series", "bookinfo_description", "bookinfo_stats" }
 local KEY_ORDER = {}
 for _, k in ipairs(INSIGHTS_KEYS) do table.insert(KEY_ORDER, k) end
 for _, k in ipairs(STATS_KEYS)     do table.insert(KEY_ORDER, k) end
@@ -128,12 +129,14 @@ local DEFAULTS = {
     -- Book info popup. The font files are the Book card plugin's own
     -- defaults for its title / series lines (bold, bold); the author line is
     -- regular (it used to be italic);
-    -- the sizes are set for this popup, where the text sits beside a small
-    -- cover instead of under a big one.
-    bookinfo_title   = { file = "NotoSans-Bold.ttf",    fallback = "tfont",             size = 24 },
+    -- the sizes: title matches the Reading insights values (26), author /
+    -- series / pages-time line (and the Finished date, which shares the
+    -- author font) are 18, description matches its chart labels (15).
+    bookinfo_title   = { file = "NotoSans-Bold.ttf",    fallback = "tfont",             size = 26 },
     bookinfo_author  = { file = "NotoSans-Regular.ttf", fallback = "x_smallinfofont",   size = 18 },
     bookinfo_series  = { file = "NotoSans-Bold.ttf",    fallback = "x_smallinfofont",   size = 18 },
     bookinfo_description = { file = "NotoSans-Regular.ttf", fallback = "xx_smallinfofont", size = 15 },
+    bookinfo_stats   = { file = "NotoSans-Regular.ttf", fallback = "x_smallinfofont",   size = 18 },
 }
 
 local SETTINGS_NAME_PREFIX = "reading_insights_font_name_"
@@ -628,6 +631,7 @@ function labelFor(key)
         bookinfo_author  = _("Author"),
         bookinfo_series  = _("Series"),
         bookinfo_description = _("Description"),
+        bookinfo_stats   = _("Pages / reading time"),
     }
     return labels[key] or key
 end

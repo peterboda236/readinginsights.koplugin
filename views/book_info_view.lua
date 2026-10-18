@@ -372,6 +372,7 @@ function BookInfoPopup:_buildUI()
     local author_face = Fonts.getFace("bookinfo_author")
     local series_face = Fonts.getFace("bookinfo_series")
     local desc_face   = Fonts.getFace("bookinfo_description")
+    local stats_face  = Fonts.getFace("bookinfo_stats")
     local show_author = Opt.readBookInfo("author") and self.info.authors
     local series_line = Opt.readBookInfo("series") and Data.seriesLine(self.info) or nil
 
@@ -408,7 +409,7 @@ function BookInfoPopup:_buildUI()
         stats_text = string.format("%d %s \194\183 %s %s",
             pages, _("pages read"), Locale.formatTimeHHMM(secs).value, _("reading time"))
     end
-    local stats_w = stats_text and naturalWidth(stats_text, desc_face) or 0
+    local stats_w = stats_text and naturalWidth(stats_text, stats_face) or 0
 
     -- The box is only as wide as it has to be: if the title, the author(s),
     -- the series, the stars and the pages / time row all fit on one line
@@ -481,7 +482,7 @@ function BookInfoPopup:_buildUI()
     local stats_widget, stats_h = nil, 0
     if stats_text then
         stats_widget = TextWidget:new{
-            text = stats_text, face = desc_face,
+            text = stats_text, face = stats_face,
             max_width = text_w, fgcolor = Colors.label(),
         }
         stats_h = stats_widget:getSize().h
