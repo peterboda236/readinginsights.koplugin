@@ -1853,8 +1853,8 @@ msgstr "Közepes"
 msgid "Large"
 msgstr "Nagy"
 
-msgid "Size of the cover in the Book info popup. Medium is the default size; Small is half of it and Large is one and a half times it."
-msgstr "A borító mérete a Könyvinformáció ablakban. A közepes az alapértelmezett méret, a kicsi ennek a fele, a nagy pedig másfélszerese."
+msgid "Size of the cover in the Book info popup. Small: the cover is only as tall as the text beside it (title, author, series, rating, reading time - no description). Medium: the default size. Large: the cover grows as much as the popup (at most 94% of the width) allows while all the text still fits."
+msgstr "A borító mérete a Könyvinformáció ablakban. Kicsi: a borító csak olyan magas, mint mellette a szöveg (cím, szerző, sorozat, értékelés, olvasási idő – leírás nélkül). Közepes: az alapértelmezett méret. Nagy: a borító addig nő, amíg az ablak (legfeljebb a szélesség 94%-a) engedi, és minden szöveg még kifér."
 
 msgid "Show author"
 msgstr "Szerző megjelenítése"

@@ -1576,8 +1576,8 @@ msgstr "中"
 msgid "Large"
 msgstr "大"
 
-msgid "Size of the cover in the Book info popup. Medium is the default size; Small is half of it and Large is one and a half times it."
-msgstr "图书信息弹窗中封面的大小。“中”为默认大小；“小”为其一半，“大”为其 1.5 倍。"
+msgid "Size of the cover in the Book info popup. Small: the cover is only as tall as the text beside it (title, author, series, rating, reading time - no description). Medium: the default size. Large: the cover grows as much as the popup (at most 94% of the width) allows while all the text still fits."
+msgstr "图书信息弹窗中封面的大小。“小”：封面高度仅与旁边的文字（书名、作者、系列、评分、阅读时间，不含简介）相同；“中”为默认大小；“大”：在弹窗（最多占宽度的 94%）允许的范围内尽可能放大封面，同时保证所有文字完整显示。"
 
 msgid "Show author"
 msgstr "显示作者"

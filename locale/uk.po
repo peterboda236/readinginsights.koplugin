@@ -1899,8 +1899,8 @@ msgstr "Середній"
 msgid "Large"
 msgstr "Великий"
 
-msgid "Size of the cover in the Book info popup. Medium is the default size; Small is half of it and Large is one and a half times it."
-msgstr "Розмір обкладинки у вікні відомостей про книгу. Середній — розмір за замовчуванням; малий удвічі менший, а великий у півтора раза більший."
+msgid "Size of the cover in the Book info popup. Small: the cover is only as tall as the text beside it (title, author, series, rating, reading time - no description). Medium: the default size. Large: the cover grows as much as the popup (at most 94% of the width) allows while all the text still fits."
+msgstr "Розмір обкладинки у вікні відомостей про книгу. Малий: обкладинка лише такої висоти, як текст поруч (назва, автор, серія, оцінка, час читання — без опису). Середній — розмір за замовчуванням. Великий: обкладинка збільшується, доки це дозволяє вікно (щонайбільше 94 % ширини) і весь текст вміщується."
 
 msgid "Show author"
 msgstr "Показати автора"

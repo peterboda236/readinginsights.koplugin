@@ -919,9 +919,11 @@ function M.Opt.saveBookInfo(name, value)
 end
 
 -- Book info popup cover size (Settings > Book info > "Cover size"). "medium"
--- is the original size (the default); "small" is half of it and "large" is
--- one and a half times it. The popup (views/book_info_view.lua) multiplies
--- its cover box by BOOK_INFO_COVER_SCALE[size].
+-- is the original size (the default). "small" and "large" are fitted to the
+-- text by the popup (views/book_info_view.lua): small is as tall as the text
+-- beside it, large the biggest cover that leaves room for all of it (within
+-- 94% of the width). BOOK_INFO_COVER_SCALE lists the valid sizes (and the
+-- nominal factors).
 M.Opt.BOOK_INFO_COVER_SIZE_KEY    = "reading_insights_book_info_cover_size"
 M.Opt.BOOK_INFO_COVER_SIZE_SMALL  = "small"
 M.Opt.BOOK_INFO_COVER_SIZE_MEDIUM = "medium"

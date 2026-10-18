@@ -1262,7 +1262,7 @@ function M.build(self, deps)
             end,
         }
     end
-    -- Cover size: small (50%) / medium (100%, default) / large (150%).
+    -- Cover size: small (as tall as the text) / medium (default) / large (as big as fits).
     -- Greyed out together with the cover itself.
     local function coverSizeRadio(size, text)
         return {
@@ -1286,7 +1286,7 @@ function M.build(self, deps)
                 or _("Medium")
             return _("Cover size") .. ": " .. label
         end,
-        help_text = _("Size of the cover in the Book info popup. Medium is the default size; Small is half of it and Large is one and a half times it."),
+        help_text = _("Size of the cover in the Book info popup. Small: the cover is only as tall as the text beside it (title, author, series, rating, reading time - no description). Medium: the default size. Large: the cover grows as much as the popup (at most 94% of the width) allows while all the text still fits."),
         keep_menu_open = true,
         enabled_func = function()
             return deps.ViewSettings.Opt.readBookInfo("cover")

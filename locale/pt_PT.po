@@ -1850,8 +1850,8 @@ msgstr "Médio"
 msgid "Large"
 msgstr "Grande"
 
-msgid "Size of the cover in the Book info popup. Medium is the default size; Small is half of it and Large is one and a half times it."
-msgstr "Tamanho da capa na janela Informações do livro. Médio é o tamanho predefinido; Pequeno é metade desse tamanho e Grande é uma vez e meia."
+msgid "Size of the cover in the Book info popup. Small: the cover is only as tall as the text beside it (title, author, series, rating, reading time - no description). Medium: the default size. Large: the cover grows as much as the popup (at most 94% of the width) allows while all the text still fits."
+msgstr "Tamanho da capa na janela Informações do livro. Pequeno: a capa tem apenas a altura do texto ao lado (título, autor, série, avaliação, tempo de leitura – sem descrição). Médio: o tamanho predefinido. Grande: a capa cresce tanto quanto a janela permitir (no máximo 94 % da largura), desde que todo o texto caiba."
 
 msgid "Show author"
 msgstr "Mostrar autor"

@@ -41,8 +41,16 @@ down to the bottom of the cover (shadow included). It is cut at a word
 boundary with an ellipsis when it does not fit, and the popup then always
 takes its maximum width.
 
-The cover comes in three sizes (Settings > Book info > Cover size): small
-(50%), medium (100%, the default) and large (150%).
+The cover comes in three sizes (Settings > Book info > Cover size):
+  - small   the cover is only as tall as the text beside it (rating, title,
+            author, series, pages / reading time); no description
+  - medium  the default: a box of 34% of the content width x 30% of the
+            screen height
+  - large   the biggest cover the popup allows (never wider than 94% of the
+            screen width, never taller than the screen) with all the text
+            still fitting beside it; the description gets what is left
+When no small / large cover can hold the text (e.g. one huge word), the
+medium box is used.
 
 What is shown, and in which fonts, is set under Settings > Book info and
 Settings > Fonts > Book info (font roles bookinfo_title / bookinfo_author /
@@ -90,10 +98,15 @@ local function S(n)
     return Screen:scaleBySize(n)
 end
 
--- Height of `lines` lines of text set in `face` (TextBoxWidget spaces lines
--- by size * 1.3, the same maths the Book card uses for its title box).
+-- Height of one line of text set in `face` (TextBoxWidget spaces lines by
+-- size * 1.3, the same maths the Book card uses for its title box).
+local function lineHeight(face)
+    return math.floor((1 + 0.3) * face.size + 0.5)
+end
+
+-- Height of `lines` lines of text set in `face`.
 local function linesHeight(face, lines)
-    return lines * math.floor((1 + 0.3) * face.size + 0.5)
+    return lines * lineHeight(face)
 end
 
 -- Width of `txt` set on a single line in `face` (0 for empty text).
@@ -103,6 +116,51 @@ local function naturalWidth(txt, face)
         face, txt, true, false)
     if ok and size and size.x then return size.x end
     return math.huge
+end
+
+-- The words of `text` with their widths in `face`, measured once, so the
+-- number of lines the text needs at any width can be worked out cheaply
+-- (countLines) without building a widget per try. Used to size the cover to
+-- the text beside it.
+local function measureWords(text, face)
+    local m = { widths = {}, widest = 0, space = naturalWidth(" ", face) }
+    if m.space <= 0 or m.space == math.huge then
+        m.space = math.floor(face.size * 0.28)
+    end
+    for w in tostring(text or ""):gmatch("%S+") do
+        local ww = naturalWidth(w, face)
+        if ww == math.huge then ww = 0 end
+        m.widths[#m.widths + 1] = ww
+        if ww > m.widest then m.widest = ww end
+    end
+    return m
+end
+
+-- Lines the measured text needs in a column `width` wide. A couple of pixels
+-- are kept back so the estimate is never lower than what TextBoxWidget
+-- really makes of it; a word wider than the column counts as several lines
+-- (TextBoxWidget breaks it).
+local function countLines(m, width)
+    if #m.widths == 0 then return 1 end
+    width = math.max(1, width - S(2))
+    local lines, used = 1, 0
+    for i = 1, #m.widths do
+        local ww = m.widths[i]
+        if used == 0 then
+            used = ww
+        elseif used + m.space + ww <= width then
+            used = used + m.space + ww
+        else
+            lines = lines + 1
+            used = ww
+        end
+        if used > width then
+            local extra = math.ceil(used / width) - 1
+            lines = lines + extra
+            used = used - extra * width
+        end
+    end
+    return lines
 end
 
 -- Greedy word-wrap of `text` (whitespace collapsed) into at most `max_lines`
@@ -249,21 +307,34 @@ function BookInfoPopup:init()
     self:_buildUI()
 end
 
--- The cover block: the framed cover (a book without one gets an empty frame
--- with a diagonal line through it) plus its drop shadow. Returns the widget
--- and its on-screen size (shadow included), or nil when the cover is switched
--- off.
-function BookInfoPopup:_buildCover(max_w, max_h)
-    if not Opt.readBookInfo("cover") then return nil end
+-- Frame, corner radius and shadow of the cover, as set under Settings > Book
+-- info (0 when switched off).
+function BookInfoPopup:_coverDecor()
+    return {
+        border = Opt.readBookInfo("border")  and math.max(2, S(1)) or 0,
+        radius = Opt.readBookInfo("rounded") and S(4) or 0,
+        shadow = Opt.readBookInfo("shadow")  and S(4) or 0,
+    }
+end
 
-    local border = Opt.readBookInfo("border") and math.max(2, S(1)) or 0
-    local radius = Opt.readBookInfo("rounded") and S(4) or 0
-    local shadow = Opt.readBookInfo("shadow") and S(4) or 0
-    local box_w = max_w - shadow - 2 * border
-    local box_h = max_h - shadow - 2 * border
+-- Size of the cover block (shadow and frame included) that fits the box
+-- max_w x max_h for an image of bw x bh pixels (a book without a cover is
+-- drawn 2 : 3). Returns the block's width and height, then the picture's.
+-- One function for both the maths that sizes the cover to the text and the
+-- widget that is finally built, so the two always agree.
+local function coverGeom(decor, max_w, max_h, bw, bh)
+    local extra = decor.shadow + 2 * decor.border
+    local box_w = math.max(1, max_w - extra)
+    local box_h = math.max(1, max_h - extra)
+    local scale = math.min(box_w / bw, box_h / bh)
+    local iw = math.max(1, math.floor(bw * scale))
+    local ih = math.max(1, math.floor(bh * scale))
+    return iw + extra, ih + extra, iw, ih
+end
 
-    local inner, iw, ih
-
+-- The cover image (a blitbuffer the caller owns), or nil when the book has
+-- none. `cover_diag` says why, for the long press on a missing cover.
+function BookInfoPopup:_loadCover()
     -- A list row only ever shows its own cover (read from its file); asking
     -- for the open book's cover there would show the wrong one.
     local bb
@@ -281,36 +352,37 @@ function BookInfoPopup:_buildCover(max_w, max_h)
             self.cover_diag = "no cover image: " .. tostring(Data.last_cover_error)
         end
     end
+    return bb
+end
+
+-- The cover block: the framed cover (a book without one gets an empty frame
+-- with a diagonal line through it) plus its drop shadow, sized by coverGeom
+-- to the box max_w x max_h. Returns the widget and its on-screen size
+-- (shadow included).
+function BookInfoPopup:_buildCover(decor, max_w, max_h, bb, bw, bh)
+    local border, radius, shadow = decor.border, decor.radius, decor.shadow
+    local total_w, total_h, iw, ih = coverGeom(decor, max_w, max_h, bw, bh)
+
+    local inner
     if bb then
-        local ok, img, w, h = pcall(function()
-            local bw, bh = bb:getWidth(), bb:getHeight()
-            local scale = math.min(box_w / bw, box_h / bh)
-            local w = math.max(1, math.floor(bw * scale))
-            local h = math.max(1, math.floor(bh * scale))
+        local ok, img = pcall(function()
             local widget = ImageWidget:new{
                 image = bb,
                 image_disposable = true,
-                width = w,
-                height = h,
+                width = iw,
+                height = ih,
                 scale_factor = 0,
             }
             widget:getSize()
-            return widget, w, h
+            return widget
         end)
         if ok then
-            inner, iw, ih = img, w, h
+            inner = img
         else
             bb:free()
         end
     end
-
     if not inner then
-        ih = box_h
-        iw = math.floor(ih * 2 / 3)
-        if iw > box_w then
-            iw = box_w
-            ih = math.floor(iw * 3 / 2)
-        end
         inner = NoCover:new{ width = iw, height = ih }
     end
 
@@ -325,7 +397,6 @@ function BookInfoPopup:_buildCover(max_w, max_h)
         shadow_offset = shadow,
     }
 
-    local total_w, total_h = outer_w + shadow, outer_h + shadow
     local group = OverlapGroup:new{
         dimen = Geom:new{ w = total_w, h = total_h },
     }
@@ -339,6 +410,11 @@ function BookInfoPopup:_buildCover(max_w, max_h)
     table.insert(group, cover_frame)
     return group, total_w, total_h
 end
+
+-- Large cover: the text column keeps at least this share of the content
+-- width, and the popup never grows taller than this share of the screen.
+local LARGE_MIN_TEXT_FRAC   = 0.36
+local LARGE_MAX_HEIGHT_FRAC = 0.85
 
 function BookInfoPopup:_buildUI()
     local screen_w, screen_h = Screen:getWidth(), Screen:getHeight()
@@ -354,19 +430,6 @@ function BookInfoPopup:_buildUI()
     -- Top-aligned: the title starts level with the top of the cover.
     local row = HorizontalGroup:new{ align = "top" }
     local text_w = content_w
-
-    -- Cover box: 34% of the content width x 30% of the screen height at the
-    -- "medium" size (Settings > Book info > Cover size); "small" is half
-    -- and "large" one and a half times that.
-    local scale = Opt.BOOK_INFO_COVER_SCALE[Opt.readBookInfoCoverSize()] or 1
-    local cover, cover_w, cover_h = self:_buildCover(
-        math.floor(content_w * 0.34 * scale),
-        math.floor(screen_h * 0.30 * scale))
-    if cover then
-        table.insert(row, cover)
-        table.insert(row, HorizontalSpan:new{ width = gap })
-        text_w = math.max(S(80), content_w - cover_w - gap)
-    end
 
     local title_face  = Fonts.getFace("bookinfo_title")
     local author_face = Fonts.getFace("bookinfo_author")
@@ -410,6 +473,124 @@ function BookInfoPopup:_buildUI()
             pages, _("pages read"), Locale.formatTimeHHMM(secs).value, _("reading time"))
     end
     local stats_w = stats_text and naturalWidth(stats_text, stats_face) or 0
+    local stats_gap = S(6)
+    local stats_h = 0
+    if stats_text then
+        local probe = TextWidget:new{ text = stats_text, face = stats_face }
+        stats_h = probe:getSize().h
+        probe:free()
+    end
+
+    -- Cover. Medium is a fixed box (34% of the content width x 30% of the
+    -- screen height). Small and large are fitted to the text instead:
+    --   small  the cover is only as tall as the text beside it - stars,
+    --          title, author, series and the pages / time line, no
+    --          description - so it is the smallest cover that holds them;
+    --   large  the cover is made as big as it can be while the popup stays
+    --          within 94% of the width, all of that text still fits beside
+    --          it (no cut-off lines) and the popup fits the screen.
+    -- When no such cover exists the medium box is used.
+    local size_mode  = Opt.readBookInfoCoverSize()
+    local is_small   = size_mode == Opt.BOOK_INFO_COVER_SIZE_SMALL
+    local is_large   = size_mode == Opt.BOOK_INFO_COVER_SIZE_LARGE
+    local show_cover = Opt.readBookInfo("cover") and true or false
+    local decor      = self:_coverDecor()
+    self.cover_diag  = nil
+    local bb = show_cover and self:_loadCover() or nil
+    local bw, bh = 2, 3
+    if bb then
+        local okd, w_, h_ = pcall(function() return bb:getWidth(), bb:getHeight() end)
+        if okd and w_ and h_ and w_ > 0 and h_ > 0 then bw, bh = w_, h_ end
+    end
+
+    local cover_box_w, cover_box_h
+    local fitted = false
+    if show_cover and (is_small or is_large) then
+        local title_m  = measureWords(self.info.title or "", title_face)
+        local author_m = show_author and measureWords(self.info.authors, author_face) or nil
+        local series_m = series_line and measureWords(series_line, series_face) or nil
+
+        -- Height of everything in the text column for a column `w` wide.
+        local function textNeed(w)
+            local h = stars_h + Size.padding.small
+                + countLines(title_m, w) * lineHeight(title_face)
+            if author_m then
+                h = h + Size.padding.default + countLines(author_m, w) * lineHeight(author_face)
+            end
+            if series_m then
+                h = h + Size.padding.small + countLines(series_m, w) * lineHeight(series_face)
+            end
+            if stats_text then h = h + stats_gap + stats_h end
+            return h
+        end
+
+        -- The narrowest column everything can still be set in: its longest
+        -- word, the stars (with the finished date) and the pages / time
+        -- line, which stays on one line.
+        local widest = title_m.widest
+        if author_m then widest = math.max(widest, author_m.widest) end
+        if series_m then widest = math.max(widest, series_m.widest) end
+        local min_w = math.max(widest + S(6),
+            (finished_text and (stars_w + finished_gap + finished_w) or stars_w) + S(4),
+            stats_w + S(4))
+
+        if min_w <= math.floor(content_w * 0.65) then
+            if is_small then
+                -- from a tiny cover upwards: the taller the cover the
+                -- narrower the text column and the more the text needs
+                local h = S(60)
+                for _try = 1, 40 do
+                    local cw, ch = coverGeom(decor, content_w, h, bw, bh)
+                    local tw = content_w - cw - gap
+                    if tw < min_w then break end
+                    local need = textNeed(tw)
+                    if ch >= need then
+                        cover_box_w, cover_box_h = content_w, h
+                        fitted = true
+                        break
+                    end
+                    h = h + math.max(1, need - ch)
+                end
+            else
+                -- from the biggest cover the width / height budget allows
+                -- downwards, in small steps, to the first one the text fits
+                local min_large = math.max(min_w, math.floor(content_w * LARGE_MIN_TEXT_FRAC))
+                local h_cap = math.floor(screen_h * LARGE_MAX_HEIGHT_FRAC) - 2 * (border_w + pad)
+                local _tw, top_h = coverGeom(decor, content_w - gap - min_large, h_cap, bw, bh)
+                local _mw, med_h = coverGeom(decor, math.floor(content_w * 0.34),
+                    math.floor(screen_h * 0.30), bw, bh)
+                local step = math.max(2, S(3))
+                local h = top_h
+                while h >= med_h do
+                    local cw, ch = coverGeom(decor, content_w, h, bw, bh)
+                    local tw = content_w - cw - gap
+                    if tw >= min_large and ch >= textNeed(tw) then
+                        cover_box_w, cover_box_h = content_w, h
+                        fitted = true
+                        break
+                    end
+                    h = h - step
+                end
+            end
+        end
+    end
+    if not fitted then
+        cover_box_w = math.floor(content_w * 0.34)
+        cover_box_h = math.floor(screen_h * 0.30)
+    end
+
+    local cover, cover_w, cover_h
+    if show_cover then
+        cover, cover_w, cover_h = self:_buildCover(decor, cover_box_w, cover_box_h, bb, bw, bh)
+        table.insert(row, cover)
+        table.insert(row, HorizontalSpan:new{ width = gap })
+        text_w = math.max(S(80), content_w - cover_w - gap)
+    end
+
+    -- A fitted small cover has no room for the description (and is not
+    -- meant to show it).
+    local show_desc = Opt.readBookInfo("description")
+    if fitted and is_small then show_desc = false end
 
     -- The box is only as wide as it has to be: if the title, the author(s),
     -- the series, the stars and the pages / time row all fit on one line
@@ -417,7 +598,8 @@ function BookInfoPopup:_buildUI()
     -- the full (maximum) width and the long lines wrap. That applies without
     -- a cover always, and with one while the description is off (with the
     -- description on next to a cover the box keeps its maximum width so the
-    -- description has room to breathe).
+    -- description has room to breathe). A fitted large cover always keeps
+    -- the maximum width: the cover is as big as it can be.
     local needed = math.max(naturalWidth(self.info.title, title_face),
         finished_text and (stars_w + finished_gap + finished_w) or stars_w, stats_w)
     if show_author then
@@ -426,11 +608,16 @@ function BookInfoPopup:_buildUI()
     if series_line then
         needed = math.max(needed, naturalWidth(series_line, series_face))
     end
-    local show_desc = Opt.readBookInfo("description")
-    if (not cover or not show_desc) and needed < text_w then
+    if (not cover or not show_desc) and not (fitted and is_large) and needed < text_w then
         -- a few pixels of slack so a line that just fits never wraps
         text_w = math.max(S(80), math.ceil(needed) + S(4))
     end
+
+    -- Lines the text may take. Fitted covers were sized to the text, so
+    -- nothing is cut short; otherwise a long title / author list / series is
+    -- cut with an ellipsis (the blocks only take the height they need).
+    local title_lines, author_lines, series_lines = 4, 3, 2
+    if fitted then title_lines, author_lines, series_lines = 8, 6, 4 end
 
     local text_col = VerticalGroup:new{ align = "left" }
     self.stars_frame = FrameContainer:new{
@@ -461,39 +648,36 @@ function BookInfoPopup:_buildUI()
     end
     table.insert(text_col, VerticalSpan:new{ width = Size.padding.small })
     table.insert(text_col, textBlock(
-        self.info.title or "", title_face, Colors.value(), text_w, 4))
+        self.info.title or "", title_face, Colors.value(), text_w, title_lines))
 
     if show_author then
         table.insert(text_col, VerticalSpan:new{ width = Size.padding.default })
         table.insert(text_col, textBlock(
-            self.info.authors, author_face, Colors.label(), text_w, 3))
+            self.info.authors, author_face, Colors.label(), text_w, author_lines))
     end
 
     if series_line then
         table.insert(text_col, VerticalSpan:new{ width = Size.padding.small })
         table.insert(text_col, textBlock(
-            series_line, series_face, Colors.label(), text_w, 2))
+            series_line, series_face, Colors.label(), text_w, series_lines))
     end
 
     -- Description: starts one padding below the author / series and runs
     -- down to the bottom of the cover (its shadow included, when on), as many
     -- whole lines as fit - fewer by the pages / reading time line that
     -- closes the column. Tapping it opens the full text.
-    local stats_widget, stats_h = nil, 0
+    local stats_widget
     if stats_text then
         stats_widget = TextWidget:new{
             text = stats_text, face = stats_face,
             max_width = text_w, fgcolor = Colors.label(),
         }
-        stats_h = stats_widget:getSize().h
     end
-    local stats_gap = S(6)
 
     self.desc_frame = nil
     self.desc_full = nil
-    local desc_added = false
     if show_desc and self.info.description then
-        local region_h = cover_h or math.floor(screen_h * 0.30 * scale)
+        local region_h = cover_h or math.floor(screen_h * 0.30)
         local probe = TextWidget:new{ text = "Ag", face = desc_face }
         local line_h = probe:getSize().h
         probe:free()
@@ -527,7 +711,6 @@ function BookInfoPopup:_buildUI()
             }
             table.insert(text_col, self.desc_frame)
             self.desc_full = self.info.description
-            desc_added = true
         end
     end
 

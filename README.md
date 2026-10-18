@@ -201,7 +201,10 @@ unticked keeps everything, so a later reinstall picks up where you left off.
   or a donut chart), then one group per section: *This book*, *Pace* and
   *Chapters* (chapter columns, chapter bar, chapters per page), plus *Bar chart height*.
 - **Book info** — show or hide the cover, its rounded corners, shadow and
-  border, and the author and series lines. The title / author / series fonts
+  border, and the author and series lines, and the **cover size**: *small* (the
+  cover is only as tall as the text beside it, no description), *medium* (the
+  default) or *large* (the biggest cover that fits within 94% of the screen
+  width with all the text still beside it). The title / author / series fonts
   are under *Fonts → Book info* (by default the same as the Book card plugin's).
 - **Book progress calendar** — what the day cells show.
 - **Advanced settings** — the sleep screen, full-screen refresh on
