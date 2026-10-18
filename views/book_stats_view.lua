@@ -1306,9 +1306,11 @@ function ReadingStatsPopup:gatherStats()
         local plugin = stats_plugin
         stats.book_id = plugin.id_curr_book
         local total_time = 0
+        local pages_read = 0
         if plugin.getPageTimeTotalStats then
-            local _, time_val = plugin:getPageTimeTotalStats(plugin.id_curr_book)
+            local pages_val, time_val = plugin:getPageTimeTotalStats(plugin.id_curr_book)
             total_time = tonumber(time_val) or 0
+            pages_read = tonumber(pages_val) or 0
         end
         if total_time and total_time > 0 then
             stats.book_time_spent_hhmm = Locale.formatTimeHHMM(total_time)
@@ -1332,12 +1334,15 @@ function ReadingStatsPopup:gatherStats()
                 local avg_secs = total_time / total_days
                 stats.avg_time_per_day_hhmm = Locale.formatTimeHHMM(avg_secs)
             end
-            -- current_page_count is the live reading position (set above,
-            -- from BookProgress.counts) - a reliable proxy for "pages
-            -- read so far", unlike statistics plugin's own page counter
-            -- which can be 0/stale depending on how the book was opened.
-            if current_page_count and current_page_count > 0 then
-                local avg_pages = current_page_count / total_days
+            -- Pages per reading day = distinct pages actually read / days
+            -- read, the same numerator Bookends' %pages_per_day uses, so
+            -- skipped or jumped-over pages don't inflate the pace. Falls
+            -- back to the live reading position (set above, from
+            -- BookProgress.counts) when the statistics plugin reports no
+            -- pages read.
+            local pace_pages = pages_read > 0 and pages_read or current_page_count
+            if pace_pages and pace_pages > 0 then
+                local avg_pages = pace_pages / total_days
                 stats.avg_pages_per_day = {
                     value = formatNumber(avg_pages, avg_pages >= 10 and 0 or 1),
                     unit  = "",
@@ -1351,7 +1356,9 @@ function ReadingStatsPopup:gatherStats()
                 local avg_secs_per_day = total_time / total_days
                 local days_left_fraction = bl_secs / avg_secs_per_day
                 stats.finish_days_left = math.ceil(days_left_fraction)
-                stats.finish_timestamp = os.time() + math.floor(days_left_fraction * 86400 + 0.5)
+                -- Whole days, like Bookends' %book_finish_date, so the
+                -- date always agrees with the "N days left" figure.
+                stats.finish_timestamp = os.time() + stats.finish_days_left * 86400
             end
         end
 
