@@ -1472,6 +1472,49 @@ function M.getFinishedBooksForYear(year)
     end)
 end
 
+-- Every finished book of every year in ONE query: { { id_book, last_read },
+-- ... } (newest first). The same "last entry >= 99%" definition as
+-- getFinishedBooksForYear above, just without that function's year filter and
+-- its per-year duration/pages columns - a book is in exactly one year's list
+-- (the year of its last entry), so this is the union of all of them. For the
+-- achievements, which used to call getFinishedBooksForYear once per year and
+-- so ran the whole-library query (and its cache stamp) once per year. Not
+-- cached: the caller holds the result for the run.
+function M.getFinishedBooksAllYears(shared_conn)
+    local books = {}
+    return StatsDb.withShared(shared_conn, books, function(conn)
+        local sql = [[
+            WITH last_entry AS (
+                SELECT id_book, MAX(start_time) AS last_time
+                FROM page_stat
+                GROUP BY id_book
+            ),
+            last_page AS (
+                SELECT le.id_book AS id_book, le.last_time AS last_time,
+                       MAX(ps.page) AS last_page
+                FROM last_entry le
+                JOIN page_stat ps ON ps.id_book = le.id_book AND ps.start_time = le.last_time
+                GROUP BY le.id_book, le.last_time
+            )
+            SELECT book.id AS id_book, lp.last_time AS last_time
+            FROM last_page lp
+            JOIN book ON book.id = lp.id_book
+            WHERE book.pages > 0
+              AND CAST(lp.last_page AS REAL) / book.pages >= 0.99
+            ORDER BY lp.last_time DESC
+        ]]
+        StatsDb.withStatement(conn, sql, function(stmt)
+            for row in stmt:rows() do
+                table.insert(books, {
+                    id_book   = tonumber(row[1]),
+                    last_read = tonumber(row[2]) or 0,
+                })
+            end
+        end)
+        return books
+    end)
+end
+
 -- When a book counts as finished, for lists that are not the finished-books
 -- list (month, year, all-books, day): the timestamp of the entry it was
 -- finished on, or nil when it doesn't count as finished. The same rules as

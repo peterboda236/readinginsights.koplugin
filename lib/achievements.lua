@@ -24,7 +24,10 @@ earned achievement stays earned.
   Achievements.list()             the list popup's rows: earned ones (sorted
                                   by ts descending) first, locked ones after
   Achievements.recompute()        fresh evaluation from the DB + persistence;
-                                  returns the current count
+                                  returns the current count. Only the checks
+                                  of not-yet-earned achievements run, and the
+                                  metrics they read are loaded lazily, so
+                                  nothing is queried for what is already earned
   Achievements.refreshIfChanged() cheap, conditional evaluation: only runs a
                                   full recompute if the data has changed
                                   since the last evaluation (one lightweight
@@ -33,6 +36,7 @@ earned achievement stays earned.
 
 local DataStorage = require("datastorage")
 local LuaSettings = require("luasettings")
+local logger      = require("logger")
 
 -- Shared modules, passed in as one named table by main.lua (see there).
 local deps = ...
@@ -537,36 +541,43 @@ end
 -- has changed since the last evaluation)
 -- ---------------------------------------------------------------------
 
--- The fresh metrics passed to the checks. The lightweight aggregates come
--- from the existing modules (RecordsData for the records, the same total
--- time the Records popup shows; InsightsData for the all-time pages/books
--- and the weekly streak), the rest from queries run on a single connection.
-function M.computeMetrics()
-    local records = RecordsData.load() or {}
-    local total_secs       = records.total_secs or 0
-    local max_day_secs     = (records.longest  and records.longest.duration_sec) or 0
-    local max_day_pages    = (records.best_day and records.best_day.pages) or 0
-    local best_streak_days = (records.streak   and records.streak.days) or 0
+-- The fresh metrics passed to the checks. They are computed LAZILY, by
+-- group: the table returned here is empty, and the first time a check reads
+-- a field (m.max_session_secs, say) the group that field belongs to is
+-- loaded - one group is one query (or one cheap cached call) - and every
+-- field of that group is filled in at once. recompute() only runs the
+-- checks of achievements that are NOT earned yet, so a group that nothing
+-- unearned reads is never loaded: with everything of a kind earned, its
+-- queries don't run at all (and with nothing left to earn, none do). A
+-- check that short-circuits doesn't load the groups it never reaches.
+--
+-- A group whose query fails keeps its default values (0 / false), i.e.
+-- "not earned" - it can only ever withhold an achievement, never award one.
+--
+-- The lightweight aggregates come from the existing modules (RecordsData
+-- for the records, the same total time the Records popup shows; InsightsData
+-- for the all-time pages/books and the weekly streak), the rest from
+-- queries run on their own connection. `ctx` is an optional per-run memo
+-- shared with findEarnDates() (the finished-books list is read once).
+function M.computeMetrics(ctx)
+    ctx = ctx or {}
 
-    local all_time = Data.getAllTimeStats() or {}
-    local streaks  = Data.calculateStreaks() or {}
-
-    local m = {
+    local raw = {
         finished_books   = 0,
         finished_max_year  = 0,
         finished_max_month = 0,
         finished_same_day  = false,
         finished_book_max_pages   = 0,
         distinct_finished_authors = 0,
-        total_hours      = total_secs / 3600,
+        total_hours      = 0,
         hours_max_year   = 0,
         hours_max_month  = 0,
-        total_pages      = all_time.pages or 0,
-        distinct_books   = all_time.book_count or 0,
-        max_day_secs     = max_day_secs,
-        max_day_pages    = max_day_pages,
-        best_streak_days = best_streak_days,
-        best_weekly_streak = streaks.best_weeks or 0,
+        total_pages      = 0,
+        distinct_books   = 0,
+        max_day_secs     = 0,
+        max_day_pages    = 0,
+        best_streak_days = 0,
+        best_weekly_streak = 0,
         month_all_days   = false,
         weekend_warrior  = false,
         max_session_secs = 0,
@@ -594,197 +605,100 @@ function M.computeMetrics()
         max_books_one_author = 0,
     }
 
+    -- Every finished book of every year, read once per run (see
+    -- Data.getFinishedBooksAllYears): { { id_book, last_read }, ... }.
+    local function finishedList()
+        if ctx.finished == nil then
+            ctx.finished = Data.getFinishedBooksAllYears() or {}
+        end
+        return ctx.finished
+    end
+
+    local loaders = {}
+
+    -- Cheap, already cached by their own modules ---------------------------
+    loaders.records = function()
+        local records = RecordsData.load() or {}
+        raw.total_hours      = (records.total_secs or 0) / 3600
+        raw.max_day_secs     = (records.longest  and records.longest.duration_sec) or 0
+        raw.max_day_pages    = (records.best_day and records.best_day.pages) or 0
+        raw.best_streak_days = (records.streak   and records.streak.days) or 0
+    end
+
+    loaders.all_time = function()
+        local all_time = Data.getAllTimeStats() or {}
+        raw.total_pages    = all_time.pages or 0
+        raw.distinct_books = all_time.book_count or 0
+    end
+
+    loaders.weekly_streak = function()
+        local streaks = Data.calculateStreaks() or {}
+        raw.best_weekly_streak = streaks.best_weeks or 0
+    end
+
     -- Finished books: the sum of each year's finished-count (same
-    -- definition as the goal cell), plus the raw finished-book list for the
-    -- per-year/per-month maximum and the book IDs.
-    local finished_ids = {}          -- id_book -> finish_ts
-    local finished_by_month = {}     -- "YYYY-MM" -> count
-    local range = Data.getYearRange()
-    if range and range.min_year and range.max_year then
-        m.span_years = range.max_year - range.min_year + 1
-        for y = range.min_year, range.max_year do
-            local cnt = Data.getFinishedBookCountForYear(y) or 0
-            m.finished_books = m.finished_books + cnt
-            if cnt > m.finished_max_year then m.finished_max_year = cnt end
-            for _i, b in ipairs(Data.getFinishedBooksForYear(y) or {}) do
-                if b.id_book then finished_ids[b.id_book] = b.last_read or 0 end
-                if b.last_read and b.last_read > 0 then
-                    local mk = os.date("%Y-%m", b.last_read)
-                    finished_by_month[mk] = (finished_by_month[mk] or 0) + 1
+    -- definition as the goal cell), plus the per-year/per-month maximum
+    -- from the finished-books list.
+    loaders.finished_counts = function()
+        local range = Data.getYearRange()
+        if range and range.min_year and range.max_year then
+            raw.span_years = range.max_year - range.min_year + 1
+            local total, max_year = 0, 0
+            -- One connection for all the years instead of one per year.
+            Data.withBatchConnection(function(conn)
+                for y = range.min_year, range.max_year do
+                    local cnt = Data.getFinishedBookCountForYear(y, conn) or 0
+                    total = total + cnt
+                    if cnt > max_year then max_year = cnt end
                 end
+            end)
+            raw.finished_books    = total
+            raw.finished_max_year = max_year
+        end
+        local by_month, max_month = {}, 0
+        for _i, b in ipairs(finishedList()) do
+            if b.last_read and b.last_read > 0 then
+                local mk = os.date("%Y-%m", b.last_read)
+                by_month[mk] = (by_month[mk] or 0) + 1
+                if by_month[mk] > max_month then max_month = by_month[mk] end
             end
         end
-    end
-    for _k, c in pairs(finished_by_month) do
-        if c > m.finished_max_month then m.finished_max_month = c end
+        raw.finished_max_month = max_month
     end
 
-    StatsDb.withDb(nil, function(conn)
-        -- Year/month totals -> hours/year, hours/month, pages/month,
-        -- "every month in a year", "all four seasons".
-        StatsDb.withStatement(conn, [[
-            SELECT strftime('%Y', start_time, 'unixepoch', 'localtime') AS y,
-                   strftime('%m', start_time, 'unixepoch', 'localtime') AS mo,
-                   SUM(duration) AS dur,
-                   COUNT(*) AS cnt
-            FROM page_stat GROUP BY y, mo
-        ]], function(stmt)
-            local year_sum, year_months, all_months = {}, {}, {}
-            for row in stmt:rows() do
-                local y   = row[1]
-                local mo  = tonumber(row[2])
-                local dur = tonumber(row[3]) or 0
-                local cnt = tonumber(row[4]) or 0
-                if y then year_sum[y] = (year_sum[y] or 0) + dur end
-                if dur / 3600 > m.hours_max_month then m.hours_max_month = dur / 3600 end
-                if cnt > m.pages_max_month then m.pages_max_month = cnt end
-                if y and mo then
-                    year_months[y] = year_months[y] or {}
-                    year_months[y][mo] = true
-                    all_months[mo] = true
-                end
-            end
-            for _y, s in pairs(year_sum) do
-                if s / 3600 > m.hours_max_year then m.hours_max_year = s / 3600 end
-            end
-            for _y, mset in pairs(year_months) do
-                local n = 0
-                for _mo in pairs(mset) do n = n + 1 end
-                if n >= 12 then m.any_year_all_months = true end
-            end
-            -- Seasons: winter (12,1,2), spring (3,4,5), summer (6,7,8), autumn (9,10,11).
-            local function seasonHit(a, b, c)
-                return all_months[a] or all_months[b] or all_months[c]
-            end
-            m.all_seasons = seasonHit(12, 1, 2) and seasonHit(3, 4, 5)
-                and seasonHit(6, 7, 8) and seasonHit(9, 10, 11) or false
-        end)
-
-        -- Weekly time totals -> the week with the most reading. The week's
-        -- start day comes from the shared setting (Mon/Sun), the same way the
-        -- weekly streak counts it.
-        StatsDb.withStatement(conn, string.format([[
-            SELECT %s AS wk,
-                   SUM(duration) AS dur
-            FROM page_stat GROUP BY wk
-        ]], Data.weekStartSqlExpr(Data.weekStartWday())), function(stmt)
-            for row in stmt:rows() do
-                local dur = tonumber(row[2]) or 0
-                if dur / 3600 > m.max_week_hours then m.max_week_hours = dur / 3600 end
-            end
-        end)
-
-        -- The list of days read -> full month, weekend streak.
-        local day_list, day_set, months = {}, {}, {}
-        StatsDb.withStatement(conn, [[
-            SELECT DISTINCT date(start_time, 'unixepoch', 'localtime') AS d
-            FROM page_stat ORDER BY d
-        ]], function(stmt)
-            for row in stmt:rows() do
-                local d = row[1]
-                if d then
-                    day_list[#day_list + 1] = d
-                    day_set[d] = true
-                    months[d:sub(1, 7)] = true
-                end
-            end
-        end)
-        m.month_all_days  = anyFullMonth(day_set, months)
-        m.weekend_warrior = anyWeekendStreak(day_set, day_list)
-        m.full_week_mon_sun = anyFullWeek(day_set, day_list)
-        m.total_reading_days = #day_list
-        m.had_comeback = anyLongGap(day_list)
-        -- Anniversary: how many days have passed since the first reading day.
-        if day_list[1] then
-            local y, mo, da = day_list[1]:match("^(%d+)-(%d+)-(%d+)$")
-            if y then
-                local first_ts = os.time({ year = tonumber(y), month = tonumber(mo), day = tonumber(da), hour = 12 })
-                if first_ts then
-                    m.history_span_days = math.floor((os.time() - first_ts) / 86400)
-                end
-            end
+    -- Finished books: page count + authors + first reading day.
+    loaders.finished_details = function()
+        local finished_ids, ids = {}, {}
+        for _i, b in ipairs(finishedList()) do
+            if b.id_book then finished_ids[b.id_book] = b.last_read or 0 end
         end
-
-        -- Hour coverage + time-of-day flags.
-        StatsDb.withStatement(conn, [[
-            SELECT DISTINCT CAST(strftime('%H', start_time, 'unixepoch', 'localtime') AS INTEGER)
-            FROM page_stat
-        ]], function(stmt)
-            local hset, n = {}, 0
-            for row in stmt:rows() do
-                local h = tonumber(row[1])
-                if h and not hset[h] then hset[h] = true; n = n + 1 end
-            end
-            m.distinct_hours = n
-            m.night_owl  = hset[0] or hset[1] or hset[2] or hset[3] or false
-            m.read_early = hset[5] or hset[6] or false
-            m.read_lunch = hset[12] or false
-        end)
-
-        -- Weekday coverage.
-        StatsDb.withStatement(conn, [[
-            SELECT DISTINCT strftime('%w', start_time, 'unixepoch', 'localtime') FROM page_stat
-        ]], function(stmt)
-            local n = 0
-            for _row in stmt:rows() do n = n + 1 end
-            m.distinct_weekdays = n
-        end)
-
-        -- Special calendar days.
-        StatsDb.withStatement(conn, [[
-            SELECT
-              MAX(CASE WHEN strftime('%m-%d', start_time, 'unixepoch', 'localtime') = '12-31' THEN 1 ELSE 0 END),
-              MAX(CASE WHEN strftime('%m-%d', start_time, 'unixepoch', 'localtime') = '01-01' THEN 1 ELSE 0 END)
-            FROM page_stat
-        ]], function(stmt)
-            for row in stmt:rows() do
-                m.read_dec31 = (tonumber(row[1]) or 0) == 1
-                m.read_jan1  = (tonumber(row[2]) or 0) == 1
-            end
-        end)
-
-        -- Per-book totals -> longest time spent on one book, best pace.
-        StatsDb.withStatement(conn, [[
-            SELECT id_book, SUM(duration) AS secs, COUNT(DISTINCT page) AS pages
-            FROM page_stat GROUP BY id_book
-        ]], function(stmt)
-            for row in stmt:rows() do
-                local secs  = tonumber(row[2]) or 0
-                local pages = tonumber(row[3]) or 0
-                if secs > m.max_book_secs then m.max_book_secs = secs end
-                -- Only compute pace for at least half an hour of reading, so a
-                -- few-second "peek" doesn't produce an unrealistic pages/hour.
-                if secs >= 1800 and pages > 0 then
-                    local pph = pages / (secs / 3600)
-                    if pph > m.max_book_pace_pph then m.max_book_pace_pph = pph end
-                end
-            end
-        end)
-
-        -- Finished books: page count + authors + first reading day.
-        local ids = {}
         for id in pairs(finished_ids) do ids[#ids + 1] = id end
-        if #ids > 0 then
-            local in_list = table.concat(ids, ",")
-            StatsDb.withStatement(conn, string.format([[
+        if #ids == 0 then return end
+        local in_list = table.concat(ids, ",")
+        StatsDb.withDb(nil, function(conn)
+            local max_pages, n_authors, max_one = 0, 0, 0
+            local _r1, ran1 = StatsDb.withStatement(conn, string.format([[
                 SELECT id, pages, authors FROM book WHERE id IN (%s)
             ]], in_list), function(stmt)
-                local authors, na = {}, 0
+                local authors = {}
                 for row in stmt:rows() do
                     local pages = tonumber(row[2]) or 0
-                    if pages > m.finished_book_max_pages then m.finished_book_max_pages = pages end
+                    if pages > max_pages then max_pages = pages end
                     local a = row[3]
                     if a and a ~= "" then
-                        if not authors[a] then na = na + 1 end
+                        if not authors[a] then n_authors = n_authors + 1 end
                         authors[a] = (authors[a] or 0) + 1
-                        if authors[a] > m.max_books_one_author then
-                            m.max_books_one_author = authors[a]
-                        end
+                        if authors[a] > max_one then max_one = authors[a] end
                     end
                 end
-                m.distinct_finished_authors = na
             end)
-            StatsDb.withStatement(conn, string.format([[
+            if ran1 then
+                raw.finished_book_max_pages   = max_pages
+                raw.distinct_finished_authors = n_authors
+                raw.max_books_one_author      = max_one
+            end
+            local same_day = false
+            local _r2, ran2 = StatsDb.withStatement(conn, string.format([[
                 SELECT id_book, MIN(start_time) FROM page_stat WHERE id_book IN (%s) GROUP BY id_book
             ]], in_list), function(stmt)
                 for row in stmt:rows() do
@@ -793,49 +707,239 @@ function M.computeMetrics()
                     local finish = (id and finished_ids[id]) or 0
                     if first > 0 and finish > 0
                        and os.date("%Y-%m-%d", first) == os.date("%Y-%m-%d", finish) then
-                        m.finished_same_day = true
+                        same_day = true
                     end
                 end
             end)
-        end
+            if ran2 then raw.finished_same_day = same_day end
+            return nil
+        end)
+    end
 
-        -- Continuous reading sessions (10-minute gap threshold): longest
-        -- session length + a session that crosses midnight.
-        StatsDb.withStatement(conn, [[
-            SELECT start_time, duration FROM page_stat ORDER BY start_time
-        ]], function(stmt)
-            local GAP = 600
-            local sess_start, sess_end, sess_pages
-            local function closeSession()
-                if sess_start then
-                    local len = sess_end - sess_start
-                    if len > m.max_session_secs then m.max_session_secs = len end
-                    if sess_pages > m.max_session_pages then m.max_session_pages = sess_pages end
-                    if os.date("%Y-%m-%d", sess_start) ~= os.date("%Y-%m-%d", sess_end) then
-                        m.midnight_crossing = true
+    -- Everything that depends on WHEN reading happened, from ONE scan of
+    -- page_stat grouped by (day, hour). That is a few thousand rows however
+    -- long the history is, and the year/month/week totals, the list of days
+    -- read, the hour and weekday coverage and the special days are all
+    -- derived from it in Lua (what used to be seven separate full scans).
+    loaders.calendar = function()
+        local wd = Data.weekStartWday()
+        local day_list, day_set, months = {}, {}, {}
+        local month_dur, month_cnt, year_dur = {}, {}, {}
+        local year_months, all_months, week_dur = {}, {}, {}
+        local hset, wset = {}, {}
+        local read_dec31, read_jan1 = false, false
+        local last_d, cur_wk
+
+        local ran_ok = StatsDb.withDb(false, function(conn)
+            local _r, ran = StatsDb.withStatement(conn, [[
+                SELECT date(start_time, 'unixepoch', 'localtime') AS d,
+                       CAST(strftime('%H', start_time, 'unixepoch', 'localtime') AS INTEGER) AS h,
+                       SUM(duration), COUNT(*)
+                FROM page_stat GROUP BY d, h ORDER BY d, h
+            ]], function(stmt)
+                for row in stmt:rows() do
+                    local d   = row[1]
+                    local h   = tonumber(row[2])
+                    local dur = tonumber(row[3]) or 0
+                    local cnt = tonumber(row[4]) or 0
+                    if d then
+                        local y, mo = d:sub(1, 4), tonumber(d:sub(6, 7))
+                        if d ~= last_d then
+                            last_d = d
+                            day_list[#day_list + 1] = d
+                            day_set[d] = true
+                            months[d:sub(1, 7)] = true
+                            -- Once per day: weekday, special days, week.
+                            local yy, mm, dd = d:match("^(%d+)-(%d+)-(%d+)$")
+                            if yy then
+                                local t = os.time({ year = tonumber(yy), month = tonumber(mm),
+                                                    day = tonumber(dd), hour = 12 })
+                                if t then wset[os.date("%w", t)] = true end
+                                if mm == "12" and dd == "31" then read_dec31 = true end
+                                if mm == "01" and dd == "01" then read_jan1  = true end
+                            end
+                            cur_wk = Data.weekStartDate(d, wd)
+                            if mo then
+                                year_months[y] = year_months[y] or {}
+                                year_months[y][mo] = true
+                                all_months[mo] = true
+                            end
+                        end
+                        local mk = d:sub(1, 7)
+                        month_dur[mk] = (month_dur[mk] or 0) + dur
+                        month_cnt[mk] = (month_cnt[mk] or 0) + cnt
+                        year_dur[y]   = (year_dur[y] or 0) + dur
+                        if cur_wk then week_dur[cur_wk] = (week_dur[cur_wk] or 0) + dur end
+                        if h then hset[h] = true end
                     end
                 end
-            end
-            for row in stmt:rows() do
-                local st  = tonumber(row[1]) or 0
-                local dur = tonumber(row[2]) or 0
-                if not sess_start then
-                    sess_start, sess_end, sess_pages = st, st + dur, 1
-                elseif st - sess_end <= GAP then
-                    if st + dur > sess_end then sess_end = st + dur end
-                    sess_pages = sess_pages + 1
-                else
-                    closeSession()
-                    sess_start, sess_end, sess_pages = st, st + dur, 1
+            end)
+            return ran
+        end)
+        if not ran_ok then return end
+
+        for _k, dur in pairs(month_dur) do
+            if dur / 3600 > raw.hours_max_month then raw.hours_max_month = dur / 3600 end
+        end
+        for _k, c in pairs(month_cnt) do
+            if c > raw.pages_max_month then raw.pages_max_month = c end
+        end
+        for _y, sum in pairs(year_dur) do
+            if sum / 3600 > raw.hours_max_year then raw.hours_max_year = sum / 3600 end
+        end
+        for _y, mset in pairs(year_months) do
+            local n = 0
+            for _mo in pairs(mset) do n = n + 1 end
+            if n >= 12 then raw.any_year_all_months = true end
+        end
+        -- Seasons: winter (12,1,2), spring (3,4,5), summer (6,7,8), autumn (9,10,11).
+        local function seasonHit(a, b, c)
+            return all_months[a] or all_months[b] or all_months[c]
+        end
+        raw.all_seasons = seasonHit(12, 1, 2) and seasonHit(3, 4, 5)
+            and seasonHit(6, 7, 8) and seasonHit(9, 10, 11) or false
+        -- The week with the most reading (the week's start day comes from
+        -- the shared Mon/Sun setting, same as the weekly streak).
+        for _w, dur in pairs(week_dur) do
+            if dur / 3600 > raw.max_week_hours then raw.max_week_hours = dur / 3600 end
+        end
+
+        raw.month_all_days    = anyFullMonth(day_set, months)
+        raw.weekend_warrior   = anyWeekendStreak(day_set, day_list)
+        raw.full_week_mon_sun = anyFullWeek(day_set, day_list)
+        raw.total_reading_days = #day_list
+        raw.had_comeback      = anyLongGap(day_list)
+        -- Anniversary: how many days have passed since the first reading day.
+        if day_list[1] then
+            local y, mo, da = day_list[1]:match("^(%d+)-(%d+)-(%d+)$")
+            if y then
+                local first_ts = os.time({ year = tonumber(y), month = tonumber(mo), day = tonumber(da), hour = 12 })
+                if first_ts then
+                    raw.history_span_days = math.floor((os.time() - first_ts) / 86400)
                 end
             end
-            closeSession()
+        end
+
+        -- Hour coverage + time-of-day flags, weekday coverage, special days.
+        local nh = 0
+        for _h in pairs(hset) do nh = nh + 1 end
+        raw.distinct_hours = nh
+        raw.night_owl  = hset[0] or hset[1] or hset[2] or hset[3] or false
+        raw.read_early = hset[5] or hset[6] or false
+        raw.read_lunch = hset[12] or false
+        local nw = 0
+        for _w in pairs(wset) do nw = nw + 1 end
+        raw.distinct_weekdays = nw
+        raw.read_dec31 = read_dec31
+        raw.read_jan1  = read_jan1
+    end
+
+    -- Per-book totals -> longest time spent on one book, best pace.
+    loaders.books = function()
+        StatsDb.withDb(nil, function(conn)
+            local max_secs, max_pph = 0, 0
+            local _r, ran = StatsDb.withStatement(conn, [[
+                SELECT id_book, SUM(duration) AS secs, COUNT(DISTINCT page) AS pages
+                FROM page_stat GROUP BY id_book
+            ]], function(stmt)
+                for row in stmt:rows() do
+                    local secs  = tonumber(row[2]) or 0
+                    local pages = tonumber(row[3]) or 0
+                    if secs > max_secs then max_secs = secs end
+                    -- Only compute pace for at least half an hour of reading, so a
+                    -- few-second "peek" doesn't produce an unrealistic pages/hour.
+                    if secs >= 1800 and pages > 0 then
+                        local pph = pages / (secs / 3600)
+                        if pph > max_pph then max_pph = pph end
+                    end
+                end
+            end)
+            if ran then
+                raw.max_book_secs     = max_secs
+                raw.max_book_pace_pph = max_pph
+            end
+            return nil
         end)
+    end
 
-        return nil
-    end)
+    -- Continuous reading sessions (10-minute gap threshold): longest
+    -- session length + a session that crosses midnight.
+    loaders.sessions = function()
+        StatsDb.withDb(nil, function(conn)
+            local max_secs, max_pages, crossing = 0, 0, false
+            local _r, ran = StatsDb.withStatement(conn, [[
+                SELECT start_time, duration FROM page_stat ORDER BY start_time
+            ]], function(stmt)
+                local GAP = 600
+                local sess_start, sess_end, sess_pages
+                local function closeSession()
+                    if sess_start then
+                        local len = sess_end - sess_start
+                        if len > max_secs then max_secs = len end
+                        if sess_pages > max_pages then max_pages = sess_pages end
+                        if os.date("%Y-%m-%d", sess_start) ~= os.date("%Y-%m-%d", sess_end) then
+                            crossing = true
+                        end
+                    end
+                end
+                for row in stmt:rows() do
+                    local st  = tonumber(row[1]) or 0
+                    local dur = tonumber(row[2]) or 0
+                    if not sess_start then
+                        sess_start, sess_end, sess_pages = st, st + dur, 1
+                    elseif st - sess_end <= GAP then
+                        if st + dur > sess_end then sess_end = st + dur end
+                        sess_pages = sess_pages + 1
+                    else
+                        closeSession()
+                        sess_start, sess_end, sess_pages = st, st + dur, 1
+                    end
+                end
+                closeSession()
+            end)
+            if ran then
+                raw.max_session_secs  = max_secs
+                raw.max_session_pages = max_pages
+                raw.midnight_crossing = crossing
+            end
+            return nil
+        end)
+    end
 
-    return m
+    -- field -> the group that fills it in.
+    local field_loader = {}
+    local function register(loader_name, fields)
+        for _i, f in ipairs(fields) do field_loader[f] = loader_name end
+    end
+    register("records", { "total_hours", "max_day_secs", "max_day_pages", "best_streak_days" })
+    register("all_time", { "total_pages", "distinct_books" })
+    register("weekly_streak", { "best_weekly_streak" })
+    register("finished_counts", { "finished_books", "finished_max_year", "finished_max_month", "span_years" })
+    register("finished_details", { "finished_book_max_pages", "distinct_finished_authors",
+                                   "max_books_one_author", "finished_same_day" })
+    register("calendar", { "hours_max_year", "hours_max_month", "pages_max_month",
+                           "any_year_all_months", "all_seasons", "max_week_hours",
+                           "month_all_days", "weekend_warrior", "full_week_mon_sun",
+                           "total_reading_days", "had_comeback", "history_span_days",
+                           "distinct_hours", "night_owl", "read_early", "read_lunch",
+                           "distinct_weekdays", "read_dec31", "read_jan1" })
+    register("books", { "max_book_secs", "max_book_pace_pph" })
+    register("sessions", { "max_session_secs", "max_session_pages", "midnight_crossing" })
+
+    local loaded = {}
+    return setmetatable({}, {
+        __index = function(_t, key)
+            local name = field_loader[key]
+            if name and not loaded[name] then
+                loaded[name] = true   -- marked first: a failing group is not retried
+                local ok, err = pcall(loaders[name])
+                if not ok then
+                    logger.warn("ReadingInsights: achievement metrics group failed:", name, err)
+                end
+            end
+            return raw[key]
+        end,
+    })
 end
 
 -- ---------------------------------------------------------------------
@@ -856,7 +960,8 @@ local CALENDAR_IDS = {  -- helpers that need the whole day list, see below
     complete_week = anyFullWeek, comeback = anyLongGap,
 }
 
-function M.findEarnDates(ids)
+function M.findEarnDates(ids, ctx)
+    ctx = ctx or {}
     local out = {}
     if not ids or #ids == 0 then return out end
 
@@ -875,18 +980,18 @@ function M.findEarnDates(ids)
     end
 
     -- Finished books (finish time = last read), oldest first.
+    -- One query for every year (the list computeMetrics() already read in
+    -- this run is reused, see M.recompute).
     local fin = {}
-    local range = Data.getYearRange()
-    if range and range.min_year and range.max_year then
-        for y = range.min_year, range.max_year do
-            for _i, b in ipairs(Data.getFinishedBooksForYear(y) or {}) do
-                if b.id_book and (b.last_read or 0) > 0 then
-                    fin[#fin + 1] = { id = b.id_book, ts = b.last_read }
-                end
-            end
-        end
-        table.sort(fin, function(x, y) return x.ts < y.ts end)
+    if ctx.finished == nil then
+        ctx.finished = Data.getFinishedBooksAllYears() or {}
     end
+    for _i, b in ipairs(ctx.finished) do
+        if b.id_book and (b.last_read or 0) > 0 then
+            fin[#fin + 1] = { id = b.id_book, ts = b.last_read }
+        end
+    end
+    table.sort(fin, function(x, y) return x.ts < y.ts end)
     local book_info = {}   -- id -> { pages, authors }
     if #fin > 0 then
         local idl = {}
@@ -1167,7 +1272,9 @@ end
 -- (evaluated_ts + fingerprint) even if nothing changed, so
 -- refreshIfChanged() can skip it from then on. Returns the current count.
 function M.recompute()
-    local ok_m, m = pcall(M.computeMetrics)
+    -- Shared by computeMetrics() and findEarnDates() for this run only.
+    local ctx = {}
+    local ok_m, m = pcall(M.computeMetrics, ctx)
     if not ok_m or type(m) ~= "table" then
         return M.earnedCount()
     end
@@ -1198,7 +1305,7 @@ function M.recompute()
     end
     local dates = {}
     if #to_date > 0 then
-        local ok_d, res = pcall(M.findEarnDates, to_date)
+        local ok_d, res = pcall(M.findEarnDates, to_date, ctx)
         if ok_d and type(res) == "table" then dates = res end
     end
 
