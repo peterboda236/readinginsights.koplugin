@@ -599,20 +599,36 @@ function LineChartWidget:paintTo(bb, x, y)
 
     local pts = self.points
     if self.smooth and #pts > 2 then
-        pts = M.smoothCurve(pts)
+        -- The smoothed curve is a few hundred freshly allocated points;
+        -- it only depends on self.points, so compute it once per point list
+        -- instead of on every repaint.
+        if self._smoothed_src ~= pts or self._smoothed_n ~= #pts then
+            self._smoothed = M.smoothCurve(pts)
+            self._smoothed_src, self._smoothed_n = pts, #pts
+        end
+        pts = self._smoothed
     end
 
     if #pts > 1 then
+        local th   = self.thickness or 2
+        local half = math.floor(th / 2)
+        local floor = math.floor
+        -- Neighbouring segments share their end point, and a dense curve
+        -- steps less than a pixel at a time: stamping the same pixel twice
+        -- paints nothing new, so skip repeats.
+        local last_px, last_py
         for i = 1, #pts - 1 do
             local p1, p2 = pts[i], pts[i + 1]
             local dx, dy = p2.x - p1.x, p2.y - p1.y
             local steps  = math.max(math.abs(dx), math.abs(dy), 1)
             for s = 0, steps do
                 local t  = s / steps
-                local px = math.floor(p1.x + dx * t + 0.5)
-                local py = math.floor(p1.y + dy * t + 0.5)
-                local th = self.thickness or 2
-                paint(bb, x + px - math.floor(th / 2), y + py - math.floor(th / 2), th, th, color)
+                local px = floor(p1.x + dx * t + 0.5)
+                local py = floor(p1.y + dy * t + 0.5)
+                if px ~= last_px or py ~= last_py then
+                    paint(bb, x + px - half, y + py - half, th, th, color)
+                    last_px, last_py = px, py
+                end
             end
         end
     end

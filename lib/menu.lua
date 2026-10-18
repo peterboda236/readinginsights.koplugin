@@ -752,7 +752,7 @@ function M.build(self, deps)
         }
     end
 
-    -- Months (yearly) chart style: line with dots (default) or bars.
+    -- Months (yearly) chart style: bars (default) or line with dots.
     do
         local VSet  = deps.ViewSettings
         local LINE  = VSet.MONTHLY_STYLE_LINE
@@ -777,8 +777,8 @@ function M.build(self, deps)
             end,
             keep_menu_open = true,
             sub_item_table = {
-                monthlyStyleEntry(LINE, _("Line with dots")),
                 monthlyStyleEntry(BARS, _("Bars")),
+                monthlyStyleEntry(LINE, _("Line with dots")),
             },
         }
     end

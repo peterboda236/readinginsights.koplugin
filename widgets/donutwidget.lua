@@ -76,10 +76,17 @@ local function paintSolid(bb, x, y, w, h, color)
     end
 end
 
-function DonutWidget:paintTo(bb, x, y)
+-- The ring's pixel runs, worked out once per (size, ratio, colors) and then
+-- replayed on every paint. Computing them is a sqrt + atan2 per pixel of
+-- the whole d x d square - far too much to redo on each repaint - while
+-- the result only depends on values that never change after build().
+-- Stored as four flat arrays (x, y, width, color), relative to the widget's
+-- top-left corner; replaying them paints exactly what the old per-pixel
+-- loop painted, and nothing outside the ring (no background is touched).
+function DonutWidget:_buildRuns()
     local d = self.diameter
-    if d <= 0 then return end
-    self.dimen = Geom:new{ x = x, y = y, w = d, h = d }
+    local rx, ry, rw, rc = {}, {}, {}, {}
+    local n = 0
 
     local outer_r = d / 2
     local inner_r = math.max(0, outer_r - self.thickness)
@@ -87,25 +94,21 @@ function DonutWidget:paintTo(bb, x, y)
     local ratio   = math.max(0, math.min(1, self.ratio or 0))
     local read_angle = ratio * TWO_PI
     local colors = { self.read_color, self.unread_color }
+    local sqrt, atan2 = math.sqrt, math.atan2 or math.atan
+    local min = math.min
 
     for row = 0, d - 1 do
         local dy = (row + 0.5) - cy
-        -- Pixel run of the current color, painted as one rectangle once the
+        local dy2 = dy * dy
+        -- Pixel run of the current color, emitted as one entry once the
         -- color changes (or the row ends / an anti-aliased edge pixel comes).
         local run_start, run_len, run_idx = nil, 0, nil
-        local function flush()
-            if run_start and run_len > 0 then
-                paintSolid(bb, x + run_start, y + row, run_len, 1, colors[run_idx])
-            end
-            run_start, run_len, run_idx = nil, 0, nil
-        end
-
         for col = 0, d - 1 do
             local dx = (col + 0.5) - cx
-            local dist = math.sqrt(dx * dx + dy * dy)
-            local coverage = math.min(outer_r - dist + 0.5, dist - inner_r + 0.5, 1)
+            local dist = sqrt(dx * dx + dy2)
+            local coverage = min(outer_r - dist + 0.5, dist - inner_r + 0.5, 1)
             if coverage > 0 then
-                local angle = math.atan2(dx, -dy)   -- 0 at 12 o'clock, clockwise
+                local angle = atan2(dx, -dy)   -- 0 at 12 o'clock, clockwise
                 if angle < 0 then angle = angle + TWO_PI end
                 local idx = (angle < read_angle) and 1 or 2
                 local color = colors[idx]
@@ -113,18 +116,55 @@ function DonutWidget:paintTo(bb, x, y)
                     if run_idx == idx and run_start and run_start + run_len == col then
                         run_len = run_len + 1
                     else
-                        flush()
+                        if run_start and run_len > 0 then
+                            n = n + 1
+                            rx[n], ry[n], rw[n], rc[n] = run_start, row, run_len, colors[run_idx]
+                        end
                         run_start, run_len, run_idx = col, 1, idx
                     end
                 else
-                    flush()
-                    paintSolid(bb, x + col, y + row, 1, 1, edgeColor(color, coverage))
+                    if run_start and run_len > 0 then
+                        n = n + 1
+                        rx[n], ry[n], rw[n], rc[n] = run_start, row, run_len, colors[run_idx]
+                    end
+                    run_start, run_len, run_idx = nil, 0, nil
+                    n = n + 1
+                    rx[n], ry[n], rw[n], rc[n] = col, row, 1, edgeColor(color, coverage)
                 end
             else
-                flush()
+                if run_start and run_len > 0 then
+                    n = n + 1
+                    rx[n], ry[n], rw[n], rc[n] = run_start, row, run_len, colors[run_idx]
+                end
+                run_start, run_len, run_idx = nil, 0, nil
             end
         end
-        flush()
+        if run_start and run_len > 0 then
+            n = n + 1
+            rx[n], ry[n], rw[n], rc[n] = run_start, row, run_len, colors[run_idx]
+        end
+    end
+
+    self._runs = { n = n, x = rx, y = ry, w = rw, c = rc,
+                   key_d = d, key_t = self.thickness, key_r = self.ratio,
+                   key_rc = self.read_color, key_uc = self.unread_color }
+end
+
+function DonutWidget:paintTo(bb, x, y)
+    local d = self.diameter
+    if d <= 0 then return end
+    self.dimen = Geom:new{ x = x, y = y, w = d, h = d }
+
+    local r = self._runs
+    if not r or r.key_d ~= d or r.key_t ~= self.thickness or r.key_r ~= self.ratio
+       or r.key_rc ~= self.read_color or r.key_uc ~= self.unread_color then
+        self:_buildRuns()
+        r = self._runs
+    end
+
+    local rx, ry, rw, rc = r.x, r.y, r.w, r.c
+    for i = 1, r.n do
+        paintSolid(bb, x + rx[i], y + ry[i], rw[i], 1, rc[i])
     end
 
     local tw = self.text_widget
