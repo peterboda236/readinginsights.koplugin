@@ -2206,3 +2206,9 @@ msgstr "Afficher la ligne de série sous les couvertures dans le calendrier de l
 
 msgid "8-week reading trend"
 msgstr "Tendance de lecture sur 8 semaines"
+
+msgid "Weekdays"
+msgstr "Jours de la semaine"
+
+msgid "Height of the two bar charts in the heatmap popup. The default matches the chapter bar. If the popup does not fit the screen, both charts shrink automatically."
+msgstr "Hauteur des deux diagrammes à barres de la fenêtre de la carte thermique. La valeur par défaut correspond à la barre des chapitres. Si la fenêtre ne tient pas à l'écran, les deux diagrammes rétrécissent automatiquement."

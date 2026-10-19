@@ -652,6 +652,30 @@ function M.build(self, deps)
         },
     }
 
+    I.heatmap_heights = {
+        text = _("Bar chart height"),
+        help_text = _("Height of the two bar charts in the heatmap popup. The default matches the chapter bar. If the popup does not fit the screen, both charts shrink automatically."),
+        keep_menu_open = true,
+        sub_item_table = {
+            buildBarHeightMenuEntry(
+                _("Time of day"),
+                deps.ViewSettings.Opt.readHeatmapTimeOfDayBarHeight,
+                deps.ViewSettings.Opt.saveHeatmapTimeOfDayBarHeight,
+                deps.ViewSettings.Opt.DEFAULT_HEATMAP_BAR_HEIGHT,
+                deps.ViewSettings.Opt.MIN_HEATMAP_BAR_HEIGHT,
+                deps.ViewSettings.Opt.MAX_HEATMAP_BAR_HEIGHT
+            ),
+            buildBarHeightMenuEntry(
+                _("Weekdays"),
+                deps.ViewSettings.Opt.readHeatmapWeekdayBarHeight,
+                deps.ViewSettings.Opt.saveHeatmapWeekdayBarHeight,
+                deps.ViewSettings.Opt.DEFAULT_HEATMAP_BAR_HEIGHT,
+                deps.ViewSettings.Opt.MIN_HEATMAP_BAR_HEIGHT,
+                deps.ViewSettings.Opt.MAX_HEATMAP_BAR_HEIGHT
+            ),
+        },
+    }
+
     I.trend_order = {
         text_func = function()
             local order = deps.ViewSettings.readAscendingSetting()
@@ -1429,7 +1453,7 @@ function M.build(self, deps)
             keep_menu_open = true,
             sub_item_table = insights_popup_sub_item_table,
         },
-        group(_("Heatmap & time of day"), { I.heatmap_months, I.time_of_day }),
+        group(_("Heatmap & time of day"), { I.heatmap_months, I.time_of_day, I.heatmap_heights }),
         {
             text = _("Book progress popup"),
             keep_menu_open = true,

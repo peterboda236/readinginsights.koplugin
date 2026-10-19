@@ -1932,3 +1932,9 @@ msgstr "在阅读日历中于封面下方显示连续记录线。关闭时（默
 
 msgid "8-week reading trend"
 msgstr "8 周阅读趋势"
+
+msgid "Weekdays"
+msgstr "星期"
+
+msgid "Height of the two bar charts in the heatmap popup. The default matches the chapter bar. If the popup does not fit the screen, both charts shrink automatically."
+msgstr "热力图弹窗中两个条形图的高度。默认值与章节条相同。如果弹窗超出屏幕，两个图表会自动缩小。"

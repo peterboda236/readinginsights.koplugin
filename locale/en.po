@@ -2206,3 +2206,9 @@ msgstr "Show the streak line under the covers on the reading calendar. When off 
 
 msgid "8-week reading trend"
 msgstr "8-week reading trend"
+
+msgid "Weekdays"
+msgstr "Weekdays"
+
+msgid "Height of the two bar charts in the heatmap popup. The default matches the chapter bar. If the popup does not fit the screen, both charts shrink automatically."
+msgstr "Height of the two bar charts in the heatmap popup. The default matches the chapter bar. If the popup does not fit the screen, both charts shrink automatically."

@@ -761,6 +761,22 @@ local function barValueText(mode, secs, total_secs)
     return Locale.formatDuration(secs, true)
 end
 
+-- Automatic shrink of the two bar charts. M._bar_auto is nil normally (each
+-- chart uses its own configured height); while M.buildHeatmapBoxContent is
+-- fitting the popup to the screen it holds one shared height, and both
+-- charts use min(configured, shared), so they shrink together and never
+-- grow past what the settings say. M._bars_built counts the charts that the
+-- last build actually drew (the weekday chart always; the day-part chart
+-- only in chart view).
+M._bar_auto   = nil
+M._bars_built = 0
+
+function M.effectiveBarHeight(configured)
+    M._bars_built = (M._bars_built or 0) + 1
+    if M._bar_auto and M._bar_auto < configured then return M._bar_auto end
+    return configured
+end
+
 -- Builds the "time of day" bar chart: one bar per day-part (Night / Morning
 -- / Afternoon / Evening), each the total reading time in that six-hour band
 -- summed across every weekday in the period. Unlike the weekday x hour grid
@@ -798,12 +814,9 @@ function M.buildDayPartChartWidget(weekday_hour_map, fonts, max_width, mode)
     -- width edge to edge instead of thin fixed-width bars floating centered
     -- with large empty gaps around them.
     local bar_w    = col_w
-    -- Full-height bar reuses the insight view's own chart bar height
-    -- (VS.Opt.weeklyBarHeight): in auto mode that's the value its auto-fit
-    -- loop computes to fit the screen, so this chart's bars match the
-    -- weekly/monthly charts and scale with the same setting instead of a
-    -- hard-coded height.
-    local chart_h  = Screen:scaleBySize(VS.Opt.weeklyBarHeight())
+    -- Full-height bar: its own configurable height (Settings > Heatmap &
+    -- time of day > Bar chart height > Time of day), default = chapter bar.
+    local chart_h  = Screen:scaleBySize(M.effectiveBarHeight(VS.Opt.readHeatmapTimeOfDayBarHeight()))
     local min_bar  = Screen:scaleBySize(2)
 
     -- Sample heights so every column reserves the same vertical space and
@@ -899,8 +912,9 @@ function M.buildWeekdayChartWidget(weekday_hour_map, fonts, max_width, mode)
 
     local col_gap = Screen:scaleBySize(6)
     local col_w   = math.floor((max_width - (num_bars - 1) * col_gap) / num_bars)
-    -- Same maximum bar height as the "When you read" chart above.
-    local chart_h = Screen:scaleBySize(VS.Opt.weeklyBarHeight())
+    -- Its own maximum bar height (Settings > Heatmap & time of day >
+    -- Bar chart height > Weekdays); defaults to the chapter bar's height.
+    local chart_h = Screen:scaleBySize(M.effectiveBarHeight(VS.Opt.readHeatmapWeekdayBarHeight()))
     local min_bar = Screen:scaleBySize(2)
 
     local sample_val = TextWidget:new{ text = "0:00", face = fonts.small }
@@ -1157,6 +1171,7 @@ end
 -- data: the table this function returned last time, so a second pass reuses
 -- the loaded data instead of fetching it again.
 local function buildBox(popup_self, periods_back, force_fresh, width_override, data)
+    M._bars_built = 0
     local start_t, end_t, daily_map, weekday_hour_map
     if data then
         start_t, end_t, daily_map, weekday_hour_map = data[1], data[2], data[3], data[4]
@@ -1397,7 +1412,36 @@ end
 -- it settles in one or two passes. Stops at the minimum square size or a
 -- minimum width - below that the box is simply taller than the screen.
 function M.buildHeatmapBoxContent(popup_self, periods_back, force_fresh)
+    M._bar_auto = nil
     local r = { buildBox(popup_self, periods_back, force_fresh, nil, nil) }
+
+    -- Step 1 (both orientations): if the page does not fit with the heights
+    -- from the settings, the two bar charts switch to one shared, automatic
+    -- height and shrink together until it fits (or they reach the minimum).
+    -- Only after that, in landscape, does the box itself get narrower below.
+    do
+        local target_h = math.floor(Screen:getHeight() * 0.94)
+        local px_per_point = Screen:scaleBySize(1000) / 1000
+        if px_per_point <= 0 then px_per_point = 1 end
+        local min_h   = VS.Opt.MIN_HEATMAP_BAR_HEIGHT
+        local current = math.max(VS.Opt.readHeatmapTimeOfDayBarHeight(),
+                                 VS.Opt.readHeatmapWeekdayBarHeight())
+        for _pass = 1, 4 do
+            local box_h  = r[1]:getSize().h
+            local n_bars = M._bars_built
+            if box_h <= target_h or n_bars == 0 or current <= min_h then break end
+
+            local cut = math.ceil((box_h - target_h) / (px_per_point * n_bars))
+            local new_h = math.max(min_h, current - math.max(1, cut))
+            if new_h == current then break end
+            current = new_h
+            M._bar_auto = current
+
+            local discarded = r[1]
+            r = { buildBox(popup_self, periods_back, force_fresh, nil, r[14]) }
+            pcall(function() if discarded.free then discarded:free() end end)
+        end
+    end
 
     if UI.isLandscapeScreen() then
         -- Same 94% of the screen the other popups use as their size limit
@@ -1421,6 +1465,7 @@ function M.buildHeatmapBoxContent(popup_self, periods_back, force_fresh)
         end
     end
 
+    M._bar_auto = nil
     return (table.unpack or unpack)(r, 1, 10)
 end
 

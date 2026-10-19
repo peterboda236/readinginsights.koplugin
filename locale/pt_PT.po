@@ -2206,3 +2206,9 @@ msgstr "Mostrar a linha da sequência sob as capas no calendário de leitura. Qu
 
 msgid "8-week reading trend"
 msgstr "Tendência de leitura de 8 semanas"
+
+msgid "Weekdays"
+msgstr "Dias da semana"
+
+msgid "Height of the two bar charts in the heatmap popup. The default matches the chapter bar. If the popup does not fit the screen, both charts shrink automatically."
+msgstr "Altura dos dois gráficos de barras na janela do mapa de calor. O valor predefinido corresponde à barra de capítulos. Se a janela não couber no ecrã, ambos os gráficos diminuem automaticamente."

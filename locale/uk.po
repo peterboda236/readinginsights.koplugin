@@ -2255,3 +2255,9 @@ msgstr "Показувати лінію серії під обкладинкам
 
 msgid "8-week reading trend"
 msgstr "Тенденція читання за 8 тижнів"
+
+msgid "Weekdays"
+msgstr "Дні тижня"
+
+msgid "Height of the two bar charts in the heatmap popup. The default matches the chapter bar. If the popup does not fit the screen, both charts shrink automatically."
+msgstr "Висота двох стовпчикових діаграм у вікні теплокарти. За замовчуванням збігається з висотою смуги розділів. Якщо вікно не вміщується на екрані, обидві діаграми автоматично зменшуються."

@@ -2206,3 +2206,9 @@ msgstr "Die Linie der Lesesträhne unter den Covern im Lesekalender anzeigen. We
 
 msgid "8-week reading trend"
 msgstr "Lesetrend der letzten 8 Wochen"
+
+msgid "Weekdays"
+msgstr "Wochentage"
+
+msgid "Height of the two bar charts in the heatmap popup. The default matches the chapter bar. If the popup does not fit the screen, both charts shrink automatically."
+msgstr "Höhe der beiden Balkendiagramme im Heatmap-Fenster. Der Standardwert entspricht der Kapitelleiste. Passt das Fenster nicht auf den Bildschirm, werden beide Diagramme automatisch kleiner."

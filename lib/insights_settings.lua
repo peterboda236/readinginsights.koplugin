@@ -700,6 +700,39 @@ function M.Opt.saveBarHeightAuto(value)
     M.saveBoolSetting(M.Opt.BAR_AUTO_KEY, value)
 end
 
+-- Heatmap popup bar charts (Settings > Heatmap & time of day > Bar chart
+-- height): the "time of day" (day-part) chart and the weekday chart each
+-- have their own maximum bar height. The default (46) is the same as the
+-- chapter bar's default height (ChapterBar.DEFAULT_HEIGHT).
+M.Opt.HEATMAP_TOD_BAR_KEY      = "reading_insights_heatmap_timeofday_bar_height"
+M.Opt.HEATMAP_WEEKDAY_BAR_KEY  = "reading_insights_heatmap_weekday_bar_height"
+M.Opt.DEFAULT_HEATMAP_BAR_HEIGHT = 46
+M.Opt.MIN_HEATMAP_BAR_HEIGHT   = 10
+M.Opt.MAX_HEATMAP_BAR_HEIGHT   = 200
+
+function M.Opt.clampHeatmapBar(v)
+    v = tonumber(v) or M.Opt.DEFAULT_HEATMAP_BAR_HEIGHT
+    if v < M.Opt.MIN_HEATMAP_BAR_HEIGHT then v = M.Opt.MIN_HEATMAP_BAR_HEIGHT end
+    if v > M.Opt.MAX_HEATMAP_BAR_HEIGHT then v = M.Opt.MAX_HEATMAP_BAR_HEIGHT end
+    return v
+end
+
+function M.Opt.readHeatmapTimeOfDayBarHeight()
+    return M.Opt.clampHeatmapBar(M.readNumSetting(M.Opt.HEATMAP_TOD_BAR_KEY, M.Opt.DEFAULT_HEATMAP_BAR_HEIGHT))
+end
+
+function M.Opt.saveHeatmapTimeOfDayBarHeight(value)
+    M.saveNumSetting(M.Opt.HEATMAP_TOD_BAR_KEY, value)
+end
+
+function M.Opt.readHeatmapWeekdayBarHeight()
+    return M.Opt.clampHeatmapBar(M.readNumSetting(M.Opt.HEATMAP_WEEKDAY_BAR_KEY, M.Opt.DEFAULT_HEATMAP_BAR_HEIGHT))
+end
+
+function M.Opt.saveHeatmapWeekdayBarHeight(value)
+    M.saveNumSetting(M.Opt.HEATMAP_WEEKDAY_BAR_KEY, value)
+end
+
 function M.Opt.weeklyBarHeight()
     if M.Opt.readBarHeightAuto() then
         return M.Opt.auto_height or M.DEFAULT_WEEKLY_BAR_HEIGHT

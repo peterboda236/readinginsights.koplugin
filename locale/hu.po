@@ -2218,3 +2218,9 @@ msgstr "A széria vonalának megjelenítése a borítók alatt az olvasási napt
 
 msgid "8-week reading trend"
 msgstr "8 hetes olvasási trend"
+
+msgid "Weekdays"
+msgstr "Hét napjai"
+
+msgid "Height of the two bar charts in the heatmap popup. The default matches the chapter bar. If the popup does not fit the screen, both charts shrink automatically."
+msgstr "A heatmap ablak két oszlopdiagramjának magassága. Az alapértelmezett megegyezik a fejezetsáv magasságával. Ha az ablak nem fér ki a képernyőn, mindkét diagram automatikusan csökken."
