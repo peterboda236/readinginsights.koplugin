@@ -13,6 +13,7 @@ settings of its own:
                  book_calendar   the Book progress calendar popup
                  book_info       the Book info popup
                  records         the Records popup
+                 shelf           the Reading shelf: this year's covers
                The three book ones are drawn from the open book; from the
                file manager, from the last book read (lib/lastbook.lua).
   background   what is behind the popup:
@@ -101,6 +102,7 @@ function M.contents()
         { id = "book_calendar", text = _("Book progress calendar") },
         { id = "book_info",     text = _("Book info") },
         { id = "records",       text = _("Records") },
+        { id = "shelf",         text = _("Reading shelf") },
     }
 end
 
@@ -541,7 +543,19 @@ local function showBookInfo(ui)
     return popup
 end
 
+-- The Reading shelf (this year's covers). It fills the screen, so - like the
+-- insights window - it has no background; no hamburger menu and no X.
+local function showShelf(ui)
+    if not (Insights and Insights.showYearShelf) then return nil end
+    return Insights.showYearShelf{ ui = ui, readonly = true }
+end
+
+-- Contents that fill the whole screen themselves, so no cover / picture goes
+-- under them.
+local FULL_SCREEN = { insights = true, shelf = true }
+
 local BUILDERS = {
+    shelf         = showShelf,
     insights      = showInsights,
     heatmap       = showHeatmap,
     streak        = showStreak,
@@ -567,7 +581,7 @@ function M.show(ui, before_paint)
     local function build(content_id)
         local builder = BUILDERS[content_id] or showInsights
         local bg
-        if content_id ~= "insights" then
+        if not FULL_SCREEN[content_id] then
             local kind = M.readBackground()
             local src_bb
             if kind == "cover" then
@@ -659,7 +673,7 @@ function M.renderToBlitbuffer(ui)
         local function build(content_id)
             local builder = BUILDERS[content_id] or showInsights
             local bg
-            if content_id ~= "insights" then
+            if not FULL_SCREEN[content_id] then
                 local kind = M.readBackground()
                 local src_bb
                 if kind == "cover" then

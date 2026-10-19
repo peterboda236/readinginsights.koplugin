@@ -71,11 +71,11 @@ local T = require("ffi/util").template
 -- loadModule() call for this file).
 -- Shared modules, passed in as one named table by main.lua (see there).
 local deps = ...
-local Locale, Colors, Fonts, PopupUtil, VS, Cache, UI, Trend, Heatmap, BookList, Data, Manual, Achievements, AchievementsView, Prefs, Streak, Records =
+local Locale, Colors, Fonts, PopupUtil, VS, Cache, UI, Trend, Heatmap, BookList, Data, Manual, Achievements, AchievementsView, Prefs, Streak, Records, YearShelf =
     deps.Locale, deps.Colors, deps.Fonts, deps.PopupUtil,
     deps.VS, deps.Cache, deps.UI, deps.Trend, deps.Heatmap, deps.BookList,
     deps.Data, deps.Manual, deps.Achievements, deps.AchievementsView, deps.Prefs, deps.Streak,
-    deps.Records
+    deps.Records, deps.YearShelf
 
 -- true: today's bar in the weekly chart is black. false: all bars gray.
 local WEEKLY_CHART_HIGHLIGHT_TODAY = true
@@ -300,7 +300,35 @@ local function buildYearHeader(popup_self, font_section, font_label, layout, yea
     -- onSwipe/_goToYear) and by tapping the previous/next year slot on either
     -- side of the centre year (the InputContainer wrappers below). The reading
     -- heatmap opens from the "All time" header instead of from tapping the
-    -- year (see showReadingHeatmap and buildInsightsSections).
+    -- year (see showReadingHeatmap and buildInsightsSections). Tapping the
+    -- centre year itself opens the year shelf: the covers of the books read
+    -- that year, month by month (see showYearShelf). Not on the sleep screen
+    -- (readonly), where a tap must not navigate anywhere.
+    local year_widget = year_label
+    local year_tap_pad = 0
+    if YearShelf and not popup_self.readonly then
+        year_tap_pad = Screen:scaleBySize(16)
+        local year_size = year_label:getSize()
+        local year_inner = HorizontalGroup:new{
+            align = "center",
+            HorizontalSpan:new{ width = year_tap_pad },
+            year_label,
+            HorizontalSpan:new{ width = year_tap_pad },
+        }
+        local year_tappable = InputContainer:new{
+            dimen = Geom:new{ x = 0, y = 0,
+                w = year_size.w + 2 * year_tap_pad, h = year_size.h },
+            year_inner,
+        }
+        year_tappable.ges_events = {
+            Tap = { GestureRange:new{ ges = "tap", range = year_tappable.dimen } },
+        }
+        function year_tappable:onTap()
+            popup_self:showYearShelf()
+            return true
+        end
+        year_widget = year_tappable
+    end
 
     local function makeSlot(yr, arrow_glyph, left, visible, on_tap)
         if not visible then
@@ -357,7 +385,7 @@ local function buildYearHeader(popup_self, font_section, font_label, layout, yea
     local right_slot, right_w = makeSlot(selected_year + 1, "\xe2\x80\xba", false, next_available,
         function() popup_self:onGoToNextYear() end)
 
-    local year_w    = year_label:getSize().w
+    local year_w    = year_label:getSize().w + 2 * year_tap_pad
     local remaining = layout.content_width - left_w - right_w - year_w
     if remaining < 0 then remaining = 0 end
     local side_l = math.floor(remaining / 2)
@@ -367,7 +395,7 @@ local function buildYearHeader(popup_self, font_section, font_label, layout, yea
         align = "center",
         left_slot,
         HorizontalSpan:new{ width = side_l },
-        year_label,
+        year_widget,
         HorizontalSpan:new{ width = side_r },
         right_slot,
     }
@@ -2140,6 +2168,14 @@ function ReadingInsightsPopup:onShowHamburgerMenu()
                 end,
             }},
             {{
+                text  = _("Show Reading shelf"),
+                align = "left",
+                callback = function()
+                    UIManager:close(dialog)
+                    popup_self:showYearShelf()
+                end,
+            }},
+            {{
                 text  = _("Show Records"),
                 align = "left",
                 callback = function()
@@ -2539,6 +2575,29 @@ function ReadingInsightsPopup:showFinishedBooksForYear(year)
         -- that), so its value column shows the date rather than the time
         -- spent - see BookList.showBookList's opts.show_dates.
         { show_dates = true })
+end
+
+-- Opens the year shelf (views/year_shelf_view.lua) on the year shown here: the
+-- covers of the books read in it, month by month. It stacks on top of this
+-- popup, like the heatmap and the streak calendar, so closing it brings this
+-- one back as it was. The books come from the same lists the tap on the yearly
+-- figures and on the reading goal open - "all books read" or, with the shelf's
+-- "only finished" switch, the finished ones (manual ticks and hand-added books
+-- included).
+function ReadingInsightsPopup:showYearShelf()
+    if not YearShelf then return end
+    local popup_self = self
+    YearShelf.show{
+        ui         = self.ui,
+        year       = self.selected_year or tonumber(os.date("%Y")),
+        year_range = self._year_range or self.year_range,
+        getBooks   = function(year, finished_only)
+            if finished_only then
+                return getFinishedBooksForYearCombined(popup_self, year)
+            end
+            return popup_self:getBooksForYear(year)
+        end,
+    }
 end
 
 function ReadingInsightsPopup:showFinishedBooksChecklist(year)
@@ -3771,7 +3830,34 @@ BookList.bind{
 -- lib/insights_settings.lua, which main.lua loads itself and hands to this
 -- file - so the Tools-menu entries read and write exactly the same
 -- functions this view does, without the view having to pass them through.
+-- The year shelf without an insights window under it - the sleep screen shows
+-- it on its own (lib/sleepscreen.lua). opts: ui, year (default: this year),
+-- readonly. Returns the shelf window, nil when there is no shelf module.
+local function openYearShelf(opts)
+    if not YearShelf then return nil end
+    opts = opts or {}
+    local year_range
+    pcall(function() year_range = Data.getYearRange() end)
+    local year = tonumber(opts.year) or tonumber(os.date("%Y"))
+    if year_range and year_range.min_year and year_range.max_year then
+        year = math.max(year_range.min_year, math.min(year_range.max_year, year))
+    end
+    return YearShelf.show{
+        ui         = opts.ui,
+        year       = year,
+        year_range = year_range,
+        readonly   = opts.readonly,
+        getBooks   = function(y, finished_only)
+            if finished_only then
+                return getFinishedBooksForYearCombined(nil, y)
+            end
+            return Data.getBooksForPeriod("%Y", tostring(y))
+        end,
+    }
+end
+
 return {
+    showYearShelf = openYearShelf,
     Popup = ReadingInsightsPopup,
     -- Open the combined current/best streak popup straight from the menu.
     showStreaks = function()

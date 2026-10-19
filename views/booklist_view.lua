@@ -33,6 +33,8 @@ runtime condition, so nothing here guards against it.
 
   BookList.bind(hooks)          wire in the view's popup class and helpers
   BookList.bindBookInfo(class)  wire in the Book info popup (tap on a row)
+  BookList.openBookInfo(book, opts)
+                                open one book's Book info popup (year shelf)
   BookList.showBooksForPeriod(popup, books, empty_text, title)
                                 close the insights popup, show a list,
                                 reopen it on close
@@ -459,6 +461,50 @@ function M.showBookList(title, books, on_close, stats_plugin, opts)
     end
 
     openPage()
+end
+
+-- Opens the Book info popup for one book, for views that draw the books
+-- themselves instead of through showBookList (the year shelf's covers). Works
+-- out the same things a tap on a row of a list does: when the book was
+-- finished, which file it is, where its rating is kept.
+--   opts.ui          the KOReader UI (the popup wants to know the open book)
+--   opts.show_dates  the book comes from a finished-books list, so its last
+--                    reading entry is the day it was finished
+--   opts.on_close    called when the popup is closed
+function M.openBookInfo(book, opts)
+    opts = opts or {}
+    if not BookInfoPopup or not book then return end
+
+    local finished_ts = nil
+    if book.manual then
+        if book.date_known and (book.last_read or 0) > 0 then
+            finished_ts = book.last_read
+        end
+    elseif opts.show_dates then
+        if (book.last_read or 0) > 0 then finished_ts = book.last_read end
+    elseif book.id_book then
+        local ok, ts = pcall(Data.getFinishedTimestamp, book.id_book)
+        if ok then finished_ts = ts end
+    end
+
+    local book_file, file_guessed
+    if not book.manual then
+        book_file, file_guessed = Ratings.fileFor(book.md5, book.title, authorsOf(book))
+    end
+    UIManager:show(BookInfoPopup:new{
+        ui          = opts.ui,
+        book        = book,
+        finished_ts = finished_ts,
+        file        = book_file,
+        file_guessed = file_guessed,
+        save_rating = book.manual and function(n)
+            if not (book.manual_year and book.manual_id) then return false end
+            Manual.update(book.manual_year, book.manual_id, { rating = n })
+            return true
+        end or nil,
+        on_rate  = function(n) book.rating = n end,
+        on_close = opts.on_close,
+    })
 end
 
 function M.showBooksForPeriod(popup_self, books, empty_text, title, opts)

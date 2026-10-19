@@ -388,6 +388,9 @@ msgstr "图表标签颜色"
 msgid "Section header background color"
 msgstr "分区标题背景颜色"
 
+msgid "Cover shadow color"
+msgstr "封面阴影颜色"
+
 msgid "Settings"
 msgstr "设置"
 msgid "Reset all colors to default"
@@ -663,6 +666,12 @@ msgstr "阅读统计：阅读日历"
 
 msgid "Reading insights: reading heatmap"
 msgstr "阅读统计：阅读热力图"
+
+msgid "Reading insights: reading shelf"
+msgstr "阅读统计：阅读书架"
+
+msgid "Reading shelf"
+msgstr "阅读书架"
 
 msgid "Show Reading heatmap"
 msgstr "查看阅读热力图"

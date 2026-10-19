@@ -534,6 +534,9 @@ msgstr "Колір міток графіка"
 msgid "Section header background color"
 msgstr "Колір фону заголовка розділу"
 
+msgid "Cover shadow color"
+msgstr "Колір тіні обкладинки"
+
 msgid "Settings"
 msgstr "Налаштування"
 
@@ -933,6 +936,12 @@ msgstr "Аналітика читання: календар читання"
 
 msgid "Reading insights: reading heatmap"
 msgstr "Аналітика читання: теплокарта читання"
+
+msgid "Reading insights: reading shelf"
+msgstr "Аналітика читання: полиця читання"
+
+msgid "Reading shelf"
+msgstr "Полиця читання"
 
 msgid "Show Reading heatmap"
 msgstr "Показати теплокарту читання"

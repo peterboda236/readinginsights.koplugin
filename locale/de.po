@@ -519,6 +519,9 @@ msgstr "Diagrammbeschriftungsfarbe"
 msgid "Section header background color"
 msgstr "Hintergrundfarbe der Abschnittsüberschrift"
 
+msgid "Cover shadow color"
+msgstr "Farbe des Cover-Schattens"
+
 msgid "Settings"
 msgstr "Einstellungen"
 
@@ -898,6 +901,12 @@ msgstr "Leseeinblicke: Lesekalender"
 
 msgid "Reading insights: reading heatmap"
 msgstr "Leseeinblicke: Lese-Heatmap"
+
+msgid "Reading insights: reading shelf"
+msgstr "Leseeinblicke: Lesebord"
+
+msgid "Reading shelf"
+msgstr "Lesebord"
 
 msgid "Show Reading heatmap"
 msgstr "Lese-Heatmap anzeigen"
@@ -2212,3 +2221,6 @@ msgstr "Wochentage"
 
 msgid "Height of the two bar charts in the heatmap popup. The default matches the chapter bar. If the popup does not fit the screen, both charts shrink automatically."
 msgstr "Höhe der beiden Balkendiagramme im Heatmap-Fenster. Der Standardwert entspricht der Kapitelleiste. Passt das Fenster nicht auf den Bildschirm, werden beide Diagramme automatisch kleiner."
+
+msgid "Covers"
+msgstr "Cover"

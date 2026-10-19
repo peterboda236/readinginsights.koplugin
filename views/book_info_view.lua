@@ -307,14 +307,11 @@ function BookInfoPopup:init()
     self:_buildUI()
 end
 
--- Frame, corner radius and shadow of the cover, as set under Settings > Book
--- info (0 when switched off).
+-- Frame, corner radius and shadow of the cover, as set under Settings >
+-- Appearance > Covers (0 when switched off; shared with the Reading calendar
+-- and the Reading shelf).
 function BookInfoPopup:_coverDecor()
-    return {
-        border = Opt.readBookInfo("border")  and math.max(2, S(1)) or 0,
-        radius = Opt.readBookInfo("rounded") and S(4) or 0,
-        shadow = Opt.readBookInfo("shadow")  and S(4) or 0,
-    }
+    return Opt.coverDecor()
 end
 
 -- Size of the cover block (shadow and frame included) that fits the box
@@ -393,7 +390,7 @@ function BookInfoPopup:_buildCover(decor, max_w, max_h, bb, bw, bh)
         border = border,  radius = radius,
         bg     = Blitbuffer.COLOR_WHITE,
         fg     = Blitbuffer.COLOR_BLACK,
-        shadow_color  = shadow > 0 and CoverFrame.SHADOW_GRAY or nil,
+        shadow_color  = shadow > 0 and CoverFrame.shadowColor() or nil,
         shadow_offset = shadow,
     }
 

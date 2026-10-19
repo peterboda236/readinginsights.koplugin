@@ -40,6 +40,34 @@ local Blitbuffer = require("ffi/blitbuffer")
 local Geom = require("ui/geometry")
 local Widget = require("ui/widget/widget")
 
+-- Optional shared modules (main.lua passes { Colors = Colors }): Colors holds
+-- the user-chosen shadow colour (Settings > Appearance > Colors > "Cover
+-- shadow color"). Without it the shadow is the built-in 50% black.
+local deps = ...
+local Colors = deps and deps.Colors
+
+-- Shadow colour: 50% black (0x80) by default, changeable under Settings >
+-- Appearance > Colors > "Cover shadow color".  The framebuffer is inverted at
+-- refresh in night mode so the same value displays dark on both modes.
+local DEFAULT_SHADOW_GRAY = Blitbuffer.Color8(0x80)
+
+-- Read on every paint, so a changed colour shows up at once.
+local function shadowColor()
+    local c = Colors and Colors.coverShadow and Colors.coverShadow()
+    return c or DEFAULT_SHADOW_GRAY
+end
+
+-- A user-picked colour is an RGB32 object (Blitbuffer.colorFromString), which
+-- bb:paintRect would misrender on a grayscale framebuffer - pick the right
+-- call, like Colors' ColorBar does.
+local function fillRect(bb, x, y, w, h, color)
+    if Blitbuffer.isColor8(color) then
+        bb:paintRect(x, y, w, h, color)
+    else
+        bb:paintRectRGB32(x, y, w, h, color)
+    end
+end
+
 local CoverFrame = Widget:extend{
     inner         = nil,
     width         = 0,
@@ -81,7 +109,7 @@ function CoverFrame:paintTo(bb, x, y)
     -- painted, exactly as before this existed.
     local function put(px, py, is_cut, color, forced_color)
         if forced_color then
-            bb:paintRect(px, py, 1, 1, forced_color)
+            fillRect(bb, px, py, 1, 1, forced_color)
             return
         end
         if is_cut and restore and restore(bb, px, py, 1, 1) then return end
@@ -145,10 +173,6 @@ local CoverShadow = Widget:extend{
     restore = nil,
 }
 
--- Shadow grey: mid-grey on a plain page.  The framebuffer is inverted at
--- refresh in night mode so the same value displays dark on both modes.
-local SHADOW_GRAY = Blitbuffer.gray(0.65)
-
 function CoverShadow:getSize()
     return Geom:new{ w = self.width + self.offset, h = self.height + self.offset }
 end
@@ -157,11 +181,12 @@ function CoverShadow:paintTo(bb, x, y)
     local off = self.offset
     local w, h, r = self.width, self.height, self.radius or 0
     local sx, sy = x + off, y + off   -- shadow top-left on screen
+    local shadow_col = shadowColor()
 
     if r > 0 then
         r = math.min(r, math.floor(math.min(w, h) / 2))
         -- Fill the whole shadow rect then cut the four rounded corners.
-        bb:paintRect(sx, sy, w, h, SHADOW_GRAY)
+        fillRect(bb, sx, sy, w, h, shadow_col)
         local bg = self.bg or Blitbuffer.COLOR_WHITE
         local restore = self.restore
         local function put(px, py)
@@ -181,11 +206,82 @@ function CoverShadow:paintTo(bb, x, y)
             end
         end
     else
-        bb:paintRect(sx, sy, w, h, SHADOW_GRAY)
+        fillRect(bb, sx, sy, w, h, shadow_col)
     end
 end
 
 CoverFrame.Shadow     = CoverShadow
-CoverFrame.SHADOW_GRAY = SHADOW_GRAY
+CoverFrame.shadowColor = shadowColor
+-- Kept for callers that read the constant: the colour as of now.
+CoverFrame.SHADOW_GRAY = DEFAULT_SHADOW_GRAY
+
+-- ---------------------------------------------------------------------------
+-- CoverFrame.paint
+-- Paints a ready cover picture (a blitbuffer) with the shared cover look - the
+-- frame, rounded corners and drop shadow chosen under Settings > Appearance >
+-- Covers - straight onto `bb`. Used by the Reading calendar's day cells and the
+-- Reading shelf (the Book info popup builds the same CoverFrame as a widget).
+--
+--   CoverFrame.paint(bb, x, y, w, h, pic, decor)
+--       w x h   the framed cover, frame included, shadow NOT included (the
+--               shadow lies decor.shadow px further right and down)
+--       pic     the cover picture, ideally (w - 2 * border) x (h - 2 * border);
+--               a smaller one is centred. Or a function fn(bb, x, y, w, h)
+--               that paints the inside itself (a book without a cover)
+--       decor   { border = px, radius = px, shadow = px } (all 0 = a bare
+--               picture), see ViewSettings.Opt.coverDecor()
+-- ---------------------------------------------------------------------------
+local Screen = require("device").screen
+
+local PicWidget = Widget:extend{ bb = nil, width = 0, height = 0 }
+
+-- Same idea for a cover that is painted by a function instead of a picture
+-- (the stand-in card of a book without a cover): fn(bb, x, y, w, h) paints
+-- the inside of the frame.
+local FuncWidget = Widget:extend{ fn = nil, width = 0, height = 0 }
+
+function FuncWidget:getSize()
+    return Geom:new{ w = self.width, h = self.height }
+end
+
+function FuncWidget:paintTo(bb, x, y)
+    if self.fn then self.fn(bb, x, y, self.width, self.height) end
+end
+
+function PicWidget:getSize()
+    return Geom:new{ w = self.width, h = self.height }
+end
+
+function PicWidget:paintTo(bb, x, y)
+    if not self.bb then return end
+    local pw, ph = self.bb:getWidth(), self.bb:getHeight()
+    local ox = math.floor((self.width - pw) / 2)
+    local oy = math.floor((self.height - ph) / 2)
+    bb:blitFrom(self.bb, x + ox, y + oy, 0, 0, pw, ph)
+    -- like ImageWidget: a picture is not inverted by night mode
+    if Screen.night_mode then bb:invertRect(x + ox, y + oy, pw, ph) end
+end
+
+function CoverFrame.paint(bb, x, y, w, h, pic, decor)
+    decor = decor or {}
+    local border, radius, shadow = decor.border or 0, decor.radius or 0, decor.shadow or 0
+    if shadow > 0 then
+        CoverShadow:new{
+            width = w, height = h, offset = shadow, radius = radius,
+            bg = Blitbuffer.COLOR_WHITE,
+        }:paintTo(bb, x, y)
+    end
+    CoverFrame:new{
+        inner  = (type(pic) == "function")
+            and FuncWidget:new{ fn = pic, width = w - 2 * border, height = h - 2 * border }
+            or  PicWidget:new{ bb = pic, width = w - 2 * border, height = h - 2 * border },
+        width  = w, height = h,
+        border = border, radius = radius,
+        bg     = Blitbuffer.COLOR_WHITE,
+        fg     = Blitbuffer.COLOR_BLACK,
+        shadow_color  = shadow > 0 and shadowColor() or nil,
+        shadow_offset = shadow,
+    }:paintTo(bb, x, y)
+end
 
 return CoverFrame

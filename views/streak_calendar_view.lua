@@ -12,7 +12,9 @@ Calendar day cells (see buildStreakMonthGrid), top to bottom:
   - the day number                small, centred at the top of the cell
   - the cover of the book read
     most that day                 when several books were read up to two more
-                                  sit behind it, like books stacked;
+                                  sit behind it (down and to the right), like
+                                  books stacked - only the backmost one has a
+                                  shadow;
                                   with more than three a "+1" / "+2" ... tag
                                   at the bottom right counts the rest
   - the streak line               a line across the foot of the cell:
@@ -64,6 +66,9 @@ local InfoMessage = require("ui/widget/infomessage")
 local deps = ...
 local Locale, Colors, Fonts, UI, Data, Prefs, VS, BookList =
     deps.Locale, deps.Colors, deps.Fonts, deps.UI, deps.Data, deps.Prefs, deps.VS, deps.BookList
+-- Frame, rounded corners and shadow of the covers (Settings > Appearance >
+-- Covers), the same look as in the Book info popup.
+local CoverFrame = deps.CoverFrame
 -- Cover loading for the calendar's day cells: the file of a book (by its
 -- checksum / title) and the cover read from it - the same two the Book info
 -- popup uses for a row of a book list.
@@ -193,14 +198,15 @@ end
 -- small face (cut with an ellipsis when too long for the card).
 local NOCOVER_FILL   = 0xEC
 local NOCOVER_STROKE = 0x6E
-local function paintNoCover(bb, x, y, w, h, title)
+-- no_outline: the card sits inside the covers' own frame, which is its edge.
+local function paintNoCover(bb, x, y, w, h, title, no_outline)
     if w < 2 or h < 2 then return end
     local stroke = Blitbuffer.Color8(NOCOVER_STROKE)
     local line   = math.max(1, Screen:scaleBySize(1))
 
     -- Card: filled, then outlined (square corners).
     bb:paintRect(x, y, w, h, Blitbuffer.Color8(NOCOVER_FILL))
-    bb:paintBorder(x, y, w, h, line, stroke)
+    if not no_outline then bb:paintBorder(x, y, w, h, line, stroke) end
 
     -- Too small for any detail.
     if w < Screen:scaleBySize(26) or h < Screen:scaleBySize(34) then return end
@@ -351,7 +357,8 @@ end
 
 -- One day cell of the calendar, painted in one go (see the header comment for
 -- what it holds). `covers` lists what to draw, back to front:
---   { bb = <scaled cover or nil for the placeholder>, x, y, w, h }  (cell-relative)
+--   { bb = <scaled cover or nil for the placeholder>, x, y, w, h, fw, fh, decor }
+--   (cell-relative; w x h is the card with its frame, fw x fh with the shadow too)
 local DayCell = Widget:extend{
     cell_w     = 0,
     cell_h     = 0,
@@ -380,9 +387,21 @@ function DayCell:paintTo(bb, x, y)
     for _i, c in ipairs(self.covers or {}) do
         local cx, cy = x + c.x, y + c.y
         if c.bb then
-            bb:blitFrom(c.bb, cx, cy, 0, 0, c.w, c.h)
-            -- like ImageWidget: a picture is not inverted by night mode
-            if Screen.night_mode then bb:invertRect(cx, cy, c.w, c.h) end
+            if CoverFrame then
+                CoverFrame.paint(bb, cx, cy, c.w, c.h, c.bb, c.decor)
+            else
+                bb:blitFrom(c.bb, cx, cy, 0, 0, c.bb:getWidth(), c.bb:getHeight())
+                -- like ImageWidget: a picture is not inverted by night mode
+                if Screen.night_mode then bb:invertRect(cx, cy, c.bb:getWidth(), c.bb:getHeight()) end
+            end
+        elseif CoverFrame then
+            -- A book without a cover gets the same frame, rounded corners
+            -- and shadow as the covers (its own outline only when there is
+            -- no frame).
+            local no_outline = ((c.decor and c.decor.border) or 0) > 0
+            CoverFrame.paint(bb, cx, cy, c.w, c.h, function(b, ix, iy, iw, ih)
+                paintNoCover(b, ix, iy, iw, ih, c.title, no_outline)
+            end, c.decor)
         else
             paintNoCover(bb, cx, cy, c.w, c.h, c.title)
         end
@@ -390,11 +409,8 @@ function DayCell:paintTo(bb, x, y)
             -- Blend towards the page background. Night mode inverts the
             -- whole buffer afterwards (white background -> black), so the
             -- same "lighten" blend fades the cover towards black there.
-            bb:lightenRect(cx, cy, c.w, c.h, 0.6)
-        end
-        if c.bb then
-            bb:paintBorder(cx, cy, c.w, c.h, Size.line.thin,
-                self.faded and Blitbuffer.COLOR_GRAY or Blitbuffer.COLOR_BLACK)
+            local sh = (c.decor and c.decor.shadow) or 0
+            bb:lightenRect(cx, cy, c.w + sh, c.h + sh, 0.6)
         end
     end
 
@@ -571,9 +587,16 @@ local function buildStreakMonthGrid(year, month, read_set, fonts, cell_w, cell_h
     end)
     local back_off = Screen:scaleBySize(6)
 
+    -- The covers' look, as set under Settings > Appearance > Covers. The frame
+    -- adds to the picture's size on every side, the shadow right and down.
+    local decor = (VS and VS.Opt and VS.Opt.coverDecor and VS.Opt.coverDecor())
+        or { border = 0, radius = 0, shadow = 0 }
+    local deco_border, deco_shadow = decor.border, decor.shadow
+    local deco_extra = deco_shadow + 2 * deco_border
+
     -- The covers of one day: back to front, cell-relative. One book is
     -- centred in the free area; two or three are drawn as one book on another
-    -- - the runners-up peek out behind the front one at the top right, a
+    -- - the runners-up peek out behind the front one at the bottom right, a
     -- step each. More than MAX_STACK books show a "+N" tag for the rest.
     local MAX_STACK = 3
     local function dayCovers(books)
@@ -584,17 +607,25 @@ local function buildStreakMonthGrid(year, month, read_set, fonts, cell_w, cell_h
         if bw < 8 or bh < 8 then return nil end
 
         local function fit(book)
-            local bb = cover_for and cover_for(book, bw, bh) or nil
+            -- The box of the picture itself: what is left after the frame
+            -- and the shadow.
+            local pbw, pbh = bw - deco_extra, bh - deco_extra
+            if pbw < 4 or pbh < 4 then pbw, pbh = bw, bh end
+            local bb = cover_for and cover_for(book, pbw, pbh) or nil
             if bb == COVER_PENDING then return { pending = true, w = 0, h = 0 } end
             local w, h
             if bb then
                 w, h = bb:getWidth(), bb:getHeight()
             else
-                h = bh
+                h = pbh
                 w = math.floor(h * 2 / 3)
-                if w > bw then w = bw; h = math.floor(w * 3 / 2) end
+                if w > pbw then w = pbw; h = math.floor(w * 3 / 2) end
             end
-            return { bb = bb, w = w, h = h, title = book.title }
+            w, h = w + 2 * deco_border, h + 2 * deco_border
+            return {
+                bb = bb, w = w, h = h, fw = w + deco_shadow, fh = h + deco_shadow,
+                title = book.title, decor = decor,
+            }
         end
 
         -- All the shown covers are asked for before giving up on a pending
@@ -607,25 +638,35 @@ local function buildStreakMonthGrid(year, month, read_set, fonts, cell_w, cell_h
         if pending then return nil end
         local front = list[1]
         if k == 1 then
-            front.x = pad + math.floor((area_w - front.w) / 2)
-            front.y = area_top + math.floor((area_h - front.h) / 2)
+            front.x = pad + math.floor((area_w - front.fw) / 2)
+            front.y = area_top + math.floor((area_h - front.fh) / 2)
             return { front }
+        end
+        -- Several books: the first (front) one sits at the top left, the
+        -- others peek out behind it at the bottom right, a step each. Only
+        -- the backmost cover (the one at the bottom of the pile) throws a
+        -- shadow - it is the pile's shadow; the covers above it have none,
+        -- so no shadow falls across a neighbouring cover.
+        local back_decor = { border = decor.border, radius = decor.radius, shadow = 0 }
+        for n = 1, k - 1 do
+            list[n].decor = back_decor
+            list[n].fw, list[n].fh = list[n].w, list[n].h
         end
         local mw, mh = 0, 0
         for n = 1, k do
-            mw = math.max(mw, list[n].w)
-            mh = math.max(mh, list[n].h)
+            local d = (n - 1) * back_off
+            mw = math.max(mw, d + list[n].fw)
+            mh = math.max(mh, d + list[n].fh)
         end
-        local gw, gh = mw + off, mh + off
-        local gx = pad + math.floor((area_w - gw) / 2)
-        local gy = area_top + math.floor((area_h - gh) / 2)
-        -- Book n sits n-1 steps up and to the right of the front one.
+        local gx = pad + math.floor((area_w - mw) / 2)
+        local gy = area_top + math.floor((area_h - mh) / 2)
+        -- Book n sits n-1 steps down and to the right of the front one.
         local out = {}
         for n = k, 1, -1 do
             local c = list[n]
             local d = (n - 1) * back_off
             c.x = gx + d
-            c.y = gy + gh - c.h - d
+            c.y = gy + d
             out[#out + 1] = c
         end
         return out

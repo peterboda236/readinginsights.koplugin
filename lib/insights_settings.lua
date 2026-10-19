@@ -951,6 +951,24 @@ function M.Opt.saveBookInfo(name, value)
     M.saveBoolSetting(key, value and true or false)
 end
 
+-- The cover look shared by every place that shows covers - the Book info
+-- popup, the Reading calendar's day cells and the Reading shelf - set under
+-- Settings > Appearance > Covers: the frame, rounded corners and drop shadow,
+-- each on or off. (They keep the keys they had when they were Book info
+-- options, so an existing choice carries over.) Returns the sizes in pixels,
+-- 0 for what is switched off:
+--   { border = <frame thickness>, radius = <corner radius>, shadow = <shadow offset> }
+-- The shadow lies outside the cover's own size, the frame inside it.
+function M.Opt.coverDecor()
+    local Screen = require("device").screen
+    local function S(n) return Screen:scaleBySize(n) end
+    return {
+        border = M.Opt.readBookInfo("border")  and math.max(2, S(1)) or 0,
+        radius = M.Opt.readBookInfo("rounded") and S(4) or 0,
+        shadow = M.Opt.readBookInfo("shadow")  and S(4) or 0,
+    }
+end
+
 -- Book info popup cover size (Settings > Book info > "Cover size"). "medium"
 -- is the original size (the default). "small" and "large" are fitted to the
 -- text by the popup (views/book_info_view.lua): small is as tall as the text
@@ -982,7 +1000,7 @@ end
 -- Advanced settings > "Menu items"). All on by default; this only affects
 -- the menu, the gesture / dispatcher actions keep working either way.
 M.Opt.MENU_ITEM_ORDER = {
-    "insights", "streak", "heatmap", "records", "achievements",
+    "insights", "streak", "shelf", "heatmap", "records", "achievements",
     "book_progress", "book_info", "book_calendar",
 }
 

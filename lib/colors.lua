@@ -137,7 +137,7 @@ end
 -- Order the "Colors" menu is built in (flat entries only - the 5 heatmap
 -- shades live in their own "Heatmap" submenu, see HEATMAP_KEY_ORDER below).
 local KEY_ORDER = {
-    "active_bar", "inactive_bar", "trend_line", "separator", "label", "value", "section", "small", "header_bg",
+    "active_bar", "inactive_bar", "trend_line", "separator", "label", "value", "section", "small", "header_bg", "cover_shadow",
 }
 
 -- The year-heatmap shades, grouped together under one "Heatmap" submenu
@@ -190,6 +190,9 @@ local DEFAULTS = {
     -- and the Book progress popup's "This chapter"/"Next chapter", "This
     -- book" and "Pace" headers). White by default, i.e. no visible fill.
     header_bg    = "#FFFFFF",
+    -- Drop shadow behind the covers (Book info, Reading calendar and Reading
+    -- shelf): 50% black by default.
+    cover_shadow = "#808080",
     -- Year heatmap cell shades, each named after its percentage of black
     -- (0% = white/no reading that day, 100% = pure black = the day(s)
     -- with the most reading time in the shown year).
@@ -334,6 +337,7 @@ function M.value()       return M.getColor("value")        end
 function M.section()     return M.getColor("section")      end
 function M.small()       return M.getColor("small")        end
 function M.headerBg()    return M.getColor("header_bg")    end
+function M.coverShadow() return M.getColor("cover_shadow") end
 function M.heatmap0()    return M.getColor("heatmap_0")    end
 function M.heatmap25()   return M.getColor("heatmap_25")   end
 function M.heatmap50()   return M.getColor("heatmap_50")   end
@@ -359,6 +363,7 @@ local function labelFor(key)
         section      = _("Section color"),
         small        = _("Chart label color"),
         header_bg    = _("Section header background color"),
+        cover_shadow = _("Cover shadow color"),
         heatmap_0    = _("No reading (0%)"),
         heatmap_25   = _("Low activity (25%)"),
         heatmap_50   = _("Medium activity (50%)"),

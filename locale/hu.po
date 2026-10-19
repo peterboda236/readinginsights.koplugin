@@ -534,6 +534,9 @@ msgstr "Diagram felirat színe"
 msgid "Section header background color"
 msgstr "Szakaszfejléc háttérszíne"
 
+msgid "Cover shadow color"
+msgstr "Borító árnyékának színe"
+
 msgid "Settings"
 msgstr "Beállítások"
 
@@ -913,6 +916,9 @@ msgstr "Olvasási áttekintés: olvasási naptár"
 
 msgid "Reading insights: reading heatmap"
 msgstr "Olvasási áttekintés: olvasási hőtérkép"
+
+msgid "Reading insights: reading shelf"
+msgstr "Olvasási áttekintés: olvasási polc"
 
 msgid "Show Reading heatmap"
 msgstr "Olvasási hőtérkép megjelenítése"
@@ -2224,3 +2230,15 @@ msgstr "Hét napjai"
 
 msgid "Height of the two bar charts in the heatmap popup. The default matches the chapter bar. If the popup does not fit the screen, both charts shrink automatically."
 msgstr "A heatmap ablak két oszlopdiagramjának magassága. Az alapértelmezett megegyezik a fejezetsáv magasságával. Ha az ablak nem fér ki a képernyőn, mindkét diagram automatikusan csökken."
+
+msgid "Reading shelf"
+msgstr "Olvasási polc"
+
+msgid "Show Reading shelf"
+msgstr "Olvasási polc megjelenítése"
+
+msgid "Show only finished books"
+msgstr "Csak a befejezett könyvek"
+
+msgid "Covers"
+msgstr "Borítók"

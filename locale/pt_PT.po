@@ -519,6 +519,9 @@ msgstr "Cor do rótulo do gráfico"
 msgid "Section header background color"
 msgstr "Cor de fundo do cabeçalho de secção"
 
+msgid "Cover shadow color"
+msgstr "Cor da sombra das capas"
+
 msgid "Settings"
 msgstr "Definições"
 
@@ -898,6 +901,12 @@ msgstr "Reading Insights: calendário de leitura"
 
 msgid "Reading insights: reading heatmap"
 msgstr "Reading Insights: mapa de calor de leitura"
+
+msgid "Reading insights: reading shelf"
+msgstr "Reading Insights: estante de leitura"
+
+msgid "Reading shelf"
+msgstr "Estante de leitura"
 
 msgid "Show Reading heatmap"
 msgstr "Mostrar mapa de calor de leitura"

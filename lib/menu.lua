@@ -44,6 +44,8 @@ function M.build(self, deps)
           open = function() self:onShowReadingInsightsPopup() end },
         { key = "streak",        label = _("Reading calendar"),
           open = function() self:onShowReadingStreakPopup() end },
+        { key = "shelf",         label = _("Reading shelf"),
+          open = function() self:onShowReadingShelfPopup() end },
         { key = "heatmap",       label = _("Reading heatmap"),
           open = function() self:onShowReadingHeatmapPopup() end },
         { key = "records",       label = _("Records"),
@@ -1266,9 +1268,10 @@ function M.build(self, deps)
     }
 
     -- "Book info" popup: which parts of the small cover + title / author /
-    -- series popup are shown. Cover frame options (rounded corners, shadow,
-    -- border) only matter while the cover itself is on, so they grey out
-    -- with it. Fonts live under Settings > Fonts > Book info.
+    -- series popup are shown. The cover look (rounded corners, shadow, border)
+    -- is shared with the Reading calendar and the Reading shelf and lives under
+    -- Settings > Appearance > Covers. Fonts live under Settings > Fonts > Book
+    -- info.
     local function bookInfoToggle(name, text, help_text, depends_on_cover, separator)
         return {
             text = text,
@@ -1326,12 +1329,6 @@ function M.build(self, deps)
             _("Show the book's cover on the left."),
             false, true),
         coverSizeItem,
-        bookInfoToggle("rounded", _("Rounded corners"),
-            _("Round the corners of the cover."), true),
-        bookInfoToggle("shadow", _("Cover shadow"),
-            _("Draw a drop shadow behind the cover."), true),
-        bookInfoToggle("border", _("Cover border"),
-            _("Draw a thin frame around the cover."), true, true),
         bookInfoToggle("author", _("Show author"),
             _("Show the author line. Several authors are joined with a language-appropriate \"and\"."), false),
         bookInfoToggle("series", _("Show series"),
@@ -1339,6 +1336,17 @@ function M.build(self, deps)
         bookInfoToggle("description", _("Show description"),
             _("Show the book's description under the author / series, as far down as the bottom of the cover, cut with an ellipsis when it does not fit. Tap it to read the full description. While this is on, the popup is as wide as it can be."), false),
     }
+
+    -- Settings > Appearance > Covers: the look of every cover - Book info,
+    -- the Reading calendar's days and the Reading shelf.
+    I.covers = group(_("Covers"), {
+        bookInfoToggle("rounded", _("Rounded corners"),
+            _("Round the corners of the covers (Book info, Reading calendar and Reading shelf)."), false),
+        bookInfoToggle("shadow", _("Cover shadow"),
+            _("Draw a drop shadow behind the covers (Book info, Reading calendar and Reading shelf)."), false),
+        bookInfoToggle("border", _("Cover border"),
+            _("Draw a thin frame around the covers (Book info, Reading calendar and Reading shelf)."), false),
+    })
 
     I.book_info = {
         text = _("Book info"),
@@ -1403,7 +1411,7 @@ function M.build(self, deps)
     -- Settings menu layout, top to bottom:
     --
     --   Date & time                how dates, times and weeks are shown
-    --   Appearance                 colors and fonts
+    --   Appearance                 colors, fonts and the look of covers
     --   -------------------------
     --   one group per view         Reading insight popup, Heatmap & time of
     --                              day, Book progress popup, Book progress
@@ -1446,7 +1454,7 @@ function M.build(self, deps)
         I.sleep_screen,
         "-",
         I.date_time,
-        group(_("Appearance"), { I.colors, I.fonts }),
+        group(_("Appearance"), { I.colors, I.fonts, I.covers }),
         "-",
         {
             text = _("Reading insight popup"),

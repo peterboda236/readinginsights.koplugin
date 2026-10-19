@@ -513,6 +513,9 @@ msgstr "Chart label color"
 msgid "Section header background color"
 msgstr "Section header background color"
 
+msgid "Cover shadow color"
+msgstr "Cover shadow color"
+
 msgid "Settings"
 msgstr "Settings"
 
@@ -892,6 +895,9 @@ msgstr "Reading insights: reading calendar"
 
 msgid "Reading insights: reading heatmap"
 msgstr "Reading insights: reading heatmap"
+
+msgid "Reading insights: reading shelf"
+msgstr "Reading insights: reading shelf"
 
 msgid "Show Reading heatmap"
 msgstr "Show Reading heatmap"
@@ -2212,3 +2218,15 @@ msgstr "Weekdays"
 
 msgid "Height of the two bar charts in the heatmap popup. The default matches the chapter bar. If the popup does not fit the screen, both charts shrink automatically."
 msgstr "Height of the two bar charts in the heatmap popup. The default matches the chapter bar. If the popup does not fit the screen, both charts shrink automatically."
+
+msgid "Reading shelf"
+msgstr "Reading shelf"
+
+msgid "Show Reading shelf"
+msgstr "Show Reading shelf"
+
+msgid "Show only finished books"
+msgstr "Show only finished books"
+
+msgid "Covers"
+msgstr "Covers"

@@ -519,6 +519,9 @@ msgstr "Couleur des libellés de graphique"
 msgid "Section header background color"
 msgstr "Couleur d'arrière-plan des en-têtes de section"
 
+msgid "Cover shadow color"
+msgstr "Couleur de l'ombre des couvertures"
+
 msgid "Settings"
 msgstr "Paramètres"
 
@@ -898,6 +901,12 @@ msgstr "Statistiques de lecture : calendrier de lecture"
 
 msgid "Reading insights: reading heatmap"
 msgstr "Statistiques de lecture : carte thermique de lecture"
+
+msgid "Reading insights: reading shelf"
+msgstr "Statistiques de lecture : étagère de lecture"
+
+msgid "Reading shelf"
+msgstr "Étagère de lecture"
 
 msgid "Show Reading heatmap"
 msgstr "Afficher la carte thermique de lecture"

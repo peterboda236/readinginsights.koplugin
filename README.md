@@ -30,6 +30,7 @@ A full-screen overview of your whole reading history.
   see the separate [Reading calendar](#-reading-calendar) popup below).
 - **Yearly & monthly** — hours/days read and pages, navigable by year; a
   monthly bar chart you can tap to see the books behind each month.
+  Tap the **year** itself for the [Year shelf](#-year-shelf).
 - **All-time totals** — cumulative hours and pages. Tap the "All time"
   header for a GitHub-style **heatmap** and a **time-of-day** breakdown of when
   you read (shown as a bar chart or an hour × weekday grid).
@@ -49,6 +50,44 @@ A full-screen overview of your whole reading history.
 the title bar to force a data reload.
 
 Available everywhere (book view and file manager).
+
+## 📚 Year shelf
+
+The covers of the books you read in a year, laid out like books on a shelf:
+oldest first, left to right, wrapping from row to row, with the month's name
+(the same short names as under the monthly charts) above the first cover of each
+month (repeated at the start of a row when a month runs over into it).
+
+Every cover is drawn at the same height and keeps its own proportions, so only
+the widths differ; the height is the biggest one at which **all** the books of
+the year fit on the screen - the shelf never scrolls. The rows are broken so
+the right edge is as even as the covers allow, and the room left in a row is
+shared out between its gaps. A book without a cover is drawn like in the
+Reading calendar: an outlined card with a book icon and the start of its title.
+
+Open it by **tapping the year** in the Reading insights window (or from its
+hamburger menu → *Show Reading shelf*). It fills the screen, with a title bar
+(an **X** to close) and a year selector right under it, built like the one in
+the Reading insights window.
+
+- **Year selector** — tap the previous / next year, swipe left / right, or use
+  the Left / Right keys.
+- **Swipe down** — closes the shelf.
+- **Tap a cover** — opens that book's [Book info](#-book-info) popup.
+- **Hamburger menu** (top left) — *Show only finished books* switches between
+  every book you read that year and just the finished ones (the same list as
+  the reading goal's, manual ticks and hand-added books included). A book sits
+  in the month of its last reading entry (with the switch on: the month it was
+  finished). The choice is remembered.
+- **Cover look** — the frame, rounded corners and shadow of the covers are set
+  under *Settings → Appearance → Covers*, and are the same in the Book info
+  popup, the Reading calendar and the shelf.
+- **Sleep screen** — *Reading shelf* is one of the sleep screen's contents
+  (*Settings → Sleep screen → Content*): this year's shelf, without the hamburger
+  menu and the X.
+
+The covers share the Reading calendar's thumbnail cache, so they load quickly
+once seen; the first time, a plain card is shown until each cover is read.
 
 ## 🔥 Reading calendar
 

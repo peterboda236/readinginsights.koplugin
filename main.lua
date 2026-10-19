@@ -284,10 +284,15 @@ local AchievementsView = loadModule("views/achievements_view.lua",
 -- BookInfoData (the Book info popup's cover loader), so that is loaded first.
 local BookInfoData = loadModule("lib/bookinfo_data.lua",
     { Locale = Locale, BookStatsData = BookStatsData })
+-- The framed, rounded, shadowed cover look (Settings > Appearance > Covers):
+-- drawn by widgets/coverframe.lua (the Book card plugin's widget) for the Book
+-- info popup, the Reading calendar's days and the Reading shelf alike.
+local CoverFrame   = loadModule("widgets/coverframe.lua", { Colors = Colors })
 local StreakCalendar = loadModule("views/streak_calendar_view.lua", {
     Locale = Locale, Colors = Colors, Fonts = Fonts, UI = UI,
     Data = InsightsData, Prefs = Prefs, VS = ViewSettings,
     BookList = BookList, BookInfoData = BookInfoData, Ratings = Ratings,
+    CoverFrame = CoverFrame,
 })
 
 -- Records: the queries and their cache (lib/records_data.lua, loaded above
@@ -301,12 +306,35 @@ local Records = loadModule("views/records_view.lua", {
     RecordsData = RecordsData,
 })
 
+-- The Book info popup: cover + title / author / series. Its data (authors
+-- joined with a language-appropriate "and", the series line, the cover
+-- image) lives in lib/bookinfo_data.lua; the cover's rounded, shadowed
+-- frame is drawn by widgets/coverframe.lua (the Book card plugin's widget).
+local BookInfo = loadModule("views/book_info_view.lua", {
+    Locale = Locale, Colors = Colors, Fonts = Fonts, VS = ViewSettings,
+    Data = BookInfoData, CoverFrame = CoverFrame,
+    Ratings = Ratings, RatingDialog = RatingDialog,
+})
+-- A tap on a row of a book list opens this popup for that book (the lists
+-- are loaded before it, so they get it handed over here).
+BookList.bindBookInfo(BookInfo)
+
+-- The year shelf: the covers of the books read in a year, month by month,
+-- opened by tapping the year in the insights popup. It reads covers through
+-- BookInfoData and opens the Book info popup (loaded just above) via BookList.
+local YearShelf = loadModule("views/year_shelf_view.lua", {
+    Locale = Locale, Colors = Colors, Fonts = Fonts, UI = UI,
+    BookList = BookList, BookInfoData = BookInfoData, Ratings = Ratings,
+    VS = ViewSettings, CoverFrame = CoverFrame,
+})
+
 local Insights = loadModule("views/insights_view.lua", {
     Locale = Locale, Colors = Colors, Fonts = Fonts,
     PopupUtil = PopupUtil, VS = ViewSettings, Cache = InsightsCache, UI = UI,
     Trend = Trend, Heatmap = Heatmap, BookList = BookList, Data = InsightsData,
     Manual = ManualBooks, Achievements = Achievements, AchievementsView = AchievementsView,
     Prefs = Prefs, Streak = StreakCalendar, Records = Records,
+    YearShelf = YearShelf,
 })
 local BookCalendar = loadModule("views/book_calendar_view.lua", {
     Locale = Locale, Colors = Colors, Fonts = Fonts, Prefs = Prefs, VS = ViewSettings,
@@ -319,19 +347,6 @@ local StatsPopup = loadModule("views/book_stats_view.lua", {
     Donut = Donut, SkimBar = SkimBar, UI = UI,
     BookStatsData = BookStatsData, VS = ViewSettings,
 })
--- The Book info popup: cover + title / author / series. Its data (authors
--- joined with a language-appropriate "and", the series line, the cover
--- image) lives in lib/bookinfo_data.lua; the cover's rounded, shadowed
--- frame is drawn by widgets/coverframe.lua (the Book card plugin's widget).
-local CoverFrame   = loadModule("widgets/coverframe.lua")
-local BookInfo = loadModule("views/book_info_view.lua", {
-    Locale = Locale, Colors = Colors, Fonts = Fonts, VS = ViewSettings,
-    Data = BookInfoData, CoverFrame = CoverFrame,
-    Ratings = Ratings, RatingDialog = RatingDialog,
-})
--- A tap on a row of a book list opens this popup for that book (the lists
--- are loaded before it, so they get it handed over here).
-BookList.bindBookInfo(BookInfo)
 -- The last book read, kept when a book is closed so the sleep screen can
 -- draw the book popups from the file manager too (lib/lastbook.lua).
 local LastBook = loadModule("lib/lastbook.lua",
@@ -446,6 +461,15 @@ function ReadingInsights:onDispatcherRegisterActions()
         category = "none",
         event    = "ShowReadingStreakPopup",
         title    = _("Reading insights: reading calendar"),
+        general  = true,
+    })
+    -- general = true: the Reading shelf (the covers of a year's books) is
+    -- built from all-time reading data, not tied to any open book, so it is
+    -- assignable everywhere too.
+    Dispatcher:registerAction("reading_shelf_popup", {
+        category = "none",
+        event    = "ShowReadingShelfPopup",
+        title    = _("Reading insights: reading shelf"),
         general  = true,
     })
     -- general = true: the heatmap is built from all-time reading data (see
@@ -1215,6 +1239,15 @@ end
 -- cells open (views/insights_view.lua's showStreaksPopup).
 function ReadingInsights:onShowReadingStreakPopup()
     Insights.showStreaks()
+    return true
+end
+
+-- General, like the streak popup above: the Reading shelf shows the covers of
+-- the books read in a year, so it opens in both Reader view and the File
+-- manager, straight on the current year (the same window a tap on the year in
+-- the Reading insights popup opens - views/insights_view.lua's showYearShelf).
+function ReadingInsights:onShowReadingShelfPopup()
+    Insights.showYearShelf{ ui = self.ui }
     return true
 end
 
