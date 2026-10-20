@@ -29,7 +29,7 @@ Gestures:
   - Long press finished-book count     checklist to correct that list
   - Long press reading goal value      set that year's goal
   - Long press title bar               force-reload everything from the DB
-  - Swipe left/right                   change year
+  - Swipe left/right on monthly chart change year (elsewhere: ignored)
   - Swipe down / any key               close
 
 Refresh: "ui" on open/close by default, "full" if the Tools-menu toggle for
@@ -538,7 +538,7 @@ end
 -- next week's range on the right. A tap on the
 -- middle jumps back to the current week (the chart is still toggled
 -- between time and pages by tapping its caption or the values). Weeks are paged with these two slots or by swiping over the
--- weekly section; a swipe anywhere else pages the year.
+-- weekly section; the year is paged only by swiping over the monthly chart.
 local function buildWeekNavHeader(popup_self, font_section, font_label, layout)
     local offset   = popup_self.week_offset or 0
     local can_prev = popup_self:_weekInRange(offset - 1)
@@ -1889,8 +1889,8 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
             end
 
             -- Calendar view: a horizontal swipe over this section pages the
-            -- week (see onSwipe), while a swipe anywhere else still pages
-            -- the year. The two wrappers only keep track of where the header
+            -- week (see onSwipe); the year is paged only from the monthly
+            -- chart. The two wrappers only keep track of where the header
             -- and the content are on screen (their dimen follows the paint).
             if cal_mode and not popup_self.readonly then
                 local function track(w)
@@ -2037,6 +2037,20 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
         buildYearHeader(popup_self, fonts.section, fonts.label, layout, year_range, popup_self.selected_year))
     local yearly_row  = buildYearlyRow(popup_self, yearly_stats, fonts, layout)
 
+    popup_self._year_swipe_targets = {}
+    -- A horizontal swipe over any widget wrapped with this pages the year
+    -- (see onSwipe): the year header, its stats row (reading time, average
+    -- time...), the monthly chart and the reading goal row. The wrapper only keeps track of where the widget is on screen
+    -- (its dimen follows the paint).
+    local function trackYearSwipe(w)
+        local sz = w:getSize()
+        local box = InputContainer:new{
+            dimen = Geom:new{ x = 0, y = 0, w = sz.w, h = sz.h },
+            w,
+        }
+        table.insert(popup_self._year_swipe_targets, box)
+        return box
+    end
     local chart = buildMonthlyChart(popup_self, monthly_data, layout, fonts)
     -- The few pixels the auto-fit could not hand out as whole bar points
     -- (see _buildUI's fit) go here, under the monthly chart, so the page
@@ -2053,6 +2067,8 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
         end
     end
 
+    year_header = trackYearSwipe(year_header)
+    yearly_row  = trackYearSwipe(yearly_row)
     UI.addSectionWithRow(sections, year_header, yearly_row, layout, { pad_row = false, no_bottom_line = not chart, bottom_line_thin = true, gap_above_row = true })
 
     if chart then
@@ -2101,6 +2117,8 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
         -- no_top_line: no divider directly under the chart header - it now
         -- reads as a plain caption for the chart rather than a section
         -- title with its own separator line.
+        tappable_chart_header = trackYearSwipe(tappable_chart_header)
+        chart = trackYearSwipe(chart)
         UI.addSectionWithRow(sections, tappable_chart_header, chart, layout,
             { add_divider = true, no_top_line = true, no_bottom_line = false,
               bottom_line_thin = VS.Opt.readShowReadingGoal() })
@@ -2280,7 +2298,7 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
             addHold(right_cell, openFinishedMenu)
 
             table.insert(sections, VerticalSpan:new{ width = Size.padding.small })
-            table.insert(sections, wrapRow(UI.buildTwoColRow(left_cell, right_cell, layout)))
+            table.insert(sections, trackYearSwipe(wrapRow(UI.buildTwoColRow(left_cell, right_cell, layout))))
             table.insert(sections, VerticalSpan:new{ width = Size.padding.small })
             table.insert(sections, UI.padded(layout.padding_h,
                 Colors.newBar(layout.content_width, Size.line.thick, Colors.separator())))
@@ -3887,23 +3905,54 @@ end
 function ReadingInsightsPopup:onSwipe(arg, ges_ev)
     if not ges_ev then return false end
     local dir = ges_ev.direction
-    -- Calendar-week view: a sideways swipe that starts on the weekly section
-    -- pages the week; everywhere else (the monthly chart, the rest of the
-    -- page) it pages the year as before.
-    local horizontal = (dir == "west" or dir == "left" or dir == "east" or dir == "right")
-    if horizontal and ges_ev.pos and VS.readWeeklyViewIsCalendar() then
+    local west  = (dir == "west" or dir == "left")
+    local east  = (dir == "east" or dir == "right")
+    local function inside(list)
         local pos = ges_ev.pos
-        for _idx, w in ipairs(self._week_swipe_targets or {}) do
+        if not pos then return false end
+        for _idx, w in ipairs(list or {}) do
             local d = w.dimen
             if d and pos.x >= d.x and pos.x <= d.x + d.w
                   and pos.y >= d.y and pos.y <= d.y + d.h then
-                if dir == "west" or dir == "left" then return self:onGoToNextWeek() end
-                return self:onGoToPrevWeek()
+                return true
             end
         end
+        return false
     end
-    if dir == "west" or dir == "left"  then return self:onGoToNextYear() end
-    if dir == "east" or dir == "right" then return self:onGoToPrevYear() end
+    -- The year zone is one continuous full-width band: from the top of the
+    -- first year widget (year header) to the bottom of the last one (monthly
+    -- chart / reading goal row), including the gaps and divider lines between
+    -- them and the short caption rows that don't span the whole width.
+    local function inYearZone()
+        local pos = ges_ev.pos
+        if not pos then return false end
+        local top, bottom
+        for _idx, w in ipairs(self._year_swipe_targets or {}) do
+            local d = w.dimen
+            if d and d.h and d.h > 0 then
+                if not top or d.y < top then top = d.y end
+                if not bottom or d.y + d.h > bottom then bottom = d.y + d.h end
+            end
+        end
+        return top ~= nil and pos.y >= top and pos.y <= bottom
+    end
+    -- Sideways swipes only act where they start:
+    --   - on the weekly section (calendar-week view) -> page the week
+    --   - on the year header, its stats row, the monthly chart or the
+    --     reading goal row
+    --                                                -> page the year
+    -- A sideways swipe anywhere else is ignored.
+    if west or east then
+        if VS.readWeeklyViewIsCalendar() and inside(self._week_swipe_targets) then
+            if west then return self:onGoToNextWeek() end
+            return self:onGoToPrevWeek()
+        end
+        if inYearZone() then
+            if west then return self:onGoToNextYear() end
+            return self:onGoToPrevYear()
+        end
+        return true
+    end
     if dir == "south" or dir == "down" then
         if self.readonly then return true end
         UIManager:close(self)
