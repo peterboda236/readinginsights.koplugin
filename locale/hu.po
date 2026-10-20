@@ -1647,7 +1647,7 @@ msgid "Time of day"
 msgstr "Napszak"
 
 msgid "Time of day view"
-msgstr "Napszak nézet"
+msgstr "Napi idősáv nézet"
 
 msgid "Chart"
 msgstr "Diagram"
@@ -1666,8 +1666,6 @@ msgstr "Délután"
 
 msgid "Evening"
 msgstr "Este"
-
-
 
 msgid "You read most around %1"
 msgstr "Legtöbbet %1 körül olvasol"
@@ -2074,7 +2072,6 @@ msgstr "Értékelések betöltése..."
 msgid "Appearance"
 msgstr "Megjelenés"
 
-
 msgid "Chart style"
 msgstr "Diagram stílusa"
 
@@ -2237,9 +2234,6 @@ msgstr "Csak a befejezett könyvek"
 msgid "Covers"
 msgstr "Borítók"
 
-
-
-
 msgid "Random views (%1/%2)"
 msgstr "Véletlenszerű nézetek (%1/%2)"
 
@@ -2256,7 +2250,7 @@ msgid "Reading by day"
 msgstr "Olvasás naponként"
 
 msgid "Reading by time of day"
-msgstr "Olvasás napszak szerint"
+msgstr "Olvasás a nap folyamán"
 
 msgid "Reading by weekday"
 msgstr "Olvasás a hét napjai szerint"
