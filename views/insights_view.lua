@@ -2160,7 +2160,7 @@ function ReadingInsightsPopup:onShowHamburgerMenu()
                 end,
             }},
             {{
-                text  = _("Show Reading heatmap"),
+                text  = _("Show Reading habits"),
                 align = "left",
                 callback = function()
                     UIManager:close(dialog)

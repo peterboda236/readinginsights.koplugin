@@ -309,8 +309,8 @@ msgstr "8 hetes grafikon sorrendje"
 msgid "Advanced settings"
 msgstr "További beállítások"
 
-msgid "Reading heatmap range"
-msgstr "Heatmap időtartama"
+msgid "Reading habits range"
+msgstr "Olvasási szokások időtartama"
 
 msgid "3 months"
 msgstr "3 hónap"
@@ -797,8 +797,8 @@ msgstr "Nem sikerült lekérni a legújabb kiadást."
 msgid "Latest release has no downloadable zip."
 msgstr "A legújabb kiadáshoz nincs letölthető zip fájl."
 
-msgid "Reading heatmap"
-msgstr "Olvasási hőtérkép"
+msgid "Reading habits"
+msgstr "Olvasási szokások"
 
 msgid "Reading calendar"
 msgstr "Olvasási naptár"
@@ -914,14 +914,14 @@ msgstr "Pipáld be, mely ablakok jelenjenek meg az Eszközök > Reading insights
 msgid "Reading insights: reading calendar"
 msgstr "Olvasási áttekintés: olvasási naptár"
 
-msgid "Reading insights: reading heatmap"
-msgstr "Olvasási áttekintés: olvasási hőtérkép"
+msgid "Reading insights: reading habits"
+msgstr "Olvasási áttekintés: olvasási szokások"
 
 msgid "Reading insights: reading shelf"
 msgstr "Olvasási áttekintés: olvasási polc"
 
-msgid "Show Reading heatmap"
-msgstr "Olvasási hőtérkép megjelenítése"
+msgid "Show Reading habits"
+msgstr "Olvasási szokások megjelenítése"
 
 msgid "Sub-values (date / book title)"
 msgstr "Alértékek (dátum / könyvcím)"
@@ -1667,11 +1667,7 @@ msgstr "Délután"
 msgid "Evening"
 msgstr "Este"
 
-msgid "When you read"
-msgstr "Mikor olvasol"
 
-msgid "Days of the week"
-msgstr "A hét napjai"
 
 msgid "You read most around %1"
 msgstr "Legtöbbet %1 körül olvasol"
@@ -1709,8 +1705,8 @@ msgstr "A „kezdve…” és „várható befejezés” dátumsor megjeleníté
 msgid "Hamburger menu"
 msgstr "Hamburger menü"
 
-msgid "Show the hamburger menu (top left of the title bar) with quick access to the streak, heatmap, records and achievements popups."
-msgstr "A hamburger menü (a fejléc bal oldalán) megjelenítése, amely gyors elérést biztosít az olvasási széria, a hőtérkép, a rekordok és a teljesítmények popupokhoz."
+msgid "Show the hamburger menu (top left of the title bar) with quick access to the streak, reading habits, records and achievements popups."
+msgstr "A hamburger menü (a fejléc bal oldalán) megjelenítése, amely gyors elérést biztosít az olvasási széria, az olvasási szokások, a rekordok és a teljesítmények popupokhoz."
 
 msgid "Couldn't open Records: "
 msgstr "Nem sikerült megnyitni a Rekordokat: "
@@ -2078,8 +2074,6 @@ msgstr "Értékelések betöltése..."
 msgid "Appearance"
 msgstr "Megjelenés"
 
-msgid "Heatmap & time of day"
-msgstr "Heatmap és napszak"
 
 msgid "Chart style"
 msgstr "Diagram stílusa"
@@ -2228,8 +2222,8 @@ msgstr "8 hetes olvasási trend"
 msgid "Weekdays"
 msgstr "Hét napjai"
 
-msgid "Height of the two bar charts in the heatmap popup. The default matches the chapter bar. If the popup does not fit the screen, both charts shrink automatically."
-msgstr "A heatmap ablak két oszlopdiagramjának magassága. Az alapértelmezett megegyezik a fejezetsáv magasságával. Ha az ablak nem fér ki a képernyőn, mindkét diagram automatikusan csökken."
+msgid "Height of the two bar charts in the reading habits popup. The default matches the chapter bar. If the popup does not fit the screen, both charts shrink automatically."
+msgstr "Az olvasási szokások ablak két oszlopdiagramjának magassága. Az alapértelmezett megegyezik a fejezetsáv magasságával. Ha az ablak nem fér ki a képernyőn, mindkét diagram automatikusan csökken."
 
 msgid "Reading shelf"
 msgstr "Olvasási polc"
@@ -2242,3 +2236,27 @@ msgstr "Csak a befejezett könyvek"
 
 msgid "Covers"
 msgstr "Borítók"
+
+
+
+
+msgid "Random views (%1/%2)"
+msgstr "Véletlenszerű nézetek (%1/%2)"
+
+msgid "Which views the Random sleep screen picks from. A different one is shown every time the device goes to sleep, never the same one twice in a row."
+msgstr "Mely nézetek közül válasszon a véletlenszerű alvóképernyő. Minden elalváskor másik jelenik meg, sosem ugyanaz kétszer egymás után."
+
+msgid "Every 2 hours"
+msgstr "Kétóránként"
+
+msgid "By part of day"
+msgstr "Napszakonkénti"
+
+msgid "Reading by day"
+msgstr "Olvasás naponként"
+
+msgid "Reading by time of day"
+msgstr "Olvasás napszak szerint"
+
+msgid "Reading by weekday"
+msgstr "Olvasás a hét napjai szerint"

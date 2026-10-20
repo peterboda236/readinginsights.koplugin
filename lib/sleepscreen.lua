@@ -14,6 +14,10 @@ settings of its own:
                  book_info       the Book info popup
                  records         the Records popup
                  shelf           the Reading shelf: this year's covers
+                 random          a different one of the above on every
+                                 sleep, never the one shown the time before;
+                                 which ones are in the draw is ticked in
+                                 Content > Random views
                The three book ones are drawn from the open book; from the
                file manager, from the last book read (lib/lastbook.lua).
   background   what is behind the popup:
@@ -92,11 +96,11 @@ local BACKGROUND_SETTING = "readinginsights_sleep_background"
 M.DEFAULT_CONTENT    = "insights"
 M.DEFAULT_BACKGROUND = "cover"
 
--- Menu order.
-function M.contents()
+-- The views themselves, in menu order.
+function M.views()
     return {
         { id = "insights",      text = Locale.insightsTitle() },
-        { id = "heatmap",       text = _("Reading heatmap") },
+        { id = "heatmap",       text = _("Reading habits") },
         { id = "streak",        text = _("Reading calendar") },
         { id = "book_progress", text = _("Book progress") },
         { id = "book_calendar", text = _("Book progress calendar") },
@@ -104,6 +108,17 @@ function M.contents()
         { id = "records",       text = _("Records") },
         { id = "shelf",         text = _("Reading shelf") },
     }
+end
+
+-- "Random" is not a view but a way of picking one: a different one of the
+-- ticked views (M.readRandomViews) on every sleep.
+M.RANDOM_CONTENT = "random"
+
+-- What the Content menu offers: the views, then Random.
+function M.contents()
+    local list = M.views()
+    list[#list + 1] = { id = M.RANDOM_CONTENT, text = _("Random") }
+    return list
 end
 
 function M.backgrounds()
@@ -137,6 +152,101 @@ end
 
 function M.saveContent(id)
     if isValid(M.contents(), id) then Prefs.save(CONTENT_SETTING, id) end
+end
+
+-- ---------------------------------------------------------------------
+-- Random content: which views are in the draw, and the one shown last
+-- ---------------------------------------------------------------------
+-- What is stored is the list of views that are NOT in the draw, so a view
+-- added in a later version is in it by default. Everything in the draw is
+-- the default; the last one can't be unticked.
+local RANDOM_EXCLUDED_SETTING = "readinginsights_sleep_random_excluded"
+local RANDOM_LAST_SETTING     = "readinginsights_sleep_random_last"
+
+local function excludedSet()
+    local v = Prefs.read(RANDOM_EXCLUDED_SETTING, nil)
+    local set = {}
+    if type(v) == "table" then
+        for _i, id in ipairs(v) do set[id] = true end
+    end
+    return set
+end
+
+-- { id, ... } of the views in the random draw, in menu order.
+function M.readRandomViews()
+    local excluded = excludedSet()
+    local out = {}
+    for _i, view in ipairs(M.views()) do
+        if not excluded[view.id] then out[#out + 1] = view.id end
+    end
+    if #out == 0 then
+        for _i, view in ipairs(M.views()) do out[#out + 1] = view.id end
+    end
+    return out
+end
+
+function M.isRandomView(id)
+    for _i, v in ipairs(M.readRandomViews()) do
+        if v == id then return true end
+    end
+    return false
+end
+
+-- Ticks / unticks a view. Unticking the only one left does nothing.
+function M.toggleRandomView(id)
+    if not isValid(M.views(), id) then return end
+    local current = M.readRandomViews()
+    local want = M.isRandomView(id) == false
+    if not want and #current <= 1 then return end
+    local keep = {}
+    for _i, v in ipairs(current) do
+        if v ~= id then keep[v] = true end
+    end
+    if want then keep[id] = true end
+    local excluded = {}
+    for _i, view in ipairs(M.views()) do
+        if not keep[view.id] then excluded[#excluded + 1] = view.id end
+    end
+    Prefs.save(RANDOM_EXCLUDED_SETTING, excluded)
+end
+
+-- sub_item_table for Content > Random views: one tick box per view.
+function M.buildRandomMenu()
+    local items = {}
+    for _i, view in ipairs(M.views()) do
+        items[#items + 1] = {
+            text = view.text,
+            keep_menu_open = true,
+            checked_func = function() return M.isRandomView(view.id) end,
+            callback = function() M.toggleRandomView(view.id) end,
+        }
+    end
+    return items
+end
+
+function M.randomViewsLabel()
+    local T = require("ffi/util").template
+    return T(_("Random views (%1/%2)"), #M.readRandomViews(), #M.views())
+end
+
+-- The views to try, best first, for what is stored as the content: just the
+-- one chosen, or (Random) the ticked views in a random order with the one
+-- shown last at the very end - so it only comes back when nothing else can
+-- be drawn (no open book for the book views, say). `last` is that one.
+local function contentCandidates(last)
+    local content = M.readContent()
+    if content ~= M.RANDOM_CONTENT then return { content } end
+    local pool = M.readRandomViews()
+    for i = #pool, 2, -1 do
+        local j = math.random(i)
+        pool[i], pool[j] = pool[j], pool[i]
+    end
+    local out, tail = {}, nil
+    for _i, id in ipairs(pool) do
+        if id == last then tail = id else out[#out + 1] = id end
+    end
+    if tail then out[#out + 1] = tail end
+    return out
 end
 
 function M.readBackground()
@@ -574,7 +684,6 @@ function M.show(ui, before_paint)
     --    statistics database first, so every query below sees it.
     pcall(InsightsData.flushStatsToDB, ui)
 
-    local content = M.readContent()
     local shown = {}
 
     -- 2. Background (the Insights window fills the screen, so it has none).
@@ -602,19 +711,30 @@ function M.show(ui, before_paint)
         return popup, bg
     end
 
-    local popup, bg = build(content)
-    if not popup then
-        -- Not possible right now (no open book, no data, or an error):
-        -- fall back to the insights window rather than a blank screen.
+    -- The content to draw: the chosen one or, in Random mode, the first of
+    -- the ticked views (in random order, never the one shown last time)
+    -- that can be drawn right now.
+    local random = M.readContent() == M.RANDOM_CONTENT
+    local popup, bg, used
+    local tried_insights = false
+    for _i, content_id in ipairs(contentCandidates(Prefs.read(RANDOM_LAST_SETTING, nil))) do
+        if content_id == "insights" then tried_insights = true end
+        popup, bg = build(content_id)
+        if popup then used = content_id; break end
+        -- Not possible right now (no open book, no data, or an error).
         if bg then
             UIManager:close(bg)
             shown[#shown] = nil
         end
-        if content ~= "insights" then
-            local ok2, p2 = pcall(showInsights, ui)
-            popup = ok2 and p2 or nil
-        end
     end
+    if not popup and not tried_insights then
+        -- Nothing could be drawn: fall back to the insights window rather
+        -- than a blank screen.
+        local ok2, p2 = pcall(showInsights, ui)
+        popup = ok2 and p2 or nil
+        if popup then used = "insights" end
+    end
+    if random and used then Prefs.save(RANDOM_LAST_SETTING, used) end
     if popup then shown[#shown + 1] = popup end
 
     -- Optional hook (main.lua: put core's own sleep screen widgets back on
@@ -638,6 +758,8 @@ end
 -- Frees a widget that was built but never shown. The usual onCloseWidget
 -- handlers are NOT run: they ask for a screen refresh, and nothing of this
 -- was ever on the screen.
+local last_render_random   -- the random view the last preview / export drew
+
 local function discard(w)
     if not w then return end
     w._closed = true
@@ -664,7 +786,6 @@ end
 function M.renderToBlitbuffer(ui)
     pcall(InsightsData.flushStatsToDB, ui)
 
-    local content = M.readContent()
     local orig_show = UIManager.show
     UIManager.show = function() end
 
@@ -691,15 +812,25 @@ function M.renderToBlitbuffer(ui)
             return p, bg
         end
 
-        popup, page = build(content)
-        if not popup then
-            -- Same fallback as show(): the insights window.
+        -- Same choice as show(); the preview and the export keep their own
+        -- "last" (in memory), so they never change what the next real
+        -- sleep screen avoids.
+        local random = M.readContent() == M.RANDOM_CONTENT
+        local tried_insights = false
+        for _i, content_id in ipairs(contentCandidates(last_render_random)) do
+            if content_id == "insights" then tried_insights = true end
+            popup, page = build(content_id)
+            if popup then
+                if random then last_render_random = content_id end
+                break
+            end
             discard(page)
             page = nil
-            if content ~= "insights" then
-                local ok2, p2 = pcall(showInsights, ui)
-                popup = ok2 and p2 or nil
-            end
+        end
+        if not popup and not tried_insights then
+            -- Same fallback as show(): the insights window.
+            local ok2, p2 = pcall(showInsights, ui)
+            popup = ok2 and p2 or nil
         end
     end)
     UIManager.show = orig_show

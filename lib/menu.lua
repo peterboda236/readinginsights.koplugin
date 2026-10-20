@@ -46,7 +46,7 @@ function M.build(self, deps)
           open = function() self:onShowReadingStreakPopup() end },
         { key = "shelf",         label = _("Reading shelf"),
           open = function() self:onShowReadingShelfPopup() end },
-        { key = "heatmap",       label = _("Reading heatmap"),
+        { key = "heatmap",       label = _("Reading habits"),
           open = function() self:onShowReadingHeatmapPopup() end },
         { key = "records",       label = _("Records"),
           open = function() self:onShowReadingRecordsPopup() end },
@@ -217,7 +217,21 @@ function M.build(self, deps)
                     return _("Content") .. ": " .. labelOf(SS.contents, SS.readContent())
                 end,
                 keep_menu_open = true,
-                sub_item_table = sleepRadioItems(SS.contents, SS.readContent, SS.saveContent),
+                sub_item_table = (function()
+                    -- The views, then "Random" (a different view on every
+                    -- sleep, never the one shown last), then the tick boxes
+                    -- for which views are in that draw.
+                    local items = sleepRadioItems(SS.contents, SS.readContent, SS.saveContent)
+                    if #items >= 2 then items[#items - 1].separator = true end
+                    items[#items].separator = true
+                    items[#items + 1] = {
+                        text_func = function() return SS.randomViewsLabel() end,
+                        help_text = _("Which views the Random sleep screen picks from. A different one is shown every time the device goes to sleep, never the same one twice in a row."),
+                        keep_menu_open = true,
+                        sub_item_table_func = function() return SS.buildRandomMenu() end,
+                    }
+                    return items
+                end)(),
             },
             {
                 text_func = function()
@@ -573,7 +587,7 @@ function M.build(self, deps)
 
     I.hamburger = {
         text = _("Hamburger menu"),
-        help_text = _("Show the hamburger menu (top left of the title bar) with quick access to the streak, heatmap, records and achievements popups."),
+        help_text = _("Show the hamburger menu (top left of the title bar) with quick access to the streak, reading habits, records and achievements popups."),
         keep_menu_open = true,
         checked_func = function() return deps.ViewSettings.Opt.readShowHamburgerMenu() end,
         callback = function()
@@ -589,7 +603,7 @@ function M.build(self, deps)
             elseif months == 6 then label = _("6 months")
             elseif months == 12 then label = _("12 months")
             else label = _("4 months") end
-            return _("Reading heatmap range") .. ": " .. label
+            return _("Reading habits range") .. ": " .. label
         end,
         keep_menu_open = true,
         sub_item_table = {
@@ -626,21 +640,31 @@ function M.build(self, deps)
 
     I.time_of_day = {
         text_func = function()
-            local style = deps.ViewSettings.readTimeOfDayViewSetting() == "heatmap"
-                and _("Heatmap")
-                or  _("Chart")
+            local view = deps.ViewSettings.readTimeOfDayViewSetting()
+            local style = view == "heatmap" and _("Heatmap")
+                or view == "hourly" and _("Every 2 hours")
+                or _("By part of day")
             return _("Time of day view") .. ": " .. style
         end,
         keep_menu_open = true,
         sub_item_table = {
             {
-                text = _("Chart"),
+                text = _("By part of day"),
                 keep_menu_open = true,
                 radio = true,
                 checked_func = function()
                     return deps.ViewSettings.readTimeOfDayViewSetting() == "chart"
                 end,
                 callback = function() deps.ViewSettings.saveTimeOfDayViewSetting("chart") end,
+            },
+            {
+                text = _("Every 2 hours"),
+                keep_menu_open = true,
+                radio = true,
+                checked_func = function()
+                    return deps.ViewSettings.readTimeOfDayViewSetting() == "hourly"
+                end,
+                callback = function() deps.ViewSettings.saveTimeOfDayViewSetting("hourly") end,
             },
             {
                 text = _("Heatmap"),
@@ -656,7 +680,7 @@ function M.build(self, deps)
 
     I.heatmap_heights = {
         text = _("Bar chart height"),
-        help_text = _("Height of the two bar charts in the heatmap popup. The default matches the chapter bar. If the popup does not fit the screen, both charts shrink automatically."),
+        help_text = _("Height of the two bar charts in the reading habits popup. The default matches the chapter bar. If the popup does not fit the screen, both charts shrink automatically."),
         keep_menu_open = true,
         sub_item_table = {
             buildBarHeightMenuEntry(
@@ -1461,7 +1485,7 @@ function M.build(self, deps)
             keep_menu_open = true,
             sub_item_table = insights_popup_sub_item_table,
         },
-        group(_("Heatmap & time of day"), { I.heatmap_months, I.time_of_day, I.heatmap_heights }),
+        group(_("Reading habits"), { I.heatmap_months, I.time_of_day, I.heatmap_heights }),
         {
             text = _("Book progress popup"),
             keep_menu_open = true,

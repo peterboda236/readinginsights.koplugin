@@ -220,8 +220,8 @@ msgid "8-week chart order"
 msgstr "8周图表排序方式"
 msgid "Advanced settings"
 msgstr "高级设置"
-msgid "Reading heatmap range"
-msgstr "阅读热力图时间范围"
+msgid "Reading habits range"
+msgstr "阅读习惯时间范围"
 
 msgid "3 months"
 msgstr "3个月"
@@ -574,8 +574,8 @@ msgstr "无法获取最新版本信息。"
 msgid "Latest release has no downloadable zip."
 msgstr "最新版本没有可用压缩包。"
 
-msgid "Reading heatmap"
-msgstr "阅读热力图"
+msgid "Reading habits"
+msgstr "阅读习惯"
 msgid "Reading calendar"
 msgstr "阅读日历"
 msgid "Less"
@@ -664,8 +664,8 @@ msgstr "勾选要在“工具 > Reading insights”下列出的弹窗。与图�
 msgid "Reading insights: reading calendar"
 msgstr "阅读统计：阅读日历"
 
-msgid "Reading insights: reading heatmap"
-msgstr "阅读统计：阅读热力图"
+msgid "Reading insights: reading habits"
+msgstr "阅读统计：阅读习惯"
 
 msgid "Reading insights: reading shelf"
 msgstr "阅读统计：阅读书架"
@@ -673,8 +673,8 @@ msgstr "阅读统计：阅读书架"
 msgid "Reading shelf"
 msgstr "阅读书架"
 
-msgid "Show Reading heatmap"
-msgstr "查看阅读热力图"
+msgid "Show Reading habits"
+msgstr "查看阅读习惯"
 msgid "Sub-values (date / book title)"
 msgstr "附属信息（日期/书名）"
 
@@ -1393,11 +1393,7 @@ msgstr "下午"
 msgid "Evening"
 msgstr "晚上"
 
-msgid "When you read"
-msgstr "阅读时段"
 
-msgid "Days of the week"
-msgstr "星期分布"
 
 msgid "You read most around %1"
 msgstr "你最常在%1左右阅读"
@@ -1435,8 +1431,8 @@ msgstr "在“阅读速度”区域显示“开始…”和“预计完成”日
 msgid "Hamburger menu"
 msgstr "汉堡菜单"
 
-msgid "Show the hamburger menu (top left of the title bar) with quick access to the streak, heatmap, records and achievements popups."
-msgstr "显示汉堡菜单（位于标题栏左上角），可快速打开连续阅读天数、热力图、记录和成就弹窗。"
+msgid "Show the hamburger menu (top left of the title bar) with quick access to the streak, reading habits, records and achievements popups."
+msgstr "显示汉堡菜单（位于标题栏左上角），可快速打开连续阅读天数、阅读习惯、记录和成就弹窗。"
 
 msgid "Couldn't open Records: "
 msgstr "无法打开记录："
@@ -1795,8 +1791,6 @@ msgstr "正在加载评分..."
 msgid "Appearance"
 msgstr "外观"
 
-msgid "Heatmap & time of day"
-msgstr "热力图与时段"
 
 msgid "Chart style"
 msgstr "图表样式"
@@ -1945,5 +1939,29 @@ msgstr "8 周阅读趋势"
 msgid "Weekdays"
 msgstr "星期"
 
-msgid "Height of the two bar charts in the heatmap popup. The default matches the chapter bar. If the popup does not fit the screen, both charts shrink automatically."
-msgstr "热力图弹窗中两个条形图的高度。默认值与章节条相同。如果弹窗超出屏幕，两个图表会自动缩小。"
+msgid "Height of the two bar charts in the reading habits popup. The default matches the chapter bar. If the popup does not fit the screen, both charts shrink automatically."
+msgstr "阅读习惯弹窗中两个条形图的高度。默认值与章节条相同。如果弹窗超出屏幕，两个图表会自动缩小。"
+
+
+
+
+msgid "Random views (%1/%2)"
+msgstr "随机视图 (%1/%2)"
+
+msgid "Which views the Random sleep screen picks from. A different one is shown every time the device goes to sleep, never the same one twice in a row."
+msgstr "随机睡眠屏幕从哪些视图中选择。每次设备进入睡眠时显示不同的视图，绝不会连续两次相同。"
+
+msgid "Every 2 hours"
+msgstr "每 2 小时"
+
+msgid "By part of day"
+msgstr "按时段"
+
+msgid "Reading by day"
+msgstr "按日期阅读"
+
+msgid "Reading by time of day"
+msgstr "按时间段阅读"
+
+msgid "Reading by weekday"
+msgstr "按星期阅读"

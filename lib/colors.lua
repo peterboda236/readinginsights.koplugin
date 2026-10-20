@@ -492,7 +492,7 @@ function M.buildMenu(on_change)
         table.insert(heatmap_sub_item_table, colorItem(key, on_change))
     end
     table.insert(sub_item_table, {
-        text = _("Reading heatmap"),
+        text = _("Heatmap"),
         keep_menu_open = true,
         sub_item_table = heatmap_sub_item_table,
     })

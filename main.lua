@@ -478,7 +478,7 @@ function ReadingInsights:onDispatcherRegisterActions()
     Dispatcher:registerAction("reading_heatmap_popup", {
         category = "none",
         event    = "ShowReadingHeatmapPopup",
-        title    = _("Reading insights: reading heatmap"),
+        title    = _("Reading insights: reading habits"),
         general  = true,
     })
 end

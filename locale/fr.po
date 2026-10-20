@@ -294,8 +294,8 @@ msgstr "Ordre du graphique sur 8 semaines"
 msgid "Advanced settings"
 msgstr "Paramètres avancés"
 
-msgid "Reading heatmap range"
-msgstr "Période de la carte thermique de lecture"
+msgid "Reading habits range"
+msgstr "Période des habitudes de lecture"
 
 msgid "3 months"
 msgstr "3 mois"
@@ -782,8 +782,8 @@ msgstr "Impossible de récupérer la dernière version."
 msgid "Latest release has no downloadable zip."
 msgstr "La dernière version n'a pas de zip téléchargeable."
 
-msgid "Reading heatmap"
-msgstr "Carte thermique de lecture"
+msgid "Reading habits"
+msgstr "Habitudes de lecture"
 
 msgid "Reading calendar"
 msgstr "Calendrier de lecture"
@@ -899,8 +899,8 @@ msgstr "Cochez les fenêtres à afficher dans Outils > Reading insights. Les fen
 msgid "Reading insights: reading calendar"
 msgstr "Statistiques de lecture : calendrier de lecture"
 
-msgid "Reading insights: reading heatmap"
-msgstr "Statistiques de lecture : carte thermique de lecture"
+msgid "Reading insights: reading habits"
+msgstr "Statistiques de lecture : habitudes de lecture"
 
 msgid "Reading insights: reading shelf"
 msgstr "Statistiques de lecture : étagère de lecture"
@@ -908,8 +908,8 @@ msgstr "Statistiques de lecture : étagère de lecture"
 msgid "Reading shelf"
 msgstr "Étagère de lecture"
 
-msgid "Show Reading heatmap"
-msgstr "Afficher la carte thermique de lecture"
+msgid "Show Reading habits"
+msgstr "Afficher les habitudes de lecture"
 
 msgid "Sub-values (date / book title)"
 msgstr "Sous-valeurs (date / titre du livre)"
@@ -1667,11 +1667,7 @@ msgstr "Après-midi"
 msgid "Evening"
 msgstr "Soir"
 
-msgid "When you read"
-msgstr "Quand vous lisez"
 
-msgid "Days of the week"
-msgstr "Jours de la semaine"
 
 msgid "You read most around %1"
 msgstr "Vous lisez surtout vers %1"
@@ -1709,8 +1705,8 @@ msgstr "Afficher la ligne de dates « commencé … » et « fin prévue » dans
 msgid "Hamburger menu"
 msgstr "Menu hamburger"
 
-msgid "Show the hamburger menu (top left of the title bar) with quick access to the streak, heatmap, records and achievements popups."
-msgstr "Afficher le menu hamburger (en haut à gauche de la barre de titre) donnant un accès rapide aux fenêtres de série de lecture, carte de chaleur, records et succès."
+msgid "Show the hamburger menu (top left of the title bar) with quick access to the streak, reading habits, records and achievements popups."
+msgstr "Afficher le menu hamburger (en haut à gauche de la barre de titre) donnant un accès rapide aux fenêtres de série de lecture, habitudes de lecture, records et succès."
 
 msgid "Couldn't open Records: "
 msgstr "Impossible d'ouvrir Records : "
@@ -2069,8 +2065,6 @@ msgstr "Chargement des notes..."
 msgid "Appearance"
 msgstr "Apparence"
 
-msgid "Heatmap & time of day"
-msgstr "Carte thermique et moment de la journée"
 
 msgid "Chart style"
 msgstr "Style du graphique"
@@ -2219,5 +2213,29 @@ msgstr "Tendance de lecture sur 8 semaines"
 msgid "Weekdays"
 msgstr "Jours de la semaine"
 
-msgid "Height of the two bar charts in the heatmap popup. The default matches the chapter bar. If the popup does not fit the screen, both charts shrink automatically."
-msgstr "Hauteur des deux diagrammes à barres de la fenêtre de la carte thermique. La valeur par défaut correspond à la barre des chapitres. Si la fenêtre ne tient pas à l'écran, les deux diagrammes rétrécissent automatiquement."
+msgid "Height of the two bar charts in the reading habits popup. The default matches the chapter bar. If the popup does not fit the screen, both charts shrink automatically."
+msgstr "Hauteur des deux diagrammes à barres de la fenêtre des habitudes de lecture. La valeur par défaut correspond à la barre des chapitres. Si la fenêtre ne tient pas à l'écran, les deux diagrammes rétrécissent automatiquement."
+
+
+
+
+msgid "Random views (%1/%2)"
+msgstr "Vues aléatoires (%1/%2)"
+
+msgid "Which views the Random sleep screen picks from. A different one is shown every time the device goes to sleep, never the same one twice in a row."
+msgstr "Parmi quelles vues l'écran de veille aléatoire choisit. Une vue différente s'affiche à chaque mise en veille, jamais la même deux fois de suite."
+
+msgid "Every 2 hours"
+msgstr "Toutes les 2 heures"
+
+msgid "By part of day"
+msgstr "Par moment de la journée"
+
+msgid "Reading by day"
+msgstr "Lecture par jour"
+
+msgid "Reading by time of day"
+msgstr "Lecture par moment de la journée"
+
+msgid "Reading by weekday"
+msgstr "Lecture par jour de la semaine"

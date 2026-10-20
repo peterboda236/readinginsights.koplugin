@@ -294,8 +294,8 @@ msgstr "Reihenfolge des 8-Wochen-Diagramms"
 msgid "Advanced settings"
 msgstr "Erweiterte Einstellungen"
 
-msgid "Reading heatmap range"
-msgstr "Zeitraum der Lese-Heatmap"
+msgid "Reading habits range"
+msgstr "Zeitraum der Lesegewohnheiten"
 
 msgid "3 months"
 msgstr "3 Monate"
@@ -782,8 +782,8 @@ msgstr "Neueste Version konnte nicht abgerufen werden."
 msgid "Latest release has no downloadable zip."
 msgstr "Die neueste Version enthält keine herunterladbare ZIP-Datei."
 
-msgid "Reading heatmap"
-msgstr "Lese-Heatmap"
+msgid "Reading habits"
+msgstr "Lesegewohnheiten"
 
 msgid "Reading calendar"
 msgstr "Lesekalender"
@@ -899,8 +899,8 @@ msgstr "Wähle die Popups aus, die unter Werkzeuge > Reading insights aufgeliste
 msgid "Reading insights: reading calendar"
 msgstr "Leseeinblicke: Lesekalender"
 
-msgid "Reading insights: reading heatmap"
-msgstr "Leseeinblicke: Lese-Heatmap"
+msgid "Reading insights: reading habits"
+msgstr "Leseeinblicke: Lesegewohnheiten"
 
 msgid "Reading insights: reading shelf"
 msgstr "Leseeinblicke: Lesebord"
@@ -908,8 +908,8 @@ msgstr "Leseeinblicke: Lesebord"
 msgid "Reading shelf"
 msgstr "Lesebord"
 
-msgid "Show Reading heatmap"
-msgstr "Lese-Heatmap anzeigen"
+msgid "Show Reading habits"
+msgstr "Lesegewohnheiten anzeigen"
 
 msgid "Sub-values (date / book title)"
 msgstr "Unterwerte (Datum / Buchtitel)"
@@ -1667,11 +1667,7 @@ msgstr "Nachmittag"
 msgid "Evening"
 msgstr "Abend"
 
-msgid "When you read"
-msgstr "Wann du liest"
 
-msgid "Days of the week"
-msgstr "Wochentage"
 
 msgid "You read most around %1"
 msgstr "Am meisten liest du gegen %1"
@@ -1709,8 +1705,8 @@ msgstr "Die Datumszeile „begonnen …“ und „voraussichtliches Ende“ im A
 msgid "Hamburger menu"
 msgstr "Hamburger-Menü"
 
-msgid "Show the hamburger menu (top left of the title bar) with quick access to the streak, heatmap, records and achievements popups."
-msgstr "Das Hamburger-Menü (oben links in der Titelleiste) mit schnellem Zugriff auf die Popups für Lesesträhne, Heatmap, Rekorde und Erfolge anzeigen."
+msgid "Show the hamburger menu (top left of the title bar) with quick access to the streak, reading habits, records and achievements popups."
+msgstr "Das Hamburger-Menü (oben links in der Titelleiste) mit schnellem Zugriff auf die Popups für Lesesträhne, Lesegewohnheiten, Rekorde und Erfolge anzeigen."
 
 msgid "Couldn't open Records: "
 msgstr "Rekorde konnten nicht geöffnet werden: "
@@ -2069,8 +2065,6 @@ msgstr "Bitte eine Bewertung von 0 bis 5 eingeben"
 msgid "Appearance"
 msgstr "Darstellung"
 
-msgid "Heatmap & time of day"
-msgstr "Heatmap & Tageszeit"
 
 msgid "Chart style"
 msgstr "Diagrammstil"
@@ -2219,8 +2213,32 @@ msgstr "Lesetrend der letzten 8 Wochen"
 msgid "Weekdays"
 msgstr "Wochentage"
 
-msgid "Height of the two bar charts in the heatmap popup. The default matches the chapter bar. If the popup does not fit the screen, both charts shrink automatically."
-msgstr "Höhe der beiden Balkendiagramme im Heatmap-Fenster. Der Standardwert entspricht der Kapitelleiste. Passt das Fenster nicht auf den Bildschirm, werden beide Diagramme automatisch kleiner."
+msgid "Height of the two bar charts in the reading habits popup. The default matches the chapter bar. If the popup does not fit the screen, both charts shrink automatically."
+msgstr "Höhe der beiden Balkendiagramme im Fenster „Lesegewohnheiten“. Der Standardwert entspricht der Kapitelleiste. Passt das Fenster nicht auf den Bildschirm, werden beide Diagramme automatisch kleiner."
 
 msgid "Covers"
 msgstr "Cover"
+
+
+
+
+msgid "Random views (%1/%2)"
+msgstr "Zufällige Ansichten (%1/%2)"
+
+msgid "Which views the Random sleep screen picks from. A different one is shown every time the device goes to sleep, never the same one twice in a row."
+msgstr "Aus welchen Ansichten der zufällige Sperrbildschirm wählt. Bei jedem Einschlafen erscheint eine andere, nie zweimal hintereinander dieselbe."
+
+msgid "Every 2 hours"
+msgstr "Alle 2 Stunden"
+
+msgid "By part of day"
+msgstr "Nach Tageszeit"
+
+msgid "Reading by day"
+msgstr "Lesen nach Tag"
+
+msgid "Reading by time of day"
+msgstr "Lesen nach Tageszeit"
+
+msgid "Reading by weekday"
+msgstr "Lesen nach Wochentag"

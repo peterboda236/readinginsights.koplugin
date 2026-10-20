@@ -350,16 +350,17 @@ function M.saveHeatmapHourFormatSetting(value)
     Prefs.save(M.SETTINGS_KEY_HEATMAP_HOUR_FORMAT, value)
 end
 
--- Time-of-day view style on the reading-heatmap page: the new day-part bar
--- chart ("chart", the default) or the older weekday x hour-of-day grid
--- ("heatmap"). Only the time-of-day section is swapped; the calendar
+-- Time-of-day view style on the reading-heatmap page: the two-hourly bar
+-- chart ("hourly", the default), the four day-part bars ("chart") or the
+-- older weekday x hour-of-day grid ("heatmap"). Only the time-of-day section is swapped; the calendar
 -- heatmap above it is unaffected. Read by M.buildHeatmapBoxContent every
 -- time the heatmap page is (re)built.
 M.SETTINGS_KEY_TIMEOFDAY_VIEW = "reading_insights_timeofday_view"
 
-M.DEFAULT_TIMEOFDAY_VIEW      = "chart"
+M.DEFAULT_TIMEOFDAY_VIEW      = "hourly"
 
-M.VALID_TIMEOFDAY_VIEW        = { ["chart"] = true, ["heatmap"] = true }
+-- ("hourly" = one bar per two hours of the day, 12 bars.)
+M.VALID_TIMEOFDAY_VIEW        = { ["chart"] = true, ["hourly"] = true, ["heatmap"] = true }
 
 function M.readTimeOfDayViewSetting()
     local v = Prefs.read(M.SETTINGS_KEY_TIMEOFDAY_VIEW, nil)

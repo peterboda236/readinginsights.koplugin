@@ -309,8 +309,8 @@ msgstr "Порядок графіка за 8 тижнів"
 msgid "Advanced settings"
 msgstr "Розширені налаштування"
 
-msgid "Reading heatmap range"
-msgstr "Діапазон теплокарти читання"
+msgid "Reading habits range"
+msgstr "Діапазон звичок читання"
 
 msgid "3 months"
 msgstr "3 місяці"
@@ -810,8 +810,8 @@ msgstr "Не вдалося отримати останній реліз."
 msgid "Latest release has no downloadable zip."
 msgstr "В останньому релізі немає завантажуваного zip."
 
-msgid "Reading heatmap"
-msgstr "Теплокарта читання"
+msgid "Reading habits"
+msgstr "Звички читання"
 
 msgid "Reading calendar"
 msgstr "Календар читання"
@@ -934,8 +934,8 @@ msgstr "Позначте вікна, які мають відображатис�
 msgid "Reading insights: reading calendar"
 msgstr "Аналітика читання: календар читання"
 
-msgid "Reading insights: reading heatmap"
-msgstr "Аналітика читання: теплокарта читання"
+msgid "Reading insights: reading habits"
+msgstr "Аналітика читання: звички читання"
 
 msgid "Reading insights: reading shelf"
 msgstr "Аналітика читання: полиця читання"
@@ -943,8 +943,8 @@ msgstr "Аналітика читання: полиця читання"
 msgid "Reading shelf"
 msgstr "Полиця читання"
 
-msgid "Show Reading heatmap"
-msgstr "Показати теплокарту читання"
+msgid "Show Reading habits"
+msgstr "Показати звички читання"
 
 msgid "Sub-values (date / book title)"
 msgstr "Додаткові значення (дата / назва книги)"
@@ -1716,11 +1716,7 @@ msgstr "День"
 msgid "Evening"
 msgstr "Вечір"
 
-msgid "When you read"
-msgstr "Коли ви читаєте"
 
-msgid "Days of the week"
-msgstr "Дні тижня"
 
 msgid "You read most around %1"
 msgstr "Найбільше ви читаєте близько %1"
@@ -1758,8 +1754,8 @@ msgstr "Показати рядок дат «розпочато…» та «оч
 msgid "Hamburger menu"
 msgstr "Меню-гамбургер"
 
-msgid "Show the hamburger menu (top left of the title bar) with quick access to the streak, heatmap, records and achievements popups."
-msgstr "Показувати меню-гамбургер (у верхньому лівому куті панелі заголовка) зі швидким доступом до вікон серії читання, теплової карти, рекордів і досягнень."
+msgid "Show the hamburger menu (top left of the title bar) with quick access to the streak, reading habits, records and achievements popups."
+msgstr "Показувати меню-гамбургер (у верхньому лівому куті панелі заголовка) зі швидким доступом до вікон серії читання, звичок читання, рекордів і досягнень."
 
 msgid "Couldn't open Records: "
 msgstr "Не вдалося відкрити Рекорди: "
@@ -2118,8 +2114,6 @@ msgstr "Завантаження оцінок..."
 msgid "Appearance"
 msgstr "Вигляд"
 
-msgid "Heatmap & time of day"
-msgstr "Теплокарта і час доби"
 
 msgid "Chart style"
 msgstr "Стиль діаграми"
@@ -2268,5 +2262,29 @@ msgstr "Тенденція читання за 8 тижнів"
 msgid "Weekdays"
 msgstr "Дні тижня"
 
-msgid "Height of the two bar charts in the heatmap popup. The default matches the chapter bar. If the popup does not fit the screen, both charts shrink automatically."
-msgstr "Висота двох стовпчикових діаграм у вікні теплокарти. За замовчуванням збігається з висотою смуги розділів. Якщо вікно не вміщується на екрані, обидві діаграми автоматично зменшуються."
+msgid "Height of the two bar charts in the reading habits popup. The default matches the chapter bar. If the popup does not fit the screen, both charts shrink automatically."
+msgstr "Висота двох стовпчикових діаграм у вікні звичок читання. За замовчуванням збігається з висотою смуги розділів. Якщо вікно не вміщується на екрані, обидві діаграми автоматично зменшуються."
+
+
+
+
+msgid "Random views (%1/%2)"
+msgstr "Випадкові вигляди (%1/%2)"
+
+msgid "Which views the Random sleep screen picks from. A different one is shown every time the device goes to sleep, never the same one twice in a row."
+msgstr "З яких виглядів випадковий екран сну робить вибір. Щоразу при засинанні показується інший, ніколи той самий двічі поспіль."
+
+msgid "Every 2 hours"
+msgstr "Кожні 2 години"
+
+msgid "By part of day"
+msgstr "За частинами доби"
+
+msgid "Reading by day"
+msgstr "Читання за днями"
+
+msgid "Reading by time of day"
+msgstr "Читання за часом доби"
+
+msgid "Reading by weekday"
+msgstr "Читання за днями тижня"

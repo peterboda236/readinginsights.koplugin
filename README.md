@@ -180,7 +180,7 @@ from *Settings → Screen → Sleep screen → Wallpaper → Reading insights*.
 What is shown is set under *Tools → Reading insights → Settings → Advanced
 settings → Sleep screen*:
 
-- **Content** — the Reading insights window (default), the reading heatmap, the
+- **Content** — the Reading insights window (default), the reading habits, the
   reading streak, the book progress popup, the book progress calendar, the book
   info popup or the records popup. The three book ones are drawn from the open
   book; from the file manager they are drawn from the last book read, as it was
@@ -235,7 +235,7 @@ unticked keeps everything, so a later reinstall picks up where you left off.
 - **Reading insight popup** — which sections it shows (goals, achievements,
   hamburger menu), the *Last 7 days* and *Months* chart styles, and the bar
   chart heights.
-- **Heatmap & time of day** — the heatmap range and the time-of-day view.
+- **Reading habits** — the calendar range and the time-of-day view.
 - **Book progress popup** — its position and "This book" style (classic rows
   or a donut chart), then one group per section: *This book*, *Pace* and
   *Chapters* (chapter columns, chapter bar, chapters per page), plus *Bar chart height*.

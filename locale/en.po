@@ -294,8 +294,8 @@ msgstr "8-week chart order"
 msgid "Advanced settings"
 msgstr "Advanced settings"
 
-msgid "Reading heatmap range"
-msgstr "Reading heatmap range"
+msgid "Reading habits range"
+msgstr "Reading habits range"
 
 msgid "3 months"
 msgstr "3 months"
@@ -776,8 +776,8 @@ msgstr "Could not fetch latest release."
 msgid "Latest release has no downloadable zip."
 msgstr "Latest release has no downloadable zip."
 
-msgid "Reading heatmap"
-msgstr "Reading heatmap"
+msgid "Reading habits"
+msgstr "Reading habits"
 
 msgid "Reading calendar"
 msgstr "Reading calendar"
@@ -893,14 +893,14 @@ msgstr "Tick the popups that should be listed under Tools > Reading insights. Th
 msgid "Reading insights: reading calendar"
 msgstr "Reading insights: reading calendar"
 
-msgid "Reading insights: reading heatmap"
-msgstr "Reading insights: reading heatmap"
+msgid "Reading insights: reading habits"
+msgstr "Reading insights: reading habits"
 
 msgid "Reading insights: reading shelf"
 msgstr "Reading insights: reading shelf"
 
-msgid "Show Reading heatmap"
-msgstr "Show Reading heatmap"
+msgid "Show Reading habits"
+msgstr "Show Reading habits"
 
 msgid "Sub-values (date / book title)"
 msgstr "Sub-values (date / book title)"
@@ -1634,11 +1634,7 @@ msgstr "Reading goal & achievements"
 msgid "Reading goal only"
 msgstr "Reading goal only"
 
-msgid "When you read"
-msgstr "When you read"
 
-msgid "Days of the week"
-msgstr "Days of the week"
 
 msgid "You read most around %1"
 msgstr "You read most around %1"
@@ -1676,8 +1672,8 @@ msgstr "Show the \"started …\" and \"expected finish\" date row in the \"Pace\
 msgid "Hamburger menu"
 msgstr "Hamburger menu"
 
-msgid "Show the hamburger menu (top left of the title bar) with quick access to the streak, heatmap, records and achievements popups."
-msgstr "Show the hamburger menu (top left of the title bar) with quick access to the streak, heatmap, records and achievements popups."
+msgid "Show the hamburger menu (top left of the title bar) with quick access to the streak, reading habits, records and achievements popups."
+msgstr "Show the hamburger menu (top left of the title bar) with quick access to the streak, reading habits, records and achievements popups."
 
 msgid "Couldn't open Records: "
 msgstr "Couldn't open Records: "
@@ -2066,8 +2062,6 @@ msgstr "Loading ratings..."
 msgid "Appearance"
 msgstr "Appearance"
 
-msgid "Heatmap & time of day"
-msgstr "Heatmap & time of day"
 
 msgid "Chart style"
 msgstr "Chart style"
@@ -2216,8 +2210,8 @@ msgstr "8-week reading trend"
 msgid "Weekdays"
 msgstr "Weekdays"
 
-msgid "Height of the two bar charts in the heatmap popup. The default matches the chapter bar. If the popup does not fit the screen, both charts shrink automatically."
-msgstr "Height of the two bar charts in the heatmap popup. The default matches the chapter bar. If the popup does not fit the screen, both charts shrink automatically."
+msgid "Height of the two bar charts in the reading habits popup. The default matches the chapter bar. If the popup does not fit the screen, both charts shrink automatically."
+msgstr "Height of the two bar charts in the reading habits popup. The default matches the chapter bar. If the popup does not fit the screen, both charts shrink automatically."
 
 msgid "Reading shelf"
 msgstr "Reading shelf"
@@ -2230,3 +2224,27 @@ msgstr "Show only finished books"
 
 msgid "Covers"
 msgstr "Covers"
+
+
+
+
+msgid "Random views (%1/%2)"
+msgstr "Random views (%1/%2)"
+
+msgid "Which views the Random sleep screen picks from. A different one is shown every time the device goes to sleep, never the same one twice in a row."
+msgstr "Which views the Random sleep screen picks from. A different one is shown every time the device goes to sleep, never the same one twice in a row."
+
+msgid "Every 2 hours"
+msgstr "Every 2 hours"
+
+msgid "By part of day"
+msgstr "By part of day"
+
+msgid "Reading by day"
+msgstr "Reading by day"
+
+msgid "Reading by time of day"
+msgstr "Reading by time of day"
+
+msgid "Reading by weekday"
+msgstr "Reading by weekday"
