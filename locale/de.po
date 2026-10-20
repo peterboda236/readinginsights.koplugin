@@ -2242,3 +2242,54 @@ msgstr "Lesen nach Tageszeit"
 
 msgid "Reading by weekday"
 msgstr "Lesen nach Wochentag"
+
+msgid "Pages per month"
+msgstr "Seiten pro Monat"
+
+msgid "Pages / reading time"
+msgstr "Seiten / Lesezeit"
+
+msgid "Pages per day"
+msgstr "Seiten pro Tag"
+
+msgid "Reading time per day"
+msgstr "Lesezeit pro Tag"
+
+msgid "View"
+msgstr "Ansicht"
+
+msgid "Current week"
+msgstr "Aktuelle Woche"
+
+msgid "Show Reading shelf"
+msgstr "Lesebord anzeigen"
+
+msgid "Show only finished books"
+msgstr "Nur beendete Bücher"
+
+msgid "Show the last 7 days, or the current calendar week that you can page back and forth. All figures of the section then cover that week."
+msgstr "Zeigt die letzten 7 Tage oder die aktuelle Kalenderwoche, in der du vor- und zurückblättern kannst. Alle Werte des Abschnitts beziehen sich dann auf diese Woche."
+
+msgid "page vs prev. week"
+msgstr "Seite vs vorh. Woche"
+
+msgid "pages vs prev. week"
+msgstr "Seiten vs vorh. Woche"
+
+msgid "pg vs prev. wk"
+msgstr "S. vs vorh. Wo."
+
+msgid "time vs prev. week"
+msgstr "Zeit vs vorh. Woche"
+
+msgid "vs prev. week"
+msgstr "vs vorh. Woche"
+
+msgid "Round the corners of the covers (Book info, Reading calendar and Reading shelf)."
+msgstr "Rundet die Ecken der Cover ab (Buchinfo, Lesekalender und Lesebord)."
+
+msgid "Draw a drop shadow behind the covers (Book info, Reading calendar and Reading shelf)."
+msgstr "Zeichnet einen Schlagschatten hinter die Cover (Buchinfo, Lesekalender und Lesebord)."
+
+msgid "Draw a thin frame around the covers (Book info, Reading calendar and Reading shelf)."
+msgstr "Zeichnet einen dünnen Rahmen um die Cover (Buchinfo, Lesekalender und Lesebord)."

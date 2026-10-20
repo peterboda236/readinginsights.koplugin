@@ -478,9 +478,16 @@ M.INSIGHTS_MODE_HOURS = "hours"
 
 M.INSIGHTS_MODE_BOOKS = "books"
 
+-- Pages read per month: the second step of the monthly chart's cycle
+-- (time -> pages -> days -> books).
+M.INSIGHTS_MODE_PAGES = "pages"
+
 function M.normalizeInsightsMode(mode)
     if mode == M.INSIGHTS_MODE_DAYS then
         return M.INSIGHTS_MODE_DAYS
+    end
+    if mode == M.INSIGHTS_MODE_PAGES then
+        return M.INSIGHTS_MODE_PAGES
     end
     if mode == M.INSIGHTS_MODE_BOOKS then
         return M.INSIGHTS_MODE_BOOKS
@@ -489,11 +496,12 @@ function M.normalizeInsightsMode(mode)
 end
 
 -- Returns the _monthly_cache/_stale_monthly key prefix for a given insights
--- mode ("hours:" / "books:" / "days:"). Shared by init(), the mode-toggle
+-- mode ("hours:" / "pages:" / "books:" / "days:"). Shared by init(), the mode-toggle
 -- and year-navigation handlers, all of which need to guess the right
 -- monthly cache key before the real data has loaded.
 function M.monthKeyPrefixForMode(mode)
     if mode == M.INSIGHTS_MODE_HOURS then return "hours:" end
+    if mode == M.INSIGHTS_MODE_PAGES then return "pages:" end
     if mode == M.INSIGHTS_MODE_BOOKS then return "books:" end
     return "days:"
 end
@@ -613,15 +621,43 @@ M.WEEKLY_BAR_ORDER_TODAY_FIRST = "today_first"
 M.WEEKLY_BAR_ORDER_TODAY_LAST  = "today_last"
 
 function M.readWeeklyBarOrderSetting()
-    -- default: today on the left, which is what the chart did before this
-    -- setting existed
+    -- default: today (the newest day) on the right, so the chart reads
+    -- like a timeline from left to right. Only an explicit "today on the
+    -- left" choice flips it.
     local v = Prefs.read(M.SETTINGS_KEY_WEEKLY_BAR_ORDER, nil)
-    if v == M.WEEKLY_BAR_ORDER_TODAY_LAST then return M.WEEKLY_BAR_ORDER_TODAY_LAST end
-    return M.WEEKLY_BAR_ORDER_TODAY_FIRST
+    if v == M.WEEKLY_BAR_ORDER_TODAY_FIRST then return M.WEEKLY_BAR_ORDER_TODAY_FIRST end
+    return M.WEEKLY_BAR_ORDER_TODAY_LAST
 end
 
 function M.saveWeeklyBarOrderSetting(value)
     Prefs.save(M.SETTINGS_KEY_WEEKLY_BAR_ORDER, value)
+end
+
+-- Which week the weekly section of the insights popup shows (Settings >
+-- Reading insight popup > Week > "View"):
+--   "last7"    (default) the rolling last 7 days, ending today.
+--   "calendar" the current calendar week (from the shared week start day),
+--              pageable back and forth like the year; every figure of the
+--              section (totals, averages, chart, comparison) covers that
+--              one week only.
+M.SETTINGS_KEY_WEEKLY_VIEW = "reading_insights_weekly_view"
+
+M.WEEKLY_VIEW_LAST7    = "last7"
+
+M.WEEKLY_VIEW_CALENDAR = "calendar"
+
+function M.readWeeklyViewSetting()
+    local v = Prefs.read(M.SETTINGS_KEY_WEEKLY_VIEW, nil)
+    if v == M.WEEKLY_VIEW_CALENDAR then return M.WEEKLY_VIEW_CALENDAR end
+    return M.WEEKLY_VIEW_LAST7
+end
+
+function M.saveWeeklyViewSetting(value)
+    Prefs.save(M.SETTINGS_KEY_WEEKLY_VIEW, value)
+end
+
+function M.readWeeklyViewIsCalendar()
+    return M.readWeeklyViewSetting() == M.WEEKLY_VIEW_CALENDAR
 end
 
 -- Layout of the yearly (months) bar chart in the Reading insights popup

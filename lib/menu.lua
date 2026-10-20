@@ -771,6 +771,39 @@ function M.build(self, deps)
         }
     end
 
+    -- Which week the section shows: the rolling last 7 days (default) or
+    -- the current calendar week, which can be paged back and forth.
+    do
+        local VSet = deps.ViewSettings
+        local LAST7 = VSet.WEEKLY_VIEW_LAST7
+        local CAL   = VSet.WEEKLY_VIEW_CALENDAR
+        local function viewEntry(value, text)
+            return {
+                text = text,
+                keep_menu_open = true,
+                radio = true,
+                checked_func = function()
+                    return VSet.readWeeklyViewSetting() == value
+                end,
+                callback = function() VSet.saveWeeklyViewSetting(value) end,
+            }
+        end
+        I.weekly_view = {
+            text_func = function()
+                local v = VSet.readWeeklyViewSetting() == CAL
+                    and _("Current week")
+                    or  _("Last 7 days")
+                return _("View") .. ": " .. v
+            end,
+            help_text = _("Show the last 7 days, or the current calendar week that you can page back and forth. All figures of the section then cover that week."),
+            keep_menu_open = true,
+            sub_item_table = {
+                viewEntry(LAST7, _("Last 7 days")),
+                viewEntry(CAL,   _("Current week")),
+            },
+        }
+    end
+
     -- "Last 7 days" chart style: bars (default) or line with dots.
     do
         local VSet = deps.ViewSettings
@@ -1452,7 +1485,8 @@ function M.build(self, deps)
         "-",
         I.goal, I.goal_bar, I.reading_goal, I.achievements, I.ach_refresh,
         "-",
-        group(_("Last 7 days"), {
+        group(_("Week"), {
+            I.weekly_view,
             I.weekly_style, I.today_side, I.weekly_extra_row, I.weekly_vs_prev,
             I.trend_order,
         }),

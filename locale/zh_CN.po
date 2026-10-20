@@ -1965,3 +1965,57 @@ msgstr "按时间段阅读"
 
 msgid "Reading by weekday"
 msgstr "按星期阅读"
+
+msgid "Pages per month"
+msgstr "每月页数"
+
+msgid "Pages / reading time"
+msgstr "页数 / 阅读时间"
+
+msgid "Pages per day"
+msgstr "每日页数"
+
+msgid "Reading time per day"
+msgstr "每日阅读时间"
+
+msgid "View"
+msgstr "视图"
+
+msgid "Current week"
+msgstr "本周"
+
+msgid "Show Reading shelf"
+msgstr "查看阅读书架"
+
+msgid "Show only finished books"
+msgstr "仅已读完的书籍"
+
+msgid "Show the last 7 days, or the current calendar week that you can page back and forth. All figures of the section then cover that week."
+msgstr "显示过去 7 天或当前日历周，可前后翻页。该部分的所有数据随后均对应所显示的那一周。"
+
+msgid "page vs prev. week"
+msgstr "页 较上周"
+
+msgid "pages vs prev. week"
+msgstr "页 较上周"
+
+msgid "pg vs prev. wk"
+msgstr "页 较上周"
+
+msgid "time vs prev. week"
+msgstr "时间 较上周"
+
+msgid "vs prev. week"
+msgstr "较上周"
+
+msgid "Round the corners of the covers (Book info, Reading calendar and Reading shelf)."
+msgstr "将封面的四角变为圆角（图书信息、阅读日历和阅读书架）。"
+
+msgid "Draw a drop shadow behind the covers (Book info, Reading calendar and Reading shelf)."
+msgstr "在封面后绘制投影（图书信息、阅读日历和阅读书架）。"
+
+msgid "Draw a thin frame around the covers (Book info, Reading calendar and Reading shelf)."
+msgstr "在封面周围绘制细边框（图书信息、阅读日历和阅读书架）。"
+
+msgid "Covers"
+msgstr "封面"

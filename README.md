@@ -26,6 +26,8 @@ there. Four popups, all reachable from *Tools → Reading insights*:
 A full-screen overview of your whole reading history.
 
 - **Last 7 days** — average time and pages per day; tap either to see its 8-week trend.
+  - **Current week view** — *Settings ▸ Reading insight popup ▸ Week ▸ View* switches this section from the rolling last 7 days (default) to the current calendar week. The days are labelled by weekday only, and the header pages like the year: the previous week's first–last day on the left, *Current week* in the middle (tap it to switch time/pages), the next week's range on the right. Totals, averages, the chart and the comparison with the previous week all cover the shown week; a half-finished week is compared with the same days of the week before.
+  - The chart runs left to right by default (today / the newest day on the right); *Bar order* flips it.
 - **Streaks** — current and best daily & weekly streaks; tap any of them (or
   see the separate [Reading calendar](#-reading-calendar) popup below).
 - **Yearly & monthly** — hours/days read and pages, navigable by year; a

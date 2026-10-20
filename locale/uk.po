@@ -2288,3 +2288,60 @@ msgstr "Читання за часом доби"
 
 msgid "Reading by weekday"
 msgstr "Читання за днями тижня"
+
+msgid "Pages per month"
+msgstr "Сторінок за місяць"
+
+msgid "Pages / reading time"
+msgstr "Сторінки / час читання"
+
+msgid "Pages per day"
+msgstr "Сторінок за день"
+
+msgid "Reading time per day"
+msgstr "Час читання за день"
+
+msgid "View"
+msgstr "Вигляд"
+
+msgid "Current week"
+msgstr "Поточний тиждень"
+
+msgid "Show Reading shelf"
+msgstr "Показати полицю читання"
+
+msgid "Show only finished books"
+msgstr "Лише прочитані книги"
+
+msgid "Show the last 7 days, or the current calendar week that you can page back and forth. All figures of the section then cover that week."
+msgstr "Показує останні 7 днів або поточний календарний тиждень, по якому можна гортати вперед і назад. Усі показники розділу тоді стосуються цього тижня."
+
+msgid "page vs prev. week"
+msgstr "сторінка vs поперед. тиждень"
+
+msgid "pages vs prev. week"
+msgstr "сторінок vs поперед. тиждень"
+
+msgid "pg vs prev. wk"
+msgstr "с. vs попер. тиж."
+
+msgid "time vs prev. week"
+msgstr "час vs поперед. тиждень"
+
+msgid "vs prev. week"
+msgstr "vs поперед. тиждень"
+
+msgid "Round the corners of the covers (Book info, Reading calendar and Reading shelf)."
+msgstr "Округлює кути обкладинок (Відомості про книгу, Календар читання та Полиця читання)."
+
+msgid "Draw a drop shadow behind the covers (Book info, Reading calendar and Reading shelf)."
+msgstr "Малює тінь позаду обкладинок (Відомості про книгу, Календар читання та Полиця читання)."
+
+msgid "Draw a thin frame around the covers (Book info, Reading calendar and Reading shelf)."
+msgstr "Малює тонку рамку навколо обкладинок (Відомості про книгу, Календар читання та Полиця читання)."
+
+msgid "Covers"
+msgstr "Обкладинки"
+
+msgid "This will clear the development branch setting and install the latest stable release of Reading insights, then restart KOReader. Continue?"
+msgstr "Це скине налаштування гілки розробки, встановить останній стабільний випуск «Аналітика читання» і перезапустить KOReader. Продовжити?"

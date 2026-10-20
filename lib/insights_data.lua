@@ -48,6 +48,7 @@ local deps = ...
 local Locale, StatsDb, Cache, VS, Manual, Prefs =
     deps.Locale, deps.StatsDb, deps.Cache, deps.VS, deps.Manual, deps.Prefs
 local Math = require("optmath")
+local DataStorage = require("datastorage")
 
 -- 0 = Sunday, 1 = Monday - the shared "week start day" setting the heatmaps and
 -- calendars use. Falls back to Monday if Prefs isn't wired in (e.g. a test).
@@ -719,6 +720,84 @@ function M.getMonthlyReadingHours(year, shared_conn)
             hours = (math.floor(hours * 10)) / 10
         end
         return { hours = hours, seconds = math.floor(seconds_raw + 0.5) }
+    end)
+
+    Cache.setMinuteCache(Cache._monthly_cache, Cache._stale_monthly, key, key .. ":minute", minute, months, base_key .. ":")
+    return months
+end
+
+-- Pages read per month. A page counts once per book, page and day (the same
+-- de-duplication as getYearlyStats, so the twelve months add up to the yearly
+-- pages figure). Same base-up-to-yesterday + live-today structure as the
+-- other monthly getters.
+function M.getMonthlyReadingPages(year, shared_conn)
+    local today         = Cache.todayDateStr()
+    local key           = "pages:" .. year .. ":" .. today
+    local base_key      = "pages:" .. year
+    local current_month = today:sub(1, 7)
+    local minute        = Cache.currentMinute()
+
+    local cached_val = Cache.getMinuteCache(Cache._monthly_cache, key, key .. ":minute", minute)
+    if cached_val then
+        return cached_val
+    end
+
+    local cached_base = Cache.getCachedBase(Cache._monthly_base_cache, base_key, today)
+
+    local merged = StatsDb.withShared(shared_conn, nil, function(conn)
+        local base = cached_base
+        if not base then
+            local year_str = tostring(year)
+            local sql = string.format([[
+                SELECT month, COUNT(*) AS pages_read
+                FROM (
+                    SELECT strftime('%%Y-%%m', start_time, 'unixepoch', 'localtime') AS month,
+                           date(start_time, 'unixepoch', 'localtime') AS day
+                    FROM page_stat
+                    WHERE strftime('%%Y', start_time, 'unixepoch', 'localtime') = '%s'
+                      AND date(start_time, 'unixepoch', 'localtime') < '%s'
+                    GROUP BY id_book, page, day
+                )
+                GROUP BY month
+                ORDER BY month ASC
+            ]], year_str, today)
+
+            base = {}
+            StatsDb.withStatement(conn, sql, function(stmt)
+                for row in stmt:rows() do base[row[1]] = tonumber(row[2]) or 0 end
+            end)
+        end
+
+        -- date() filter on purpose, like the other today-only queries here
+        -- (see the note in getYearlyStats).
+        local today_pages = 0
+        StatsDb.withStatement(conn, string.format([[
+            SELECT id_book, page
+            FROM page_stat
+            WHERE date(start_time, 'unixepoch', 'localtime') = '%s'
+            GROUP BY id_book, page
+        ]], today), function(stmt)
+            for _row in stmt:rows() do today_pages = today_pages + 1 end
+        end)
+
+        return { base = base, today_pages = today_pages }
+    end)
+    if not merged then
+        local known_good = Cache.bestKnownFullResult(Cache._monthly_cache, key, Cache._stale_monthly, base_key .. ":")
+        if known_good then return known_good end
+        merged = { base = cached_base or {}, today_pages = 0 }
+    end
+
+    if Cache.ENABLE_CACHE and not cached_base then
+        Cache._monthly_base_cache[base_key] = Cache.makeCachedBase(today, merged.base)
+    end
+
+    local months = buildMonthlyArray(year, function(year_month)
+        local pages = tonumber(merged.base[year_month]) or 0
+        if year_month == current_month then
+            pages = pages + merged.today_pages
+        end
+        return { pages = pages }
     end)
 
     Cache.setMinuteCache(Cache._monthly_cache, Cache._stale_monthly, key, key .. ":minute", minute, months, base_key .. ":")
@@ -1578,6 +1657,145 @@ function M.getFinishedTimestamp(id_book)
     end)
 end
 
+-- Per-day reading totals, cached per DAY (not per week).
+--
+-- Both weekly views (rolling "Last 7 days" and the paged calendar week) are
+-- made of per-day totals: seconds read and de-duplicated pages (one row per
+-- book/page/day). A completed day never changes, so each one is worked out
+-- once, kept in memory and mirrored to reading_insights_days.lua - after that
+-- any week, however far back, is put together from the cache without touching
+-- the statistics database. Only the days still missing are queried, in one
+-- query over just that range; today is always read fresh (cheap: one day).
+-- "Reload data" (clearCalendarWeekCache(true)) drops the lot.
+local DAYS_PATH = DataStorage:getSettingsDir() .. "/reading_insights_days.lua"
+local days_store = nil         -- "YYYY-MM-DD" -> { seconds, pages }, completed days only
+local today_memo = nil         -- { minute = , date = , value = { seconds, pages } }
+
+local function loadDaysStore()
+    if days_store then return days_store end
+    days_store = {}
+    pcall(function()
+        local st = require("luasettings"):open(DAYS_PATH)
+        local d = st:readSetting("days")
+        if type(d) ~= "table" then return end
+        for k, v in pairs(d) do
+            if type(k) == "string" and type(v) == "table"
+               and tonumber(v[1]) and tonumber(v[2]) then
+                days_store[k] = { tonumber(v[1]), tonumber(v[2]) }
+            end
+        end
+    end)
+    return days_store
+end
+
+local function saveDaysStore()
+    if not Cache.ENABLE_CACHE or not days_store then return end
+    pcall(function()
+        local st = require("luasettings"):open(DAYS_PATH)
+        st:saveSetting("days", days_store)
+        st:flush()
+    end)
+end
+
+local function dayMidnight(off)
+    local t = os.date("*t")
+    return os.time{ year = t.year, month = t.month, day = t.day + off, hour = 0, min = 0, sec = 0 }
+end
+
+local function dayDate(off)
+    return os.date("%Y-%m-%d", dayMidnight(off))
+end
+
+-- One-sided "start_time >= from" on purpose - the exact shape the "Last 7
+-- days" query always used. A two-sided start_time range on page_stat can make
+-- SQLite reorder the view's internal join (the note in getYearlyStats measured
+-- that 20x slower), so rows past the wanted span are simply ignored by the
+-- caller instead of being cut off in SQL.
+local function queryDayTotals(conn, from_ts)
+    local out = {}
+    local sql = string.format([[
+        SELECT date(start_time, 'unixepoch', 'localtime') AS day,
+               SUM(sum_dur)    AS total_sec,
+               COUNT(*)        AS total_pages
+        FROM (
+            SELECT start_time,
+                   SUM(duration) AS sum_dur
+            FROM page_stat
+            WHERE start_time >= %d
+            GROUP BY id_book, page, date(start_time, 'unixepoch', 'localtime')
+        )
+        GROUP BY day
+    ]], from_ts)
+    local _res, ran = StatsDb.withStatement(conn, sql, function(stmt)
+        for row in stmt:rows() do
+            out[row[1]] = { tonumber(row[2]) or 0, tonumber(row[3]) or 0 }
+        end
+    end)
+    return out, ran
+end
+
+-- Totals for the days first_off..last_off (offsets from today: 0 = today,
+-- -1 = yesterday, positive = future, which has no reading). Returns a table
+-- date -> { seconds, pages }; days without reading are present as {0, 0}
+-- (future days are absent). Second result is false when a query failed - the
+-- missing days are then simply absent and nothing wrong is cached.
+local function loadDayRange(conn, first_off, last_off, minute)
+    local store = Cache.ENABLE_CACHE and loadDaysStore() or {}
+    local out, ok = {}, true
+
+    local miss_lo, miss_hi
+    for off = first_off, math.min(last_off, -1) do
+        local ds = dayDate(off)
+        local e = store[ds]
+        if e then
+            out[ds] = e
+        else
+            miss_lo = miss_lo or off
+            miss_hi = off
+        end
+    end
+    -- One query from the earliest missing day to now serves everything that
+    -- is missing AND today: every completed day in that span becomes known
+    -- (days without reading as {0, 0}), so nothing in it is asked again.
+    local got, ran
+    if miss_lo then
+        got, ran = queryDayTotals(conn, dayMidnight(miss_lo))
+        if ran then
+            for off = miss_lo, -1 do
+                local ds = dayDate(off)
+                local e = got[ds] or { 0, 0 }
+                store[ds] = e
+                if off >= first_off and off <= last_off then out[ds] = e end
+            end
+            if Cache.ENABLE_CACHE then saveDaysStore() end
+        else
+            ok = false
+        end
+    end
+
+    if first_off <= 0 and last_off >= 0 then
+        local today = dayDate(0)
+        local m = today_memo
+        if ran then
+            local e = got[today] or { 0, 0 }
+            out[today] = e
+            today_memo = { minute = minute, date = today, value = e }
+        elseif Cache.ENABLE_CACHE and m and m.minute == minute and m.date == today then
+            out[today] = m.value
+        else
+            local t_got, t_ran = queryDayTotals(conn, dayMidnight(0))
+            if t_ran then
+                local e = t_got[today] or { 0, 0 }
+                out[today] = e
+                today_memo = { minute = minute, date = today, value = e }
+            else
+                ok = false
+            end
+        end
+    end
+    return out, ok
+end
+
 -- Returns both last-week stats in one DB connection:
 --   last_week:       { avg_seconds, avg_pages, prev_seconds, prev_pages }
 --                    (prev_* = totals of the 7 days before the last 7 days)
@@ -1630,31 +1848,17 @@ function M.getLastWeekAll(shared_conn)
     local daily_result = daily_ok and Cache._cache.last_week_daily or nil
 
     StatsDb.withShared(shared_conn, nil, function(conn)
-        -- Single query: per-day totals for the last 7 days.
-        -- From this we derive both the 7-day averages and the per-day chart data.
-        local sql = string.format([[
-            SELECT date(start_time, 'unixepoch', 'localtime') AS day,
-                   SUM(sum_dur)    AS total_sec,
-                   COUNT(*)        AS total_pages
-            FROM (
-                SELECT start_time,
-                       SUM(duration) AS sum_dur
-                FROM page_stat
-                WHERE start_time >= %d
-                GROUP BY id_book, page, date(start_time, 'unixepoch', 'localtime')
-            )
-            GROUP BY day
-        ]], week_start_ts)
-
+        -- Per-day totals for the last 14 days (completed days come from the
+        -- per-day cache, see loadDayRange). From this we derive both the
+        -- 7-day averages and the per-day chart data.
         local seconds_by_date = {}
         local pages_by_date   = {}
         if not lw_ok or not daily_ok then
-            StatsDb.withStatement(conn, sql, function(stmt)
-                for row in stmt:rows() do
-                    seconds_by_date[row[1]] = tonumber(row[2]) or 0
-                    pages_by_date[row[1]]   = tonumber(row[3]) or 0
-                end
-            end)
+            local days = loadDayRange(conn, -13, 0, minute)
+            for ds, e in pairs(days) do
+                seconds_by_date[ds] = e[1]
+                pages_by_date[ds]   = e[2]
+            end
         end
 
         if not lw_ok then
@@ -1713,6 +1917,203 @@ function M.getLastWeekAll(shared_conn)
     Cache.setMinuteCache(Cache._cache, Cache._stale_cache, "last_week", "last_week_minute", minute, lw_result)
     Cache.setMinuteCache(Cache._cache, Cache._stale_cache, "last_week_daily", "last_week_daily_minute", minute, daily_result)
     return lw_result, daily_result
+end
+
+-- Calendar-week view of the weekly section ("Current week" setting).
+--
+-- week_offset: 0 = the current calendar week, -1 = the week before, ...
+-- The weeks run from the shared "week start day" (Monday / Sunday).
+--
+-- M.calendarWeekBounds(week_offset) -> start_date, end_date ("YYYY-MM-DD"),
+-- the first and last day of that whole week (a current week's end_date is
+-- its last day, i.e. in the future, not today). Local midnights are built
+-- from calendar components so a 23-/25-hour DST day cannot shift a date.
+function M.calendarWeekBounds(week_offset)
+    week_offset = math.floor(tonumber(week_offset) or 0)
+    local week_wd   = weekStartWday()
+    local now_t     = os.date("*t")
+    local today_mid = os.time{ year = now_t.year, month = now_t.month, day = now_t.day,
+                               hour = 0, min = 0, sec = 0 }
+    local today_wday = tonumber(os.date("%w", today_mid))  -- 0=Sun..6=Sat
+    local into_week  = (week_wd == 0) and today_wday or ((today_wday + 6) % 7)
+    local function localMidnight(day_offset)
+        return os.time{ year = now_t.year, month = now_t.month, day = now_t.day + day_offset,
+                        hour = 0, min = 0, sec = 0 }
+    end
+    local start_offset = -into_week + 7 * week_offset
+    return os.date("%Y-%m-%d", localMidnight(start_offset)),
+           os.date("%Y-%m-%d", localMidnight(start_offset + 6))
+end
+
+-- Short-lived memory cache of the weeks already worked out, per week and
+-- minute. Not persisted: a week is one small query.
+local cal_week_cache = {}
+
+-- Last result per week (kept across popup opens, never cleared by
+-- clearCalendarWeekCache): lets the popup paint the weekly section at once
+-- from the previous numbers and refresh them right after, instead of
+-- blocking the first paint on a database query.
+local cal_week_stale = {}
+
+-- Opening the popup drops what is still moving - the current week and today's
+-- total - so a freshly flushed session is picked up. Past weeks are
+-- immutable and stay; `force` ("Reload data") drops them and the per-day
+-- cache (file included) as well.
+function M.clearCalendarWeekCache(force)
+    today_memo = nil
+    if force then
+        cal_week_cache = {}
+        days_store = {}
+        saveDaysStore()
+    else
+        for k in pairs(cal_week_cache) do
+            if k:match("^%d:0:") then cal_week_cache[k] = nil end
+        end
+    end
+end
+
+-- The previously computed week for `week_offset`, only if it was computed
+-- today (so "today" / future-day flags are still right); nil otherwise.
+function M.getCalendarWeekStale(week_offset)
+    week_offset = math.floor(tonumber(week_offset) or 0)
+    if week_offset > 0 then week_offset = 0 end
+    local e = cal_week_stale[weekStartWday() .. ":" .. week_offset]
+    if e and e.date == os.date("%Y-%m-%d") then return e.value end
+    return nil
+end
+
+-- M.getCalendarWeek(week_offset, shared_conn) -> { stats = ..., daily = ... }
+--
+--   stats  { total_seconds, total_pages, avg_seconds, avg_pages, days,
+--            prev_seconds, prev_pages, start_date, end_date, is_current }
+--          `days` is how many days of the week count: 7, or for the
+--          current week only the days up to and including today (the
+--          averages divide by it). prev_* is the previous week over the
+--          same number of days, so a half-finished week is compared with
+--          the same stretch of the week before, not with a whole week.
+--   daily  7 entries, NEWEST DAY FIRST (index 1 = the week's last day,
+--          index 7 = its first day) - the same orientation as the
+--          last-7-days series, so the chart code can draw both alike:
+--          { hours, seconds, pages, label, midnight_ts, date_str,
+--            is_today, future }
+--          Labels are weekday abbreviations only. Days after today in the
+--          current week have future = true and no reading.
+-- Same de-duplication as getLastWeekAll (one row per book/page/day).
+function M.getCalendarWeek(week_offset, shared_conn)
+    week_offset = math.floor(tonumber(week_offset) or 0)
+    if week_offset > 0 then week_offset = 0 end
+
+    local week_wd = weekStartWday()
+    local minute  = Cache.currentMinute()
+    local ckey    = week_wd .. ":" .. week_offset .. ":" .. os.date("%Y-%m-%d")
+    local cached  = cal_week_cache[ckey]
+    if Cache.ENABLE_CACHE and cached and (cached.minute == minute or week_offset < 0) then
+        return cached.value
+    end
+
+    local now_t = os.date("*t")
+    local function localMidnight(day_offset)
+        return os.time{ year = now_t.year, month = now_t.month, day = now_t.day + day_offset,
+                        hour = 0, min = 0, sec = 0 }
+    end
+    local today_mid  = localMidnight(0)
+    local today_wday = tonumber(os.date("%w", today_mid))
+    local into_week  = (week_wd == 0) and today_wday or ((today_wday + 6) % 7)
+
+    local is_current   = (week_offset == 0)
+    local start_offset = -into_week + 7 * week_offset      -- first day of the week
+    local days         = is_current and (into_week + 1) or 7
+
+    local DOW_KEYS = { [0]="Sun", [1]="Mon", [2]="Tue", [3]="Wed", [4]="Thu", [5]="Fri", [6]="Sat" }
+
+    -- date_info[d + 1] for d = 0..6 = the week's d-th day, oldest first.
+    local date_info = {}
+    for d = 0, 6 do
+        local mid = localMidnight(start_offset + d)
+        date_info[d + 1] = {
+            date_str    = os.date("%Y-%m-%d", mid),
+            label       = _(DOW_KEYS[tonumber(os.date("%w", mid))] or ""),
+            midnight_ts = mid,
+            is_today    = is_current and d == into_week,
+            future      = is_current and d > into_week,
+        }
+    end
+    local prev_dates = {}
+    for d = 0, days - 1 do
+        prev_dates[#prev_dates + 1] = os.date("%Y-%m-%d", localMidnight(start_offset - 7 + d))
+    end
+
+    -- The week and the one before it, from the per-day cache; only days not
+    -- seen before are queried (see loadDayRange).
+    local seconds_by_date, pages_by_date = {}, {}
+    local ok = false
+    StatsDb.withShared(shared_conn, nil, function(conn)
+        local days, ran = loadDayRange(conn, start_offset - 7, start_offset + 6, minute)
+        for ds, e in pairs(days) do
+            seconds_by_date[ds] = e[1]
+            pages_by_date[ds]   = e[2]
+        end
+        ok = ran
+    end)
+
+    local total_sec, total_pages = 0, 0
+    local daily = {}
+    for d = 0, 6 do
+        local di   = date_info[d + 1]
+        local secs = seconds_by_date[di.date_str] or 0
+        local pgs  = pages_by_date[di.date_str]   or 0
+        if not di.future then
+            total_sec   = total_sec   + secs
+            total_pages = total_pages + pgs
+        end
+        local h = secs / 3600.0
+        if h >= 1 then
+            h = math.floor(h + 0.5)
+        elseif h > 0 then
+            h = math.floor(h * 10 + 0.5) / 10
+        end
+        -- Newest day first: the week's last day (d = 6) lands at index 1.
+        daily[7 - d] = {
+            hours       = h,
+            seconds     = secs,
+            pages       = pgs,
+            label       = di.label,
+            midnight_ts = di.midnight_ts,
+            date_str    = di.date_str,
+            is_today    = di.is_today,
+            future      = di.future,
+        }
+    end
+
+    local prev_sec, prev_pages = 0, 0
+    for _i, ds in ipairs(prev_dates) do
+        prev_sec   = prev_sec   + (seconds_by_date[ds] or 0)
+        prev_pages = prev_pages + (pages_by_date[ds]   or 0)
+    end
+
+    local result = {
+        stats = {
+            total_seconds = total_sec,
+            total_pages   = total_pages,
+            avg_seconds   = total_sec   / days,
+            avg_pages     = total_pages / days,
+            days          = days,
+            prev_seconds  = prev_sec,
+            prev_pages    = prev_pages,
+            start_date    = date_info[1].date_str,
+            end_date      = date_info[7].date_str,
+            is_current    = is_current,
+        },
+        daily = daily,
+    }
+
+    -- A failed query (locked DB, ...) is not remembered, so the next call
+    -- tries again instead of serving zeros for a minute.
+    if ok and Cache.ENABLE_CACHE then
+        cal_week_cache[ckey] = { minute = minute, value = result }
+        cal_week_stale[week_wd .. ":" .. week_offset] = { date = os.date("%Y-%m-%d"), value = result }
+    end
+    return result
 end
 
 -- Consecutive days (kind = "daily") or calendar weeks (kind = "weekly") up to

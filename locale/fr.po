@@ -2239,3 +2239,57 @@ msgstr "Lecture par moment de la journée"
 
 msgid "Reading by weekday"
 msgstr "Lecture par jour de la semaine"
+
+msgid "Pages per month"
+msgstr "Pages par mois"
+
+msgid "Pages / reading time"
+msgstr "Pages / temps de lecture"
+
+msgid "Pages per day"
+msgstr "Pages par jour"
+
+msgid "Reading time per day"
+msgstr "Temps de lecture par jour"
+
+msgid "View"
+msgstr "Affichage"
+
+msgid "Current week"
+msgstr "Semaine en cours"
+
+msgid "Show Reading shelf"
+msgstr "Afficher l'étagère de lecture"
+
+msgid "Show only finished books"
+msgstr "Uniquement les livres terminés"
+
+msgid "Show the last 7 days, or the current calendar week that you can page back and forth. All figures of the section then cover that week."
+msgstr "Affiche les 7 derniers jours ou la semaine calendaire en cours, que vous pouvez parcourir d'avant en arrière. Tous les chiffres de la section portent alors sur cette semaine."
+
+msgid "page vs prev. week"
+msgstr "page vs sem. préc."
+
+msgid "pages vs prev. week"
+msgstr "pages vs sem. préc."
+
+msgid "pg vs prev. wk"
+msgstr "p. vs sem. préc."
+
+msgid "time vs prev. week"
+msgstr "temps vs sem. préc."
+
+msgid "vs prev. week"
+msgstr "vs sem. préc."
+
+msgid "Round the corners of the covers (Book info, Reading calendar and Reading shelf)."
+msgstr "Arrondit les coins des couvertures (Infos du livre, Calendrier de lecture et Étagère de lecture)."
+
+msgid "Draw a drop shadow behind the covers (Book info, Reading calendar and Reading shelf)."
+msgstr "Dessine une ombre portée derrière les couvertures (Infos du livre, Calendrier de lecture et Étagère de lecture)."
+
+msgid "Draw a thin frame around the covers (Book info, Reading calendar and Reading shelf)."
+msgstr "Dessine un fin cadre autour des couvertures (Infos du livre, Calendrier de lecture et Étagère de lecture)."
+
+msgid "Covers"
+msgstr "Couvertures"

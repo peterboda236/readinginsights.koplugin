@@ -2254,3 +2254,53 @@ msgstr "Olvasás a nap folyamán"
 
 msgid "Reading by weekday"
 msgstr "Olvasás a hét napjai szerint"
+
+# Current-week view of the weekly section
+
+msgid "Current week"
+msgstr "Aktuális hét"
+
+msgid "View"
+msgstr "Nézet"
+
+msgid "Show the last 7 days, or the current calendar week that you can page back and forth. All figures of the section then cover that week."
+msgstr "Az elmúlt 7 napot vagy az aktuális naptári hetet mutatja, amelyben előre-hátra lapozhatsz. A szekció összes adata ilyenkor az adott hétre vonatkozik."
+
+msgid "page vs prev. week"
+msgstr "oldal vs előző hét"
+
+msgid "pages vs prev. week"
+msgstr "oldal vs előző hét"
+
+msgid "pg vs prev. wk"
+msgstr "old. vs előző hét"
+
+msgid "time vs prev. week"
+msgstr "idő vs előző hét"
+
+msgid "vs prev. week"
+msgstr "vs előző hét"
+
+msgid "Reading time per day"
+msgstr "Napi olvasási idő"
+
+msgid "Pages per day"
+msgstr "Napi olvasott oldalak"
+
+msgid "Pages per month"
+msgstr "Havi olvasott oldalak"
+
+msgid "%1 p"
+msgstr "%1 o"
+
+msgid "Pages / reading time"
+msgstr "Oldalak / olvasási idő"
+
+msgid "Round the corners of the covers (Book info, Reading calendar and Reading shelf)."
+msgstr "A borítók sarkainak lekerekítése (Könyvinformáció, Olvasási naptár és Olvasási polc)."
+
+msgid "Draw a drop shadow behind the covers (Book info, Reading calendar and Reading shelf)."
+msgstr "Árnyék rajzolása a borítók mögé (Könyvinformáció, Olvasási naptár és Olvasási polc)."
+
+msgid "Draw a thin frame around the covers (Book info, Reading calendar and Reading shelf)."
+msgstr "Vékony keret rajzolása a borítók köré (Könyvinformáció, Olvasási naptár és Olvasási polc)."

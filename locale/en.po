@@ -2248,3 +2248,50 @@ msgstr "Reading by time of day"
 
 msgid "Reading by weekday"
 msgstr "Reading by weekday"
+
+# Current-week view of the weekly section
+
+msgid "Current week"
+msgstr "Current week"
+
+msgid "View"
+msgstr "View"
+
+msgid "Show the last 7 days, or the current calendar week that you can page back and forth. All figures of the section then cover that week."
+msgstr "Show the last 7 days, or the current calendar week that you can page back and forth. All figures of the section then cover that week."
+
+msgid "page vs prev. week"
+msgstr "page vs prev. week"
+
+msgid "pages vs prev. week"
+msgstr "pages vs prev. week"
+
+msgid "pg vs prev. wk"
+msgstr "pg vs prev. wk"
+
+msgid "time vs prev. week"
+msgstr "time vs prev. week"
+
+msgid "vs prev. week"
+msgstr "vs prev. week"
+
+msgid "Pages per month"
+msgstr "Pages per month"
+
+msgid "Pages / reading time"
+msgstr "Pages / reading time"
+
+msgid "Pages per day"
+msgstr "Pages per day"
+
+msgid "Reading time per day"
+msgstr "Reading time per day"
+
+msgid "Round the corners of the covers (Book info, Reading calendar and Reading shelf)."
+msgstr "Round the corners of the covers (Book info, Reading calendar and Reading shelf)."
+
+msgid "Draw a drop shadow behind the covers (Book info, Reading calendar and Reading shelf)."
+msgstr "Draw a drop shadow behind the covers (Book info, Reading calendar and Reading shelf)."
+
+msgid "Draw a thin frame around the covers (Book info, Reading calendar and Reading shelf)."
+msgstr "Draw a thin frame around the covers (Book info, Reading calendar and Reading shelf)."

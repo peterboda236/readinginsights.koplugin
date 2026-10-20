@@ -525,6 +525,8 @@ function M.showBooksForPeriod(popup_self, books, empty_text, title, opts)
     local saved_goal_finished  = popup_self._goal_finished
     local saved_last_week      = popup_self._last_week
     local saved_last_week_daily = popup_self._last_week_daily
+    local saved_cal_week        = popup_self._cal_week
+    local saved_week_offset     = popup_self.week_offset
 
     popup_self._closed = true
     UIManager:close(popup_self)
@@ -548,6 +550,8 @@ function M.showBooksForPeriod(popup_self, books, empty_text, title, opts)
             _goal_finished   = saved_goal_finished,
             _last_week       = saved_last_week,
             _last_week_daily = saved_last_week_daily,
+            _cal_week        = saved_cal_week,
+            week_offset      = saved_week_offset,
         }
         UIManager:show(p)
     end, stats_plugin, list_opts)
