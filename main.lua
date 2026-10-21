@@ -291,11 +291,14 @@ local BookInfoData = loadModule("lib/bookinfo_data.lua",
 -- drawn by widgets/coverframe.lua (the Book card plugin's widget) for the Book
 -- info popup, the Reading calendar's days and the Reading shelf alike.
 local CoverFrame   = loadModule("widgets/coverframe.lua", { Colors = Colors })
+-- The on-disk cover thumbnail cache the calendar's day cells and the year
+-- shelf share (lib/coverthumbs.lua).
+local CoverThumbs  = loadModule("lib/coverthumbs.lua")
 local StreakCalendar = loadModule("views/streak_calendar_view.lua", {
     Locale = Locale, Colors = Colors, Fonts = Fonts, UI = UI,
     Data = InsightsData, Prefs = Prefs, VS = ViewSettings,
     BookList = BookList, BookInfoData = BookInfoData, Ratings = Ratings,
-    CoverFrame = CoverFrame, DateUtil = DateUtil,
+    CoverFrame = CoverFrame, CoverThumbs = CoverThumbs, DateUtil = DateUtil,
 })
 
 -- Records: the queries and their cache (lib/records_data.lua, loaded above
@@ -328,16 +331,27 @@ BookList.bindBookInfo(BookInfo)
 local YearShelf = loadModule("views/year_shelf_view.lua", {
     Locale = Locale, Colors = Colors, Fonts = Fonts, UI = UI,
     BookList = BookList, BookInfoData = BookInfoData, Ratings = Ratings,
-    VS = ViewSettings, CoverFrame = CoverFrame,
+    VS = ViewSettings, CoverFrame = CoverFrame, CoverThumbs = CoverThumbs,
+})
+
+-- The insights popup's header rows and charts, split out of insights_view.lua.
+local InsightsHeaders = loadModule("views/insights_headers.lua", {
+    Locale = Locale, Colors = Colors, UI = UI, Data = InsightsData,
+    YearShelf = YearShelf,
+})
+local InsightsCharts = loadModule("views/insights_charts.lua", {
+    Locale = Locale, Colors = Colors, UI = UI, VS = ViewSettings,
+    Trend = Trend, DateUtil = DateUtil,
 })
 
 local Insights = loadModule("views/insights_view.lua", {
+    Headers = InsightsHeaders, Charts = InsightsCharts,
     Locale = Locale, Colors = Colors, Fonts = Fonts,
     PopupUtil = PopupUtil, VS = ViewSettings, Cache = InsightsCache, UI = UI,
     Trend = Trend, Heatmap = Heatmap, BookList = BookList, Data = InsightsData,
     Manual = ManualBooks, Achievements = Achievements, AchievementsView = AchievementsView,
     Prefs = Prefs, Streak = StreakCalendar, Records = Records,
-    YearShelf = YearShelf, DateUtil = DateUtil,
+    YearShelf = YearShelf,
 })
 local BookCalendar = loadModule("views/book_calendar_view.lua", {
     Locale = Locale, Colors = Colors, Fonts = Fonts, Prefs = Prefs, VS = ViewSettings,

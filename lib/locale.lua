@@ -345,6 +345,12 @@ local function formatDate(date_str, no_trailing_dot)
     return formatYMD(tonumber(y), tonumber(m), tonumber(d), no_trailing_dot)
 end
 
+-- formatDate() for a value that may be missing: "?" instead of "".
+local function formatDateOrUnknown(date_str, no_trailing_dot)
+    if not date_str then return "?" end
+    return formatDate(date_str, no_trailing_dot)
+end
+
 -- Same, from a timestamp. Empty string for "no date" (nil / 0), so callers
 -- that fill a table column with it leave the cell blank rather than
 -- printing the epoch.
@@ -565,6 +571,23 @@ local function formatTimeHHMM(seconds)
     return formatDurationParts(seconds, true)
 end
 
+-- Splits a formatted duration into a bold "value" and a plain "unit" for the
+-- value/label row layout of the popups (bold number + plain description, e.g.
+-- "7.3" + "days reading time"). Normally the number is just the clock string
+-- and unit is exactly `base_label` unchanged. But when "Show long durations
+-- (24h+) as days" is on and the duration crosses a day, formatDurationParts()
+-- returns a trailing "day"/"nap" word that must NOT be bold - so it is merged
+-- into the plain `unit` ahead of the row's usual label instead of staying
+-- glued to the bold number.
+local function splitDurationValueUnit(seconds, base_label)
+    local parts = formatDurationParts(seconds, true)
+    local unit = base_label or ""
+    if parts.unit ~= "" then
+        unit = (unit ~= "" and (parts.unit .. " " .. unit)) or parts.unit
+    end
+    return parts.value, unit
+end
+
 local function formatDuration(seconds, without_seconds)
     local parts = formatDurationParts(seconds, without_seconds)
     if parts.unit == "" then
@@ -631,12 +654,14 @@ return {
     formatCount                = formatCount,
     formatDuration             = formatDuration,
     formatDurationParts        = formatDurationParts,
+    splitDurationValueUnit     = splitDurationValueUnit,
     formatDurationChart        = formatDurationChart,
     formatTimeHHMM             = formatTimeHHMM,
     isoWeekNumber              = isoWeekNumber,
     readDurationDaysSetting    = readDurationDaysSetting,
     saveDurationDaysSetting    = saveDurationDaysSetting,
     formatDate                 = formatDate,
+    formatDateOrUnknown        = formatDateOrUnknown,
     formatDateFromTS           = formatDateFromTS,
     formatShortMonthDay        = formatShortMonthDay,
     formatDayOfMonth           = formatDayOfMonth,

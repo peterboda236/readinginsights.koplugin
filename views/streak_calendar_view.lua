@@ -37,7 +37,6 @@ the database.
 ]]--
 
 local Blitbuffer = require("ffi/blitbuffer")
-local DataStorage = require("datastorage")
 local lfs = require("libs/libkoreader-lfs")
 local CenterContainer = require("ui/widget/container/centercontainer")
 local Device = require("device")
@@ -50,7 +49,6 @@ local InputContainer = require("ui/widget/container/inputcontainer")
 local OverlapGroup = require("ui/widget/overlapgroup")
 local RightContainer = require("ui/widget/container/rightcontainer")
 local Size = require("ui/size")
-local TextBoxWidget = require("ui/widget/textboxwidget")
 local TextWidget = require("ui/widget/textwidget")
 local TitleBar = require("ui/widget/titlebar")
 local UIManager = require("ui/uimanager")
@@ -68,7 +66,7 @@ local Locale, Colors, Fonts, UI, Data, Prefs, VS, BookList =
     deps.Locale, deps.Colors, deps.Fonts, deps.UI, deps.Data, deps.Prefs, deps.VS, deps.BookList
 -- Frame, rounded corners and shadow of the covers (Settings > Appearance >
 -- Covers), the same look as in the Book info popup.
-local CoverFrame = deps.CoverFrame
+local CoverFrame, CoverThumbs = deps.CoverFrame, deps.CoverThumbs
 local DateUtil = deps.DateUtil
 -- Cover loading for the calendar's day cells: the file of a book (by its
 -- checksum / title) and the cover read from it - the same two the Book info
@@ -80,14 +78,8 @@ local _            = Locale._
 local N_           = Locale.N_
 local formatCount  = Locale.formatCount
 
--- Format a YYYY-MM-DD string in the configured date format (Settings ▸
--- Settings ▸ Date & time ▸ "Date format" - see Locale.formatDate).
--- no_trailing_dot: ignored (kept for compatibility); every date keeps its
--- final dot, also the first date of a range.
-local function formatDateForDisplay(date_str, no_trailing_dot)
-    if not date_str then return "?" end
-    return Locale.formatDate(date_str, no_trailing_dot)
-end
+-- A YYYY-MM-DD string in the configured date format ("?" when missing).
+local formatDateForDisplay = Locale.formatDateOrUnknown
 
 -- Font faces for this popup's four text roles, sourced from the shared Fonts
 -- settings module (see fonts.lua) so they're user-configurable via the "Fonts"
@@ -104,36 +96,7 @@ local function getCachedFonts()
     }
 end
 
--- A bold "value" + plain "unit" line (e.g. "7" + "days"), laid out to fit
--- col_width. Mirrors buildValueLine in insights_view.lua so the streak stats
--- line up with the ones on the insights page.
-local function buildValueLine(font_value, font_label, col_width, value, unit)
-    if value == "" then
-        return TextBoxWidget:new{
-            text      = unit,
-            face      = font_label,
-            fgcolor   = Colors.label(),
-            width     = col_width,
-            alignment = "left",
-        }
-    end
-
-    local value_widget = TextWidget:new{ text = value, face = font_value, fgcolor = Colors.value() }
-    local value_width = value_widget:getSize().w
-    local text_desc_width = col_width - value_width - Size.padding.large
-    return HorizontalGroup:new{
-        align = "center",
-        value_widget,
-        HorizontalSpan:new{ width = Size.padding.large },
-        TextBoxWidget:new{
-            text      = unit,
-            face      = font_label,
-            fgcolor   = Colors.label(),
-            width     = text_desc_width,
-            alignment = "left",
-        },
-    }
-end
+local buildValueLine = UI.buildValueLine
 
 -- Weekday column labels for the streak calendar. Already translated in the
 -- .po files (reused from the Book progress calendar), so no new strings are
@@ -258,88 +221,21 @@ local DATA_CACHE = nil
 -- Returned by the cover callback for a cover that is not loaded yet.
 local COVER_PENDING = {}
 
--- Covers are also kept on disk, so they survive a restart of KOReader: one
--- small thumbnail per book (JPEG, PNG when JPEG cannot be written) in
--- <settings>/readinginsights/covercache/<md5>.jpg, plus an empty <md5>.none
--- for a book that has no cover - so it is not opened again and again. Reading
--- a thumbnail is far quicker than opening the book. A long press on the
--- calendar's title (or deleting the folder) starts over, e.g. after changing a
--- book's cover.
-local THUMB_W, THUMB_H = 300, 450
-local COVER_DIR
-local function coverDir()
-    if COVER_DIR == nil then
-        local d = DataStorage:getSettingsDir() .. "/readinginsights/covercache"
-        if lfs.attributes(d, "mode") ~= "directory" then
-            pcall(require("util").makePath, d .. "/")
-        end
-        COVER_DIR = (lfs.attributes(d, "mode") == "directory") and d or false
-    end
-    return COVER_DIR or nil
-end
+-- Covers are also kept on disk, so they survive a restart of KOReader (one
+-- small thumbnail per book, shared with the year shelf - see
+-- lib/coverthumbs.lua). A long press on the calendar's title (or deleting the
+-- folder) starts over, e.g. after changing a book's cover.
+local THUMB_W, THUMB_H = CoverThumbs.THUMB_W, CoverThumbs.THUMB_H
+local diskBase, scaleTo, readThumb, writeThumb, markNoCover =
+    CoverThumbs.diskBase, CoverThumbs.scaleTo, CoverThumbs.readThumb,
+    CoverThumbs.writeThumb, CoverThumbs.markNoCover
 
 -- Throws the whole cover cache away: the thumbnails (and "no cover" markers)
 -- on disk and the scaled covers in memory, so every cover is read again from
 -- its book. Used by a long press on the calendar's title.
 local function clearCoverCache()
-    local dir = coverDir()
-    if dir then
-        local ok, iter, dir_obj = pcall(lfs.dir, dir)
-        if ok and iter then
-            for name in iter, dir_obj do
-                if name:match("%.jpg$") or name:match("%.png$") or name:match("%.none$") then
-                    pcall(os.remove, dir .. "/" .. name)
-                end
-            end
-        end
-    end
+    CoverThumbs.clearDisk()
     COVER_CACHE, COVER_CACHE_N = {}, 0   -- dropped; the finalisers free them
-end
-
--- The thumbnail's path without extension, nil when the book has no usable id.
-local function diskBase(book)
-    local md5 = book and book.md5
-    if type(md5) ~= "string" or not md5:match("^%x+$") then return nil end
-    local dir = coverDir()
-    return dir and (dir .. "/" .. md5) or nil
-end
-
--- Scales `bb` to fit w x h, aspect kept (never enlarging with no_upscale).
--- Frees `bb`.
-local function scaleTo(bb, w, h, no_upscale)
-    local rw, rh = bb:getWidth(), bb:getHeight()
-    local scale = math.min(w / rw, h / rh)
-    if no_upscale and scale > 1 then scale = 1 end
-    local nw = math.max(1, math.floor(rw * scale))
-    local nh = math.max(1, math.floor(rh * scale))
-    return require("ui/renderimage"):scaleBlitBuffer(bb, nw, nh, true)
-end
-
-local function readThumb(base)
-    for _i, ext in ipairs({ ".jpg", ".png" }) do
-        local f = base .. ext
-        if lfs.attributes(f, "mode") == "file" then
-            local ok, bb = pcall(function()
-                return require("ui/renderimage"):renderImageFile(f, false)
-            end)
-            if ok and bb then return bb end
-        end
-    end
-    return nil
-end
-
-local function writeThumb(base, bb)
-    local jpg = base .. ".jpg"
-    pcall(bb.writeToFile, bb, jpg, "jpg", 85)
-    local size = lfs.attributes(jpg, "size")
-    if size and size > 0 then return end
-    pcall(os.remove, jpg)
-    pcall(bb.writeToFile, bb, base .. ".png", "png")
-end
-
-local function markNoCover(base)
-    local f = io.open(base .. ".none", "w")
-    if f then f:close() end
 end
 
 -- One day cell of the calendar, painted in one go (see the header comment for

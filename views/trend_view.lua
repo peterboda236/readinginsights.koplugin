@@ -161,17 +161,8 @@ local function formatShortDate(date_str)
     return string.format("%02d/%02d", d, m)
 end
 
--- Bold value + plain unit, like the value/label cells of the insights page.
--- With "long durations as days" on, a trailing day word is merged into the
--- plain unit instead of staying glued to the bold number.
-local function splitDurationValueUnit(seconds, base_label)
-    local parts = Locale.formatDurationParts(seconds, true)
-    local unit = base_label or ""
-    if parts.unit ~= "" then
-        unit = (unit ~= "" and (parts.unit .. " " .. unit)) or parts.unit
-    end
-    return parts.value, unit
-end
+-- Bold value + plain unit of a duration (see Locale.splitDurationValueUnit).
+local splitDurationValueUnit = Locale.splitDurationValueUnit
 
 local function buildValueLine(fonts, col_width, value, unit)
     local value_widget = TextWidget:new{ text = value, face = fonts.value, fgcolor = Colors.value() }

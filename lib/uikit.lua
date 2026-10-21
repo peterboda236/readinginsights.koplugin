@@ -26,11 +26,11 @@ behaviour opt-in, so the simpler caller is unaffected:
     { no_bottom_line = true } for the header + line + row layout with no
     closing line.
 
-Not shared (deliberately): buildValueLine, which really has diverged - the
-book progress view's version handles value/unit tables from its stats
-gatherer, the insights one takes a plain value and label. Merging those
-would mean one function doing two jobs; they're better left apart until
-there's a reason to unify them.
+buildValueLine is the plain "bold value + label" line (a value and a unit
+string). The Book progress view's own buildValueLine takes value/unit
+tables from its stats gatherer and wraps under a long value, and the trend
+popup's takes a fonts table - they are different functions with the same
+name and stay in their own files.
 
 Loaded once by main.lua with the shared Colors module.
 ]]--
@@ -43,6 +43,7 @@ local HorizontalGroup = require("ui/widget/horizontalgroup")
 local HorizontalSpan = require("ui/widget/horizontalspan")
 local LeftContainer = require("ui/widget/container/leftcontainer")
 local Size = require("ui/size")
+local TextBoxWidget = require("ui/widget/textboxwidget")
 local TextWidget = require("ui/widget/textwidget")
 local VerticalGroup = require("ui/widget/verticalgroup")
 local VerticalSpan = require("ui/widget/verticalspan")
@@ -337,6 +338,38 @@ function M.hitTest(widget, x, y)
     local d = widget and widget.dimen
     if not d then return false end
     return x >= d.x and x <= d.x + d.w and y >= d.y and y <= d.y + d.h
+end
+
+-- One "bold value + label" line: `value` in font_value, then `unit` in
+-- font_label wrapped inside what is left of col_width. An empty value gives
+-- just the label, full width. (The insights popup and the Reading streak
+-- calendar use this one.)
+function M.buildValueLine(font_value, font_label, col_width, value, unit)
+    if value == "" then
+        return TextBoxWidget:new{
+            text      = unit,
+            face      = font_label,
+            fgcolor   = Colors.label(),
+            width     = col_width,
+            alignment = "left",
+        }
+    end
+
+    local value_widget = TextWidget:new{ text = value, face = font_value, fgcolor = Colors.value() }
+    local value_width = value_widget:getSize().w
+    local text_desc_width = col_width - value_width - Size.padding.large
+    return HorizontalGroup:new{
+        align = "center",
+        value_widget,
+        HorizontalSpan:new{ width = Size.padding.large },
+        TextBoxWidget:new{
+            text      = unit,
+            face      = font_label,
+            fgcolor   = Colors.label(),
+            width     = text_desc_width,
+            alignment = "left",
+        },
+    }
 end
 
 -- The "nothing to show" placeholder for a value/unit pair.
