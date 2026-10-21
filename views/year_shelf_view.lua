@@ -336,6 +336,9 @@ function YearShelfPopup:init()
     end
     self.year = tonumber(self.year) or tonumber(os.date("%Y"))
     self.finished_only = readFinishedOnly()
+    -- Show the window first, load the covers after it (not on the sleep
+    -- screen: nothing runs there after the first paint).
+    self._defer_disk = not self.readonly
     self:_rebuild()
 end
 
@@ -395,14 +398,20 @@ function YearShelfPopup:_aspectOf(book)
             ASPECT[key] = NOCOVER_ASPECT
             return NOCOVER_ASPECT
         end
-        local thumb = readThumb(base)
-        if thumb then
-            local tw, th = thumb:getWidth(), thumb:getHeight()
-            pcall(function() thumb:free() end)
-            if tw > 0 and th > 0 then
-                ASPECT[key] = clampAspect(tw / th)
-                return ASPECT[key]
+        -- From the file header: decoding every thumbnail just to learn its
+        -- size (and then once more to draw it) is what made the first
+        -- opening after a restart slow.
+        local tw, th = CoverThumbs.thumbSize(base)
+        if not tw then
+            local thumb = readThumb(base)
+            if thumb then
+                tw, th = thumb:getWidth(), thumb:getHeight()
+                pcall(function() thumb:free() end)
             end
+        end
+        if tw and th and tw > 0 and th > 0 then
+            ASPECT[key] = clampAspect(tw / th)
+            return ASPECT[key]
         end
     end
     return nil
@@ -425,13 +434,15 @@ function YearShelfPopup:_coverFor(book, w, h, cached_only)
         return v
     end
 
-    -- On disk: quick (a small picture), so it is also done for the first paint.
+    -- On disk: quick (a small picture) - but decoding dozens of them still
+    -- delays the window, so a popup that shows itself first (_defer_disk)
+    -- leaves them to _loadPending(); only the sleep screen reads them here.
     local base = diskBase(book)
     if base then
         if lfs.attributes(base .. ".none", "mode") == "file" then
             return remember(nil)
         end
-        local thumb = readThumb(base)
+        local thumb = not (cached_only and self._defer_disk) and readThumb(base) or nil
         if thumb then
             local ok, res = pcall(scaleToCell, thumb, w, h)
             if ok and res then return remember(res) end
@@ -526,12 +537,16 @@ function YearShelfPopup:_loadPending()
     if self._closed then return end
     local order = self._pending_order
     if not order or #order == 0 then return end
-    for _n = 1, 3 do
+    -- As many covers as fit in a short time slice, then one repaint: the
+    -- window fills in quickly instead of being rebuilt after every 3 covers.
+    local started = CoverThumbs.clock()
+    while true do
         local key = table.remove(order, 1)
         if not key then break end
         local item = self._pending and self._pending[key]
         if self._pending then self._pending[key] = nil end
         if item then pcall(self._coverFor, self, item.book, item.w, item.h) end
+        if CoverThumbs.clock() - started >= 0.3 then break end
     end
     self._pending, self._pending_order = nil, nil
     self:_rebuild()

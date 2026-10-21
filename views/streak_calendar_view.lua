@@ -1620,6 +1620,7 @@ function StreakDatePopup:init()
         self.key_events.AnyKeyPressed = { { Device.input.group.Any } }
     end
     self.month_index = self.month_index or 1
+    self._defer_disk = self.lazy_covers and true or false   -- first paint only (see onShow)
     self:_rebuild()
 end
 
@@ -1673,7 +1674,9 @@ function StreakDatePopup:_coverFor(book, w, h, cached_only)
         if lfs.attributes(base .. ".none", "mode") == "file" then
             return remember(nil)
         end
-        local thumb = readThumb(base)
+        -- The first paint of a lazy popup leaves the thumbnails to
+        -- _loadPending(), so the window shows up at once after a restart.
+        local thumb = not (cached_only and self._defer_disk) and readThumb(base) or nil
         if thumb then
             local ok, res = pcall(scaleTo, thumb, w, h)
             if ok and res then return remember(res) end
@@ -2130,6 +2133,7 @@ end
 
 function StreakDatePopup:onShow()
     UIManager:setDirty(self, function() return "ui", self.dimen end)
+    self._defer_disk = false   -- the first paint is done: later pages read the disk as before
     self:_schedulePending()
     return true
 end
