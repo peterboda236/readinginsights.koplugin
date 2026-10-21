@@ -741,7 +741,22 @@ end
 
 -- The two ways the bar charts can label their bars; tapping a chart's
 -- caption switches between them.
-local BAR_MODES = { "time", "percent" }
+local BAR_MODES = { "time", "pages", "percent" }
+
+-- Pages read in one weekday/hour slot (see Data.getWeekdayHourReadingData).
+local function pagesAt(map, wd, h)
+    local p = map.pages and map.pages[wd]
+    return (p and p[h]) or 0
+end
+
+-- The series a chart draws its bars from: seconds normally, pages in the
+-- pages view. Returns that series and its maximum.
+local function barSeries(mode, totals, ptotals)
+    local vals = (mode == "pages") and ptotals or totals
+    local mx = 0
+    for _i, v in ipairs(vals) do if v > mx then mx = v end end
+    return vals, mx
+end
 
 local function nextBarMode(mode)
     for i, m in ipairs(BAR_MODES) do
@@ -752,7 +767,11 @@ end
 
 -- Label on top of a bar: its time ("1:17") or its share of all the reading
 -- time in the period ("38%", or "<1%" for a tiny non-zero share).
-local function barValueText(mode, secs, total_secs)
+local function barValueText(mode, secs, total_secs, pages)
+    if mode == "pages" then
+        if (pages or 0) <= 0 then return "\xE2\x80\x94" end
+        return tostring(pages)
+    end
     if secs <= 0 then return "\xE2\x80\x94" end
     if mode == "percent" then
         local pct = math.floor(secs * 100 / total_secs + 0.5)
@@ -808,6 +827,16 @@ function M.buildDayPartChartWidget(weekday_hour_map, fonts, max_width, mode)
         if secs > max_secs then max_secs = secs end
     end
 
+    local ptotals = {}
+    for i, dp in ipairs(DAYPARTS) do
+        local n = 0
+        for wd = 1, 7 do
+            for h = dp.h_start, dp.h_end - 1 do n = n + pagesAt(weekday_hour_map, wd, h) end
+        end
+        ptotals[i] = n
+    end
+    local shown, shown_max = barSeries(mode, totals, ptotals)
+
     local col_gap  = Screen:scaleBySize(8)
     local col_w    = math.floor((max_width - (num_bars - 1) * col_gap) / num_bars)
     -- Bars fill their whole column, so the four of them span the content
@@ -831,15 +860,15 @@ function M.buildDayPartChartWidget(weekday_hour_map, fonts, max_width, mode)
     local bars_row = HorizontalGroup:new{ align = "bottom" }
     local labels_row = HorizontalGroup:new{ align = "top" }
     for i, dp in ipairs(DAYPARTS) do
-        local secs = totals[i]
+        local secs = shown[i]
         local bar_h = 0
-        if secs > 0 and max_secs > 0 then
-            bar_h = math.floor(chart_h * secs / max_secs + 0.5)
+        if secs > 0 and shown_max > 0 then
+            bar_h = math.floor(chart_h * secs / shown_max + 0.5)
             if bar_h < min_bar then bar_h = min_bar end
         end
-        local is_peak  = (secs == max_secs and max_secs > 0)
+        local is_peak  = (secs == shown_max and shown_max > 0)
         local bar_color = is_peak and Colors.activeBar() or Colors.inactiveBar()
-        local value_text = barValueText(mode, totals[i], total_secs)
+        local value_text = barValueText(mode, totals[i], total_secs, ptotals[i])
 
         -- Value label sitting directly on top of the bar. The pair is
         -- bottom-anchored inside a fixed-height cell with a BottomContainer
@@ -912,6 +941,15 @@ function M.buildHourlyChartWidget(weekday_hour_map, fonts, max_width, mode)
         if secs > max_secs then max_secs = secs end
     end
 
+    local ptotals = {}
+    for i = 1, num_bars do
+        local h0 = (i - 1) * 2
+        local n = 0
+        for wd = 1, 7 do n = n + pagesAt(weekday_hour_map, wd, h0) + pagesAt(weekday_hour_map, wd, h0 + 1) end
+        ptotals[i] = n
+    end
+    local shown, shown_max = barSeries(mode, totals, ptotals)
+
     local col_gap = Screen:scaleBySize(4)
     local col_w   = math.max(2, math.floor((max_width - (num_bars - 1) * col_gap) / num_bars))
     local chart_h = Screen:scaleBySize(M.effectiveBarHeight(VS.Opt.readHeatmapTimeOfDayBarHeight()))
@@ -927,18 +965,18 @@ function M.buildHourlyChartWidget(weekday_hour_map, fonts, max_width, mode)
     local bars_row   = HorizontalGroup:new{ align = "bottom" }
     local labels_row = HorizontalGroup:new{ align = "top" }
     for i = 1, num_bars do
-        local secs = totals[i]
+        local secs = shown[i]
         local bar_h = 0
-        if secs > 0 and max_secs > 0 then
-            bar_h = math.floor(chart_h * secs / max_secs + 0.5)
+        if secs > 0 and shown_max > 0 then
+            bar_h = math.floor(chart_h * secs / shown_max + 0.5)
             if bar_h < min_bar then bar_h = min_bar end
         end
-        local is_peak   = (secs == max_secs and max_secs > 0)
+        local is_peak   = (secs == shown_max and shown_max > 0)
         local bar_color = is_peak and Colors.activeBar() or Colors.inactiveBar()
 
         -- An empty span reads 0:00 (or 0%), not a dash.
-        local value_text = secs > 0 and barValueText(mode, secs, total_secs)
-            or (mode == "percent" and "0%" or Locale.formatDuration(0, true))
+        local value_text = secs > 0 and barValueText(mode, totals[i], total_secs, ptotals[i])
+            or (mode == "percent" and "0%" or mode == "pages" and "0" or Locale.formatDuration(0, true))
 
         table.insert(bars_row, BottomContainer:new{
             dimen = Geom:new{ w = col_w, h = chart_h + val_h },
@@ -990,6 +1028,14 @@ function M.buildWeekdayChartWidget(weekday_hour_map, fonts, max_width, mode)
         if secs > max_secs then max_secs = secs end
     end
 
+    local ptotals = {}
+    for i, wd in ipairs(order) do
+        local n = 0
+        for h = 0, 23 do n = n + pagesAt(weekday_hour_map, wd, h) end
+        ptotals[i] = n
+    end
+    local shown, shown_max = barSeries(mode, totals, ptotals)
+
     local col_gap = Screen:scaleBySize(6)
     local col_w   = math.floor((max_width - (num_bars - 1) * col_gap) / num_bars)
     -- Its own maximum bar height (Settings > Heatmap & time of day >
@@ -1007,15 +1053,15 @@ function M.buildWeekdayChartWidget(weekday_hour_map, fonts, max_width, mode)
     local bars_row   = HorizontalGroup:new{ align = "bottom" }
     local labels_row = HorizontalGroup:new{ align = "top" }
     for i, wd in ipairs(order) do
-        local secs = totals[i]
+        local secs = shown[i]
         local bar_h = 0
-        if secs > 0 and max_secs > 0 then
-            bar_h = math.floor(chart_h * secs / max_secs + 0.5)
+        if secs > 0 and shown_max > 0 then
+            bar_h = math.floor(chart_h * secs / shown_max + 0.5)
             if bar_h < min_bar then bar_h = min_bar end
         end
-        local is_peak   = (secs == max_secs and max_secs > 0)
+        local is_peak   = (secs == shown_max and shown_max > 0)
         local bar_color = is_peak and Colors.activeBar() or Colors.inactiveBar()
-        local value_text = barValueText(mode, totals[i], total_secs)
+        local value_text = barValueText(mode, totals[i], total_secs, ptotals[i])
 
         table.insert(bars_row, BottomContainer:new{
             dimen = Geom:new{ w = col_w, h = chart_h + val_h },
@@ -1582,6 +1628,9 @@ function M.Popup:init()
     if Device:isTouchDevice() then
         self.ges_events.Tap   = { GestureRange:new{ ges = "tap",   range = self.dimen } }
         self.ges_events.Swipe = { GestureRange:new{ ges = "swipe", range = self.dimen } }
+        if not self.readonly then
+            self.ges_events.Hold = { GestureRange:new{ ges = "hold", range = self.dimen } }
+        end
     end
     if Device:hasKeys() then
         self.key_events.AnyKeyPressed = { { Device.input.group.Any } }
@@ -1792,11 +1841,17 @@ end
 -- that chart's bar labels between time and percent. Each chart keeps
 -- its own choice until KOReader restarts.
 function M.Popup:_cycleBarMode(which)
+    local cur = (which == "when") and M._when_mode or M._week_mode
+    return self:_setBarMode(which, nextBarMode(cur or "time"))
+end
+
+-- Sets one chart's bar view ("time" / "pages" / "percent") and redraws.
+function M.Popup:_setBarMode(which, mode)
     local old_rect = self:_centeredRect(self.box_content)
     if which == "when" then
-        M._when_mode = nextBarMode(M._when_mode or "time")
+        M._when_mode = mode
     else
-        M._week_mode = nextBarMode(M._week_mode or "time")
+        M._week_mode = mode
     end
     self:_rebuild()
     local new_rect = self:_centeredRect(self.box_content)
@@ -1809,6 +1864,55 @@ function M.Popup:_cycleBarMode(which)
         return "ui", refresh_region
     end)
     return true
+end
+
+-- Long press on a chart's caption: a list of its views (time, pages,
+-- percent), the active one marked with a check mark.
+function M.Popup:onHold(arg, ges_ev)
+    if not ges_ev or not ges_ev.pos or self.readonly then return true end
+    local x, y = ges_ev.pos.x, ges_ev.pos.y
+    for _, zone in ipairs(self._nav_zones or {}) do
+        if zone.cycle_mode and zone.dimen
+           and x >= zone.dimen.x and x <= zone.dimen.x + zone.dimen.w
+           and y >= zone.dimen.y and y <= zone.dimen.y + zone.dimen.h then
+            self:_showBarModePicker(zone.cycle_mode)
+            return true
+        end
+    end
+    return true
+end
+
+function M.Popup:_showBarModePicker(which)
+    local ButtonDialog = require("ui/widget/buttondialog")
+    local popup = self
+    local current = ((which == "when") and M._when_mode or M._week_mode) or "time"
+    local labels = { time = _("Time"), pages = _("Pages"), percent = _("Percent") }
+    local dialog
+    local buttons = {}
+    for _i, mode in ipairs(BAR_MODES) do
+        local this_mode = mode
+        table.insert(buttons, {{
+            -- U+2713 CHECK MARK in front of the view currently in use.
+            text  = (current == this_mode and "\xe2\x9c\x93 " or "    ") .. labels[this_mode],
+            align = "left",
+            callback = function()
+                UIManager:close(dialog)
+                if this_mode ~= current then popup:_setBarMode(which, this_mode) end
+            end,
+        }})
+    end
+    dialog = ButtonDialog:new{
+        modal                 = true,
+        shrink_unneeded_width = true,
+        buttons               = buttons,
+    }
+    -- Plain "ui" refresh on close instead of ButtonDialog's flashing one.
+    dialog.onCloseWidget = function(this)
+        UIManager:setDirty(nil, function()
+            return "ui", this.movable and this.movable.dimen
+        end)
+    end
+    UIManager:show(dialog)
 end
 
 function M.Popup:onTap(arg, ges_ev)

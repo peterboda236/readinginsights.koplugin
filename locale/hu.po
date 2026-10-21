@@ -136,13 +136,13 @@ msgid "Best streak"
 msgstr "Leghosszabb széria"
 
 msgid "Days read per month"
-msgstr "Havonta olvasott napok"
+msgstr "Havi olvasott napok"
 
 msgid "Reading time per month"
 msgstr "Havi olvasási idő"
 
 msgid "Books per month"
-msgstr "Havi könyvek"
+msgstr "Havi olvasott könyvek"
 
 msgid "Unknown"
 msgstr "Ismeretlen"

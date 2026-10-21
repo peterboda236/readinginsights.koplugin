@@ -653,6 +653,11 @@ local function buildWeekNavHeader(popup_self, font_section, font_label, layout)
         end
         center_widget = tappable
         center_w = sz.w + 2 * tap_pad
+        -- Long press on the shown week's date: the week-view list.
+        table.insert(popup_self._week_hold_targets, {
+            w  = tappable,
+            fn = function() popup_self:showWeeklyViewPicker() end,
+        })
     end
 
     local remaining = layout.content_width - 2 * slot_w - center_w
@@ -1519,6 +1524,8 @@ local function isCompletedYear(year)
 end
 
 local function buildInsightsSections(popup_self, streaks, yearly_stats, year_range, monthly_data, all_time_stats, last_week_stats, last_week_daily, fonts, layout, goal_finished_count)
+    -- Long-press targets of the chart captions (view pickers).
+    popup_self._chart_hold_targets = {}
     local sections = VerticalGroup:new{ align = "left" }
 
     -- "Daily goal | Weekly goal": time read today / this calendar week against
@@ -1672,6 +1679,8 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
         -- comparison - is worked out from whichever week is shown.
         local cal_mode = VS.readWeeklyViewIsCalendar()
         popup_self._week_swipe_targets = {}
+        -- Long-press targets that flip between the two week views.
+        popup_self._week_hold_targets = {}
         local cal = cal_mode and popup_self._cal_week or nil
         local lw, week_daily
         if cal_mode then
@@ -1861,6 +1870,13 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
                     popup_self:toggleWeeklyChartMode()
                     return true
                 end
+                -- Long press: pick the view from a list.
+                if not popup_self.readonly then
+                    table.insert(popup_self._chart_hold_targets, {
+                        w  = tappable_caption,
+                        fn = function() popup_self:showWeeklyChartModePicker() end,
+                    })
+                end
                 table.insert(last_week_content, tappable_caption)
                 table.insert(last_week_content, VerticalSpan:new{ width = Size.padding.small })
                 table.insert(last_week_content, UI.padded(layout.padding_h, weekly_chart))
@@ -1879,12 +1895,13 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
                     dimen = Geom:new{ x = 0, y = 0, w = last_week_header:getSize().w, h = last_week_header:getSize().h },
                     last_week_header,
                 }
-                tappable_last_week_header.ges_events = {
-                    Tap = { GestureRange:new{ ges = "tap", range = tappable_last_week_header.dimen } },
-                }
-                function tappable_last_week_header:onTap()
-                    popup_self:toggleWeeklyChartMode()
-                    return true
+                -- A plain tap does nothing here; a long press lists the two
+                -- week views (last 7 days / current week) to choose from.
+                if not popup_self.readonly then
+                    table.insert(popup_self._week_hold_targets, {
+                        w  = tappable_last_week_header,
+                        fn = function() popup_self:showWeeklyViewPicker() end,
+                    })
                 end
             end
 
@@ -2108,6 +2125,13 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
         function tappable_chart_header:onTap()
             popup_self:cycleInsightsMode()
             return true
+        end
+        -- Long press: pick any of the four views from a list.
+        if not popup_self.readonly then
+            table.insert(popup_self._chart_hold_targets, {
+                w  = tappable_chart_header,
+                fn = function() popup_self:showInsightsModePicker() end,
+            })
         end
         -- The divider below the chart depends on what follows it:
         --   - reading goal on: its row follows with no header of its own,
@@ -3038,8 +3062,8 @@ function ReadingInsightsPopup:showFinishedBooksMenu(year)
         -- windows below the topmost modal one - without this the chooser
         -- would open behind the popup that spawned it.
         modal       = true,
-        title       = T(_("Books finished in %1"), tostring(year)),
-        title_align = "center",
+        -- Only as wide as its texts need, not the dialog's default width.
+        shrink_unneeded_width = true,
         buttons = {
             {{
                 text = _("Mark books finished"),
@@ -4015,6 +4039,27 @@ function ReadingInsightsPopup:onHold(arg, ges_ev)
         end
     end
 
+    -- Chart captions: hold opens a list of their views.
+    for _idx, t in ipairs(self._chart_hold_targets or {}) do
+        local d = t.w and t.w.dimen
+        if d and pos.x >= d.x and pos.x <= d.x + d.w
+              and pos.y >= d.y and pos.y <= d.y + d.h then
+            t.fn()
+            return true
+        end
+    end
+
+    -- Weekly section header: hold flips between "Last 7 days" and the
+    -- current-week view.
+    for _idx, t in ipairs(self._week_hold_targets or {}) do
+        local d = t.w and t.w.dimen
+        if d and pos.x >= d.x and pos.x <= d.x + d.w
+              and pos.y >= d.y and pos.y <= d.y + d.h then
+            t.fn()
+            return true
+        end
+    end
+
     -- Daily/Weekly time goal section: a hold edits that goal.
     for _idx, t in ipairs(self._timegoal_hold_targets or {}) do
         local d = t.w and t.w.dimen
@@ -4183,6 +4228,13 @@ function ReadingInsightsPopup:cycleInsightsMode()
         new_mode = VS.INSIGHTS_MODE_HOURS
     end
 
+    return self:setInsightsMode(new_mode)
+end
+
+-- Applies an insights mode (hours / pages / days / books): persists it and
+-- reloads the monthly chart for it.
+function ReadingInsightsPopup:setInsightsMode(new_mode)
+    if self.mode == new_mode then return true end
     VS.saveInsightsMode(new_mode)
     self.mode = new_mode
 
@@ -4199,6 +4251,67 @@ function ReadingInsightsPopup:cycleInsightsMode()
     UIManager:scheduleIn(0, function()
         if self._closed then return end
         self:_loadAndRebuild()
+    end)
+    return true
+end
+
+-- Shows a list dialog with one row per choice, the active one marked with a
+-- check mark (same look as the other pickers of the plugin).
+--   choices = { { value = ..., text = ... }, ... }
+function ReadingInsightsPopup:_showChoiceDialog(choices, current, on_pick)
+    local ButtonDialog = require("ui/widget/buttondialog")
+    local dialog
+    local buttons = {}
+    for _idx, c in ipairs(choices) do
+        local value = c.value
+        table.insert(buttons, {{
+            -- U+2713 CHECK MARK in front of the view currently in use.
+            text  = (current == value and "\xe2\x9c\x93 " or "    ") .. c.text,
+            align = "left",
+            callback = function()
+                UIManager:close(dialog)
+                on_pick(value)
+            end,
+        }})
+    end
+    dialog = ButtonDialog:new{
+        modal                 = true,
+        shrink_unneeded_width = true,
+        buttons               = buttons,
+    }
+    -- ButtonDialog repaints its area with a flashing "flashui" refresh when
+    -- it closes; use a plain "ui" refresh instead so choosing an item does
+    -- not flash the screen. The popup is redrawn right after by the callback.
+    dialog.onCloseWidget = function(this)
+        UIManager:setDirty(nil, function()
+            return "ui", this.movable and this.movable.dimen
+        end)
+    end
+    UIManager:show(dialog)
+end
+
+-- Long press on the monthly chart caption: choose the monthly view.
+function ReadingInsightsPopup:showInsightsModePicker()
+    local popup_self = self
+    self:_showChoiceDialog({
+        { value = VS.INSIGHTS_MODE_HOURS, text = _("Reading time per month") },
+        { value = VS.INSIGHTS_MODE_PAGES, text = _("Pages per month") },
+        { value = VS.INSIGHTS_MODE_DAYS,  text = _("Days read per month") },
+        { value = VS.INSIGHTS_MODE_BOOKS, text = _("Books per month") },
+    }, self.mode, function(mode) popup_self:setInsightsMode(mode) end)
+    return true
+end
+
+-- Long press on the weekly chart caption: choose time or pages per day.
+function ReadingInsightsPopup:showWeeklyChartModePicker()
+    local popup_self = self
+    self:_showChoiceDialog({
+        { value = VS.WEEKLY_CHART_MODE_TIME,  text = _("Reading time per day") },
+        { value = VS.WEEKLY_CHART_MODE_PAGES, text = _("Pages per day") },
+    }, VS.normalizeWeeklyChartMode(self.weekly_chart_mode), function(mode)
+        if VS.normalizeWeeklyChartMode(popup_self.weekly_chart_mode) ~= mode then
+            popup_self:toggleWeeklyChartMode()
+        end
     end)
     return true
 end
@@ -4313,6 +4426,33 @@ function ReadingInsightsPopup:onGoToCurrentWeek()
     UIManager:setDirty(self, function()
         return "ui", self.popup_frame.dimen
     end)
+    return true
+end
+
+-- Switches the weekly section between the rolling last 7 days and the
+-- current calendar week (the same setting as Settings > Week > View).
+function ReadingInsightsPopup:setWeeklyView(value)
+    if self.readonly then return true end
+    if VS.readWeeklyViewSetting() == value then return true end
+    VS.saveWeeklyViewSetting(value)
+    self.week_offset = 0
+    self._cal_week = nil
+    self:_primeCalendarWeek()
+
+    self:_buildUI()
+    UIManager:setDirty(self, function()
+        return "ui", self.popup_frame.dimen
+    end)
+    return true
+end
+
+-- Long press on the "Last 7 days" header: choose the week view from a list.
+function ReadingInsightsPopup:showWeeklyViewPicker()
+    local popup_self = self
+    self:_showChoiceDialog({
+        { value = VS.WEEKLY_VIEW_LAST7,    text = _("Last 7 days") },
+        { value = VS.WEEKLY_VIEW_CALENDAR, text = _("Current week") },
+    }, VS.readWeeklyViewSetting(), function(view) popup_self:setWeeklyView(view) end)
     return true
 end
 

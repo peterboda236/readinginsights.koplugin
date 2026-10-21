@@ -1002,9 +1002,13 @@ function M.getWeekdayHourReadingData(start_t, end_t, shared_conn)
     end
 
     local data = {}
+    -- data.pages[wd][h] = pages read in that weekday/hour slot (the pages
+    -- view of the heatmap's bar charts); rows 1..7 stay seconds only.
+    data.pages = {}
     for wd = 1, 7 do
         data[wd] = {}
-        for h = 0, 23 do data[wd][h] = 0 end
+        data.pages[wd] = {}
+        for h = 0, 23 do data[wd][h] = 0; data.pages[wd][h] = 0 end
     end
 
     -- Whether the query actually ran (vs. a transient DB failure that leaves
@@ -1015,7 +1019,7 @@ function M.getWeekdayHourReadingData(start_t, end_t, shared_conn)
 
     data = StatsDb.withShared(shared_conn, data, function(conn)
         local sql = string.format([[
-            SELECT dow, hour, SUM(dur) AS duration
+            SELECT dow, hour, SUM(dur) AS duration, COUNT(*) AS pages
             FROM (
                 SELECT id_book, page,
                        strftime('%%w', start_time, 'unixepoch', 'localtime') AS dow,
@@ -1035,6 +1039,7 @@ function M.getWeekdayHourReadingData(start_t, end_t, shared_conn)
                 local wd = ((dow_sun0 + 6) % 7) + 1     -- 1=Mon..7=Sun
                 local hour = tonumber(row[2]) or 0
                 data[wd][hour] = tonumber(row[3]) or 0
+                data.pages[wd][hour] = tonumber(row[4]) or 0
             end
         end)
         ran = did_run and true or false
