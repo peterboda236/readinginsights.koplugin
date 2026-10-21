@@ -77,6 +77,7 @@ local Locale, Colors, Fonts, PopupUtil, VS, Cache, UI, Trend, Heatmap, BookList,
     deps.VS, deps.Cache, deps.UI, deps.Trend, deps.Heatmap, deps.BookList,
     deps.Data, deps.Manual, deps.Achievements, deps.AchievementsView, deps.Prefs, deps.Streak,
     deps.Records, deps.YearShelf
+local DateUtil = deps.DateUtil
 
 -- true: today's bar in the weekly chart is black. false: all bars gray.
 local WEEKLY_CHART_HIGHLIGHT_TODAY = true
@@ -115,7 +116,6 @@ end
 -- files instead of each keeping its own copy.
 local _            = Locale._
 local N_           = Locale.N_
-local getLangBase  = Locale.getLangBase
 local formatNumber = Locale.formatNumber
 local formatCount  = Locale.formatCount
 
@@ -132,15 +132,6 @@ end
 local MONTH_NAMES_SHORT = {
     _("Jan"), _("Feb"), _("Mar"), _("Apr"), _("May"), _("Jun"),
     _("Jul"), _("Aug"), _("Sep"), _("Oct"), _("Nov"), _("Dec"),
-}
--- Hungarian month abbreviations for the monthly bar chart only: lower case
--- ("jan.", "febr.", ...), the way they are normally written in running
--- text. A lookup table rather than string.lower(), which can't lower-case
--- accented capitals like "Á". Everywhere else the shared, capitalised
--- _("Jan") ... _("Dec") strings stay as they were.
-local MONTH_NAMES_SHORT_HU_LC = {
-    "jan.", "febr.", "márc.", "ápr.", "máj.", "jún.",
-    "júl.", "aug.", "szept.", "okt.", "nov.", "dec.",
 }
 local ReadingInsightsPopup
 
@@ -417,19 +408,12 @@ local function buildYearHeader(popup_self, font_section, font_label, layout, yea
     }
 end
 
--- Short month names for the week range, Hungarian ones lower-case with their
--- abbreviation dot ("okt."), the usual form inside a date range. Other
--- languages use the translated short month name from the translation files.
-local HU_MONTHS_LOWER = { "jan.", "febr.", "márc.", "ápr.", "máj.", "jún.",
-                          "júl.", "aug.", "szept.", "okt.", "nov.", "dec." }
-local MONTH_KEYS = { "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                     "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" }
-
+-- Short month name for the week range, always with its abbreviation dot
+-- ("okt.", "Oct."), the usual form inside a date range. The name itself is
+-- the translated one (Locale.shortMonthName), lower-cased in the languages
+-- that opted in (Hungarian).
 local function weekMonthLabel(m)
-    if Locale.getLangBase and Locale.getLangBase() == "hu" then
-        return HU_MONTHS_LOWER[m]
-    end
-    local name = _(MONTH_KEYS[m])
+    local name = Locale.shortMonthName(m)
     if name:sub(-1) ~= "." then name = name .. "." end
     return name
 end
@@ -816,8 +800,7 @@ local function daysInMonthOf(month_str)
     local y, mo = tostring(month_str or ""):match("^(%d+)%-(%d+)$")
     y, mo = tonumber(y), tonumber(mo)
     if not y or not mo then return 31 end
-    -- Day 0 of the next month is the last day of this one.
-    return tonumber(os.date("%d", os.time{ year = y, month = mo + 1, day = 0, hour = 12 })) or 31
+    return DateUtil.daysInMonth(y, mo)
 end
 
 -- True for a month that hasn't happened yet in the year being shown: later
@@ -1096,17 +1079,10 @@ local function buildMonthlyLineChart(popup_self, monthly_data, layout, fonts)
         highlight[i] = (popup_self.selected_year == current_year) and (m.month == current_month)
         if highlight[i] then current_idx = i end
 
-        local month_label_text = m.label
-        if getLangBase() == "hu" then
-            local mn = tonumber(tostring(m.month):match("%-(%d%d)$"))
-            month_label_text = MONTH_NAMES_SHORT_HU_LC[mn] or m.label
-        end
-        axis_strs[i] = month_label_text
+        local mn = tonumber(tostring(m.month):match("%-(%d%d)$"))
+        axis_strs[i] = Locale.shortMonthName(mn) or m.label
 
-        local month_year_label = m.label_full .. " " .. popup_self.selected_year
-        if getLangBase() == "hu" then
-            month_year_label = tostring(popup_self.selected_year) .. ". " .. m.label_full
-        end
+        local month_year_label = Locale.formatMonthYear(popup_self.selected_year, mn)
         local month = m.month
         on_tap[i] = function() popup_self:showBooksForMonth(month, month_year_label) end
     end
@@ -1246,12 +1222,10 @@ local function buildMonthlyChart(popup_self, monthly_data, layout, fonts)
                 bar_container,
             }
             local month_data       = m
-            local month_year_label = m.label_full .. " " .. popup_self.selected_year
-            if getLangBase() == "hu" then
-                -- Hungarian: "2026. január" (year first, lower-case month),
-                -- matching the calendar headers.
-                month_year_label = tostring(popup_self.selected_year) .. ". " .. m.label_full
-            end
+            local month_num        = tonumber(tostring(m.month):match("%-(%d%d)$"))
+            -- Same heading as the calendars ("2026. január" with a year-first
+            -- date format, "January 2026" otherwise).
+            local month_year_label = Locale.formatMonthYear(popup_self.selected_year, month_num)
             if not future then
                 tappable_bar.ges_events = {
                     Tap  = { GestureRange:new{ ges = "tap",  range = tappable_bar.dimen } },
@@ -1267,11 +1241,7 @@ local function buildMonthlyChart(popup_self, monthly_data, layout, fonts)
 
             table.insert(bars_row, tappable_bar)
 
-            local month_label_text = m.label
-            if getLangBase() == "hu" then
-                local mn = tonumber(tostring(m.month):match("%-(%d%d)$"))
-                month_label_text = MONTH_NAMES_SHORT_HU_LC[mn] or m.label
-            end
+            local month_label_text = Locale.shortMonthName(month_num) or m.label
             local month_label_widget = TextWidget:new{ text = month_label_text, face = font_small, fgcolor = Colors.small() }
             table.insert(month_labels_row, CenterContainer:new{
                 dimen = Geom:new{ w = bar_width, h = month_label_widget:getSize().h },

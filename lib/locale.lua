@@ -382,6 +382,48 @@ if _("range months lowercase") == "yes" then
     end
 end
 
+-- Short month name (1..12) as every chart axis, shelf and date-range label
+-- shows it: the translated "Jan".."Dec", lower-cased where the language opted
+-- in above (hu: "jan.", "szept."). nil outside 1..12.
+local function shortMonthName(m)
+    return MONTH_NAMES_SHORT_FOR_DATE[m]
+end
+
+-- Full month names, from the same msgids the views already translate. The
+-- trailing space in "May " is the existing msgid (kept so the .po files keep
+-- matching); the translations don't carry it.
+local MONTH_NAMES_FULL_FOR_DATE = {
+    _("January"), _("February"), _("March"), _("April"), _("May "), _("June"),
+    _("July"), _("August"), _("September"), _("October"), _("November"), _("December"),
+}
+
+-- Month-and-year heading, e.g. "January 2026"; with a year-first date format
+-- (Settings > Date & time > "Date format") the year leads, the way the dates
+-- themselves are written: "2026. január" (YYYY. MM. DD.) or "2026 January"
+-- (YYYY-MM-DD). The default format follows the language (see
+-- defaultDateFormat), so nobody's heading changes until they pick a format.
+-- Used by the calendar headers and the monthly charts' book lists, so they
+-- all agree.
+local function formatMonthYear(year, month)
+    local name = MONTH_NAMES_FULL_FOR_DATE[month] or tostring(month)
+    local f = readDateFormatSetting()
+    if f == DATE_FORMAT_YMD_DOT then
+        return string.format("%04d. %s", year, name)
+    elseif f == DATE_FORMAT_YMD_DASH then
+        return string.format("%04d %s", year, name)
+    end
+    return name .. " " .. tostring(year)
+end
+
+-- A day of the month in a short label ("22"): Hungarian writes the ordinal
+-- with a closing dot ("22."), as in "szept. 22.".
+local function formatDayOfMonth(d)
+    if getLangBase() == "hu" then
+        return tostring(d) .. "."
+    end
+    return tostring(d)
+end
+
 -- Compact "Mon D" day-and-month label (e.g. "Sep 22", Hungarian "szept. 22."),
 -- no leading zeros and no year - for places that list many dates in a row
 -- (e.g. the streak history bar list) where a full formatDate() would take up
@@ -395,11 +437,7 @@ local function formatShortMonthDay(date_str)
     if not y then return s end
     m, d = tonumber(m), tonumber(d)
     local mon = MONTH_NAMES_SHORT_FOR_DATE[m] or tostring(m)
-    -- Hungarian writes the ordinal day with a closing dot: "szept. 22."
-    if getLangBase() == "hu" then
-        return mon .. " " .. tostring(d) .. "."
-    end
-    return mon .. " " .. tostring(d)
+    return mon .. " " .. formatDayOfMonth(d)
 end
 
 -- The reverse, for the one place a date is typed in rather than shown (the
@@ -601,6 +639,9 @@ return {
     formatDate                 = formatDate,
     formatDateFromTS           = formatDateFromTS,
     formatShortMonthDay        = formatShortMonthDay,
+    formatDayOfMonth           = formatDayOfMonth,
+    shortMonthName             = shortMonthName,
+    formatMonthYear            = formatMonthYear,
     shortMonthNames            = MONTH_NAMES_SHORT_FOR_DATE,
     lowerFirst                 = lowerFirst,
     formatDateSample           = formatDateSample,

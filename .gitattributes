@@ -1,5 +1,6 @@
 # Keep dev-only files out of `git archive` (release zips)
 tests/          export-ignore
+tools/          export-ignore
 .github/        export-ignore
 *.pot           export-ignore
 .gitattributes  export-ignore

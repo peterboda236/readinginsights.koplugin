@@ -69,6 +69,7 @@ local Locale, Colors, Fonts, UI, Data, Prefs, VS, BookList =
 -- Frame, rounded corners and shadow of the covers (Settings > Appearance >
 -- Covers), the same look as in the Book info popup.
 local CoverFrame = deps.CoverFrame
+local DateUtil = deps.DateUtil
 -- Cover loading for the calendar's day cells: the file of a book (by its
 -- checksum / title) and the cover read from it - the same two the Book info
 -- popup uses for a row of a book list.
@@ -77,7 +78,6 @@ local T = require("ffi/util").template
 
 local _            = Locale._
 local N_           = Locale.N_
-local getLangBase  = Locale.getLangBase
 local formatCount  = Locale.formatCount
 
 -- Format a YYYY-MM-DD string in the configured date format (Settings ▸
@@ -88,19 +88,6 @@ local function formatDateForDisplay(date_str, no_trailing_dot)
     if not date_str then return "?" end
     return Locale.formatDate(date_str, no_trailing_dot)
 end
-
-local MONTH_NAMES_FULL = {
-    _("January"), _("February"), _("March"), _("April"), _("May "), _("June"),
-    _("July"), _("August"), _("September"), _("October"), _("November"), _("December"),
-}
--- Hungarian month title needs "2026. augusztus" (year, dot, lowercase month),
--- not the "August 2026" pattern MONTH_NAMES_FULL gives elsewhere - mirrors
--- MONTH_FULL_HU_LC in book_calendar_view.lua so both calendars' headers read
--- the same way in Hungarian.
-local MONTH_NAMES_FULL_HU_LC = {
-    "január", "február", "március", "április", "május", "június",
-    "július", "augusztus", "szeptember", "október", "november", "december",
-}
 
 -- Font faces for this popup's four text roles, sourced from the shared Fonts
 -- settings module (see fonts.lua) so they're user-configurable via the "Fonts"
@@ -159,7 +146,7 @@ local function streakMonthShape(year, month, week_start_wd)
     local first_ts    = os.time{ year = year, month = month, day = 1, hour = 12 }
     local first_wd    = tonumber(os.date("%w", first_ts))
     local lead_blanks = (first_wd - week_start_wd + 7) % 7
-    local days_in_month = tonumber(os.date("%d", os.time{ year = year, month = month + 1, day = 0, hour = 12 }))
+    local days_in_month = DateUtil.daysInMonth(year, month)
     return days_in_month, lead_blanks
 end
 
@@ -957,8 +944,7 @@ local function weekLabel(start)
     local last = addDays(start, 6)
     local first_s = Locale.formatShortMonthDay(start)
     if start:sub(1, 7) == last:sub(1, 7) then
-        local last_s = tostring(tonumber(last:sub(9, 10)))
-        if getLangBase() == "hu" then last_s = last_s .. "." end
+        local last_s = Locale.formatDayOfMonth(tonumber(last:sub(9, 10)))
         return first_s .. " \xE2\x80\x93 " .. last_s
     end
     return first_s .. " \xE2\x80\x93 " .. Locale.formatShortMonthDay(last)
@@ -1979,10 +1965,7 @@ function StreakDatePopup:_rebuild()
         local week_col_w, week_prefix_w = weekColumnMetrics(show_week, fonts.small)
         local cell_w = math.floor((cont_w - week_prefix_w) / 7)
         local mo   = self.months[self.month_index]
-        local is_hu = (getLangBase() == "hu")
-        local title_str = is_hu
-            and string.format("%04d. %s", mo.year, MONTH_NAMES_FULL_HU_LC[mo.month])
-            or  (MONTH_NAMES_FULL[mo.month] .. " " .. tostring(mo.year))
+        local title_str = Locale.formatMonthYear(mo.year, mo.month)
         local prev_available = self.month_index > 1
         -- Not closed at the end: the calendar pages on into the future
         -- (months are added as needed, see _goToMonth), up to the last year

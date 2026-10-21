@@ -86,15 +86,12 @@ local function formatDaysLeftSuffix(days_left)
     )
 end
 
--- Weekday names (os.date("*t").wday: 1=Sunday .. 7=Saturday) a "kezdve" /
--- "várható befejezés" felugró dátumsorokhoz. Nem magyar nyelveknél _()-n
--- keresztül fordítva; magyarnál a lenti kisbetűs alakok kellenek, mert a
--- teljes dátum után a nap neve kisbetűvel áll ("2026. 06. 24., szerda").
+-- Weekday names (os.date("*t").wday: 1=Sunday .. 7=Saturday) for the
+-- "started" / "expected finish" popup date lines, translated through _().
+-- Hungarian puts the weekday after the full date and in lower case
+-- ("2026. 06. 24., szerda"), so it lower-cases the translated name.
 local WEEKDAY_NAMES = {
     "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday",
-}
-local WEEKDAY_NAMES_HU_LC = {
-    "vasárnap", "hétfő", "kedd", "szerda", "csütörtök", "péntek", "szombat",
 }
 
 local function formatEventDateTime(timestamp, always_full)
@@ -135,7 +132,7 @@ local function formatEventDateTime(timestamp, always_full)
     if is_hu then
         -- Hungarian: "2026. 10. 05., hétfő" - formatDate already writes the
         -- spaced "2026. 10. 05." form, so only the comma and weekday follow.
-        return date_str .. ", " .. WEEKDAY_NAMES_HU_LC[t.wday]
+        return date_str .. ", " .. Locale.lowerFirst(_(WEEKDAY_NAMES[t.wday]))
     end
     return _(WEEKDAY_NAMES[t.wday]) .. ", " .. date_str
 end

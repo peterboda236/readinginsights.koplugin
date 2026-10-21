@@ -46,9 +46,9 @@ local deps = ...
 local Locale, Colors, Fonts, Prefs, BookProgress, UI, CalendarData, VS =
     deps.Locale, deps.Colors, deps.Fonts, deps.Prefs, deps.BookProgress,
     deps.UI, deps.CalendarData, deps.VS
+local DateUtil = deps.DateUtil
 local _            = Locale._
 local N_           = Locale.N_
-local getLangBase  = Locale.getLangBase
 local formatCount  = Locale.formatCount
 
 -- Weekday / month name tables for the calendar header and weekday row.
@@ -59,14 +59,6 @@ local formatCount  = Locale.formatCount
 
 local WEEKDAY_SHORT = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" }
 
-local MONTH_FULL = {
-    "January", "February", "March", "April", "May ", "June",
-    "July", "August", "September", "October", "November", "December",
-}
-local MONTH_FULL_HU_LC = {
-    "január", "február", "március", "április", "május", "június",
-    "július", "augusztus", "szeptember", "október", "november", "december",
-}
 
 -- ---------------------------------------------------------------------
 -- Book-calendar cell content setting (Settings > Book
@@ -351,7 +343,7 @@ local function buildBookCalendarGrid(daily_map, year, month, day_font, small_fon
     local first_ts = os.time{ year = year, month = month, day = 1, hour = 12 }
     local first_wd = tonumber(os.date("%w", first_ts)) -- 0=Sun..6=Sat
     local lead_blanks = (first_wd - week_start_wd + 7) % 7
-    local days_in_month = tonumber(os.date("%d", os.time{ year = year, month = month + 1, day = 0, hour = 12 }))
+    local days_in_month = DateUtil.daysInMonth(year, month)
 
     local today_str = os.date("%Y-%m-%d")
 
@@ -765,10 +757,7 @@ function BookCalendarPopup:_rebuild()
     local screen_h = Screen:getHeight()
     local inner_padding = Size.padding.large
 
-    local is_hu = (getLangBase() == "hu")
-    local title_str = is_hu
-        and string.format("%04d. %s", self.year, MONTH_FULL_HU_LC[self.month])
-        or  (_(MONTH_FULL[self.month]) .. " " .. tostring(self.year))
+    local title_str = Locale.formatMonthYear(self.year, self.month)
 
     -- Both arrows are always shown: the calendar pages back into the past
     -- and forward into the future without limit (within what os.time can

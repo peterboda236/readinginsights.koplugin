@@ -198,6 +198,8 @@ end
 -- an existing one receives. Load order is still bottom-up: nothing is
 -- passed before it exists.
 local Locale = loadModule("lib/locale.lua", { PluginUtil = PluginUtil })
+-- Pure calendar arithmetic (days in a month), shared by the views below.
+local DateUtil = loadModule("lib/dateutil.lua")
 local _ = Locale._
 local Colors = loadModule("lib/colors.lua", { Locale = Locale, PluginUtil = PluginUtil, Prefs = Prefs })
 local Fonts  = loadModule("lib/fonts.lua",  { Locale = Locale, PluginUtil = PluginUtil, Prefs = Prefs })
@@ -272,7 +274,8 @@ local RecordsData = loadModule("lib/records_data.lua", { StatsDb = StatsDb })
 -- insights view so its reading-goal section can show the earned count and
 -- open the list.
 local Achievements = loadModule("lib/achievements.lua",
-    { StatsDb = StatsDb, RecordsData = RecordsData, Data = InsightsData, Locale = Locale })
+    { StatsDb = StatsDb, RecordsData = RecordsData, Data = InsightsData, Locale = Locale,
+      DateUtil = DateUtil })
 local AchievementsView = loadModule("views/achievements_view.lua",
     { Achievements = Achievements, Locale = Locale, ListWidget = ListWidget })
 
@@ -292,7 +295,7 @@ local StreakCalendar = loadModule("views/streak_calendar_view.lua", {
     Locale = Locale, Colors = Colors, Fonts = Fonts, UI = UI,
     Data = InsightsData, Prefs = Prefs, VS = ViewSettings,
     BookList = BookList, BookInfoData = BookInfoData, Ratings = Ratings,
-    CoverFrame = CoverFrame,
+    CoverFrame = CoverFrame, DateUtil = DateUtil,
 })
 
 -- Records: the queries and their cache (lib/records_data.lua, loaded above
@@ -334,11 +337,12 @@ local Insights = loadModule("views/insights_view.lua", {
     Trend = Trend, Heatmap = Heatmap, BookList = BookList, Data = InsightsData,
     Manual = ManualBooks, Achievements = Achievements, AchievementsView = AchievementsView,
     Prefs = Prefs, Streak = StreakCalendar, Records = Records,
-    YearShelf = YearShelf,
+    YearShelf = YearShelf, DateUtil = DateUtil,
 })
 local BookCalendar = loadModule("views/book_calendar_view.lua", {
     Locale = Locale, Colors = Colors, Fonts = Fonts, Prefs = Prefs, VS = ViewSettings,
     BookProgress = BookProgress, UI = UI, CalendarData = BookCalendarData,
+    DateUtil = DateUtil,
 })
 local StatsPopup = loadModule("views/book_stats_view.lua", {
     Locale = Locale, Colors = Colors, Fonts = Fonts, Prefs = Prefs,

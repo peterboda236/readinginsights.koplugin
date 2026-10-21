@@ -42,6 +42,7 @@ local logger      = require("logger")
 local deps = ...
 local StatsDb, RecordsData, Data, Locale =
     deps.StatsDb, deps.RecordsData, deps.Data, deps.Locale
+local DateUtil = deps.DateUtil
 local _ = Locale._
 
 local M = {}
@@ -424,12 +425,7 @@ end
 -- Lua helpers used for evaluation (operating on the set of distinct days)
 -- ---------------------------------------------------------------------
 
--- Number of days in a given month (day 0 of the next month = the last
--- day of this month).
-local function daysInMonth(y, mo)
-    local t = os.time({ year = y, month = mo + 1, day = 0, hour = 12 })
-    return tonumber(os.date("%d", t)) or 31
-end
+local daysInMonth = DateUtil.daysInMonth
 
 -- Whether there's a calendar month with reading on EVERY one of its days.
 local function anyFullMonth(day_set, months)

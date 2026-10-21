@@ -569,10 +569,44 @@ function M.calculateStreaks(shared_conn)
     return result
 end
 
-function M.getMonthlyReadingDays(year, shared_conn)
+-- ---------------------------------------------------------------------------
+-- Monthly series (days / hours / pages / books per month of one year)
+-- ---------------------------------------------------------------------------
+--
+-- The four getters below share one frame, kept here: the per-minute cache,
+-- the "up to yesterday" base aggregate (computed once a day, cached), a cheap
+-- live read of today, the merge of the two into the 12-entry month array, and
+-- the fall-back to the last known good result when the DB read fails. What
+-- differs per getter is only its spec:
+--
+--   prefix      cache-key prefix ("days:", "hours:", "pages:", "books:").
+--               It is part of the persisted stale cache's keys and of
+--               insights_settings' mode prefixes, so it must not change.
+--   loadBase    (conn, year, today, current_month) -> base. Everything before
+--               today; cached for the day.
+--   loadToday   (conn, today, base) -> today's contribution. Each getter keeps
+--               its own SQL, since the fastest form differs per query (see
+--               the notes at the hours and pages ones).
+--   emptyBase   () -> a base that means "no data", for when the DB read fails
+--               and there is nothing better cached.
+--   emptyToday  today's contribution in that case.
+--   toEntry     (base, today, is_current_month, year_month) -> the mode's
+--               fields of one month's entry (month / label / label_full are
+--               added by buildMonthlyArray).
+
+-- Reads "YYYY-MM, value" rows of `sql` into { ["YYYY-MM"] = number }.
+local function readMonthMap(conn, sql)
+    local map = {}
+    StatsDb.withStatement(conn, sql, function(stmt)
+        for row in stmt:rows() do map[row[1]] = tonumber(row[2]) or 0 end
+    end)
+    return map
+end
+
+local function monthlyAggregate(spec, year, shared_conn)
     local today         = Cache.todayDateStr()
-    local key           = "days:" .. year .. ":" .. today
-    local base_key      = "days:" .. year
+    local key           = spec.prefix .. year .. ":" .. today
+    local base_key      = spec.prefix .. year
     local current_month = today:sub(1, 7)
     local minute        = Cache.currentMinute()
 
@@ -585,43 +619,15 @@ function M.getMonthlyReadingDays(year, shared_conn)
     local cached_base = Cache.getCachedBase(Cache._monthly_base_cache, base_key, today)
 
     -- One connection covers both the (rare, once/day) base recompute and the
-    -- (frequent) cheap today-only check.
+    -- (frequent) cheap today-only read.
     local merged = StatsDb.withShared(shared_conn, nil, function(conn)
-        local base = cached_base
-        if not base then
-            local year_str = tostring(year)
-            local sql = string.format([[
-                SELECT strftime('%%Y-%%m', start_time, 'unixepoch', 'localtime') AS month,
-                       COUNT(DISTINCT date(start_time, 'unixepoch', 'localtime')) AS days_read
-                FROM page_stat
-                WHERE strftime('%%Y', start_time, 'unixepoch', 'localtime') = '%s'
-                  AND date(start_time, 'unixepoch', 'localtime') < '%s'
-                GROUP BY month
-                ORDER BY month ASC
-            ]], year_str, today)
-
-            base = {}
-            StatsDb.withStatement(conn, sql, function(stmt)
-                for row in stmt:rows() do base[row[1]] = tonumber(row[2]) or 0 end
-            end)
-        end
-
-        local today_has_activity = false
-        local day_lo, day_hi = M.dayBounds(today)
-        StatsDb.withStatement(conn, string.format([[
-            SELECT 1 FROM page_stat
-            WHERE start_time >= %d AND start_time < %d
-            LIMIT 1
-        ]], day_lo, day_hi), function(stmt)
-            for _ in stmt:rows() do today_has_activity = true end
-        end)
-
-        return { base = base, today_has_activity = today_has_activity }
+        local base = cached_base or spec.loadBase(conn, year, today, current_month)
+        return { base = base, today = spec.loadToday(conn, today, base) }
     end)
     if not merged then
         local known_good = Cache.bestKnownFullResult(Cache._monthly_cache, key, Cache._stale_monthly, base_key .. ":")
         if known_good then return known_good end
-        merged = { base = cached_base or {}, today_has_activity = false }
+        merged = { base = cached_base or spec.emptyBase(), today = spec.emptyToday }
     end
 
     if Cache.ENABLE_CACHE and not cached_base then
@@ -629,56 +635,76 @@ function M.getMonthlyReadingDays(year, shared_conn)
     end
 
     local months = buildMonthlyArray(year, function(year_month)
-        local days = tonumber(merged.base[year_month]) or 0
-        if merged.today_has_activity and year_month == current_month then
-            days = days + 1
-        end
-        return { days = days }
+        return spec.toEntry(merged.base, merged.today, year_month == current_month, year_month)
     end)
 
     Cache.setMinuteCache(Cache._monthly_cache, Cache._stale_monthly, key, key .. ":minute", minute, months, base_key .. ":")
     return months
 end
 
-function M.getMonthlyReadingHours(year, shared_conn)
-    local today         = Cache.todayDateStr()
-    local key           = "hours:" .. year .. ":" .. today
-    local base_key      = "hours:" .. year
-    local current_month = today:sub(1, 7)
-    local minute        = Cache.currentMinute()
-
-    local cached_val = Cache.getMinuteCache(Cache._monthly_cache, key, key .. ":minute", minute)
-    if cached_val then
-        return cached_val
-    end
-
-    local cached_base = Cache.getCachedBase(Cache._monthly_base_cache, base_key, today)
-
-    local merged = StatsDb.withShared(shared_conn, nil, function(conn)
-        local base = cached_base
-        if not base then
-            local year_str = tostring(year)
-            local sql = string.format([[
-                SELECT dates AS month,
-                       SUM(sum_duration) AS sum_duration
-                FROM (
-                    SELECT strftime('%%Y-%%m', start_time, 'unixepoch', 'localtime') AS dates,
-                           sum(duration) AS sum_duration
-                    FROM page_stat
-                    WHERE strftime('%%Y', start_time, 'unixepoch', 'localtime') = '%s'
-                      AND date(start_time, 'unixepoch', 'localtime') < '%s'
-                    GROUP BY id_book, page, dates
-                )
-                GROUP BY dates
-                ORDER BY dates ASC
-            ]], year_str, today)
-
-            base = {}
-            StatsDb.withStatement(conn, sql, function(stmt)
-                for row in stmt:rows() do base[row[1]] = tonumber(row[2]) or 0 end
-            end)
+local DAYS_SPEC = {
+    prefix     = "days:",
+    emptyBase  = function() return {} end,
+    emptyToday = false,
+    loadBase = function(conn, year, today)
+        return readMonthMap(conn, string.format([[
+            SELECT strftime('%%Y-%%m', start_time, 'unixepoch', 'localtime') AS month,
+                   COUNT(DISTINCT date(start_time, 'unixepoch', 'localtime')) AS days_read
+            FROM page_stat
+            WHERE strftime('%%Y', start_time, 'unixepoch', 'localtime') = '%s'
+              AND date(start_time, 'unixepoch', 'localtime') < '%s'
+            GROUP BY month
+            ORDER BY month ASC
+        ]], tostring(year), today))
+    end,
+    -- Whether anything was read today (a day counts once, however much).
+    loadToday = function(conn, today)
+        local has_activity = false
+        local day_lo, day_hi = M.dayBounds(today)
+        StatsDb.withStatement(conn, string.format([[
+            SELECT 1 FROM page_stat
+            WHERE start_time >= %d AND start_time < %d
+            LIMIT 1
+        ]], day_lo, day_hi), function(stmt)
+            for _ in stmt:rows() do has_activity = true end
+        end)
+        return has_activity
+    end,
+    toEntry = function(base, has_activity, is_current, year_month)
+        local days = tonumber(base[year_month]) or 0
+        if has_activity and is_current then
+            days = days + 1
         end
+        return { days = days }
+    end,
+}
 
+function M.getMonthlyReadingDays(year, shared_conn)
+    return monthlyAggregate(DAYS_SPEC, year, shared_conn)
+end
+
+local HOURS_SPEC = {
+    prefix     = "hours:",
+    emptyBase  = function() return {} end,
+    emptyToday = 0,
+    loadBase = function(conn, year, today)
+        return readMonthMap(conn, string.format([[
+            SELECT dates AS month,
+                   SUM(sum_duration) AS sum_duration
+            FROM (
+                SELECT strftime('%%Y-%%m', start_time, 'unixepoch', 'localtime') AS dates,
+                       sum(duration) AS sum_duration
+                FROM page_stat
+                WHERE strftime('%%Y', start_time, 'unixepoch', 'localtime') = '%s'
+                  AND date(start_time, 'unixepoch', 'localtime') < '%s'
+                GROUP BY id_book, page, dates
+            )
+            GROUP BY dates
+            ORDER BY dates ASC
+        ]], tostring(year), today))
+    end,
+    -- Today's seconds, de-duplicated per book and page.
+    loadToday = function(conn, today)
         local today_seconds = 0
         -- Left as a date() filter on purpose: with a start_time range
         -- SQLite reorders page_stat's internal join and scans the
@@ -695,23 +721,12 @@ function M.getMonthlyReadingHours(year, shared_conn)
                 today_seconds = today_seconds + (tonumber(row[3]) or 0)
             end
         end)
-
-        return { base = base, today_seconds = today_seconds }
-    end)
-    if not merged then
-        local known_good = Cache.bestKnownFullResult(Cache._monthly_cache, key, Cache._stale_monthly, base_key .. ":")
-        if known_good then return known_good end
-        merged = { base = cached_base or {}, today_seconds = 0 }
-    end
-
-    if Cache.ENABLE_CACHE and not cached_base then
-        Cache._monthly_base_cache[base_key] = Cache.makeCachedBase(today, merged.base)
-    end
-
-    local months = buildMonthlyArray(year, function(year_month)
-        local seconds_raw = tonumber(merged.base[year_month]) or 0
-        if year_month == current_month then
-            seconds_raw = seconds_raw + merged.today_seconds
+        return today_seconds
+    end,
+    toEntry = function(base, today_seconds, is_current, year_month)
+        local seconds_raw = tonumber(base[year_month]) or 0
+        if is_current then
+            seconds_raw = seconds_raw + today_seconds
         end
         local hours = seconds_raw / 3600.0
         if hours >= 1 then
@@ -720,54 +735,33 @@ function M.getMonthlyReadingHours(year, shared_conn)
             hours = (math.floor(hours * 10)) / 10
         end
         return { hours = hours, seconds = math.floor(seconds_raw + 0.5) }
-    end)
+    end,
+}
 
-    Cache.setMinuteCache(Cache._monthly_cache, Cache._stale_monthly, key, key .. ":minute", minute, months, base_key .. ":")
-    return months
+function M.getMonthlyReadingHours(year, shared_conn)
+    return monthlyAggregate(HOURS_SPEC, year, shared_conn)
 end
 
--- Pages read per month. A page counts once per book, page and day (the same
--- de-duplication as getYearlyStats, so the twelve months add up to the yearly
--- pages figure). Same base-up-to-yesterday + live-today structure as the
--- other monthly getters.
-function M.getMonthlyReadingPages(year, shared_conn)
-    local today         = Cache.todayDateStr()
-    local key           = "pages:" .. year .. ":" .. today
-    local base_key      = "pages:" .. year
-    local current_month = today:sub(1, 7)
-    local minute        = Cache.currentMinute()
-
-    local cached_val = Cache.getMinuteCache(Cache._monthly_cache, key, key .. ":minute", minute)
-    if cached_val then
-        return cached_val
-    end
-
-    local cached_base = Cache.getCachedBase(Cache._monthly_base_cache, base_key, today)
-
-    local merged = StatsDb.withShared(shared_conn, nil, function(conn)
-        local base = cached_base
-        if not base then
-            local year_str = tostring(year)
-            local sql = string.format([[
-                SELECT month, COUNT(*) AS pages_read
-                FROM (
-                    SELECT strftime('%%Y-%%m', start_time, 'unixepoch', 'localtime') AS month,
-                           date(start_time, 'unixepoch', 'localtime') AS day
-                    FROM page_stat
-                    WHERE strftime('%%Y', start_time, 'unixepoch', 'localtime') = '%s'
-                      AND date(start_time, 'unixepoch', 'localtime') < '%s'
-                    GROUP BY id_book, page, day
-                )
-                GROUP BY month
-                ORDER BY month ASC
-            ]], year_str, today)
-
-            base = {}
-            StatsDb.withStatement(conn, sql, function(stmt)
-                for row in stmt:rows() do base[row[1]] = tonumber(row[2]) or 0 end
-            end)
-        end
-
+local PAGES_SPEC = {
+    prefix     = "pages:",
+    emptyBase  = function() return {} end,
+    emptyToday = 0,
+    loadBase = function(conn, year, today)
+        return readMonthMap(conn, string.format([[
+            SELECT month, COUNT(*) AS pages_read
+            FROM (
+                SELECT strftime('%%Y-%%m', start_time, 'unixepoch', 'localtime') AS month,
+                       date(start_time, 'unixepoch', 'localtime') AS day
+                FROM page_stat
+                WHERE strftime('%%Y', start_time, 'unixepoch', 'localtime') = '%s'
+                  AND date(start_time, 'unixepoch', 'localtime') < '%s'
+                GROUP BY id_book, page, day
+            )
+            GROUP BY month
+            ORDER BY month ASC
+        ]], tostring(year), today))
+    end,
+    loadToday = function(conn, today)
         -- date() filter on purpose, like the other today-only queries here
         -- (see the note in getYearlyStats).
         local today_pages = 0
@@ -779,29 +773,22 @@ function M.getMonthlyReadingPages(year, shared_conn)
         ]], today), function(stmt)
             for _row in stmt:rows() do today_pages = today_pages + 1 end
         end)
-
-        return { base = base, today_pages = today_pages }
-    end)
-    if not merged then
-        local known_good = Cache.bestKnownFullResult(Cache._monthly_cache, key, Cache._stale_monthly, base_key .. ":")
-        if known_good then return known_good end
-        merged = { base = cached_base or {}, today_pages = 0 }
-    end
-
-    if Cache.ENABLE_CACHE and not cached_base then
-        Cache._monthly_base_cache[base_key] = Cache.makeCachedBase(today, merged.base)
-    end
-
-    local months = buildMonthlyArray(year, function(year_month)
-        local pages = tonumber(merged.base[year_month]) or 0
-        if year_month == current_month then
-            pages = pages + merged.today_pages
+        return today_pages
+    end,
+    toEntry = function(base, today_pages, is_current, year_month)
+        local pages = tonumber(base[year_month]) or 0
+        if is_current then
+            pages = pages + today_pages
         end
         return { pages = pages }
-    end)
+    end,
+}
 
-    Cache.setMinuteCache(Cache._monthly_cache, Cache._stale_monthly, key, key .. ":minute", minute, months, base_key .. ":")
-    return months
+-- Pages read per month. A page counts once per book, page and day (the same
+-- de-duplication as getYearlyStats, so the twelve months add up to the yearly
+-- pages figure).
+function M.getMonthlyReadingPages(year, shared_conn)
+    return monthlyAggregate(PAGES_SPEC, year, shared_conn)
 end
 
 function M.getYearlyStats(year, shared_conn)
@@ -2307,53 +2294,39 @@ function M.getLast8WeeksData()
     return weeks
 end
 
-function M.getMonthlyBookCounts(year, shared_conn)
-    local today         = Cache.todayDateStr()
-    local key           = "books:" .. year .. ":" .. today
-    local base_key      = "books:" .. year
-    local current_month = today:sub(1, 7)
-    local minute        = Cache.currentMinute()
+local BOOKS_SPEC = {
+    prefix     = "books:",
+    emptyBase  = function() return { counts = {}, current_month_book_ids = {} } end,
+    emptyToday = 0,
+    -- The base is two things: the distinct books per month, and the ids of the
+    -- books read so far this month (so today's books can be told apart from
+    -- those already counted).
+    loadBase = function(conn, year, today, current_month)
+        local counts = readMonthMap(conn, string.format([[
+            SELECT strftime('%%Y-%%m', start_time, 'unixepoch', 'localtime') AS month,
+                   COUNT(DISTINCT id_book) AS book_count
+            FROM page_stat
+            WHERE strftime('%%Y', start_time, 'unixepoch', 'localtime') = '%s'
+              AND date(start_time, 'unixepoch', 'localtime') < '%s'
+            GROUP BY month
+            ORDER BY month ASC
+        ]], tostring(year), today))
 
-    local cached_val = Cache.getMinuteCache(Cache._monthly_cache, key, key .. ":minute", minute)
-    if cached_val then
-        return cached_val
-    end
+        local ids_sql = string.format([[
+            SELECT DISTINCT id_book
+            FROM page_stat
+            WHERE strftime('%%Y-%%m', start_time, 'unixepoch', 'localtime') = '%s'
+              AND date(start_time, 'unixepoch', 'localtime') < '%s'
+        ]], current_month, today)
+        local book_ids = {}
+        StatsDb.withStatement(conn, ids_sql, function(stmt)
+            for row in stmt:rows() do book_ids[tostring(row[1])] = true end
+        end)
 
-    local cached_base = Cache.getCachedBase(Cache._monthly_base_cache, base_key, today)
-
-    local merged = StatsDb.withShared(shared_conn, nil, function(conn)
-        local base = cached_base
-        if not base then
-            local year_str = tostring(year)
-            local sql = string.format([[
-                SELECT strftime('%%Y-%%m', start_time, 'unixepoch', 'localtime') AS month,
-                       COUNT(DISTINCT id_book) AS book_count
-                FROM page_stat
-                WHERE strftime('%%Y', start_time, 'unixepoch', 'localtime') = '%s'
-                  AND date(start_time, 'unixepoch', 'localtime') < '%s'
-                GROUP BY month
-                ORDER BY month ASC
-            ]], year_str, today)
-
-            local counts = {}
-            StatsDb.withStatement(conn, sql, function(stmt)
-                for row in stmt:rows() do counts[row[1]] = tonumber(row[2]) or 0 end
-            end)
-
-            local ids_sql = string.format([[
-                SELECT DISTINCT id_book
-                FROM page_stat
-                WHERE strftime('%%Y-%%m', start_time, 'unixepoch', 'localtime') = '%s'
-                  AND date(start_time, 'unixepoch', 'localtime') < '%s'
-            ]], current_month, today)
-            local book_ids = {}
-            StatsDb.withStatement(conn, ids_sql, function(stmt)
-                for row in stmt:rows() do book_ids[tostring(row[1])] = true end
-            end)
-
-            base = { counts = counts, current_month_book_ids = book_ids }
-        end
-
+        return { counts = counts, current_month_book_ids = book_ids }
+    end,
+    -- How many of today's books were not already read earlier this month.
+    loadToday = function(conn, today, base)
         local new_books_today = 0
         local day_lo, day_hi = M.dayBounds(today)
         StatsDb.withStatement(conn, string.format([[
@@ -2367,29 +2340,19 @@ function M.getMonthlyBookCounts(year, shared_conn)
                 end
             end
         end)
-
-        return { base = base, new_books_today = new_books_today }
-    end)
-    if not merged then
-        local known_good = Cache.bestKnownFullResult(Cache._monthly_cache, key, Cache._stale_monthly, base_key .. ":")
-        if known_good then return known_good end
-        merged = { base = cached_base or { counts = {}, current_month_book_ids = {} }, new_books_today = 0 }
-    end
-
-    if Cache.ENABLE_CACHE and not cached_base then
-        Cache._monthly_base_cache[base_key] = Cache.makeCachedBase(today, merged.base)
-    end
-
-    local months = buildMonthlyArray(year, function(year_month)
-        local book_count = tonumber(merged.base.counts[year_month]) or 0
-        if year_month == current_month then
-            book_count = book_count + merged.new_books_today
+        return new_books_today
+    end,
+    toEntry = function(base, new_books_today, is_current, year_month)
+        local book_count = tonumber(base.counts[year_month]) or 0
+        if is_current then
+            book_count = book_count + new_books_today
         end
         return { book_count = book_count }
-    end)
+    end,
+}
 
-    Cache.setMinuteCache(Cache._monthly_cache, Cache._stale_monthly, key, key .. ":minute", minute, months, base_key .. ":")
-    return months
+function M.getMonthlyBookCounts(year, shared_conn)
+    return monthlyAggregate(BOOKS_SPEC, year, shared_conn)
 end
 
 -- Sums the .duration field (seconds) across a list of books; used to build

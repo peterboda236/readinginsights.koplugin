@@ -106,29 +106,13 @@ end
 -- Month labels
 -- ---------------------------------------------------------------------------
 
--- Short month names exactly as under the monthly charts of the Reading
--- insights window (views/insights_view.lua): lower case with a dot in
--- Hungarian, the plugin's translated "Jan" ... "Dec" in any other language.
-local MONTH_NAMES_SHORT_HU_LC = {
-    "jan.", "febr.", "m\xC3\xA1rc.", "\xC3\xA1pr.", "m\xC3\xA1j.", "j\xC3\xBAn.",
-    "j\xC3\xBAl.", "aug.", "szept.", "okt.", "nov.", "dec.",
-}
-
 -- Month 13 is the bucket of books that have no usable date: "-".
 local NO_MONTH = 13
 local function monthLabel(m)
     if m < 1 or m > 12 then return "\xE2\x80\x93" end
-    local lang
-    if Locale.getLangBase then
-        local ok, l = pcall(Locale.getLangBase)
-        if ok then lang = l end
-    end
-    if lang == "hu" then return MONTH_NAMES_SHORT_HU_LC[m] end
-    local names = {
-        _("Jan"), _("Feb"), _("Mar"), _("Apr"), _("May"), _("Jun"),
-        _("Jul"), _("Aug"), _("Sep"), _("Oct"), _("Nov"), _("Dec"),
-    }
-    return names[m]
+    -- The same short names as under the monthly charts of the Reading
+    -- insights window (lower case with a dot in Hungarian).
+    return Locale.shortMonthName(m)
 end
 
 -- The month (1..12) a book is shelved in, NO_MONTH when it has no date in the
