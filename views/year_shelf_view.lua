@@ -129,7 +129,7 @@ end
 -- Covers (same cache as the Reading calendar's day cells)
 -- ---------------------------------------------------------------------------
 
-local COVER_CACHE, COVER_CACHE_N, COVER_CACHE_MAX = {}, 0, 400
+local COVER_CACHE = CoverThumbs.newMemCache(50, 4 * 1024 * 1024)   -- entries, bytes
 local COVER_PENDING = {}     -- returned for a cover that is not loaded yet
 -- width / height of every cover seen so far (key: the book), so the shelf can
 -- be laid out before the covers are scaled. A book without a cover counts as
@@ -422,15 +422,11 @@ end
 function YearShelfPopup:_coverFor(book, w, h, cached_only)
     if book.manual then return nil end
     local key = bookKey(book) .. "|" .. w .. "x" .. h
-    local hit = COVER_CACHE[key]
+    local hit = COVER_CACHE:get(key)
     if hit ~= nil then return hit or nil end
 
     local function remember(v)
-        if COVER_CACHE_N >= COVER_CACHE_MAX then
-            COVER_CACHE, COVER_CACHE_N = {}, 0   -- dropped; the finalisers free them
-        end
-        COVER_CACHE[key] = v or false
-        COVER_CACHE_N = COVER_CACHE_N + 1
+        COVER_CACHE:put(key, v)   -- bounded; the oldest covers are dropped first
         return v
     end
 
@@ -585,6 +581,8 @@ end
 
 function YearShelfPopup:_rebuild()
     local screen_w, screen_h = self.dimen.w, self.dimen.h
+    -- The covers of this build are protected from eviction (see newMemCache).
+    COVER_CACHE:beginFrame()
     -- Covers not loaded yet are collected again by this build.
     self._pending, self._pending_order = nil, nil
 

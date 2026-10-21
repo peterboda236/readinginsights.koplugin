@@ -11,9 +11,9 @@ thumbnail per book (JPEG, PNG when JPEG cannot be written) in
 a book that has no cover - so it is not opened again and again. Reading a
 thumbnail is far quicker than opening the book.
 
-Only the disk side lives here. Each view keeps its own in-memory cache of
-scaled covers (their sizes and limits differ), and a view that throws its
-cache away calls clearDisk() as well.
+The disk side lives here, and so does newMemCache(): a bounded in-memory
+cache of scaled covers. Each view keeps its own instance (their sizes and
+limits differ); a view that throws its cache away calls clearDisk() as well.
 
 No dependencies; loaded once by main.lua and handed to those views as
 `deps.CoverThumbs`.
@@ -155,6 +155,106 @@ end
 function M.markNoCover(base)
     local f = io.open(base .. ".none", "w")
     if f then f:close() end
+end
+
+-- Bounded in-memory cache of scaled covers (blitbuffer, or false for "no
+-- cover"). Bounded twice: by entries (max_n) and by bytes (max_bytes, counted
+-- as stride * height). When a limit is hit the oldest entries are dropped
+-- first-in-first-out - never the whole cache at once - down to ~70% of the
+-- limits, and the garbage collector is then run once: a blitbuffer's pixels
+-- live outside the Lua heap, so the collector would otherwise not notice them
+-- and could leave the dropped covers around for a long time.
+--
+-- The covers that are on screen are never dropped. A view calls beginFrame()
+-- at the start of every (re)build; every entry it reads or stores from then on
+-- belongs to that frame, and the entries of the current and the previous frame
+-- are protected from eviction. Without this a screen with more covers than the
+-- limits (a busy month, a long year) threw out the very covers just loaded, so
+-- the next build found them missing again and the loading never ended. The
+-- limits can therefore be exceeded by what one screen needs - which has to be
+-- in memory to be drawn anyway.
+-- Covers are NOT freed explicitly: dropping the reference lets the buffer's
+-- own finaliser free it, so a popup still showing a cover never loses it.
+function M.newMemCache(max_n, max_bytes)
+    local C = { map = {}, order = {}, head = 1, tail = 0, n = 0, bytes = 0, seq = 0,
+               gen = 0, trig_n = max_n, trig_b = max_bytes }
+
+    local function sizeOf(bb)
+        if not bb then return 0 end
+        local ok, b = pcall(function()
+            local h = bb:getHeight()
+            local stride = bb.stride
+            if type(stride) == "number" and stride > 0 then return stride * h end
+            return bb:getWidth() * h * 4
+        end)
+        return (ok and b) or 0
+    end
+
+    -- A view calls this at the start of each (re)build of its screen.
+    function C:beginFrame()
+        self.gen = self.gen + 1
+    end
+
+    function C:get(key)
+        local e = self.map[key]
+        if e == nil then return nil end
+        e.gen = self.gen
+        return e.v
+    end   -- nil: unknown, false: no cover
+
+    local function evict(self)
+        local target_n, target_b = math.floor(max_n * 0.7), math.floor(max_bytes * 0.7)
+        local protect_from = self.gen - 1
+        local kept, nk, dropped = {}, 0, false
+        for i = self.head, self.tail do
+            local slot = self.order[i]
+            local k = slot and slot[1]
+            local e = k and self.map[k]
+            if e and e.seq == slot[2] then   -- (a replaced entry's old slot is skipped)
+                if (self.n > target_n or self.bytes > target_b) and e.gen < protect_from then
+                    self.map[k] = nil
+                    self.n = self.n - 1
+                    self.bytes = self.bytes - e.bytes
+                    dropped = true
+                else
+                    nk = nk + 1
+                    kept[nk] = slot
+                end
+            end
+        end
+        self.order, self.head, self.tail = kept, 1, nk
+        -- Still over the limits: what is left is protected (on screen). Do not
+        -- scan again for every further put, only once a good few more came in.
+        self.trig_n = math.max(max_n, self.n + math.max(8, math.floor(max_n * 0.1)))
+        self.trig_b = math.max(max_bytes, self.bytes + math.floor(max_bytes * 0.1))
+        if dropped then collectgarbage("collect") end
+    end
+
+    function C:put(key, bb)
+        local old = self.map[key]
+        if old then
+            self.bytes = self.bytes - old.bytes
+            self.n = self.n - 1
+            self.map[key] = nil
+        end
+        local b = sizeOf(bb)
+        self.seq = self.seq + 1
+        self.map[key] = { v = bb or false, bytes = b, seq = self.seq, gen = self.gen }
+        self.tail = self.tail + 1   -- (not #order: its front is nil-ed out)
+        self.order[self.tail] = { key, self.seq }
+        self.n = self.n + 1
+        self.bytes = self.bytes + b
+        if self.n > self.trig_n or self.bytes > self.trig_b then evict(self) end
+    end
+
+    function C:clear()
+        self.map, self.order, self.head, self.tail, self.n, self.bytes = {}, {}, 1, 0, 0, 0
+        self.trig_n, self.trig_b = max_n, max_bytes
+        -- (seq keeps counting, so no old slot can match a new entry)
+        collectgarbage("collect")
+    end
+
+    return C
 end
 
 -- Deletes every thumbnail and "no cover" marker on disk, so each cover is

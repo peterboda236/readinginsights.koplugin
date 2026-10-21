@@ -296,6 +296,8 @@ end
 -- The caller still gets its own buffer to free (see the header).
 local COVER_CACHE_MAX = 3
 local cover_cache, cover_order = {}, {}
+-- Largest size a cover is kept at in memory (and on disk, see diskWrite).
+local DISK_W, DISK_H = 700, 1050
 
 local function coverFromCache(file)
     local cached = cover_cache[file]
@@ -307,7 +309,14 @@ end
 
 local function coverToCache(file, bb)
     if not bb or cover_cache[file] then return end
-    local ok, copy = pcall(function() return bb:copy() end)
+    -- Never keep a full-size original: a scan can be several MB, times 3.
+    local ok, copy = pcall(function()
+        local scale = math.min(DISK_W / bb:getWidth(), DISK_H / bb:getHeight())
+        if scale >= 1 then return bb:copy() end
+        return require("ui/renderimage"):scaleBlitBuffer(bb:copy(),
+            math.max(1, math.floor(bb:getWidth() * scale)),
+            math.max(1, math.floor(bb:getHeight() * scale)), true)
+    end)
     if not (ok and copy) then return end
     cover_cache[file] = copy
     cover_order[#cover_order + 1] = file
@@ -324,7 +333,6 @@ end
 -- calendar's / shelf's thumbnails (those are small, 300 x 450): the popup can
 -- show a large cover. Keyed by file path + size + modification time, so a
 -- replaced book (or cover) is read again by itself.
-local DISK_W, DISK_H = 700, 1050
 local lfs_ok, lfs = pcall(require, "libs/libkoreader-lfs")
 
 local function diskKey(file)

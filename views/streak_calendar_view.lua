@@ -216,7 +216,7 @@ local LAST_CALENDAR_YEAR = 2037
 --                (MAX(start_time) moves) or the date changes - the two big
 --                queries over the whole statistics table are what made the
 --                window slow to open.
-local COVER_CACHE, COVER_CACHE_N, COVER_CACHE_MAX = {}, 0, 150
+local COVER_CACHE = CoverThumbs.newMemCache(50, 4 * 1024 * 1024)   -- entries, bytes
 local DATA_CACHE = nil
 -- Returned by the cover callback for a cover that is not loaded yet.
 local COVER_PENDING = {}
@@ -235,7 +235,7 @@ local diskBase, scaleTo, readThumb, writeThumb, markNoCover =
 -- its book. Used by a long press on the calendar's title.
 local function clearCoverCache()
     CoverThumbs.clearDisk()
-    COVER_CACHE, COVER_CACHE_N = {}, 0   -- dropped; the finalisers free them
+    COVER_CACHE:clear()   -- dropped; the finalisers free them
 end
 
 -- One day cell of the calendar, painted in one go (see the header comment for
@@ -1656,15 +1656,11 @@ end
 -- COVER_PENDING is returned and the cover is queued for _loadPending().
 function StreakDatePopup:_coverFor(book, w, h, cached_only)
     local key = tostring(book.md5 or book.id_book) .. "|" .. w .. "x" .. h
-    local hit = COVER_CACHE[key]
+    local hit = COVER_CACHE:get(key)
     if hit ~= nil then return hit or nil end
 
     local function remember(v)
-        if COVER_CACHE_N >= COVER_CACHE_MAX then
-            COVER_CACHE, COVER_CACHE_N = {}, 0   -- dropped; the finalisers free them
-        end
-        COVER_CACHE[key] = v or false
-        COVER_CACHE_N = COVER_CACHE_N + 1
+        COVER_CACHE:put(key, v)   -- bounded; the oldest covers are dropped first
         return v
     end
 
@@ -1762,6 +1758,8 @@ function StreakDatePopup:_freeCovers()
 end
 
 function StreakDatePopup:_rebuild()
+    -- The covers of this build are protected from eviction (see newMemCache).
+    COVER_CACHE:beginFrame()
     local fonts  = self.fonts
     local layout = self.layout
     local col_w  = self.col_width
