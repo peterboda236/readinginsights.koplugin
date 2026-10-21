@@ -2304,3 +2304,42 @@ msgstr "Árnyék rajzolása a borítók mögé (Könyvinformáció, Olvasási na
 
 msgid "Draw a thin frame around the covers (Book info, Reading calendar and Reading shelf)."
 msgstr "Vékony keret rajzolása a borítók köré (Könyvinformáció, Olvasási naptár és Olvasási polc)."
+
+msgid "Weekly reading time"
+msgstr "Heti olvasási idő"
+
+msgid "Weekly average reading time"
+msgstr "Heti átlagos olvasási idő"
+
+msgid "Weekly pages read"
+msgstr "Heti olvasott oldalak"
+
+msgid "Weekly average pages read"
+msgstr "Heti átlagos olvasott oldalak"
+
+msgid "Progress per day"
+msgstr "Napi haladás"
+
+msgid "Daily streak (time)"
+msgstr "Napi széria (idő)"
+
+msgid "Daily streak (pages)"
+msgstr "Napi széria (oldalak)"
+
+msgid "Weekly streak (time)"
+msgstr "Heti széria (idő)"
+
+msgid "Weekly streak (pages)"
+msgstr "Heti széria (oldalak)"
+
+msgid "Daily (time)"
+msgstr "Napi (idő)"
+
+msgid "Daily (pages)"
+msgstr "Napi (oldalak)"
+
+msgid "Weekly (time)"
+msgstr "Heti (idő)"
+
+msgid "Weekly (pages)"
+msgstr "Heti (oldalak)"

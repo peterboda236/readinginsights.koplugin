@@ -2345,3 +2345,42 @@ msgstr "Обкладинки"
 
 msgid "This will clear the development branch setting and install the latest stable release of Reading insights, then restart KOReader. Continue?"
 msgstr "Це скине налаштування гілки розробки, встановить останній стабільний випуск «Аналітика читання» і перезапустить KOReader. Продовжити?"
+
+msgid "Weekly reading time"
+msgstr "Тижневий час читання"
+
+msgid "Weekly average reading time"
+msgstr "Середній тижневий час читання"
+
+msgid "Weekly pages read"
+msgstr "Прочитано сторінок за тиждень"
+
+msgid "Weekly average pages read"
+msgstr "Середня кількість сторінок за тиждень"
+
+msgid "Progress per day"
+msgstr "Прогрес за день"
+
+msgid "Daily streak (time)"
+msgstr "Щоденна серія (час)"
+
+msgid "Daily streak (pages)"
+msgstr "Щоденна серія (сторінки)"
+
+msgid "Weekly streak (time)"
+msgstr "Тижнева серія (час)"
+
+msgid "Weekly streak (pages)"
+msgstr "Тижнева серія (сторінки)"
+
+msgid "Daily (time)"
+msgstr "Щоденно (час)"
+
+msgid "Daily (pages)"
+msgstr "Щоденно (сторінки)"
+
+msgid "Weekly (time)"
+msgstr "Щотижня (час)"
+
+msgid "Weekly (pages)"
+msgstr "Щотижня (сторінки)"

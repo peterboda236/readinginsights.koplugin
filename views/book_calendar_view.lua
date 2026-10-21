@@ -25,6 +25,7 @@ local Blitbuffer      = require("ffi/blitbuffer")
 local CenterContainer = require("ui/widget/container/centercontainer")
 local Device          = require("device")
 local FrameContainer  = require("ui/widget/container/framecontainer")
+local LeftContainer   = require("ui/widget/container/leftcontainer")
 local Geom            = require("ui/geometry")
 local GestureRange    = require("ui/gesturerange")
 local HorizontalGroup = require("ui/widget/horizontalgroup")
@@ -73,7 +74,7 @@ local MONTH_FULL_HU_LC = {
 -- small text line under each day number - see buildBookCalendarCellText
 -- below:
 --   "percent" (default) - progress gained that day, e.g. "+13%"
---   "pages"             - that day's own page count, e.g. "+101o"
+--   "pages"             - that day's own page count, e.g. "101"
 --   "time"              - that day's own time spent (honors the global
 --                          "Duration format" setting)
 -- Exposed on the module so the Settings menu can
@@ -109,7 +110,7 @@ end
 --                          reading day's, so the days add up to the Book
 --                          progress figure (see
 --                          CalendarData.getBookDailyProgressDeltaForMonth)
---   "pages"             - that day's own page count, e.g. "+101o"
+--   "pages"             - that day's own page count, e.g. "101"
 --   "time"              - that day's own time spent, e.g. "+0:23" or
 --                          "+23m", whichever clock style KOReader's global
 --                          "Duration format" setting (Prefs ▸ Time and
@@ -161,7 +162,7 @@ local function buildBookCalendarCellText(entry, progress_delta)
     local mode = readCalendarCellModeSetting()
 
     if mode == "pages" then
-        return "+" .. formatCount(entry.pages) .. pageAbbrev(entry.pages)
+        return formatCount(entry.pages)
     end
 
     if mode == "time" then
@@ -712,6 +713,14 @@ end
 local FIRST_CALENDAR_YEAR = 1971
 local LAST_CALENDAR_YEAR  = 2037
 
+-- Caption under the month title, naming what the day cells show; a tap on it
+-- opens the list of the three views (see _showCellModePicker).
+local function cellModeCaption(mode)
+    if mode == "pages" then return _("Pages per day") end
+    if mode == "time"  then return _("Reading time per day") end
+    return _("Progress per day")
+end
+
 local BookCalendarPopup = InputContainer:extend{
     modal     = true,
     ui        = nil,
@@ -834,10 +843,30 @@ function BookCalendarPopup:_rebuild()
             daily_map, self.year, self.month, day_font, small_font, content_width, self.total_pages, cumulative_ratios,
             finish_day, start_day, progress_deltas, adjacent)
 
+        -- Same look as the caption above the monthly chart of the insights
+        -- popup: label font and colour, no divider.
+        local caption_frame = FrameContainer:new{
+            background     = Blitbuffer.COLOR_WHITE,
+            bordersize     = 0,
+            padding_top    = Size.padding.small,
+            padding_bottom = Size.padding.small,
+            padding_left   = 0,
+            padding_right  = Size.padding.large,
+            TextWidget:new{
+                text    = cellModeCaption(readCalendarCellModeSetting()),
+                face    = Fonts.getFace("insights_label"),
+                fgcolor = Colors.label(),
+            },
+        }
+
         local content = VerticalGroup:new{
             align = "center",
             title_row,
-            VerticalSpan:new{ width = Size.padding.small },
+            -- Left-aligned, in line with the left edge of the grid.
+            LeftContainer:new{
+                dimen = Geom:new{ w = content_width, h = caption_frame:getSize().h },
+                caption_frame,
+            },
             grid,
         }
 
@@ -856,6 +885,7 @@ function BookCalendarPopup:_rebuild()
             content_width      = content_width,
             box_content        = box_content,
             day_cells          = day_cells,
+            caption_frame      = caption_frame,
             title_row          = title_row,
             left_arrow_frame   = left_arrow_frame,
             right_arrow_frame  = right_arrow_frame,
@@ -902,6 +932,7 @@ function BookCalendarPopup:_rebuild()
         built.title_row, built.left_arrow_frame, built.right_arrow_frame,
         built.left_w, built.right_w, built.header_h
     self._day_cells = built.day_cells
+    self._caption_frame = built.caption_frame
     self.box_content = built.box_content
 
     self[1] = CenterContainer:new{
@@ -995,14 +1026,49 @@ function BookCalendarPopup:_showDayDetail(day, data, year, month, delta)
     })
 end
 
--- Next cell content: percent -> time -> pages -> percent. Saved, then the
+-- Cell content: a list of the three views (percent / time / pages) with a
+-- check mark in front of the one in use. The choice is saved, then the
 -- current month is redrawn.
-local CELL_MODE_NEXT = { percent = "time", time = "pages", pages = "percent" }
-
-function BookCalendarPopup:_cycleCellMode()
-    local cur = readCalendarCellModeSetting()
-    saveCalendarCellModeSetting(CELL_MODE_NEXT[cur] or "percent")
-    return self:_showMonth(self.year, self.month)
+function BookCalendarPopup:_showCellModePicker()
+    local ButtonDialog = require("ui/widget/buttondialog")
+    local popup = self
+    local current = readCalendarCellModeSetting()
+    local choices = {
+        { value = "percent", text = cellModeCaption("percent") },
+        { value = "time",    text = cellModeCaption("time") },
+        { value = "pages",   text = cellModeCaption("pages") },
+    }
+    local dialog
+    local buttons = {}
+    for _i, c in ipairs(choices) do
+        local value = c.value
+        table.insert(buttons, {{
+            -- U+2713 CHECK MARK in front of the view currently in use.
+            text  = (current == value and "\xe2\x9c\x93 " or "    ") .. c.text,
+            align = "left",
+            callback = function()
+                UIManager:close(dialog)
+                if value ~= current then
+                    saveCalendarCellModeSetting(value)
+                    popup:_showMonth(popup.year, popup.month)
+                end
+            end,
+        }})
+    end
+    -- The calendar popup is modal, so the list must be too.
+    dialog = ButtonDialog:new{
+        modal                 = true,
+        shrink_unneeded_width = true,
+        buttons               = buttons,
+    }
+    -- Plain "ui" refresh on close instead of ButtonDialog's flashing one.
+    dialog.onCloseWidget = function(this)
+        UIManager:setDirty(nil, function()
+            return "ui", this.movable and this.movable.dimen
+        end)
+    end
+    UIManager:show(dialog)
+    return true
 end
 
 function BookCalendarPopup:_goToMonth(delta)
@@ -1047,17 +1113,16 @@ function BookCalendarPopup:onTap(arg, ges_ev)
                 return self:_goToMonth(zone.delta)
             end
         end
+        -- The caption under the month title: the list of the cell contents
+        -- (progress / reading time / pages). The choice is saved, so the
+        -- calendar opens with the last used one next time.
+        if self._caption_frame and UI.hitTest(self._caption_frame, x, y) then
+            self:_showCellModePicker()
+            return true
+        end
         for _, cell in ipairs(self._day_cells or {}) do
             if UI.hitTest(cell.frame, x, y) then
-                -- A tap on a day never closes the popup. A day with reading
-                -- data cycles the cell content (percent -> time -> pages ->
-                -- percent) and the choice is saved, so the calendar opens
-                -- with the last used one next time. A day without reading
-                -- data does nothing.
-                local d = cell.data
-                if d and d.pages and d.pages > 0 then
-                    self:_cycleCellMode()
-                end
+                -- A tap on a day never closes the popup and does nothing.
                 return true
             end
         end

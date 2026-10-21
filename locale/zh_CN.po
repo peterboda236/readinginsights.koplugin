@@ -2019,3 +2019,42 @@ msgstr "在封面周围绘制细边框（图书信息、阅读日历和阅读书
 
 msgid "Covers"
 msgstr "封面"
+
+msgid "Weekly reading time"
+msgstr "每周阅读时间"
+
+msgid "Weekly average reading time"
+msgstr "每周平均阅读时间"
+
+msgid "Weekly pages read"
+msgstr "每周已读页数"
+
+msgid "Weekly average pages read"
+msgstr "每周平均已读页数"
+
+msgid "Progress per day"
+msgstr "每日进度"
+
+msgid "Daily streak (time)"
+msgstr "每日连续阅读(时间)"
+
+msgid "Daily streak (pages)"
+msgstr "每日连续阅读(页数)"
+
+msgid "Weekly streak (time)"
+msgstr "每周连续阅读(时间)"
+
+msgid "Weekly streak (pages)"
+msgstr "每周连续阅读(页数)"
+
+msgid "Daily (time)"
+msgstr "每日(时间)"
+
+msgid "Daily (pages)"
+msgstr "每日(页数)"
+
+msgid "Weekly (time)"
+msgstr "每周(时间)"
+
+msgid "Weekly (pages)"
+msgstr "每周(页数)"

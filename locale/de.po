@@ -2293,3 +2293,42 @@ msgstr "Zeichnet einen Schlagschatten hinter die Cover (Buchinfo, Lesekalender u
 
 msgid "Draw a thin frame around the covers (Book info, Reading calendar and Reading shelf)."
 msgstr "Zeichnet einen dünnen Rahmen um die Cover (Buchinfo, Lesekalender und Lesebord)."
+
+msgid "Daily streak (time)"
+msgstr "Tagesserie (Zeit)"
+
+msgid "Daily streak (pages)"
+msgstr "Tagesserie (Seiten)"
+
+msgid "Weekly streak (time)"
+msgstr "Wochenserie (Zeit)"
+
+msgid "Weekly streak (pages)"
+msgstr "Wochenserie (Seiten)"
+
+msgid "Daily (time)"
+msgstr "Täglich (Zeit)"
+
+msgid "Daily (pages)"
+msgstr "Täglich (Seiten)"
+
+msgid "Weekly (time)"
+msgstr "Wöchentlich (Zeit)"
+
+msgid "Weekly (pages)"
+msgstr "Wöchentlich (Seiten)"
+
+msgid "Weekly reading time"
+msgstr "Wöchentliche Lesezeit"
+
+msgid "Weekly average reading time"
+msgstr "Durchschnittliche wöchentliche Lesezeit"
+
+msgid "Weekly pages read"
+msgstr "Wöchentlich gelesene Seiten"
+
+msgid "Weekly average pages read"
+msgstr "Durchschnittlich wöchentlich gelesene Seiten"
+
+msgid "Progress per day"
+msgstr "Fortschritt pro Tag"

@@ -70,6 +70,21 @@ function M.saveStreakHistoryMetricSetting(value)
     Prefs.save(M.SETTINGS_KEY_STREAK_HISTORY_METRIC, value == "pages" and "pages" or "time")
 end
 
+-- Which unit the streak-history popup lists: "day" (one row per day) or
+-- "week" (one row per week). Chosen from the popup's list of four views
+-- (daily/weekly x time/pages), together with the metric setting above.
+M.SETTINGS_KEY_STREAK_HISTORY_UNIT = "reading_insights_streak_history_unit"
+
+function M.readStreakHistoryUnitSetting()
+    local v = Prefs.read(M.SETTINGS_KEY_STREAK_HISTORY_UNIT, "day")
+    if v ~= "week" then return "day" end
+    return v
+end
+
+function M.saveStreakHistoryUnitSetting(value)
+    Prefs.save(M.SETTINGS_KEY_STREAK_HISTORY_UNIT, value == "week" and "week" or "day")
+end
+
 -- Bar-chart height settings (Prefs ▸ "Oszlopdiagram magassága" / "Bar
 -- chart height"). Values are the same "points" number previously hardcoded
 -- into Screen:scaleBySize(...) at each chart's call site, so restoring the

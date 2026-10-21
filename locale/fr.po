@@ -2293,3 +2293,42 @@ msgstr "Dessine un fin cadre autour des couvertures (Infos du livre, Calendrier 
 
 msgid "Covers"
 msgstr "Couvertures"
+
+msgid "Daily streak (time)"
+msgstr "Série quotidienne (temps)"
+
+msgid "Daily streak (pages)"
+msgstr "Série quotidienne (pages)"
+
+msgid "Weekly streak (time)"
+msgstr "Série hebdomadaire (temps)"
+
+msgid "Weekly streak (pages)"
+msgstr "Série hebdomadaire (pages)"
+
+msgid "Daily (time)"
+msgstr "Quotidienne (temps)"
+
+msgid "Daily (pages)"
+msgstr "Quotidienne (pages)"
+
+msgid "Weekly (time)"
+msgstr "Hebdomadaire (temps)"
+
+msgid "Weekly (pages)"
+msgstr "Hebdomadaire (pages)"
+
+msgid "Weekly reading time"
+msgstr "Temps de lecture hebdomadaire"
+
+msgid "Weekly average reading time"
+msgstr "Temps de lecture hebdomadaire moyen"
+
+msgid "Weekly pages read"
+msgstr "Pages lues par semaine"
+
+msgid "Weekly average pages read"
+msgstr "Moyenne de pages lues par semaine"
+
+msgid "Progress per day"
+msgstr "Progression par jour"

@@ -22,6 +22,7 @@ only user of.
 ]]--
 
 local CenterContainer = require("ui/widget/container/centercontainer")
+local FrameContainer = require("ui/widget/container/framecontainer")
 local Geom = require("ui/geometry")
 local HorizontalGroup = require("ui/widget/horizontalgroup")
 local HorizontalSpan = require("ui/widget/horizontalspan")
@@ -107,6 +108,39 @@ end
 
 function M.trendTitle(_metric)
     return _("8-week reading trend")
+end
+
+-- Caption above the chart, styled like the monthly chart's caption in the
+-- insights popup. A tap switches it between time and pages, a long press
+-- opens the list to choose from.
+-- The four views of the popup, in the order a tap on the caption cycles
+-- through them: totals and daily averages, first of the time, then of the
+-- pages. The mode also decides what stands above the dots.
+M.MODES = { "time_total", "time_avg", "pages_total", "pages_avg" }
+
+function M.captionText(mode)
+    if mode == "time_avg" then return _("Weekly average reading time") end
+    if mode == "pages_total" then return _("Weekly pages read") end
+    if mode == "pages_avg" then return _("Weekly average pages read") end
+    return _("Weekly reading time")
+end
+
+-- The mode the popup opens in: the one the tapped value stood for, or - for
+-- any other name - the time/pages kind with the last saved total/average choice.
+local MODE_KEY = "reading_insights_trend_mode"
+
+function M.modeOf(metric)
+    -- The view chosen last time (saved by setMode) wins over what the tapped
+    -- value stood for.
+    local saved = G_reader_settings and G_reader_settings.readSetting
+        and G_reader_settings:readSetting(MODE_KEY)
+    for _i, m in ipairs(M.MODES) do
+        if m == saved then return m end
+    end
+    for _i, m in ipairs(M.MODES) do
+        if m == metric then return m end
+    end
+    return M.kindOf(metric) .. (M.readShowAvg() and "_avg" or "_total")
 end
 
 -- Week start date without the year, in the configured date format (the
@@ -212,6 +246,8 @@ local function readShowAvg()
     return false
 end
 
+M.readShowAvg = readShowAvg
+
 local function saveShowAvg(value)
     if G_reader_settings and G_reader_settings.saveSetting then
         G_reader_settings:saveSetting(SHOW_AVG_KEY, value and true or false)
@@ -305,7 +341,7 @@ end
 -- not to run through it (M.clearLabelTops). The dots are painted by the line widget itself, from
 -- the same coordinates as the line, so they sit exactly on it. The weeks'
 -- start dates are under the baseline.
-function M.buildTrendChart(weeks, kind, chart_width, fonts)
+function M.buildTrendChart(weeks, kind, chart_width, fonts, show_avg)
     if not weeks or #weeks == 0 then return nil end
 
     local total_metric = kind .. "_total"
@@ -425,7 +461,8 @@ function M.buildTrendChart(weeks, kind, chart_width, fonts)
     local baseline = Colors.newBar(area_w, baseline_h, Colors.inactiveBar())
     baseline.overlap_offset = { 0, total_h - baseline_h }
 
-    local showing_avg = readShowAvg()
+    local showing_avg = show_avg
+    if showing_avg == nil then showing_avg = readShowAvg() end
     local chart_area = OverlapGroup:new{
         dimen = Geom:new{ w = area_w, h = total_h },
         baseline,
@@ -467,7 +504,8 @@ end
 -- Everything inside the popup box: title, thin line, the total / daily
 -- average row, then the chart with the week dates at its bottom.
 function M.buildContent(weeks, metric, width, fonts)
-    local kind = M.kindOf(metric)
+    local mode = M.modeOf(metric)
+    local kind = M.kindOf(mode)
 
     local title_w = TextWidget:new{ text = M.trendTitle(kind), face = fonts.section, fgcolor = Colors.section() }
     local title = LeftContainer:new{
@@ -476,20 +514,35 @@ function M.buildContent(weeks, metric, width, fonts)
     }
 
     -- Same small gaps as the "Last 7 days" section of the insights page:
-    -- header, thin line, row, thin line, chart.
+    -- title, thin line, caption, chart, thin line, row.
     local gap = Size.padding.small
-    local chart, handle = M.buildTrendChart(weeks, kind, width, fonts)
+    local chart, handle = M.buildTrendChart(weeks, kind, width, fonts, mode:sub(-4) == "_avg")
+
+    -- Same look as the caption above the monthly chart: label font and
+    -- colour, a little padding, no divider of its own.
+    local caption = FrameContainer:new{
+        background     = Blitbuffer.COLOR_WHITE,
+        bordersize     = 0,
+        padding_top    = Size.padding.small,
+        padding_bottom = Size.padding.small,
+        padding_left   = 0,
+        padding_right  = 0,
+        TextWidget:new{ text = M.captionText(mode), face = fonts.label, fgcolor = Colors.label() },
+    }
+    handle = handle or {}
+    handle.caption = caption
+
     return VerticalGroup:new{
         align = "left",
         title,
         VerticalSpan:new{ width = gap },
         Colors.newBar(width, Size.line.thin, Colors.separator()),
-        VerticalSpan:new{ width = gap },
-        M.buildSummaryRow(weeks, kind, width, fonts),
+        caption,
+        chart,
         VerticalSpan:new{ width = gap },
         Colors.newBar(width, Size.line.thin, Colors.separator()),
         VerticalSpan:new{ width = gap },
-        chart,
+        M.buildSummaryRow(weeks, kind, width, fonts),
     }, handle
 end
 
@@ -507,6 +560,7 @@ function M.Popup:init()
     if Device:isTouchDevice() then
         self.ges_events.Tap   = { GestureRange:new{ ges = "tap",   range = self.dimen } }
         self.ges_events.Swipe = { GestureRange:new{ ges = "swipe", range = self.dimen } }
+        self.ges_events.Hold  = { GestureRange:new{ ges = "hold",  range = self.dimen } }
     end
     if Device:hasKeys() then
         self.key_events.AnyKeyPressed = { { Device.input.group.Any } }
@@ -518,19 +572,90 @@ function M.Popup:init()
     }
 end
 
--- Tap handling of the popup: a tap on the chart switches the values above its
--- dots (totals / daily averages); a tap anywhere else closes the popup.
+local function hitWidget(w, pos)
+    local d = w and w.dimen
+    return d and pos and pos.x >= d.x and pos.x < d.x + d.w
+        and pos.y >= d.y and pos.y < d.y + d.h
+end
+
+-- Switch the popup to the time or the pages chart: the content is rebuilt
+-- (caption, totals and chart) through `build_box(kind)`, which the insights
+-- view hands over.
+function M.Popup:setMode(mode)
+    if mode == self.mode or not self.build_box then return end
+    self.mode = mode
+    saveShowAvg(mode:sub(-4) == "_avg")
+    if G_reader_settings and G_reader_settings.saveSetting then
+        G_reader_settings:saveSetting(MODE_KEY, mode)
+    end
+    local box, handle = self.build_box(mode)
+    self.box_content = box
+    self.chart_handle = handle
+    self[1][1] = box
+    UIManager:setDirty(self, function() return "ui", self.dimen end)
+end
+
+-- Tap handling of the popup: a tap on the caption opens the list of the four
+-- views (time, average time, pages, average pages); a tap on the chart does
+-- nothing; a tap anywhere else closes the popup.
 -- Installed over the generic "any tap closes" handler by the insights view.
 function M.popupOnTap(self, _arg, ges)
     local h = self.chart_handle
-    local d = h and h.widget and h.widget.dimen
     local pos = ges and ges.pos
-    if d and pos and pos.x >= d.x and pos.x < d.x + d.w
-       and pos.y >= d.y and pos.y < d.y + d.h then
-        h.toggle()
+    if h and hitWidget(h.caption, pos) then
+        self:showModePicker()
+        return true
+    end
+    -- A tap on the chart itself does nothing (and doesn't close the popup).
+    if h and hitWidget(h.widget, pos) then
         return true
     end
     UIManager:close(self)
+    return true
+end
+
+-- The list of the four views to choose from; opened by a tap or a long press
+-- on the caption.
+function M.Popup:showModePicker()
+    local ButtonDialog = require("ui/widget/buttondialog")
+    local dialog
+    local buttons = {}
+    for _i, mode in ipairs(M.MODES) do
+        buttons[#buttons + 1] = {{
+            -- Same list as the chart captions of the insights popup: a check
+            -- mark (U+2713) in front of the view in use.
+            text  = (self.mode == mode and "\xe2\x9c\x93 " or "    ") .. M.captionText(mode),
+            align = "left",
+            callback = function()
+                UIManager:close(dialog)
+                self:setMode(mode)
+            end,
+        }}
+    end
+    -- The trend popup is modal, so the list must be too or it would open
+    -- behind it.
+    dialog = ButtonDialog:new{
+        modal                 = true,
+        shrink_unneeded_width = true,
+        buttons               = buttons,
+    }
+    -- Plain "ui" refresh on close instead of ButtonDialog's flashing one.
+    dialog.onCloseWidget = function(this)
+        UIManager:setDirty(nil, function()
+            return "ui", this.movable and this.movable.dimen
+        end)
+    end
+    UIManager:show(dialog)
+    return true
+end
+
+-- A long press on the caption opens the list; a long press anywhere else
+-- does nothing.
+function M.popupOnHold(self, _arg, ges)
+    local h = self.chart_handle
+    if h and hitWidget(h.caption, ges and ges.pos) then
+        self:showModePicker()
+    end
     return true
 end
 

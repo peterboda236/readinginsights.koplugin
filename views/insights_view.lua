@@ -1322,6 +1322,7 @@ PopupUtil.makeDismissable(Trend.Popup, function(self) return self.box_content.di
 -- ...except its tap: a tap on the chart switches totals / averages, any other
 -- tap closes the popup (see Trend.popupOnTap).
 Trend.Popup.onTap = Trend.popupOnTap
+Trend.Popup.onHold = Trend.popupOnHold
 
 -- Weekly bar chart: 7 bars, index 1 = the newest day, index 7 = the oldest.
 -- Last-7-days view: index 1 = today, index 7 = 6 days ago, labels "Today",
@@ -1866,8 +1867,9 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
                 tappable_caption.ges_events = {
                     Tap = { GestureRange:new{ ges = "tap", range = tappable_caption.dimen } },
                 }
+                -- A tap opens the list of the two views (like a long press).
                 function tappable_caption:onTap()
-                    popup_self:toggleWeeklyChartMode()
+                    if not popup_self.readonly then popup_self:showWeeklyChartModePicker() end
                     return true
                 end
                 -- Long press: pick the view from a list.
@@ -2122,8 +2124,9 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
         tappable_chart_header.ges_events = {
             Tap  = { GestureRange:new{ ges = "tap",  range = tappable_chart_header.dimen } },
         }
+        -- A tap opens the list of the four views (like a long press).
         function tappable_chart_header:onTap()
-            popup_self:cycleInsightsMode()
+            if not popup_self.readonly then popup_self:showInsightsModePicker() end
             return true
         end
         -- Long press: pick any of the four views from a list.
@@ -2768,20 +2771,27 @@ function ReadingInsightsPopup:showWeeklyTrendPopup(metric)
     local box_width   = math.floor(Screen:getWidth() * 0.94)
     local chart_width = box_width - 2 * inner_padding
 
-    local content, chart_handle = Trend.buildContent(weeks, metric, chart_width, fonts)
+    local function buildBox(mode)
+        local content, chart_handle = Trend.buildContent(weeks, mode, chart_width, fonts)
+        local box = FrameContainer:new{
+            background     = Blitbuffer.COLOR_WHITE,
+            bordersize     = Size.border.window,
+            radius         = Size.radius.window,
+            padding_top    = inner_padding,
+            padding_bottom = inner_padding,
+            padding_left   = inner_padding,
+            padding_right  = inner_padding,
+            content,
+        }
+        return box, chart_handle
+    end
 
-    local box = FrameContainer:new{
-        background     = Blitbuffer.COLOR_WHITE,
-        bordersize     = Size.border.window,
-        radius         = Size.radius.window,
-        padding_top    = inner_padding,
-        padding_bottom = inner_padding,
-        padding_left   = inner_padding,
-        padding_right  = inner_padding,
-        content,
-    }
-
-    UIManager:show(Trend.Popup:new{ box_content = box, chart_handle = chart_handle })
+    local mode = Trend.modeOf(metric)
+    local box, chart_handle = buildBox(mode)
+    UIManager:show(Trend.Popup:new{
+        box_content = box, chart_handle = chart_handle,
+        mode = mode, build_box = buildBox,
+    })
 end
 
 function ReadingInsightsPopup:getBooksForMonth(year_month)

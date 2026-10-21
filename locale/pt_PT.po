@@ -2293,3 +2293,42 @@ msgstr "Desenha uma moldura fina à volta das capas (Informações do livro, Cal
 
 msgid "Covers"
 msgstr "Capas"
+
+msgid "Weekly reading time"
+msgstr "Tempo de leitura semanal"
+
+msgid "Weekly average reading time"
+msgstr "Tempo de leitura semanal médio"
+
+msgid "Weekly pages read"
+msgstr "Páginas lidas por semana"
+
+msgid "Weekly average pages read"
+msgstr "Média de páginas lidas por semana"
+
+msgid "Progress per day"
+msgstr "Progresso por dia"
+
+msgid "Daily streak (time)"
+msgstr "Sequência diária (tempo)"
+
+msgid "Daily streak (pages)"
+msgstr "Sequência diária (páginas)"
+
+msgid "Weekly streak (time)"
+msgstr "Sequência semanal (tempo)"
+
+msgid "Weekly streak (pages)"
+msgstr "Sequência semanal (páginas)"
+
+msgid "Daily (time)"
+msgstr "Diária (tempo)"
+
+msgid "Daily (pages)"
+msgstr "Diária (páginas)"
+
+msgid "Weekly (time)"
+msgstr "Semanal (tempo)"
+
+msgid "Weekly (pages)"
+msgstr "Semanal (páginas)"

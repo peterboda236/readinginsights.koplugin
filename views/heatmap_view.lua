@@ -1628,9 +1628,6 @@ function M.Popup:init()
     if Device:isTouchDevice() then
         self.ges_events.Tap   = { GestureRange:new{ ges = "tap",   range = self.dimen } }
         self.ges_events.Swipe = { GestureRange:new{ ges = "swipe", range = self.dimen } }
-        if not self.readonly then
-            self.ges_events.Hold = { GestureRange:new{ ges = "hold", range = self.dimen } }
-        end
     end
     if Device:hasKeys() then
         self.key_events.AnyKeyPressed = { { Device.input.group.Any } }
@@ -1837,13 +1834,8 @@ function M.Popup:_goToPeriod(delta)
     return true
 end
 
--- Tapping a chart's caption ("Reading by time of day" / "Reading by weekday") steps
--- that chart's bar labels between time and percent. Each chart keeps
--- its own choice until KOReader restarts.
-function M.Popup:_cycleBarMode(which)
-    local cur = (which == "when") and M._when_mode or M._week_mode
-    return self:_setBarMode(which, nextBarMode(cur or "time"))
-end
+-- Each chart ("Reading by time of day" / "Reading by weekday") keeps its own
+-- bar view until KOReader restarts.
 
 -- Sets one chart's bar view ("time" / "pages" / "percent") and redraws.
 function M.Popup:_setBarMode(which, mode)
@@ -1866,21 +1858,9 @@ function M.Popup:_setBarMode(which, mode)
     return true
 end
 
--- Long press on a chart's caption: a list of its views (time, pages,
--- percent), the active one marked with a check mark.
-function M.Popup:onHold(arg, ges_ev)
-    if not ges_ev or not ges_ev.pos or self.readonly then return true end
-    local x, y = ges_ev.pos.x, ges_ev.pos.y
-    for _, zone in ipairs(self._nav_zones or {}) do
-        if zone.cycle_mode and zone.dimen
-           and x >= zone.dimen.x and x <= zone.dimen.x + zone.dimen.w
-           and y >= zone.dimen.y and y <= zone.dimen.y + zone.dimen.h then
-            self:_showBarModePicker(zone.cycle_mode)
-            return true
-        end
-    end
-    return true
-end
+-- A tap on a chart's caption opens the list of its views (time, pages,
+-- percent), the active one marked with a check mark (see _showBarModePicker).
+-- A long press does nothing (no Hold gesture is registered in init).
 
 function M.Popup:_showBarModePicker(which)
     local ButtonDialog = require("ui/widget/buttondialog")
@@ -1921,7 +1901,10 @@ function M.Popup:onTap(arg, ges_ev)
         for _, zone in ipairs(self._nav_zones or {}) do
             if zone.dimen and x >= zone.dimen.x and x <= zone.dimen.x + zone.dimen.w
                and y >= zone.dimen.y and y <= zone.dimen.y + zone.dimen.h then
-                if zone.cycle_mode then return self:_cycleBarMode(zone.cycle_mode) end
+                if zone.cycle_mode then
+                    if not self.readonly then self:_showBarModePicker(zone.cycle_mode) end
+                    return true
+                end
                 return self:_goToPeriod(zone.delta)
             end
         end

@@ -2295,3 +2295,42 @@ msgstr "Draw a drop shadow behind the covers (Book info, Reading calendar and Re
 
 msgid "Draw a thin frame around the covers (Book info, Reading calendar and Reading shelf)."
 msgstr "Draw a thin frame around the covers (Book info, Reading calendar and Reading shelf)."
+
+msgid "Weekly reading time"
+msgstr "Weekly reading time"
+
+msgid "Weekly average reading time"
+msgstr "Weekly average reading time"
+
+msgid "Weekly pages read"
+msgstr "Weekly pages read"
+
+msgid "Weekly average pages read"
+msgstr "Weekly average pages read"
+
+msgid "Progress per day"
+msgstr "Progress per day"
+
+msgid "Daily streak (time)"
+msgstr "Daily streak (time)"
+
+msgid "Daily streak (pages)"
+msgstr "Daily streak (pages)"
+
+msgid "Weekly streak (time)"
+msgstr "Weekly streak (time)"
+
+msgid "Weekly streak (pages)"
+msgstr "Weekly streak (pages)"
+
+msgid "Daily (time)"
+msgstr "Daily (time)"
+
+msgid "Daily (pages)"
+msgstr "Daily (pages)"
+
+msgid "Weekly (time)"
+msgstr "Weekly (time)"
+
+msgid "Weekly (pages)"
+msgstr "Weekly (pages)"
