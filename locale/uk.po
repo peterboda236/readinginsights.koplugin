@@ -2283,12 +2283,6 @@ msgstr "За частинами доби"
 msgid "Reading by day"
 msgstr "Читання за днями"
 
-msgid "Reading by time of day"
-msgstr "Читання за часом доби"
-
-msgid "Reading by weekday"
-msgstr "Читання за днями тижня"
-
 msgid "Pages per month"
 msgstr "Сторінок за місяць"
 
@@ -2384,3 +2378,21 @@ msgstr "Щотижня (час)"
 
 msgid "Weekly (pages)"
 msgstr "Щотижня (сторінки)"
+
+msgid "Reading time by time of day"
+msgstr "Час читання за часом доби"
+
+msgid "Pages read by time of day"
+msgstr "Прочитано сторінок за часом доби"
+
+msgid "Share of reading time by time of day"
+msgstr "Частка часу читання за часом доби"
+
+msgid "Reading time by weekday"
+msgstr "Час читання за днями тижня"
+
+msgid "Pages read by weekday"
+msgstr "Прочитано сторінок за днями тижня"
+
+msgid "Share of reading time by weekday"
+msgstr "Частка часу читання за днями тижня"

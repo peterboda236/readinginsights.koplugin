@@ -2237,12 +2237,6 @@ msgstr "Nach Tageszeit"
 msgid "Reading by day"
 msgstr "Lesen nach Tag"
 
-msgid "Reading by time of day"
-msgstr "Lesen nach Tageszeit"
-
-msgid "Reading by weekday"
-msgstr "Lesen nach Wochentag"
-
 msgid "Pages per month"
 msgstr "Seiten pro Monat"
 
@@ -2332,3 +2326,21 @@ msgstr "Durchschnittlich wöchentlich gelesene Seiten"
 
 msgid "Progress per day"
 msgstr "Fortschritt pro Tag"
+
+msgid "Reading time by time of day"
+msgstr "Lesezeit nach Tageszeit"
+
+msgid "Pages read by time of day"
+msgstr "Gelesene Seiten nach Tageszeit"
+
+msgid "Share of reading time by time of day"
+msgstr "Anteil der Lesezeit nach Tageszeit"
+
+msgid "Reading time by weekday"
+msgstr "Lesezeit nach Wochentag"
+
+msgid "Pages read by weekday"
+msgstr "Gelesene Seiten nach Wochentag"
+
+msgid "Share of reading time by weekday"
+msgstr "Anteil der Lesezeit nach Wochentag"

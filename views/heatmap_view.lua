@@ -743,6 +743,20 @@ end
 -- caption switches between them.
 local BAR_MODES = { "time", "pages", "percent" }
 
+-- Caption of a bar chart, naming what its bars show in the view in use.
+-- which: "when" (time of day) or "week" (weekday); mode: "time" / "pages" /
+-- "percent". The same text is the chart's entry in the view list.
+local function barCaption(which, mode)
+    if which == "when" then
+        if mode == "pages"   then return _("Pages read by time of day") end
+        if mode == "percent" then return _("Share of reading time by time of day") end
+        return _("Reading time by time of day")
+    end
+    if mode == "pages"   then return _("Pages read by weekday") end
+    if mode == "percent" then return _("Share of reading time by weekday") end
+    return _("Reading time by weekday")
+end
+
 -- Pages read in one weekday/hour slot (see Data.getWeekdayHourReadingData).
 local function pagesAt(map, wd, h)
     local p = map.pages and map.pages[wd]
@@ -1404,7 +1418,7 @@ local function buildBox(popup_self, periods_back, force_fresh, width_override, d
         }
     end
     local weekday_widget = M.buildWeekdayChartWidget(weekday_hour_map, fonts, content_width, M._week_mode or "time")
-    local week_caption = caption(_("Reading by weekday"))
+    local week_caption = caption(barCaption("week", M._week_mode or "time"))
     local function weekdaySection()
         return {
             sectionSeparator(),
@@ -1469,7 +1483,7 @@ local function buildBox(popup_self, periods_back, force_fresh, width_override, d
         table.insert(content, VerticalSpan:new{ width = LEGEND_GAP })
         table.insert(content, sectionSeparator())
         table.insert(content, VerticalSpan:new{ width = LEGEND_GAP })
-        when_caption = caption(_("Reading by time of day"))
+        when_caption = caption(barCaption("when", M._when_mode or "time"))
         table.insert(content, when_caption)
         table.insert(content, VerticalSpan:new{ width = Size.padding.small })
         table.insert(content, leftAlign(day_part_widget))
@@ -1485,7 +1499,8 @@ local function buildBox(popup_self, periods_back, force_fresh, width_override, d
         table.insert(content, VerticalSpan:new{ width = LEGEND_GAP })
         table.insert(content, sectionSeparator())
         table.insert(content, VerticalSpan:new{ width = LEGEND_GAP })
-        table.insert(content, caption(_("Reading by time of day")))
+        -- The grid view is time only, so its caption always names the time.
+        table.insert(content, caption(barCaption("when", "time")))
         table.insert(content, VerticalSpan:new{ width = Size.padding.small })
         table.insert(content, leftAlign(day_part_widget))
         if peak_line then
@@ -1507,7 +1522,7 @@ local function buildBox(popup_self, periods_back, force_fresh, width_override, d
         content,
     }
 
-    -- Where the tappable "Reading by time of day" caption sits inside the box (chart
+    -- Where the tappable time-of-day caption sits inside the box (chart
     -- view only): tapping it swaps the bars' time labels for percentages.
     local when_zone, week_zone
     local function zoneOf(target)
@@ -1834,7 +1849,7 @@ function M.Popup:_goToPeriod(delta)
     return true
 end
 
--- Each chart ("Reading by time of day" / "Reading by weekday") keeps its own
+-- Each chart (time of day / weekday) keeps its own
 -- bar view until KOReader restarts.
 
 -- Sets one chart's bar view ("time" / "pages" / "percent") and redraws.
@@ -1866,14 +1881,13 @@ function M.Popup:_showBarModePicker(which)
     local ButtonDialog = require("ui/widget/buttondialog")
     local popup = self
     local current = ((which == "when") and M._when_mode or M._week_mode) or "time"
-    local labels = { time = _("Time"), pages = _("Pages"), percent = _("Percent") }
     local dialog
     local buttons = {}
     for _i, mode in ipairs(BAR_MODES) do
         local this_mode = mode
         table.insert(buttons, {{
             -- U+2713 CHECK MARK in front of the view currently in use.
-            text  = (current == this_mode and "\xe2\x9c\x93 " or "    ") .. labels[this_mode],
+            text  = (current == this_mode and "\xe2\x9c\x93 " or "    ") .. barCaption(which, this_mode),
             align = "left",
             callback = function()
                 UIManager:close(dialog)

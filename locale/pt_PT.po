@@ -2234,12 +2234,6 @@ msgstr "Por período do dia"
 msgid "Reading by day"
 msgstr "Leitura por dia"
 
-msgid "Reading by time of day"
-msgstr "Leitura por hora do dia"
-
-msgid "Reading by weekday"
-msgstr "Leitura por dia da semana"
-
 msgid "Pages per month"
 msgstr "Páginas por mês"
 
@@ -2332,3 +2326,21 @@ msgstr "Semanal (tempo)"
 
 msgid "Weekly (pages)"
 msgstr "Semanal (páginas)"
+
+msgid "Reading time by time of day"
+msgstr "Tempo de leitura por hora do dia"
+
+msgid "Pages read by time of day"
+msgstr "Páginas lidas por hora do dia"
+
+msgid "Share of reading time by time of day"
+msgstr "Percentagem do tempo de leitura por hora do dia"
+
+msgid "Reading time by weekday"
+msgstr "Tempo de leitura por dia da semana"
+
+msgid "Pages read by weekday"
+msgstr "Páginas lidas por dia da semana"
+
+msgid "Share of reading time by weekday"
+msgstr "Percentagem do tempo de leitura por dia da semana"

@@ -1960,12 +1960,6 @@ msgstr "按时段"
 msgid "Reading by day"
 msgstr "按日期阅读"
 
-msgid "Reading by time of day"
-msgstr "按时间段阅读"
-
-msgid "Reading by weekday"
-msgstr "按星期阅读"
-
 msgid "Pages per month"
 msgstr "每月页数"
 
@@ -2058,3 +2052,21 @@ msgstr "每周(时间)"
 
 msgid "Weekly (pages)"
 msgstr "每周(页数)"
+
+msgid "Reading time by time of day"
+msgstr "按时间段的阅读时间"
+
+msgid "Pages read by time of day"
+msgstr "按时间段的已读页数"
+
+msgid "Share of reading time by time of day"
+msgstr "按时间段的阅读时间占比"
+
+msgid "Reading time by weekday"
+msgstr "按星期的阅读时间"
+
+msgid "Pages read by weekday"
+msgstr "按星期的已读页数"
+
+msgid "Share of reading time by weekday"
+msgstr "按星期的阅读时间占比"

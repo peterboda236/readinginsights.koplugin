@@ -1421,15 +1421,15 @@ function M.build(self, deps)
     table.insert(book_calendar_sub_item_table, {
         text_func = function()
             local mode_key = deps.BookCalendar.readCalendarCellModeSetting()
-            local mode = (mode_key == "pages" and _("Pages"))
-                or (mode_key == "time" and _("Time"))
-                or _("Percent")
+            local mode = (mode_key == "pages" and _("Pages per day"))
+                or (mode_key == "time" and _("Reading time per day"))
+                or _("Progress per day")
             return _("Book progress calendar cell content") .. ": " .. mode
         end,
         keep_menu_open = true,
         sub_item_table = {
             {
-                text = _("Percent"),
+                text = _("Progress per day"),
                 keep_menu_open = true,
                 radio = true,
                 checked_func = function()
@@ -1438,7 +1438,7 @@ function M.build(self, deps)
                 callback = function() deps.BookCalendar.saveCalendarCellModeSetting("percent") end,
             },
             {
-                text = _("Pages"),
+                text = _("Pages per day"),
                 keep_menu_open = true,
                 radio = true,
                 checked_func = function()
@@ -1447,7 +1447,7 @@ function M.build(self, deps)
                 callback = function() deps.BookCalendar.saveCalendarCellModeSetting("pages") end,
             },
             {
-                text = _("Time"),
+                text = _("Reading time per day"),
                 keep_menu_open = true,
                 radio = true,
                 checked_func = function()

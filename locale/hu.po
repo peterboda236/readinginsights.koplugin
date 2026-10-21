@@ -2249,12 +2249,6 @@ msgstr "Napszakonkénti"
 msgid "Reading by day"
 msgstr "Olvasás naponként"
 
-msgid "Reading by time of day"
-msgstr "Olvasás a nap folyamán"
-
-msgid "Reading by weekday"
-msgstr "Olvasás a hét napjai szerint"
-
 # Current-week view of the weekly section
 
 msgid "Current week"
@@ -2343,3 +2337,21 @@ msgstr "Heti (idő)"
 
 msgid "Weekly (pages)"
 msgstr "Heti (oldalak)"
+
+msgid "Reading time by time of day"
+msgstr "Olvasási idő a nap folyamán"
+
+msgid "Pages read by time of day"
+msgstr "Olvasott oldalak a nap folyamán"
+
+msgid "Share of reading time by time of day"
+msgstr "Olvasási idő aránya a nap folyamán"
+
+msgid "Reading time by weekday"
+msgstr "Olvasási idő a hét napjai szerint"
+
+msgid "Pages read by weekday"
+msgstr "Olvasott oldalak a hét napjai szerint"
+
+msgid "Share of reading time by weekday"
+msgstr "Olvasási idő aránya a hét napjai szerint"
