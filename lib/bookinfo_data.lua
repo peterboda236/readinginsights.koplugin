@@ -32,6 +32,7 @@ plugin's card data (bookcard.koplugin, lib/bookdata.lua):
 
 local deps = ...
 local Locale, BookStatsData = deps.Locale, deps.BookStatsData
+local CoverThumbs = deps.CoverThumbs   -- optional: the on-disk cover cache
 local _ = Locale._
 
 local M = {}
@@ -318,14 +319,87 @@ local function coverToCache(file, bb)
     end
 end
 
+-- On-disk copy of the covers this popup shows, so that the first popup after
+-- a restart does not have to open the book either. Kept apart from the
+-- calendar's / shelf's thumbnails (those are small, 300 x 450): the popup can
+-- show a large cover. Keyed by file path + size + modification time, so a
+-- replaced book (or cover) is read again by itself.
+local DISK_W, DISK_H = 700, 1050
+local lfs_ok, lfs = pcall(require, "libs/libkoreader-lfs")
+
+local function diskKey(file)
+    if not (lfs_ok and CoverThumbs and CoverThumbs.coverDir) then return nil end
+    local dir = CoverThumbs.coverDir()
+    if not dir then return nil end
+    local attr = lfs.attributes(file)
+    if not attr or attr.mode ~= "file" then return nil end
+    local raw = file .. "|" .. tostring(attr.size) .. "|" .. tostring(attr.modification)
+    local ok, sha2 = pcall(require, "ffi/sha2")
+    local name
+    if ok and sha2 and sha2.md5 then
+        local ok2, h = pcall(sha2.md5, raw)
+        if ok2 and type(h) == "string" then name = h end
+    end
+    if not name then return nil end
+    return dir .. "/bi_" .. name
+end
+
+local function diskRead(base)
+    if lfs.attributes(base .. ".none", "mode") == "file" then return false end
+    for _i, ext in ipairs({ ".jpg", ".png" }) do
+        local f = base .. ext
+        if lfs.attributes(f, "mode") == "file" then
+            local ok, bb = pcall(function()
+                return require("ui/renderimage"):renderImageFile(f, false)
+            end)
+            if ok and bb then return bb end
+        end
+    end
+    return nil
+end
+
+local function diskWrite(base, bb)
+    local ok, small = pcall(function()
+        local scale = math.min(DISK_W / bb:getWidth(), DISK_H / bb:getHeight())
+        if scale >= 1 then return bb:copy() end   -- never enlarged
+        return require("ui/renderimage"):scaleBlitBuffer(bb:copy(),
+            math.max(1, math.floor(bb:getWidth() * scale)),
+            math.max(1, math.floor(bb:getHeight() * scale)), true)
+    end)
+    if ok and small then
+        CoverThumbs.writeThumb(base, small)
+        pcall(function() small:free() end)
+    end
+end
+
 function M.getCover(ui, file)
     local bb
     M.last_cover_error = nil
     if file then
         bb = coverFromCache(file)
         if bb then return bb end
+        -- Not in memory (e.g. right after a restart): the disk copy next.
+        local base = diskKey(file)
+        if base then
+            local d = diskRead(base)
+            if d == false then
+                M.last_cover_error = "the book has no cover image"
+                return nil
+            elseif d then
+                coverToCache(file, d)
+                return d
+            end
+        end
         bb = M._getCoverFromFile(file)
-        if bb then coverToCache(file, bb) end
+        if bb then
+            coverToCache(file, bb)
+            if base then pcall(diskWrite, base, bb) end
+        elseif base and lfs.attributes(file, "mode") == "file"
+            and (M.last_cover_error == nil
+                or M.last_cover_error == "the book has no cover image") then
+            -- the book opened fine and has no cover: remember that
+            pcall(CoverThumbs.markNoCover, base)
+        end
         return bb
     end
     if not ui or not ui.document then return nil end

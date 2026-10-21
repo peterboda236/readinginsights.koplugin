@@ -285,15 +285,15 @@ local AchievementsView = loadModule("views/achievements_view.lua",
 -- modules, so it loads first and is handed to the insights view below.
 -- Its day cells show the cover of the day's most-read book, read through
 -- BookInfoData (the Book info popup's cover loader), so that is loaded first.
+-- The on-disk cover thumbnail cache (lib/coverthumbs.lua) has no dependencies
+-- and is loaded first: the Book info popup's cover loader uses it too.
+local CoverThumbs  = loadModule("lib/coverthumbs.lua")
 local BookInfoData = loadModule("lib/bookinfo_data.lua",
-    { Locale = Locale, BookStatsData = BookStatsData })
+    { Locale = Locale, BookStatsData = BookStatsData, CoverThumbs = CoverThumbs })
 -- The framed, rounded, shadowed cover look (Settings > Appearance > Covers):
 -- drawn by widgets/coverframe.lua (the Book card plugin's widget) for the Book
 -- info popup, the Reading calendar's days and the Reading shelf alike.
 local CoverFrame   = loadModule("widgets/coverframe.lua", { Colors = Colors })
--- The on-disk cover thumbnail cache the calendar's day cells and the year
--- shelf share (lib/coverthumbs.lua).
-local CoverThumbs  = loadModule("lib/coverthumbs.lua")
 local StreakCalendar = loadModule("views/streak_calendar_view.lua", {
     Locale = Locale, Colors = Colors, Fonts = Fonts, UI = UI,
     Data = InsightsData, Prefs = Prefs, VS = ViewSettings,

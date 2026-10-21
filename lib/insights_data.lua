@@ -1430,15 +1430,28 @@ function M._bookListStamp(conn, lo, hi)
             math.floor(lo), math.floor(hi))
     end
     local parts = {}
-    local _r1, ran1 = StatsDb.withStatement(conn,
-        "SELECT COUNT(*), COALESCE(SUM(duration), 0), COALESCE(MAX(start_time), 0) FROM page_stat" .. where,
-        function(stmt)
-            for row in stmt:rows() do
-                parts[1] = tostring(tonumber(row[1]) or 0)
-                parts[2] = tostring(tonumber(row[2]) or 0)
-                parts[3] = tostring(tonumber(row[3]) or 0)
-            end
-        end)
+    -- Probed on the raw table first: page_stat is a view that spreads every
+    -- stored row over the pages it covers, so counting through it makes
+    -- SQLite build all of those rows just to be counted. The raw table's
+    -- count / sum / max change under exactly the same circumstances, which is
+    -- all a stamp needs. If the table can't be read that way (a different
+    -- KOReader schema) the view is used, as before.
+    local function probe(source)
+        local ok_rows = false
+        local _r, ran = StatsDb.withStatement(conn,
+            "SELECT COUNT(*), COALESCE(SUM(duration), 0), COALESCE(MAX(start_time), 0) FROM "
+                .. source .. where,
+            function(stmt)
+                for row in stmt:rows() do
+                    parts[1] = tostring(tonumber(row[1]) or 0)
+                    parts[2] = tostring(tonumber(row[2]) or 0)
+                    parts[3] = tostring(tonumber(row[3]) or 0)
+                    ok_rows = true
+                end
+            end)
+        return ran and ok_rows
+    end
+    local ran1 = probe("page_stat_data") or probe("page_stat")
     -- Period lists show only a book's id and title, so for those just the
     -- books read in the period count - a new book, or a re-paginated one
     -- elsewhere in the library, must not throw away every past month's list.
@@ -1497,11 +1510,33 @@ function M.getFinishedBooksForYear(year)
         local hit       = Cache.getBookList(cache_key, stamp)
         if hit then return hit end
 
-        local sql = string.format([[
+        -- The year as a plain range on start_time (indexed) rather than
+        -- strftime() on every row. A finished book's LAST entry is in the
+        -- year, so the books whose last entry lies outside it are dropped
+        -- right where last_entry is built - before the join that fetches
+        -- their last page - instead of after it.
+        local lo, hi = M._periodBounds("%Y", tostring(year))
+        local in_year, last_in_year, having = nil, nil, ""
+        if lo and hi then
+            lo, hi = math.floor(lo), math.floor(hi)
+            -- Unary + on start_time: keeps SQLite from picking the
+            -- start_time index for these (page_stat is a view, and that
+            -- plan is dramatically slower than walking the book's rows).
+            in_year      = string.format("+start_time >= %d AND +start_time < %d", lo, hi)
+            last_in_year = string.format("lp.last_time >= %d AND lp.last_time < %d", lo, hi)
+            having       = string.format("HAVING MAX(start_time) >= %d AND MAX(start_time) < %d", lo, hi)
+        else
+            in_year      = "strftime('%Y', start_time, 'unixepoch', 'localtime') = '" .. tostring(year) .. "'"
+            last_in_year = "strftime('%Y', lp.last_time, 'unixepoch', 'localtime') = '" .. tostring(year) .. "'"
+        end
+
+        local sql = [[
             WITH last_entry AS (
                 SELECT id_book, MAX(start_time) AS last_time
                 FROM page_stat
                 GROUP BY id_book
+                ]] .. having .. [[
+
             ),
             last_page AS (
                 SELECT le.id_book AS id_book, le.last_time AS last_time,
@@ -1513,18 +1548,19 @@ function M.getFinishedBooksForYear(year)
             SELECT book.title, book.id AS id_book, lp.last_time AS last_time,
                    (SELECT SUM(duration) FROM page_stat
                     WHERE id_book = book.id
-                      AND strftime('%%Y', start_time, 'unixepoch', 'localtime') = '%s') AS duration_sec,
+                      AND ]] .. in_year .. [[) AS duration_sec,
                    (SELECT COUNT(DISTINCT page) FROM page_stat
                     WHERE id_book = book.id
-                      AND strftime('%%Y', start_time, 'unixepoch', 'localtime') = '%s') AS pages_read,
+                      AND ]] .. in_year .. [[) AS pages_read,
                    book.md5 AS md5
             FROM last_page lp
             JOIN book ON book.id = lp.id_book
             WHERE book.pages > 0
               AND CAST(lp.last_page AS REAL) / book.pages >= 0.99
-              AND strftime('%%Y', lp.last_time, 'unixepoch', 'localtime') = '%s'
+              AND ]] .. last_in_year .. [[
+
             ORDER BY lp.last_time DESC
-        ]], tostring(year), tostring(year), tostring(year))
+        ]]
         local _res, ran = StatsDb.withStatement(conn, sql, function(stmt)
             for row in stmt:rows() do
                 table.insert(books, {
@@ -2375,6 +2411,24 @@ function M.getBooksForPeriod(period_format, period_value)
         local hit       = Cache.getBookList(cache_key, stamp)
         if hit then return hit end
 
+        -- The period as a plain range on start_time (what the index
+        -- page_stat_data_start_time can serve) instead of strftime() around
+        -- the column, which converts every row of the whole history just to
+        -- test it. Same rows: lo/hi are the period's local-time bounds.
+        local period_cond
+        if lo and hi then
+            -- Unary + on start_time on purpose: with a bare range SQLite
+            -- drives the query from the start_time index through the
+            -- page_stat view and then has to sort every expanded row for the
+            -- GROUP BY - measured ~100x slower than letting it walk the
+            -- (id_book, page, start_time) index, which "+" forces.
+            period_cond = string.format("+start_time >= %d AND +start_time < %d",
+                math.floor(lo), math.floor(hi))
+        else
+            period_cond = "strftime('" .. period_format
+                .. "', start_time, 'unixepoch', 'localtime') = '" .. period_value .. "'"
+        end
+
         -- De-duplicated reading time per book for the period.
         -- period_format inserted via concatenation to avoid %% escape conflicts.
         local sql = [[
@@ -2391,7 +2445,7 @@ function M.getBooksForPeriod(period_format, period_value)
                        SUM(duration) AS period_sum,
                        MAX(start_time) AS last_read
                 FROM page_stat
-                WHERE strftime(']] .. period_format .. [[', start_time, 'unixepoch', 'localtime') = ']] .. period_value .. [['
+                WHERE ]] .. period_cond .. [[
                 GROUP BY id_book, page
             ) ps_dedup
             JOIN book ON ps_dedup.id_book = book.id
@@ -2399,7 +2453,7 @@ function M.getBooksForPeriod(period_format, period_value)
                 SELECT id_book,
                        COUNT(DISTINCT date(start_time, 'unixepoch', 'localtime')) AS days_read
                 FROM page_stat
-                WHERE strftime(']] .. period_format .. [[', start_time, 'unixepoch', 'localtime') = ']] .. period_value .. [['
+                WHERE ]] .. period_cond .. [[
                 GROUP BY id_book
             ) day_counts ON ps_dedup.id_book = day_counts.id_book
             GROUP BY ps_dedup.id_book
@@ -2450,6 +2504,16 @@ function M.getBooksForYearByIds(year, ids)
         local hit       = Cache.getBookList(cache_key, stamp)
         if hit then return hit end
 
+        -- A plain range on start_time instead of strftime() per row; the
+        -- unary + keeps the planner off the start_time index (see
+        -- getBooksForPeriod).
+        local year_cond
+        if lo and hi then
+            year_cond = string.format("+start_time >= %d AND +start_time < %d",
+                math.floor(lo), math.floor(hi))
+        else
+            year_cond = "strftime('%Y', start_time, 'unixepoch', 'localtime') = '" .. period_value .. "'"
+        end
         local sql = string.format([[
             SELECT book.title, book.authors,
                    COUNT(DISTINCT ps_dedup.page) AS pages_read,
@@ -2464,7 +2528,7 @@ function M.getBooksForYearByIds(year, ids)
                        MAX(start_time) AS last_read
                 FROM page_stat
                 WHERE id_book IN (%s)
-                  AND strftime('%%Y', start_time, 'unixepoch', 'localtime') = '%s'
+                  AND %s
                 GROUP BY id_book, page
             ) ps_dedup
             JOIN book ON ps_dedup.id_book = book.id
@@ -2473,12 +2537,12 @@ function M.getBooksForYearByIds(year, ids)
                        COUNT(DISTINCT date(start_time, 'unixepoch', 'localtime')) AS days_read
                 FROM page_stat
                 WHERE id_book IN (%s)
-                  AND strftime('%%Y', start_time, 'unixepoch', 'localtime') = '%s'
+                  AND %s
                 GROUP BY id_book
             ) day_counts ON ps_dedup.id_book = day_counts.id_book
             GROUP BY ps_dedup.id_book
             ORDER BY MAX(ps_dedup.last_read) DESC
-        ]], id_list, period_value, id_list, period_value)
+        ]], id_list, year_cond, id_list, year_cond)
 
         local _res, ran = StatsDb.withStatement(conn, sql, function(stmt)
             for row in stmt:rows() do
