@@ -133,7 +133,7 @@ end
 -- Newer view options, kept on one table for the reason in the header: a
 -- field costs no local, a top-level `local` costs one of the 200.
 M.Opt = {
-    -- Bar-chart height mode (Settings > Reading insight popup > "Bar chart
+    -- Bar-chart height mode (Settings > Reading insights popup > "Bar chart
     -- height" > "Automatic (Reading insights)").
     --
     -- true (default): the weekly and monthly bar heights are not taken from
@@ -194,7 +194,7 @@ M.Opt = {
     built_monthly = false,
 
     -- Whether the "Reading goal" section is shown at all (Settings >
-    -- Reading insight popup > "Reading goal"). On by default. When off
+    -- Reading insights popup > "Reading goal"). On by default. When off
     -- the section is skipped while building the popup *and* its
     -- finished-book count is never queried (see _loadAndRebuild), so
     -- turning it off also removes its share of the work on every open.
@@ -202,7 +202,7 @@ M.Opt = {
     SHOW_GOAL_DEFAULT = true,
 
     -- What the reading-goal section shows (Settings > 
-    -- Reading insight popup > "Reading goal section"):
+    -- Reading insights popup > "Reading goal section"):
     --   "both"      (default) finished/target figure + achievements count
     --   "goal_only" the old two-cell view: finished count | yearly target
     --   "off"       the whole section is hidden (and not queried)
@@ -221,7 +221,7 @@ M.Opt = {
     SHOW_ACH_ROW_KEY  = "reading_insights_achievements_row_enabled",
 
     -- What the right-hand cell of the "Reading goal" section counts
-    -- (Settings > Reading insight popup > "Reading goal
+    -- (Settings > Reading insights popup > "Reading goal
     -- display"). "total" (default) shows the year's goal itself - "30 books
     -- to read"; "remaining" shows how many of it are still left after the
     -- finished books on the left - "18 books left". Either way it is the
@@ -232,7 +232,7 @@ M.Opt = {
     GOAL_DISPLAY_REMAINING = "remaining",
 
     -- How often the achievements re-evaluate in the background (Settings >
-    -- Reading insight popup > "Achievement refresh").
+    -- Reading insights popup > "Achievement refresh").
     -- "daily" (default): at most once per calendar day; "every_open": on
     -- every insights popup open. Either way the heavy re-scan only actually
     -- runs when the reading data changed since the last evaluation; a
@@ -595,7 +595,7 @@ function M.saveWeeklyGoalMinutes(value)
     Prefs.save(M.SETTINGS_KEY_WEEKLY_GOAL_MIN, value)
 end
 
--- "Last 7 days" section rows (Settings > Reading insight
+-- "Last 7 days" section rows (Settings > Reading insights
 -- popup > "Last 7 days"). The compact row (total + daily average of the
 -- selected chart mode, time or pages) is always shown. Two optional extras,
 -- both off by default and independent of each other:
@@ -624,7 +624,7 @@ function M.saveWeeklyVsPrev(value)
     M.saveBoolSetting(M.SETTINGS_KEY_WEEKLY_VS_PREV, value)
 end
 
--- "Last 7 days" bar order (Settings ▸ Reading insight popup ▸
+-- "Last 7 days" bar order (Settings ▸ Reading insights popup ▸
 -- "Last 7 days chapter bar order"). The chart's data always arrives with index
 -- 1 = today; this only decides which end of the row that first bar is drawn
 -- at, so everything keyed off "bar 1 is today" (the highlight colour, the tap
@@ -649,7 +649,7 @@ function M.saveWeeklyBarOrderSetting(value)
 end
 
 -- Which week the weekly section of the insights popup shows (Settings >
--- Reading insight popup > Week > "View"):
+-- Reading insights popup > Week > "View"):
 --   "last7"    (default) the rolling last 7 days, ending today.
 --   "calendar" the current calendar week (from the shared week start day),
 --              pageable back and forth like the year; every figure of the
@@ -676,7 +676,7 @@ function M.readWeeklyViewIsCalendar()
 end
 
 -- Layout of the yearly (months) bar chart in the Reading insights popup
--- (Settings > Reading insight popup > "Months chart layout"). "one_row" is
+-- (Settings > Reading insights popup > "Months chart layout"). "one_row" is
 -- the default: all 12 months in a single row. "two_rows" draws two rows of
 -- 6 months in portrait. Landscape always uses a single row regardless of
 -- this setting.
@@ -697,7 +697,7 @@ function M.saveMonthlyLayoutSetting(value)
 end
 
 -- Style of the yearly (months) chart in the Reading insights popup
--- (Settings > Reading insight popup > "Months chart style"). "bars" (the
+-- (Settings > Reading insights popup > "Months chart style"). "bars" (the
 -- default) is the bar chart (which honours the "Months chart
 -- layout" setting); "line" draws one line with a dot per month, all 12 months
 -- in a single row.
@@ -717,7 +717,7 @@ function M.saveMonthlyStyleSetting(value)
     Prefs.save(M.SETTINGS_KEY_MONTHLY_STYLE, value)
 end
 
--- Style of the "Last 7 days" chart (Settings > Reading insight popup >
+-- Style of the "Last 7 days" chart (Settings > Reading insights popup >
 -- "Last 7 days chart style"): "bars" (default) or "line" (smooth line with a
 -- dot per day, like the yearly chart).
 M.SETTINGS_KEY_WEEKLY_STYLE = "reading_insights_weekly_chart_style"
@@ -959,7 +959,7 @@ function M.Opt.saveShowCellBars(value)
 end
 
 -- Reading insights popup's title-bar hamburger menu (Settings > Advanced
--- settings > Reading insight popup > "Hamburger menu"). Read by
+-- settings > Reading insights popup > "Hamburger menu"). Read by
 -- insights_view.lua's _buildUI when deciding whether to draw the title
 -- bar's left icon at all.
 function M.Opt.readShowHamburgerMenu()

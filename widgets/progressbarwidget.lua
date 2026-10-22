@@ -12,7 +12,7 @@ and the colors live in lib/colors.lua (progress_bar_read/progress_bar_unread),
 right alongside every other on/off toggle and color in the plugin.
 
   ProgressBar.readHeightSetting() / ProgressBar.saveHeightSetting(v) / ProgressBar.DEFAULT_HEIGHT
-      the bar's height in "points" (Settings > Reading insight popup > Bar
+      the bar's height in "points" (Settings > Reading insights popup > Bar
       chart height > "Book progress: Progress bar"), read on every build
   ProgressBar.build(ratio, full_width, read_color, unread_color)
       ratio              0.0..1.0 fraction of the book already read

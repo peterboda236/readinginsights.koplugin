@@ -848,9 +848,6 @@ msgstr "Aucune lecture ce jour."
 msgid "About"
 msgstr "À propos"
 
-msgid "Reading insight"
-msgstr "Statistique de lecture"
-
 msgid "A full-screen overlay with a comprehensive overview of your reading history, powered by KOReader's statistics database."
 msgstr "Un overlay plein écran avec un aperçu complet de votre historique de lecture, basé sur la base de données statistiques de KOReader."
 
@@ -1016,7 +1013,7 @@ msgstr "Ajouter des livres manuellement - %1"
 msgid "Date & time"
 msgstr "Date et heure"
 
-msgid "Reading insight popup"
+msgid "Reading insights popup"
 msgstr "Popup de statistiques de lecture"
 
 msgid "Daily goal"

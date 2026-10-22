@@ -9,7 +9,7 @@ MD5 checksum: stored as `md5` in statistics.sqlite3's `book` table, and as
 walking the reading history, opening each book's sidecar and filing its
 rating under that checksum.
 
-The result is also kept in a file (reading_insights_ratings_cache.lua, see "File
+The result is also kept in a file (readinginsights/cache/ratings_scan.lua, see "File
 cache" below), so a rebuild only re-opens the sidecars that changed.
 
 The map is rebuilt at most once every TTL seconds - lists are opened a tap
@@ -56,7 +56,7 @@ local M = {}
 -- Ratings edited by hand from the book lists: { [md5] = 0..5 }. Own file next
 -- to KOReader's settings, so it survives restarts and can be copied to
 -- another device on its own.
-local STORE_PATH = require("datastorage"):getSettingsDir() .. "/reading_insights_ratings.lua"
+local STORE_PATH = require("readinginsights_paths").dataFile("ratings.lua")
 local store
 
 local function openStore()
@@ -111,7 +111,7 @@ local file_list      -- every book file whose sidecar is known (history + scan)
 -- stamp (modification time + size) changed, so a rating changed anywhere -
 -- KOReader's status page, the file manager, this plugin - is still picked up.
 -- ---------------------------------------------------------------------
-local PCACHE_PATH = require("datastorage"):getSettingsDir() .. "/reading_insights_ratings_cache.lua"
+local PCACHE_PATH = require("readinginsights_paths").cacheFile("ratings_scan.lua")
 local PCACHE_VERSION = 1
 local pc_settings, pc_entries
 local pc_dirty = false

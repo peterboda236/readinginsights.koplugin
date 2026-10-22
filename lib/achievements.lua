@@ -7,7 +7,7 @@ by earn time descending; the remaining locked ones below, in gray).
 
 Persistence: earned achievements live in their own file in the KOReader
 settings folder, mirroring manual_books.lua's approach
-(reading_insights_achievements.lua), shaped as { [id] = earned_unix_time }.
+(readinginsights/data/achievements.lua), shaped as { [id] = earned_unix_time }.
 Once earned, an achievement is read from that file from then on - a normal
 popup open only reads the count (cheap, file-only). The actual evaluation
 (with the DB queries) only runs when the full data is reloaded: on a long
@@ -34,7 +34,6 @@ earned achievement stays earned.
                                   fingerprint query per open)
 ]]--
 
-local DataStorage = require("datastorage")
 local LuaSettings = require("luasettings")
 local logger      = require("logger")
 
@@ -48,7 +47,7 @@ local _ = Locale._
 local M = {}
 
 local DATES_VERSION = 1
-local STORE_PATH = DataStorage:getSettingsDir() .. "/reading_insights_achievements.lua"
+local STORE_PATH = require("readinginsights_paths").dataFile("achievements.lua")
 
 -- The achievement catalogue. Every entry:
 --   id     stable key, this is what goes into the file - once shipped,

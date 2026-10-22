@@ -103,7 +103,7 @@ end
 -- Inclusive [start_t, end_t] timestamps (both at hour=12) for the
 -- heatmap period `periods_back` periods before the current one, where a
 -- period is VS.readHeatmapMonthsSetting() months long (3, 4, 6 or 12 - see
--- Settings ▸ Reading insight popup ▸ "Reading heatmap range"): period 0 is
+-- Settings ▸ Reading insights popup ▸ "Reading heatmap range"): period 0 is
 -- that many months ending today, period 1 the same span before that,
 -- and so on.
 function M.getHeatmapPeriodRange(periods_back)
@@ -324,7 +324,7 @@ function M.buildRangeHeatmapWidget(daily_map, start_t, end_t, fonts, max_width)
     -- grid past the popup's right edge.
     local min_cell   = Screen:scaleBySize(4)
     -- No upper cap: for shorter heatmap ranges (fewer columns - see
-    -- Settings ▸ Reading insight popup ▸ "Reading heatmap range"), the cells
+    -- Settings ▸ Reading insights popup ▸ "Reading heatmap range"), the cells
     -- grow proportionally to use the full available width instead of
     -- leaving empty space to the right of a small fixed-size grid.
     if cell_size < min_cell then cell_size = min_cell end

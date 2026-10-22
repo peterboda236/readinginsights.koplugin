@@ -119,7 +119,7 @@ function M.show()
     local link_face    = loadFace("NotoSans-Bold.ttf", BODY_SIZE)
 
     local title_w = TextWidget:new{
-        text = _("Reading insight"),
+        text = _("Reading insights"),
         face = title_face,
     }
 

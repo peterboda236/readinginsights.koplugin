@@ -26,7 +26,7 @@ there. Four popups, all reachable from *Tools → Reading insights*:
 A full-screen overview of your whole reading history.
 
 - **Last 7 days** — average time and pages per day; tap either to see its 8-week trend.
-  - **Current week view** — *Settings ▸ Reading insight popup ▸ Week ▸ View* switches this section from the rolling last 7 days (default) to the current calendar week. The days are labelled by weekday only, and the header pages like the year: the previous week's first–last day on the left, *Current week* in the middle (tap it to switch time/pages), the next week's range on the right. Totals, averages, the chart and the comparison with the previous week all cover the shown week; a half-finished week is compared with the same days of the week before.
+  - **Current week view** — *Settings ▸ Reading insights popup ▸ Week ▸ View* switches this section from the rolling last 7 days (default) to the current calendar week. The days are labelled by weekday only, and the header pages like the year: the previous week's first–last day on the left, *Current week* in the middle (tap it to switch time/pages), the next week's range on the right. Totals, averages, the chart and the comparison with the previous week all cover the shown week; a half-finished week is compared with the same days of the week before.
   - The chart runs left to right by default (today / the newest day on the right); *Bar order* flips it.
 - **Streaks** — current and best daily & weekly streaks; tap any of them (or
   see the separate [Reading calendar](#-reading-calendar) popup below).
@@ -45,7 +45,7 @@ A full-screen overview of your whole reading history.
   earned, next to the name of the latest one. Tap to open the list.
 
   The reading goal and the achievements can each be switched on or off
-  separately (Settings → Reading insight popup); both
+  separately (Settings → Reading insights popup); both
   are on by default.
 
 **Controls:** swipe to change year, tap headers/bars to drill in, long-press
@@ -221,9 +221,25 @@ Future updates can be installed in-app — see [Updates](#-updates) above.
 ## Uninstalling
 
 Delete the plugin from KOReader's *Plugin management*. Ticking **"Also delete
-plugin settings"** makes the plugin clean up after itself (its cache/store
-files and every setting it wrote, including the sleep-screen choice). Leaving it
-unticked keeps everything, so a later reinstall picks up where you left off.
+plugin settings"** makes the plugin clean up after itself (its data and cache
+files, the exported wallpaper and every setting it wrote, including the
+sleep-screen choice). Your own pictures in `wallpapers/` are never deleted.
+Leaving it unticked keeps everything, so a later reinstall picks up where you
+left off.
+
+### Where the plugin keeps its files
+
+Everything is under `<KOReader settings dir>/readinginsights/` (older versions
+scattered `reading_insights_*.lua` files over the settings folder; they are
+moved here automatically):
+
+- `data/` — manual books, achievements, ratings (what you would miss).
+- `cache/` — everything that is rebuilt on demand, safe to delete: the insights,
+  book-list, per-day, records and ratings caches, the last-book snapshot, and
+  `covers/thumb` + `covers/large` (cover pictures, together limited to 25 MB —
+  the least recently used are deleted first).
+- `wallpapers/` — your own sleep-screen pictures.
+- `update/` — scratch space of the in-app updater.
 
 ## Settings
 
@@ -234,7 +250,7 @@ unticked keeps everything, so a later reinstall picks up where you left off.
 - **Appearance** — **Colors** (a hex colour, or a touch colour wheel, for every
   bar, line and label the popups draw) and **Fonts** (your own font and size
   for each text role).
-- **Reading insight popup** — which sections it shows (goals, achievements,
+- **Reading insights popup** — which sections it shows (goals, achievements,
   hamburger menu), the *Last 7 days* and *Months* chart styles, and the bar
   chart heights.
 - **Reading habits** — the calendar range and the time-of-day view.
@@ -261,7 +277,7 @@ gestures under *Settings → Taps and gestures*.
   modules are plain computation over the statistics DB, so they run outside
   KOReader; drawing under `views/` needs a real device. See `tests/README.md`.
 - **Translations:** UI strings live in `locale/<lang>.po` (English, Hungarian,
-  German, Portuguese, Simplified Chinese). Add a language by dropping in a new
+  German, French, Portuguese, Ukrainian, Simplified Chinese). Add a language by dropping in a new
   `locale/<lang>.po` — no code changes needed. Missing strings fall back to the
   English original.
 
@@ -287,3 +303,9 @@ that refreshes itself: on a timer, when a book is opened or closed, and on
 suspend. It is drawn offscreen, so nothing flashes while reading. On Android
 set the file (or a folder, via "Also copy to a shared folder") as wallpaper;
 on PocketBook it can also be written as the power-off / boot logo.
+
+The file is saved as `readinginsights_wallpaper.<png|jpg|bmp>` in
+`<KOReader data dir>/screensaver/readinginsights_png/` (the data dir is the
+one that holds `plugins/` and `settings/`), plus the extra copy if you set a
+shared folder. Only this plugin's own file name is ever replaced or removed
+there; "Also delete plugin settings" removes it as well.

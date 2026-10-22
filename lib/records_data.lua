@@ -32,7 +32,6 @@ and no one pays for a recompute on upgrade.
                                    everything from the database
 ]]--
 
-local DataStorage = require("datastorage")
 local LuaSettings = require("luasettings")
 
 local deps = ...
@@ -58,9 +57,9 @@ local MILESTONES = { 1, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000 }
 -- ---------------------------------------------------------------------------
 -- DB helpers
 -- ---------------------------------------------------------------------------
--- The records cache lives next to the statistics DB, in the settings dir.
+-- The records cache lives in the plugin's cache folder (lib/paths.lua).
 local function cachePath()
-    return DataStorage:getSettingsDir() .. "/readinginsights_records_cache.lua"
+    return require("readinginsights_paths").cacheFile("records.lua")
 end
 
 -- The cache table passed around inside this module (the on-disk keys are

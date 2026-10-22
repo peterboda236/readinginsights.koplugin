@@ -13,7 +13,7 @@ Sections, top to bottom:
   - Year          time, days read or books read + pages, per year
   - Monthly chart per-month bars; the header cycles hours/days/books
   - Reading goal  finished books vs. a per-year target (can be switched off
-                  in Settings > Reading insight popup)
+                  in Settings > Reading insights popup)
   - All time    all-time totals
 
 Gestures:
@@ -38,7 +38,7 @@ don't flash the whole screen.
 
 Bar chart heights: by default both charts size themselves while the page is
 built so it fits one screen without a scroll bar - see _buildUI's fit loop,
-and Settings > Reading insight popup > "Bar chart height" to turn it off.
+and Settings > Reading insights popup > "Bar chart height" to turn it off.
 ]]--
 
 local Blitbuffer = require("ffi/blitbuffer")
@@ -414,7 +414,7 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
 
         -- Thin (5 px) progress bar under a goal value, drawn with the chart's
         -- active (done) / inactive (remaining) bar colors. Can be switched
-        -- off in Settings > Reading insight popup > "Daily / weekly goal bar".
+        -- off in Settings > Reading insights popup > "Daily / weekly goal bar".
         local show_goal_bar = VS.readShowTimeGoalBar()
         local GOAL_BAR_HEIGHT = 5
         local function buildGoalBar(done, goal, width)
@@ -484,7 +484,7 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
     end
 
     do
-        -- Two views of the same section (Settings > Reading insight popup >
+        -- Two views of the same section (Settings > Reading insights popup >
         -- Week > View): the rolling last 7 days, or one calendar week that
         -- can be paged. Everything below - totals, averages, chart and the
         -- comparison - is worked out from whichever week is shown.
@@ -968,7 +968,7 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
     popup_self._goal_hold_targets = {}
 
     -- The reading-goal and achievements sections are switched on/off
-    -- independently (Settings > Reading insight popup). With the goal on it
+    -- independently (Settings > Reading insights popup). With the goal on it
     -- comes first (a headerless row); the achievements section follows below
     -- it, with a header of its own. With both off nothing is drawn.
     local show_goal = VS.Opt.readShowReadingGoal()

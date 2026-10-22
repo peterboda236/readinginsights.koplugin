@@ -33,12 +33,11 @@ they read it stands in for one; entries saved before dates existed (or with
 the date left empty) fall back to the time they were added.
 ]]--
 
-local DataStorage = require("datastorage")
 local LuaSettings = require("luasettings")
 
 local M = {}
 
-local STORE_PATH = DataStorage:getSettingsDir() .. "/reading_insights_manual_books.lua"
+local STORE_PATH = require("readinginsights_paths").dataFile("manual_books.lua")
 
 local store
 

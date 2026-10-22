@@ -392,9 +392,9 @@ function Updater.install(zip_url, old_version, new_version, on_success, error_la
 
     UIManager:scheduleIn(0.1, function()
         -- Download ZIP to temp location
-        local cache_dir = DataStorage:getSettingsDir() .. "/readinginsights_cache"
-        if lfs.attributes(cache_dir, "mode") ~= "directory" then
-            lfs.mkdir(cache_dir)
+        local cache_dir = require("readinginsights_paths").updateDir()
+        if not cache_dir then
+            cache_dir = DataStorage:getSettingsDir()   -- (should not happen)
         end
         local zip_path = cache_dir .. "/" .. PLUGIN_ID .. ".zip"
 

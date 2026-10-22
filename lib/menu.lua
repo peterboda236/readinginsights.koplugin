@@ -3,7 +3,7 @@ Reading Insights - the Tools menu.
 
 Builds the whole *Tools > Reading insights* entry: the "open a popup" actions
 (statistics popups, then the popups about the open book), the Settings submenu
-(Date & time, Appearance, one group per view - Reading insight popup,
+(Date & time, Appearance, one group per view - Reading insights popup,
 Heatmap & time of day, Book progress popup, Book info, Book progress
 calendar - and Advanced settings last), and the Updates and About entries. The Settings layout is spelled
 out in one place, under "Settings menu layout" near the end of M.build.
@@ -360,7 +360,7 @@ function M.build(self, deps)
     }
 
     -- Bar chart heights, now kept with the view each one belongs to:
-    --   Reading insight popup > Bar chart height   (automatic, Last 7 days, Months)
+    --   Reading insights popup > Bar chart height   (automatic, Last 7 days, Months)
     --   Book progress popup > Bar chart height     (chapters, skim bar)
     --
     -- Automatic is on by default: the two Reading insights charts size
@@ -542,7 +542,7 @@ function M.build(self, deps)
         sub_item_table = reading_calendar_sub_item_table,
     }
 
-    -- "Reading insight popup": everything that changes what the insights
+    -- "Reading insights popup": everything that changes what the insights
     -- popup itself shows. The entries are defined here and grouped under
     -- "Settings menu layout" at the end.
 
@@ -1470,7 +1470,7 @@ function M.build(self, deps)
     --   Date & time                how dates, times and weeks are shown
     --   Appearance                 colors, fonts and the look of covers
     --   -------------------------
-    --   one group per view         Reading insight popup, Heatmap & time of
+    --   one group per view         Reading insights popup, Heatmap & time of
     --                              day, Book progress popup, Book progress
     --                              calendar, Reading calendar, Book info
     --   -------------------------
@@ -1478,7 +1478,7 @@ function M.build(self, deps)
     --                              sleep screen, refresh, long durations,
     --                              which popups the Tools menu lists
     --
-    -- Bar chart heights sit with the view they belong to: Reading insight
+    -- Bar chart heights sit with the view they belong to: Reading insights
     -- popup > Bar chart height, Book progress popup > Bar chart height.
     local insights_popup_sub_item_table = layout({
         I.hamburger,
@@ -1515,7 +1515,7 @@ function M.build(self, deps)
         group(_("Appearance"), { I.colors, I.fonts, I.covers }),
         "-",
         {
-            text = _("Reading insight popup"),
+            text = _("Reading insights popup"),
             keep_menu_open = true,
             sub_item_table = insights_popup_sub_item_table,
         },

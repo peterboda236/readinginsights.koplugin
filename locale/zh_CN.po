@@ -623,8 +623,6 @@ msgstr "当日无阅读记录。"
 
 msgid "About"
 msgstr "关于"
-msgid "Reading insight"
-msgstr "阅读统计"
 msgid "A full-screen overlay with a comprehensive overview of your reading history, powered by KOReader's statistics database."
 msgstr "全屏工具，汇总展示你的全部阅读历史，基于KOReader统计数据库驱动。"
 
@@ -750,7 +748,7 @@ msgid "Add books manually - %1"
 msgstr "手动添加书籍 — %1"
 msgid "Date & time"
 msgstr "日期与时间"
-msgid "Reading insight popup"
+msgid "Reading insights popup"
 msgstr "阅读统计弹窗"
 
 msgid "Daily goal"

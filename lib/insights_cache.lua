@@ -40,7 +40,6 @@ alias would still point at the discarded table afterwards.
                                (see "Book-list cache" below)
 ]]--
 
-local DataStorage = require("datastorage")
 local logger      = require("logger")
 
 local M = {}
@@ -212,7 +211,7 @@ M._heatmap_watermark = 0
 -- timer or "is it still today" logic is needed here - the data itself says
 -- when it is stale.
 --
--- Kept in memory and mirrored to reading_insights_booklists.lua so it survives
+-- Kept in memory and mirrored to readinginsights/cache/booklists.lua so it survives
 -- a restart; capped so a long browsing session can't grow it without bound on
 -- a small device; dropped (file included) by M.clearAllCache() like everything else.
 --   M._booklist_cache[key] = { stamp = "<string>", books = { ... } }
@@ -266,7 +265,7 @@ end
 -- file isn't rewritten for it. Anything read back is only ever served if its
 -- stamp still matches the database, so a stale or hand-edited file can at
 -- worst cost a rebuild.
-local BOOKLIST_PATH = DataStorage:getSettingsDir() .. "/reading_insights_booklists.lua"
+local BOOKLIST_PATH = require("readinginsights_paths").cacheFile("booklists.lua")
 
 function M.saveBookListCache()
     if not M.ENABLE_CACHE then return end
@@ -388,7 +387,7 @@ end
 -- exactly as if it had never been saved.
 local LuaSettings = require("luasettings")
 
-local DISK_CACHE_PATH = DataStorage:getSettingsDir() .. "/reading_insights_cache.lua"
+local DISK_CACHE_PATH = require("readinginsights_paths").cacheFile("insights.lua")
 
 function M.loadDiskCache()
     local ok, settings = pcall(function() return LuaSettings:open(DISK_CACHE_PATH) end)

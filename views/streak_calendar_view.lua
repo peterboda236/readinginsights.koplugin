@@ -1693,7 +1693,7 @@ function StreakDatePopup:_coverFor(book, w, h, cached_only)
     local scaled
     local file = self:_fileOf(book)
     if file and BookInfoData and BookInfoData.getCover then
-        local ok, raw = pcall(BookInfoData.getCover, nil, file)
+        local ok, raw = pcall(BookInfoData.getCover, nil, file, true)
         if ok and raw then
             local ok2, res = pcall(function()
                 local thumb = scaleTo(raw, THUMB_W, THUMB_H, true)   -- frees raw

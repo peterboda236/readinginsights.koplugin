@@ -20,27 +20,25 @@ they looked when the book was left.
       stats     what the Book progress popup gathered (plain data)
 
 The snapshot is kept in memory and in
-<KOReader settings dir>/readinginsights/lastbook.lua, so it survives a restart.
+<KOReader settings dir>/readinginsights/cache/lastbook.lua, so it survives a restart.
 ]]--
 
 local deps = ...
 local StatsPopup   = deps.StatsPopup
 local BookInfoData = deps.BookInfoData
 
-local DataStorage = require("datastorage")
 local lfs         = require("libs/libkoreader-lfs")
 local logger      = require("logger")
 
 local M = {}
 
-local SUBDIR = "readinginsights"
+local Paths = require("readinginsights_paths")
 local KEY    = "lastbook"
 
 -- nil = not read from disk yet, false = nothing saved
 local memo
 
-local function dir()  return DataStorage:getSettingsDir() .. "/" .. SUBDIR end
-local function path() return dir() .. "/lastbook.lua" end
+local function path() return Paths.cacheFile("lastbook.lua") end
 
 -- A copy of `v` holding only what can be written to a settings file: no
 -- functions or userdata, no NaN / infinity, no cycles, bounded depth.
@@ -88,9 +86,6 @@ function M.capture(ui)
         if not snap then return end
         memo = snap
 
-        if lfs.attributes(dir(), "mode") ~= "directory" then
-            require("util").makePath(dir() .. "/")
-        end
         local settings = require("luasettings"):open(path())
         settings:saveSetting(KEY, snap)
         settings:flush()

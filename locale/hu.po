@@ -863,9 +863,6 @@ msgstr "Ezen a napon nem volt olvasás."
 msgid "About"
 msgstr "Névjegy"
 
-msgid "Reading insight"
-msgstr "Reading insights"
-
 msgid "A full-screen overlay with a comprehensive overview of your reading history, powered by KOReader's statistics database."
 msgstr "Egy teljes képernyős áttekintés az olvasási előzményeidről, a KOReader statisztikai adatbázisára építve."
 
@@ -1016,7 +1013,7 @@ msgstr "Könyvek kézi felvétele – %1"
 msgid "Date & time"
 msgstr "Dátum és idő"
 
-msgid "Reading insight popup"
+msgid "Reading insights popup"
 msgstr "Olvasási áttekintés ablak"
 
 msgid "Daily goal"

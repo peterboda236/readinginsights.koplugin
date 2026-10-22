@@ -848,9 +848,6 @@ msgstr "An diesem Tag wurde nicht gelesen."
 msgid "About"
 msgstr "Über"
 
-msgid "Reading insight"
-msgstr "Leseeinblick"
-
 msgid "A full-screen overlay with a comprehensive overview of your reading history, powered by KOReader's statistics database."
 msgstr "Eine Vollbild-Übersicht über deinen gesamten Lesefortschritt, basierend auf der Statistikdatenbank von KOReader."
 
@@ -1016,7 +1013,7 @@ msgstr "Bücher manuell hinzufügen - %1"
 msgid "Date & time"
 msgstr "Datum & Uhrzeit"
 
-msgid "Reading insight popup"
+msgid "Reading insights popup"
 msgstr "Lese-Übersicht-Fenster"
 
 msgid "Daily goal"

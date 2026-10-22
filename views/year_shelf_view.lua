@@ -40,7 +40,7 @@ rounded corners, shadow), the same as in the Book info popup and the Reading
 calendar.
 
 The covers are read the same way as in the Reading calendar (and share its
-thumbnail cache on disk, <settings>/readinginsights/covercache/<md5>.jpg): the
+thumbnail cache on disk, <settings>/readinginsights/cache/covers/thumb/<md5>.jpg): the
 first paint takes what is already cached and draws a plain outline for the rest,
 which are then loaded a few at a time while the window stays usable (the shelf
 is laid out again as the real proportions of the covers become known). A book
@@ -459,7 +459,7 @@ function YearShelfPopup:_coverFor(book, w, h, cached_only)
     local scaled
     local file = self:_fileOf(book)
     if file and BookInfoData and BookInfoData.getCover then
-        local ok, raw = pcall(BookInfoData.getCover, nil, file)
+        local ok, raw = pcall(BookInfoData.getCover, nil, file, true)
         if ok and raw then
             local rw, rh = raw:getWidth(), raw:getHeight()
             if rw > 0 and rh > 0 then ASPECT[bookKey(book)] = clampAspect(rw / rh) end
@@ -493,7 +493,7 @@ function YearShelfPopup:_primeCover(book)
     local base = diskBase(book)
     local file = self:_fileOf(book)
     if file and BookInfoData and BookInfoData.getCover then
-        local ok, raw = pcall(BookInfoData.getCover, nil, file)
+        local ok, raw = pcall(BookInfoData.getCover, nil, file, true)
         if ok and raw then
             local rw, rh = raw:getWidth(), raw:getHeight()
             if rw > 0 and rh > 0 then ASPECT[key] = clampAspect(rw / rh) end

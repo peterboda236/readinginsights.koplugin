@@ -876,9 +876,6 @@ msgstr "У цей день читання не було."
 msgid "About"
 msgstr "Про програму"
 
-msgid "Reading insight"
-msgstr "Аналітика читання"
-
 msgid "A full-screen overlay with a comprehensive overview of your reading history, powered by KOReader's statistics database."
 msgstr "Повноекранний огляд з детальною статистикою вашої історії читання на основі бази даних статистики KOReader."
 
@@ -1065,7 +1062,7 @@ msgstr "Додати книги вручну - %1"
 msgid "Date & time"
 msgstr "Дата й час"
 
-msgid "Reading insight popup"
+msgid "Reading insights popup"
 msgstr "Спливне вікно Аналітики читання"
 
 msgid "Daily goal"

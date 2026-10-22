@@ -5,11 +5,23 @@ Used by the Reading streak calendar (day cells) and the year shelf, which
 both draw book covers and used to carry byte-identical copies of everything
 in here.
 
-Covers are kept on disk so they survive a restart of KOReader: one small
-thumbnail per book (JPEG, PNG when JPEG cannot be written) in
-<settings>/readinginsights/covercache/<md5>.jpg, plus an empty <md5>.none for
-a book that has no cover - so it is not opened again and again. Reading a
-thumbnail is far quicker than opening the book.
+Covers are kept on disk so they survive a restart of KOReader, in two sizes
+that live in separate folders (see lib/paths.lua):
+
+  cache/covers/thumb/<md5>.jpg   300 x 450, one per book, keyed by the book's
+                                 id in the statistics DB - what the calendar
+                                 and the shelf draw
+  cache/covers/large/<hash>.jpg  up to 700 x 1050, keyed by file path + size +
+                                 modification time (see lib/bookinfo_data.lua)
+                                 - what the book info popup and sleep screen
+                                 draw
+
+(JPEG, PNG when JPEG cannot be written), plus an empty <name>.none for a book
+that has no cover - so it is not opened again and again. Reading a thumbnail
+is far quicker than opening the book. The two folders share one size limit
+(MAX_DISK_BYTES): the least recently used files go first, whichever folder
+they are in. The two are not merged because decoding a 700 x 1050 picture for
+every cell of a busy calendar is much slower than a 300 x 450 one.
 
 The disk side lives here, and so does newMemCache(): a bounded in-memory
 cache of scaled covers. Each view keeps its own instance (their sizes and
@@ -19,7 +31,7 @@ No dependencies; loaded once by main.lua and handed to those views as
 `deps.CoverThumbs`.
 ]]--
 
-local DataStorage = require("datastorage")
+local Paths = require("readinginsights_paths")
 local lfs = require("libs/libkoreader-lfs")
 
 local M = {}
@@ -27,25 +39,39 @@ local M = {}
 -- Size every thumbnail is stored at (aspect kept, never enlarged).
 M.THUMB_W, M.THUMB_H = 300, 450
 
-local COVER_DIR
+-- Upper bound for the whole cover folder on disk. When it is exceeded the
+-- least recently used files are deleted (see pruneDisk) down to 80% of it.
+M.MAX_DISK_BYTES = 25 * 1024 * 1024
 
--- The cache folder (created on first use); nil when it cannot be made.
-function M.coverDir()
-    if COVER_DIR == nil then
-        local d = DataStorage:getSettingsDir() .. "/readinginsights/covercache"
-        if lfs.attributes(d, "mode") ~= "directory" then
-            pcall(require("util").makePath, d .. "/")
-        end
-        COVER_DIR = (lfs.attributes(d, "mode") == "directory") and d or false
+local COVER_DIRS = {}   -- kind -> folder, or false when it cannot be made
+
+local function dirOf(kind)
+    if COVER_DIRS[kind] == nil then
+        COVER_DIRS[kind] = Paths.coverDir(kind) or false
     end
-    return COVER_DIR or nil
+    return COVER_DIRS[kind] or nil
+end
+
+-- The thumbnail folder (created on first use); nil when it cannot be made.
+function M.thumbDir() return dirOf("thumb") end
+
+-- The folder of the large covers, the same way.
+function M.largeDir() return dirOf("large") end
+
+-- Both folders that could be made (a list, so a missing one leaves no hole).
+local function coverDirs()
+    local out = {}
+    for _i, d in ipairs({ M.thumbDir() or false, M.largeDir() or false }) do
+        if d then out[#out + 1] = d end
+    end
+    return out
 end
 
 -- The thumbnail's path without extension, nil when the book has no usable id.
 function M.diskBase(book)
     local md5 = book and book.md5
     if type(md5) ~= "string" or not md5:match("^%x+$") then return nil end
-    local dir = M.coverDir()
+    local dir = M.thumbDir()
     return dir and (dir .. "/" .. md5) or nil
 end
 
@@ -128,6 +154,18 @@ function M.thumbSize(base)
     return nil
 end
 
+-- Marks a cover file as recently used, so pruneDisk() deletes the files that
+-- have not been looked at for longest first (the modification time doubles as
+-- the "last used" time; the files are never rewritten in place). Done at most
+-- once a day per file, so browsing does not turn into a stream of flash writes.
+local TOUCH_AFTER = 24 * 3600
+function M.touch(path)
+    pcall(function()
+        local m = lfs.attributes(path, "modification")
+        if m and os.time() - m > TOUCH_AFTER then lfs.touch(path) end
+    end)
+end
+
 -- The stored thumbnail as a blitbuffer, nil when there is none.
 function M.readThumb(base)
     for _i, ext in ipairs({ ".jpg", ".png" }) do
@@ -136,19 +174,76 @@ function M.readThumb(base)
             local ok, bb = pcall(function()
                 return require("ui/renderimage"):renderImageFile(f, false)
             end)
-            if ok and bb then return bb end
+            if ok and bb then
+                M.touch(f)
+                return bb
+            end
         end
     end
     return nil
 end
 
+-- Keeps the cover folders within `max_bytes` (default M.MAX_DISK_BYTES) in all:
+-- when the thumbnails and large covers add up to more, the least recently used
+-- ones - from either folder - are deleted until 80% of the limit is left, so
+-- the next prune is not right behind this one. A deleted cover is simply read
+-- from its book again when it is next needed. The empty "no cover" markers
+-- free nothing and are left alone.
+function M.pruneDisk(max_bytes)
+    max_bytes = max_bytes or M.MAX_DISK_BYTES
+    local files, total = {}, 0
+    for _i, dir in ipairs(coverDirs()) do
+        local ok, iter, dir_obj = pcall(lfs.dir, dir)
+        if ok and iter then
+            for name in iter, dir_obj do
+                if name:match("%.jpg$") or name:match("%.png$") then
+                    local path = dir .. "/" .. name
+                    local a = lfs.attributes(path)
+                    if a and a.mode == "file" then
+                        local size = a.size or 0
+                        files[#files + 1] = { path = path, size = size, t = a.modification or 0 }
+                        total = total + size
+                    end
+                end
+            end
+        end
+    end
+    if total <= max_bytes then return end
+    table.sort(files, function(a, b) return a.t < b.t end)   -- oldest first
+    local target = math.floor(max_bytes * 0.8)
+    for _i, f in ipairs(files) do
+        if total <= target then break end
+        local ok_rm, removed = pcall(os.remove, f.path)
+        if ok_rm and removed then total = total - f.size end
+    end
+end
+
+-- Bytes written since the last prune; nil until the first write of a session,
+-- which always prunes (an old cache that grew without a limit is brought
+-- down at once). After that a prune runs whenever PRUNE_EVERY more bytes of
+-- thumbnails were added.
+local written_since_prune
+local PRUNE_EVERY = 1024 * 1024
+
 function M.writeThumb(base, bb)
     local jpg = base .. ".jpg"
+    local png = base .. ".png"
+    local written
     pcall(bb.writeToFile, bb, jpg, "jpg", 85)
     local size = lfs.attributes(jpg, "size")
-    if size and size > 0 then return end
-    pcall(os.remove, jpg)
-    pcall(bb.writeToFile, bb, base .. ".png", "png")
+    if size and size > 0 then
+        written = size
+    else
+        pcall(os.remove, jpg)
+        pcall(bb.writeToFile, bb, png, "png")
+        written = lfs.attributes(png, "size") or 0
+    end
+    if written_since_prune == nil or written_since_prune + written >= PRUNE_EVERY then
+        written_since_prune = 0
+        pcall(M.pruneDisk)
+    else
+        written_since_prune = written_since_prune + written
+    end
 end
 
 -- Remembers that the book has no cover.
@@ -257,16 +352,19 @@ function M.newMemCache(max_n, max_bytes)
     return C
 end
 
--- Deletes every thumbnail and "no cover" marker on disk, so each cover is
--- read again from its book. (The caller drops its own in-memory covers.)
+-- Deletes every thumbnail, large cover and "no cover" marker on disk, so each
+-- cover is read again from its book. (The caller drops its own in-memory
+-- covers.)
 function M.clearDisk()
-    local dir = M.coverDir()
-    if not dir then return end
-    local ok, iter, dir_obj = pcall(lfs.dir, dir)
-    if ok and iter then
-        for name in iter, dir_obj do
-            if name:match("%.jpg$") or name:match("%.png$") or name:match("%.none$") then
-                pcall(os.remove, dir .. "/" .. name)
+    for _i, dir in ipairs(coverDirs()) do
+        local ok, iter, dir_obj = pcall(lfs.dir, dir)
+        if ok and iter then
+            local names = {}
+            for name in iter, dir_obj do names[#names + 1] = name end
+            for _j, name in ipairs(names) do
+                if name:match("%.jpg$") or name:match("%.png$") or name:match("%.none$") then
+                    pcall(os.remove, dir .. "/" .. name)
+                end
             end
         end
     end

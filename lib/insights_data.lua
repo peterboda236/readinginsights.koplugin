@@ -48,7 +48,6 @@ local deps = ...
 local Locale, StatsDb, Cache, VS, Manual, Prefs =
     deps.Locale, deps.StatsDb, deps.Cache, deps.VS, deps.Manual, deps.Prefs
 local Math = require("optmath")
-local DataStorage = require("datastorage")
 
 -- 0 = Sunday, 1 = Monday - the shared "week start day" setting the heatmaps and
 -- calendars use. Falls back to Monday if Prefs isn't wired in (e.g. a test).
@@ -1690,12 +1689,12 @@ end
 -- Both weekly views (rolling "Last 7 days" and the paged calendar week) are
 -- made of per-day totals: seconds read and de-duplicated pages (one row per
 -- book/page/day). A completed day never changes, so each one is worked out
--- once, kept in memory and mirrored to reading_insights_days.lua - after that
+-- once, kept in memory and mirrored to readinginsights/cache/days.lua - after that
 -- any week, however far back, is put together from the cache without touching
 -- the statistics database. Only the days still missing are queried, in one
 -- query over just that range; today is always read fresh (cheap: one day).
 -- "Reload data" (clearCalendarWeekCache(true)) drops the lot.
-local DAYS_PATH = DataStorage:getSettingsDir() .. "/reading_insights_days.lua"
+local DAYS_PATH = require("readinginsights_paths").cacheFile("days.lua")
 local days_store = nil         -- "YYYY-MM-DD" -> { seconds, pages }, completed days only
 local today_memo = nil         -- { minute = , date = , value = { seconds, pages } }
 

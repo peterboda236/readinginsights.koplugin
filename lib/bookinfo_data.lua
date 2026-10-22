@@ -330,14 +330,15 @@ end
 
 -- On-disk copy of the covers this popup shows, so that the first popup after
 -- a restart does not have to open the book either. Kept apart from the
--- calendar's / shelf's thumbnails (those are small, 300 x 450): the popup can
--- show a large cover. Keyed by file path + size + modification time, so a
+-- calendar's / shelf's thumbnails (those are small, 300 x 450, in
+-- cache/covers/thumb/): the popup can show a large cover, so these go to
+-- cache/covers/large/. Keyed by file path + size + modification time, so a
 -- replaced book (or cover) is read again by itself.
 local lfs_ok, lfs = pcall(require, "libs/libkoreader-lfs")
 
 local function diskKey(file)
-    if not (lfs_ok and CoverThumbs and CoverThumbs.coverDir) then return nil end
-    local dir = CoverThumbs.coverDir()
+    if not (lfs_ok and CoverThumbs and CoverThumbs.largeDir) then return nil end
+    local dir = CoverThumbs.largeDir()
     if not dir then return nil end
     local attr = lfs.attributes(file)
     if not attr or attr.mode ~= "file" then return nil end
@@ -349,7 +350,7 @@ local function diskKey(file)
         if ok2 and type(h) == "string" then name = h end
     end
     if not name then return nil end
-    return dir .. "/bi_" .. name
+    return dir .. "/" .. name
 end
 
 local function diskRead(base)
@@ -360,7 +361,10 @@ local function diskRead(base)
             local ok, bb = pcall(function()
                 return require("ui/renderimage"):renderImageFile(f, false)
             end)
-            if ok and bb then return bb end
+            if ok and bb then
+                if CoverThumbs and CoverThumbs.touch then CoverThumbs.touch(f) end
+                return bb
+            end
         end
     end
     return nil
@@ -380,7 +384,12 @@ local function diskWrite(base, bb)
     end
 end
 
-function M.getCover(ui, file)
+-- `thumb_only`: the caller (calendar, shelf) is going to keep just a small
+-- thumbnail of its own, so a cover that had to be read from the book is not
+-- also written to the large-cover folder - nothing would ever read that copy
+-- and it would only eat into the disk limit. A large copy already on disk is
+-- still used, which saves opening the book.
+function M.getCover(ui, file, thumb_only)
     local bb
     M.last_cover_error = nil
     if file then
@@ -401,7 +410,7 @@ function M.getCover(ui, file)
         bb = M._getCoverFromFile(file)
         if bb then
             coverToCache(file, bb)
-            if base then pcall(diskWrite, base, bb) end
+            if base and not thumb_only then pcall(diskWrite, base, bb) end
         elseif base and lfs.attributes(file, "mode") == "file"
             and (M.last_cover_error == nil
                 or M.last_cover_error == "the book has no cover image") then

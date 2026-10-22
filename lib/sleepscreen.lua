@@ -73,7 +73,6 @@ local InsightsData = deps.InsightsData
 local _ = Locale._
 
 local Blitbuffer      = require("ffi/blitbuffer")
-local DataStorage     = require("datastorage")
 local Device          = require("device")
 local FrameContainer  = require("ui/widget/container/framecontainer")
 local Geom            = require("ui/geometry")
@@ -278,11 +277,10 @@ end
 -- ---------------------------------------------------------------------
 local WALLPAPER_SETTING = "readinginsights_sleep_wallpaper"
 M.RANDOM = "*random*"   -- stored in the setting when "Random" is chosen
-M.SUBDIR = "readinginsights/wallpapers"
 M.EXTS   = { png = true, jpg = true, jpeg = true, bmp = true, gif = true, webp = true }
 
 function M.wallpaperDir()
-    return DataStorage:getSettingsDir() .. "/" .. M.SUBDIR
+    return require("readinginsights_paths").wallpaperDir()
 end
 
 local function ensureWallpaperDir()
