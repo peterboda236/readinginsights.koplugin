@@ -111,8 +111,7 @@ function M.trendTitle(_metric)
 end
 
 -- Caption above the chart, styled like the monthly chart's caption in the
--- insights popup. A tap switches it between time and pages, a long press
--- opens the list to choose from.
+-- insights popup. A tap opens the list of views to choose from.
 -- The four views of the popup, in the order a tap on the caption cycles
 -- through them: totals and daily averages, first of the time, then of the
 -- pages. The mode also decides what stands above the dots.
@@ -597,8 +596,7 @@ function M.popupOnTap(self, _arg, ges)
     return true
 end
 
--- The list of the four views to choose from; opened by a tap or a long press
--- on the caption.
+-- The list of the four views to choose from; opened by a tap on the caption.
 function M.Popup:showModePicker()
     local ButtonDialog = require("ui/widget/buttondialog")
     local dialog
@@ -632,13 +630,10 @@ function M.Popup:showModePicker()
     return true
 end
 
--- A long press on the caption opens the list; a long press anywhere else
--- does nothing.
-function M.popupOnHold(self, _arg, ges)
-    local h = self.chart_handle
-    if h and hitWidget(h.caption, ges and ges.pos) then
-        self:showModePicker()
-    end
+-- A long press does nothing (the caption's tap already opens the list). The
+-- handler stays so the long press is swallowed instead of falling through to
+-- the reader underneath.
+function M.popupOnHold(_self, _arg, _ges)
     return true
 end
 

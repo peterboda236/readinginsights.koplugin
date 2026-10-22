@@ -679,17 +679,10 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
                 tappable_caption.ges_events = {
                     Tap = { GestureRange:new{ ges = "tap", range = tappable_caption.dimen } },
                 }
-                -- A tap opens the list of the two views (like a long press).
+                -- A tap opens the list of the two views.
                 function tappable_caption:onTap()
                     if not popup_self.readonly then popup_self:showWeeklyChartModePicker() end
                     return true
-                end
-                -- Long press: pick the view from a list.
-                if not popup_self.readonly then
-                    table.insert(popup_self._chart_hold_targets, {
-                        w  = tappable_caption,
-                        fn = function() popup_self:showWeeklyChartModePicker() end,
-                    })
                 end
                 table.insert(last_week_content, tappable_caption)
                 table.insert(last_week_content, VerticalSpan:new{ width = Size.padding.small })
@@ -936,17 +929,10 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
         tappable_chart_header.ges_events = {
             Tap  = { GestureRange:new{ ges = "tap",  range = tappable_chart_header.dimen } },
         }
-        -- A tap opens the list of the four views (like a long press).
+        -- A tap opens the list of the four views.
         function tappable_chart_header:onTap()
             if not popup_self.readonly then popup_self:showInsightsModePicker() end
             return true
-        end
-        -- Long press: pick any of the four views from a list.
-        if not popup_self.readonly then
-            table.insert(popup_self._chart_hold_targets, {
-                w  = tappable_chart_header,
-                fn = function() popup_self:showInsightsModePicker() end,
-            })
         end
         -- The divider below the chart depends on what follows it:
         --   - reading goal on: its row follows with no header of its own,
