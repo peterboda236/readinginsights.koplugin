@@ -256,7 +256,12 @@ local function buildDotLineChart(o)
         if o.on_widget then o.on_widget(i, tappable_col) end
         table.insert(columns_row, tappable_col)
 
-        local axis_widget = TextWidget:new{ text = o.axis_strs[i], face = font_small, fgcolor = Colors.small() }
+        -- The highlighted entry (today / the current month) has its label in
+        -- bold as well.
+        local axis_widget = TextWidget:new{
+            text = o.axis_strs[i], face = font_small, fgcolor = Colors.small(),
+            bold = (o.highlight and o.highlight[i]) and true or false,
+        }
         table.insert(axis_labels_row, CenterContainer:new{
             dimen = Geom:new{ w = col_width, h = axis_widget:getSize().h },
             axis_widget,
@@ -492,7 +497,7 @@ local function buildMonthlyChart(popup_self, monthly_data, layout, fonts)
             table.insert(bars_row, tappable_bar)
 
             local month_label_text = Locale.shortMonthName(month_num) or m.label
-            local month_label_widget = TextWidget:new{ text = month_label_text, face = font_small, fgcolor = Colors.small() }
+            local month_label_widget = TextWidget:new{ text = month_label_text, face = font_small, fgcolor = Colors.small(), bold = is_current and true or false }
             table.insert(month_labels_row, CenterContainer:new{
                 dimen = Geom:new{ w = bar_width, h = month_label_widget:getSize().h },
                 month_label_widget,
@@ -548,12 +553,42 @@ local function buildWeeklyChart(popup_self, daily_data, layout, fonts, mode)
     if not daily_data or #daily_data == 0 then return nil end
     mode = VS.normalizeWeeklyChartMode(mode)
     local show_pages = (mode == VS.WEEKLY_CHART_MODE_PAGES)
+    popup_self._today_bar_widget = nil
 
     -- Entries without an is_today flag (the last-7-days series) have today
     -- at index 1.
     local function isTodayEntry(d, i)
         if d.is_today ~= nil then return d.is_today end
         return i == 1
+    end
+
+    -- "YYYY-MM-DD" of a day entry (the calendar-week series carries it, the
+    -- last-7-days series only its local midnight), nil for padding entries.
+    local function entryDate(d)
+        if d.date_str then return d.date_str end
+        if d.midnight_ts then return os.date("%Y-%m-%d", d.midnight_ts) end
+        return nil
+    end
+
+    -- Text under a day's column: in the calendar-week view (its entries
+    -- carry date_str) the date without the year, in the configured date
+    -- format ("10. 20." / "10/20" ...) - the columns always run in week
+    -- order, so the weekday adds little there. The last-7-days entries keep
+    -- "Today" / "Yesterday" / weekday.
+    local function dayAxisText(d)
+        if d.date_str then return Locale.formatShortNumericDate(d.date_str) end
+        return d.label or ""
+    end
+
+    -- What a tap on a day's column does: opens the list of the books read on
+    -- that day (today included) - the same list the streak calendar shows
+    -- for a tapped day. Days still to come do nothing.
+    local function entryTapAction(d, i)
+        if d.future then return nil end
+        local ds = entryDate(d)
+        if not ds and isTodayEntry(d, i) then ds = os.date("%Y-%m-%d") end
+        if not ds then return nil end
+        return function() popup_self:showBooksForDay(ds, d.midnight_ts) end
     end
 
     -- Pad to exactly 7 entries.
@@ -576,6 +611,7 @@ local function buildWeeklyChart(popup_self, daily_data, layout, fonts, mode)
         local today_last_l = (VS.readWeeklyBarOrderSetting() == VS.WEEKLY_BAR_ORDER_TODAY_LAST)
         local ratios, value_strs, axis_strs, highlight, on_tap = {}, {}, {}, {}, {}
         local n_future = 0
+        local today_pos
         for pos = 1, num do
             local i = today_last_l and (num + 1 - pos) or pos
             local d = daily_data[i]
@@ -589,11 +625,10 @@ local function buildWeeklyChart(popup_self, daily_data, layout, fonts, mode)
             else
                 value_strs[pos] = Locale.formatDuration(tonumber(d.seconds) or 0, true)
             end
-            axis_strs[pos] = d.label or ""
+            axis_strs[pos] = dayAxisText(d)
             highlight[pos] = (WEEKLY_CHART_HIGHLIGHT_TODAY and isTodayEntry(d, i))
-            if isTodayEntry(d, i) then
-                on_tap[pos] = function() popup_self:openTodayTimeline() end
-            end
+            on_tap[pos] = entryTapAction(d, i)
+            if isTodayEntry(d, i) and not d.future then today_pos = pos end
         end
         -- Days still to come in the current week get no dot: they sit at
         -- the end of the row (newest on the right) or at its start (newest
@@ -605,6 +640,9 @@ local function buildWeeklyChart(popup_self, daily_data, layout, fonts, mode)
         return buildDotLineChart{
             ratios = ratios, value_strs = value_strs, axis_strs = axis_strs,
             highlight = highlight, on_tap = on_tap,
+            on_widget = function(col, w)
+                if col == today_pos then popup_self._today_bar_widget = w end
+            end,
             slots = num,
             visible = visible, first = first,
             chart_width = layout.content_width,
@@ -686,7 +724,8 @@ local function buildWeeklyChart(popup_self, daily_data, layout, fonts, mode)
             bar_column,
         }
 
-        if is_today_bar then
+        local tap_action = entryTapAction(d, i)
+        if tap_action then
             local tappable_bar = InputContainer:new{
                 dimen = Geom:new{ x = 0, y = 0, w = bar_width, h = total_bar_height },
                 bar_container,
@@ -695,15 +734,24 @@ local function buildWeeklyChart(popup_self, daily_data, layout, fonts, mode)
                 Tap = { GestureRange:new{ ges = "tap", range = tappable_bar.dimen } },
             }
             function tappable_bar:onTap()
-                popup_self:openTodayTimeline()
+                tap_action()
                 return true
+            end
+            -- Long press on today's column is dispatched by the popup's
+            -- onHold by position (a Hold handler on the widget itself would
+            -- also fire for holds elsewhere on the page).
+            if isTodayEntry(d, i) and not d.future then
+                popup_self._today_bar_widget = tappable_bar
             end
             table.insert(bars_row, tappable_bar)
         else
             table.insert(bars_row, bar_container)
         end
 
-        local day_label_widget = TextWidget:new{ text = d.label, face = font_small, fgcolor = Colors.small() }
+        local day_label_widget = TextWidget:new{
+            text = dayAxisText(d), face = font_small, fgcolor = Colors.small(),
+            bold = (WEEKLY_CHART_HIGHLIGHT_TODAY and is_today_bar) and true or false,
+        }
         table.insert(day_labels_row, CenterContainer:new{
             dimen = Geom:new{ w = bar_width, h = day_label_widget:getSize().h },
             day_label_widget,

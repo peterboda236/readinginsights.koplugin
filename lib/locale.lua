@@ -446,6 +446,30 @@ local function formatShortMonthDay(date_str)
     return mon .. " " .. formatDayOfMonth(d)
 end
 
+-- Month and day of a "YYYY-MM-DD" date, without the year, in the configured
+-- date format - the numeric counterpart of formatShortMonthDay, for narrow
+-- spots like the labels under the chart columns:
+--   YYYY. MM. DD.  ->  12. 10.   (space after each dot, closing dot)
+--   YYYY-MM-DD     ->  12-10
+--   DD/MM/YYYY     ->  10/12
+--   MM/DD/YYYY     ->  12/10
+local function formatShortNumericDate(date_str)
+    if date_str == nil then return "" end
+    local s = tostring(date_str)
+    local y, m, d = s:match("^(%d%d%d%d)%-(%d%d?)%-(%d%d?)$")
+    if not y then return s end
+    m, d = tonumber(m), tonumber(d)
+    local fmt = readDateFormatSetting()
+    if fmt == DATE_FORMAT_YMD_DOT then
+        return string.format("%02d. %02d.", m, d)
+    elseif fmt == DATE_FORMAT_YMD_DASH then
+        return string.format("%02d-%02d", m, d)
+    elseif fmt == DATE_FORMAT_MDY then
+        return string.format("%02d/%02d", m, d)
+    end
+    return string.format("%02d/%02d", d, m)
+end
+
 -- The reverse, for the one place a date is typed in rather than shown (the
 -- manual book list's date field): returns the "YYYY-MM-DD" the store keeps,
 -- or nil if the string isn't a date in any accepted pattern. Only the shape
@@ -664,6 +688,7 @@ return {
     formatDateOrUnknown        = formatDateOrUnknown,
     formatDateFromTS           = formatDateFromTS,
     formatShortMonthDay        = formatShortMonthDay,
+    formatShortNumericDate     = formatShortNumericDate,
     formatDayOfMonth           = formatDayOfMonth,
     shortMonthName             = shortMonthName,
     formatMonthYear            = formatMonthYear,

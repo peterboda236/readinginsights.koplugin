@@ -23,7 +23,8 @@ Gestures:
   - Tap monthly chart header           cycle hours/days/books
   - Tap a streak                       that streak's dates and totals
   - Tap a Last 7 days value              8-week trend popup
-  - Tap today's bar in Last 7 days       Today Timeline
+  - Tap a day's bar (Last 7 days / Current week)  books read that day
+  - Long press today's bar               Today Timeline
   - Long press current month           CalendarView
   - Tap finished-book count            books finished that year
   - Long press finished-book count     checklist to correct that list
@@ -337,6 +338,7 @@ end
 local function buildInsightsSections(popup_self, streaks, yearly_stats, year_range, monthly_data, all_time_stats, last_week_stats, last_week_daily, fonts, layout, goal_finished_count)
     -- Long-press targets of the chart captions (view pickers).
     popup_self._chart_hold_targets = {}
+    popup_self._today_bar_widget = nil   -- set again by the weekly chart
     local sections = VerticalGroup:new{ align = "left" }
 
     -- "Daily goal | Weekly goal": time read today / this calendar week against
@@ -1618,6 +1620,26 @@ function ReadingInsightsPopup:showBooksForMonth(year_month, month_label_full)
         title)
 end
 
+-- Tap on a day's column of the weekly chart ("Last 7 days" / "Current week"):
+-- the books read on that day with the time spent on each, in the same list
+-- the streak calendar opens for a tapped day. A day without reading gets a
+-- notice instead.
+function ReadingInsightsPopup:showBooksForDay(date_str, midnight_ts)
+    local y, m, d = tostring(date_str):match("^(%d+)-(%d+)-(%d+)$")
+    if not y then return end
+    local ts = os.time{ year = tonumber(y), month = tonumber(m), day = tonumber(d), hour = 12 }
+    -- No trailing dot, so the title reads "2026. 03. 12 - 2 books ...".
+    local date_label = Locale.formatDateFromTS(ts, true)
+    local books = Data.getBooksForPeriod("%Y-%m-%d", date_str) or {}
+    local total_secs = Data.sumDuration(books)
+    local title = T(N_("%1 - %2 book", "%1 - %2 books", #books), date_label, formatCount(#books))
+        .. " (" .. formatHHMMSS(total_secs) .. ")"
+    BookList.showBooksForPeriod(
+        self, books,
+        T(_("No reading on %1"), date_label),
+        title)
+end
+
 -- Open CalendarView for the given "YYYY-MM" string.
 -- Closes this popup first; reopens it when CalendarView is dismissed.
 function ReadingInsightsPopup:openCalendarForMonth(year_month)
@@ -2848,6 +2870,17 @@ function ReadingInsightsPopup:onHold(arg, ges_ev)
             UIManager:show(InfoMessage:new{ text = text, timeout = 3 })
         end)
         return true
+    end
+
+    -- Long press on today's column of the weekly chart: today's timeline
+    -- (the day calendar view). Tap opens that day's book list instead.
+    if self._today_bar_widget then
+        local d = self._today_bar_widget.dimen
+        if d and pos.x >= d.x and pos.x <= d.x + d.w
+              and pos.y >= d.y and pos.y <= d.y + d.h then
+            self:openTodayTimeline()
+            return true
+        end
     end
 
     if self._current_month_bar_widget then

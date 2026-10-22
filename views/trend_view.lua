@@ -144,21 +144,12 @@ function M.modeOf(metric)
 end
 
 -- Week start date without the year, in the configured date format (the
--- plugin's "Date format" setting): 09.30. | 30/09 | 9/30 (and 09-30 for the
--- ISO style).
+-- plugin's "Date format" setting): 09. 30. | 30/09 | 09/30 (and 09-30 for
+-- the ISO style). See Locale.formatShortNumericDate.
 local function formatShortDate(date_str)
     local y, m, d = date_str:match("^(%d+)-(%d+)-(%d+)$")
     if not y then return date_str end
-    m, d = tonumber(m), tonumber(d)
-    local fmt = Locale.readDateFormatSetting and Locale.readDateFormatSetting()
-    if fmt == "ymd_dot" then
-        return string.format("%02d.%02d.", m, d)
-    elseif fmt == "ymd_dash" then
-        return string.format("%02d-%02d", m, d)
-    elseif fmt == "mdy_slash" then
-        return string.format("%d/%d", m, d)
-    end
-    return string.format("%02d/%02d", d, m)
+    return Locale.formatShortNumericDate(date_str)
 end
 
 -- Bold value + plain unit of a duration (see Locale.splitDurationValueUnit).
@@ -442,7 +433,8 @@ function M.buildTrendChart(weeks, kind, chart_width, fonts, show_avg)
         addLabel(total_layer, total_strs[i], cx, top_y)
         addLabel(avg_layer,   avg_texts[col], cx, top_y)
 
-        local date_lbl = TextWidget:new{ text = formatShortDate(weeks[i].start_date), face = font_small, fgcolor = Colors.small() }
+        -- The current week (the last one in time) is bold.
+        local date_lbl = TextWidget:new{ text = formatShortDate(weeks[i].start_date), face = font_small, fgcolor = Colors.small(), bold = (i == num_points) }
         table.insert(date_labels_row, CenterContainer:new{
             dimen = Geom:new{ w = col_width, h = date_lbl:getSize().h },
             date_lbl,

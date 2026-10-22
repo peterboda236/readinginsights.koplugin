@@ -279,6 +279,49 @@ local function getWeekdayLabelWidth(fonts)
     return wd_label_w
 end
 
+-- All seven weekday labels, one per grid row (row 1 = the week start day).
+local function getAllWeekdayRowLabels()
+    local names = { _("Mon"), _("Tue"), _("Wed"), _("Thu"), _("Fri"), _("Sat"), _("Sun") }
+    local labels = {}
+    if VS.readWeekStartSetting() == "sunday" then
+        labels[1] = names[7]
+        for r = 2, 7 do labels[r] = names[r - 1] end
+    else
+        for r = 1, 7 do labels[r] = names[r] end
+    end
+    return labels
+end
+
+-- Which labels the left column of a grid gets, and how wide the column is:
+-- every weekday when the rows are tall enough for the letters (a short range
+-- such as 6 months has big cells), otherwise only Mon/Wed/Fri as before
+-- (e.g. the 12-month view). The labels have no descenders, so what counts is
+-- the height of the visible letters (cap height, ~0.72 of the font size)
+-- plus some air between neighbouring rows - about one font size per row
+-- pitch (cell + row gap), not the full text line box. The cell size is worked
+-- out the same way as by the grid builders, with the (wider) all-days label
+-- column.
+local function pickWeekdayRowLabels(fonts, num_cols, max_width, gap, row_gap)
+    local few   = getWeekdayRowLabels()
+    local few_w = getWeekdayLabelWidth(fonts)
+
+    local all   = getAllWeekdayRowLabels()
+    local all_w, text_h = 0, 0
+    for _, text in pairs(all) do
+        local tw = TextWidget:new{ text = text, face = fonts.small }
+        local sz = tw:getSize()
+        all_w  = math.max(all_w, sz.w)
+        text_h = math.max(text_h, sz.h)
+        tw:free()
+    end
+    local face_px = tonumber(fonts.small and fonts.small.size) or (text_h * 0.75)
+    local cell = math.floor((max_width - all_w - gap - (num_cols - 1) * gap) / num_cols)
+    if cell + row_gap >= face_px then
+        return all, all_w
+    end
+    return few, few_w
+end
+
 -- One weekday label ("Mon", "Wed", "Fri"), vertically centred on its grid
 -- row. A TextWidget's box includes room for descenders, and these labels
 -- have none, so simply centring the box leaves the letters sitting a bit
@@ -315,7 +358,7 @@ function M.buildRangeHeatmapWidget(daily_map, start_t, end_t, fonts, max_width)
     local row_gap = Screen:scaleBySize(2)
     local border  = Size.line.thin
 
-    local wd_label_w = getWeekdayLabelWidth(fonts)
+    local row_labels, wd_label_w = pickWeekdayRowLabels(fonts, num_cols, max_width, gap, row_gap)
 
     local grid_width = max_width - wd_label_w - gap
     local cell_size = math.floor((grid_width - (num_cols - 1) * gap) / num_cols)
@@ -543,7 +586,6 @@ function M.buildRangeHeatmapWidget(daily_map, start_t, end_t, fonts, max_width)
         }
     end
 
-    local row_labels = getWeekdayRowLabels()
     local widget = VerticalGroup:new{
         align = "left",
         labels_row_final,
@@ -631,7 +673,7 @@ function M.buildDayPartHeatmapWidget(weekday_hour_map, fonts, max_width)
     local row_gap  = Screen:scaleBySize(2)
     local border   = Size.line.thin
 
-    local wd_label_w = getWeekdayLabelWidth(fonts)
+    local row_labels, wd_label_w = pickWeekdayRowLabels(fonts, num_cols, max_width, gap, row_gap)
 
     local grid_width = max_width - wd_label_w - gap
     local cell_size   = math.floor((grid_width - (num_cols - 1) * gap) / num_cols)
@@ -673,7 +715,6 @@ function M.buildDayPartHeatmapWidget(weekday_hour_map, fonts, max_width)
     end
 
     local row_order = weekdayRowOrder()
-    local row_labels = getWeekdayRowLabels()
 
     -- Row widgets + row_gap spans appended directly as top-level children
     -- of this VerticalGroup (not a separately nested one) - see the long
