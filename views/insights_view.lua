@@ -2923,56 +2923,97 @@ function ReadingInsightsPopup:onHold(arg, ges_ev)
     return true
 end
 
--- Opens a numeric picker (long press on the goal value in the reading-goal
--- section) to set/change that year's target. Saved immediately on "Save";
--- the popup is rebuilt in place so the new value shows without a full
--- close/reopen.
-function ReadingInsightsPopup:editReadingGoal(year)
+-- Tapping the number in a SpinWidget / DoubleSpinWidget opens KOReader's own
+-- numeric InputDialog, which is *not* modal - and UIManager stacks a non-modal
+-- window shown over a modal one (ReadingInsightsPopup) *underneath* it, so the
+-- entry field ended up hidden behind the popup. This makes that dialog modal:
+-- the number picker's value button gets wrapped so that, while its tap action
+-- runs (it shows the InputDialog synchronously), InputDialog is flagged modal.
+-- NumberPickerWidget rebuilds its value button on every update, and the
+-- spin widgets rebuild their pickers on every change, so the hook is
+-- re-applied after each rebuild.
+local function hookValueTapModal(picker)
+    if not picker then return end
     local InputDialog = require("ui/widget/inputdialog")
+    local function wrap()
+        local btn = picker.text_value
+        local cb  = btn and btn.callback
+        if not cb then return end
+        btn.callback = function(...)
+            local prev = rawget(InputDialog, "modal")
+            InputDialog.modal = true
+            local ok, err = pcall(cb, ...)
+            InputDialog.modal = prev
+            if not ok then error(err, 0) end
+        end
+    end
+    local orig_update = picker.update
+    picker.update = function(p_self, ...)
+        local r = orig_update(p_self, ...)
+        wrap()
+        return r
+    end
+    wrap()
+end
+
+-- Applies hookValueTapModal to the pickers of a spin widget (SpinWidget:
+-- value_widget, DoubleSpinWidget: left_widget / right_widget), now and after
+-- each of the widget's own rebuilds.
+local function hookSpinWidgetModal(widget)
+    local function hookAll(w)
+        hookValueTapModal(w.value_widget)
+        hookValueTapModal(w.left_widget)
+        hookValueTapModal(w.right_widget)
+    end
+    local orig_update = widget.update
+    widget.update = function(w_self, ...)
+        local r = orig_update(w_self, ...)
+        hookAll(w_self)
+        return r
+    end
+    hookAll(widget)
+end
+
+-- Opens a numeric picker (long press on the goal value in the reading-goal
+-- section) to set/change that year's target in books. Same look as the
+-- daily/weekly goal picker (editTimeGoal), just with one number. Saved
+-- immediately on OK; the popup is
+-- rebuilt in place so the new value shows without a full close/reopen.
+function ReadingInsightsPopup:editReadingGoal(year)
+    local SpinWidget = require("ui/widget/spinwidget")
     local popup_self = self
-    local dialog
-    dialog = InputDialog:new{
+    local current = math.floor(VS.readReadingGoal(year))
+    if current < 1 then current = 1 elseif current > 999 then current = 999 end
+    local widget
+    widget = SpinWidget:new{
         -- ReadingInsightsPopup is modal, and UIManager stacks a *non*-modal
-        -- window shown over it *underneath* it. A SpinWidget's own inline
-        -- number entry is non-modal, so it landed behind this popup - you
-        -- couldn't see what you typed (only the committed value on Enter),
-        -- and the keyboard covered it. A modal InputDialog instead sits on
-        -- top of the popup and lifts itself above the keyboard like every
-        -- other text field (same pattern as the manual-books add dialog).
-        modal      = true,
-        title      = buildGoalEditTitle(year),
-        input      = tostring(VS.readReadingGoal(year)),
-        input_type = "number",
-        input_hint = "1 - 999",
-        buttons = {
-            {
-                {
-                    text = _("Cancel"),
-                    id   = "close",
-                    callback = function() UIManager:close(dialog) end,
-                },
-                {
-                    text = _("Save"),
-                    is_enter_default = true,
-                    callback = function()
-                        local n = tonumber(dialog:getInputText())
-                        if n then
-                            n = math.floor(n)
-                            if n < 1 then n = 1 elseif n > 999 then n = 999 end
-                            VS.saveReadingGoal(year, n)
-                        end
-                        UIManager:close(dialog)
-                        popup_self:_buildUI()
-                        UIManager:setDirty(popup_self, function()
-                            return "ui", popup_self.popup_frame.dimen
-                        end)
-                    end,
-                },
-            },
-        },
+        -- window shown over it *underneath* it, so the picker must be modal
+        -- too (same reason as editTimeGoal). Tapping the number opens the
+        -- keyboard entry, made modal as well - see hookSpinWidgetModal.
+        modal         = true,
+        title_text    = buildGoalEditTitle(year),
+        value         = current,
+        value_min     = 1,
+        value_max     = 999,
+        value_step    = 1,
+        value_hold_step = 5,
+        ok_always_enabled = true,
+        callback = function(spin)
+            local n = tonumber(spin and spin.value)
+            if n then
+                n = math.floor(n)
+                if n < 1 then n = 1 elseif n > 999 then n = 999 end
+                VS.saveReadingGoal(year, n)
+            end
+            popup_self:_buildUI()
+            UIManager:setDirty(popup_self, function()
+                return "ui", popup_self.popup_frame.dimen
+            end)
+        end,
     }
-    UIManager:show(dialog)
-    dialog:onShowKeyboard()
+    widget.modal = true
+    hookSpinWidgetModal(widget)
+    UIManager:show(widget)
 end
 
 -- Tap on the Daily/Weekly goal section: how many days / weeks in a row the
@@ -3046,6 +3087,9 @@ function ReadingInsightsPopup:editTimeGoal(kind)
         end,
     }
     widget.modal = true
+
+    hookSpinWidgetModal(widget)
+
     UIManager:show(widget)
 end
 
