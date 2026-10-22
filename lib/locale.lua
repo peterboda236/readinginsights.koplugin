@@ -586,9 +586,17 @@ local function formatDurationParts(seconds, without_seconds)
     -- KOReader's "Duration format". Exactly zero stays a plain zero. Every
     -- minute-resolution duration of the plugin goes through here (charts,
     -- goals, calendars, book stats ...), so they all agree.
-    if without_seconds and seconds > 0 and seconds < 60 then
-        local one_min = datetime.secondsToClockDuration(duration_format, 60, true, false, false)
-        return { value = "<" .. one_min, unit = "" }
+    if without_seconds and seconds > 0 then
+        if seconds < 60 then
+            local one_min = datetime.secondsToClockDuration(duration_format, 60, true, false, false)
+            return { value = "<" .. one_min, unit = "" }
+        end
+        -- Seconds are not shown, so round down to the whole minute instead of
+        -- KOReader's round-to-nearest: 29m40s reads "00:29", never "00:30",
+        -- so a goal check mark always matches the displayed value. The epsilon
+        -- keeps float results (averages) that are mathematically a whole
+        -- minute from dropping one minute.
+        seconds = math.floor(seconds / 60 + 1e-6) * 60
     end
     local clock_str = datetime.secondsToClockDuration(duration_format, seconds, without_seconds, false, false)
     return { value = clock_str, unit = "" }
