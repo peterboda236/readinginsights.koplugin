@@ -443,7 +443,7 @@ local function buildMonthlyChart(popup_self, monthly_data, layout, fonts)
                 -- tight 12-in-a-row strip; with two rows of 6 months there is
                 -- room for the full duration.
                 bar_label_str = (months_per_row == 6)
-                    and Locale.formatDuration(mo_secs, true)
+                    and Locale.formatDurationLabel(mo_secs)
                     or Locale.formatDurationChart(mo_secs)
             elseif popup_self.mode == VS.INSIGHTS_MODE_PAGES then
                 bar_label_str = tostring(formatNumber(value))
@@ -623,7 +623,7 @@ local function buildWeeklyChart(popup_self, daily_data, layout, fonts, mode)
             elseif show_pages then
                 value_strs[pos] = string.format("%d", math.floor((tonumber(d.pages) or 0) + 0.5))
             else
-                value_strs[pos] = Locale.formatDuration(tonumber(d.seconds) or 0, true)
+                value_strs[pos] = Locale.formatDurationLabel(tonumber(d.seconds) or 0)
             end
             axis_strs[pos] = dayAxisText(d)
             highlight[pos] = (WEEKLY_CHART_HIGHLIGHT_TODAY and isTodayEntry(d, i))
@@ -704,7 +704,7 @@ local function buildWeeklyChart(popup_self, daily_data, layout, fonts, mode)
             val_str = string.format("%d", pages)
         else
             local secs = tonumber(d.seconds) or 0
-            val_str = Locale.formatDuration(secs, true)
+            val_str = Locale.formatDurationLabel(secs)
         end
         local value_label   = TextWidget:new{ text = val_str, face = font_small, fgcolor = Colors.small() }
         local centered_label = CenterContainer:new{

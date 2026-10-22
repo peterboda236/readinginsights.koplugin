@@ -84,7 +84,7 @@ local function formatWeekValue(metric, week_entry)
     if metric == "time_total" or metric == "time_avg" then
         local secs = week_entry.seconds or 0
         if metric == "time_avg" then secs = secs / (week_entry.days or 7) end
-        return Locale.formatDuration(secs, true), secs
+        return Locale.formatDurationLabel(secs), secs
     else
         local pages = week_entry.pages or 0
         if metric == "pages_avg" then

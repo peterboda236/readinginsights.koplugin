@@ -580,6 +580,16 @@ local function formatDurationParts(seconds, without_seconds)
         duration_format = G_reader_settings:readSetting("duration_format", "classic")
     end
     local datetime = require("datetime")
+    -- Shown without seconds, some reading under a minute would read as an
+    -- empty "00:00": it gets a "<" in front of the format's own one-minute
+    -- value instead ("<00:01" classic, "<1m" letters, ...), so it follows
+    -- KOReader's "Duration format". Exactly zero stays a plain zero. Every
+    -- minute-resolution duration of the plugin goes through here (charts,
+    -- goals, calendars, book stats ...), so they all agree.
+    if without_seconds and seconds > 0 and seconds < 60 then
+        local one_min = datetime.secondsToClockDuration(duration_format, 60, true, false, false)
+        return { value = "<" .. one_min, unit = "" }
+    end
     local clock_str = datetime.secondsToClockDuration(duration_format, seconds, without_seconds, false, false)
     return { value = clock_str, unit = "" }
 end
@@ -618,6 +628,12 @@ local function formatDuration(seconds, without_seconds)
         return parts.value
     end
     return parts.value .. " " .. parts.unit
+end
+
+-- Chart label for a duration: formatDuration(seconds, true). The "<" mark for
+-- reading under a minute comes from formatDurationParts, like everywhere else.
+local function formatDurationLabel(seconds)
+    return formatDuration(seconds, true)
 end
 
 -- Compact duration for tight chart labels (the monthly reading time bars).
@@ -680,6 +696,7 @@ return {
     formatDurationParts        = formatDurationParts,
     splitDurationValueUnit     = splitDurationValueUnit,
     formatDurationChart        = formatDurationChart,
+    formatDurationLabel        = formatDurationLabel,
     formatTimeHHMM             = formatTimeHHMM,
     isoWeekNumber              = isoWeekNumber,
     readDurationDaysSetting    = readDurationDaysSetting,
