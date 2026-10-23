@@ -89,6 +89,12 @@ end
 -- built once in locale.lua so all views share them.
 local MONTH_NAMES_SHORT = Locale.shortMonthNames
 
+-- Column-header label of a month (1..12): the zero-padded number ("01".."12")
+-- with the ISO date format, the short month name in every other format.
+local function monthLabel(m)
+    return Locale.monthAxisLabel(m, MONTH_NAMES_SHORT[m])
+end
+
 -- Adds/subtracts whole calendar months from a Y/M/D triple (relying on
 -- os.time's normalisation of out-of-range month values - e.g. month=13
 -- rolls over into January of the next year - same trick used elsewhere
@@ -440,7 +446,7 @@ function M.buildRangeHeatmapWidget(daily_map, start_t, end_t, fonts, max_width)
                     -- columns) fall back to the combined "2026 Jan." label.
                     local span_w = col_x[col - 1] + cell_size - col_x[prev_col + 1]
                     local yw = TextWidget:new{ text = tostring(d.year), face = fonts.small }
-                    local dw = TextWidget:new{ text = MONTH_NAMES_SHORT[12], face = fonts.small }
+                    local dw = TextWidget:new{ text = monthLabel(12), face = fonts.small }
                     local need = yw:getSize().w + math.max(0, dw:getSize().w - cell_size)
                     yw:free(); dw:free()
                     fits = need <= span_w
@@ -464,7 +470,7 @@ function M.buildRangeHeatmapWidget(daily_map, start_t, end_t, fonts, max_width)
         for col = 1, num_cols do
             local d = month_label_col[col]
             if d then
-                local tw = TextWidget:new{ text = d.combined or MONTH_NAMES_SHORT[d.month], face = fonts.small }
+                local tw = TextWidget:new{ text = d.combined or monthLabel(d.month), face = fonts.small }
                 local w = tw:getSize().w
                 tw:free()
                 local x = col_x[col]
@@ -514,7 +520,7 @@ function M.buildRangeHeatmapWidget(daily_map, start_t, end_t, fonts, max_width)
             -- side of this gap, while "Jan." doesn't reach backward into
             -- it at all. Nudge the centering right by that overflow so
             -- the label reads as visually centered between the two.
-            local dec_label = TextWidget:new{ text = MONTH_NAMES_SHORT[12], face = fonts.small }
+            local dec_label = TextWidget:new{ text = monthLabel(12), face = fonts.small }
             local dec_overflow = math.max(0, dec_label:getSize().w - cell_size)
             dec_label:free()
 
@@ -536,7 +542,7 @@ function M.buildRangeHeatmapWidget(daily_map, start_t, end_t, fonts, max_width)
             local widget = nil
             local d = month_label_col[col]
             if d then
-                widget = TextWidget:new{ text = d.combined or MONTH_NAMES_SHORT[d.month],
+                widget = TextWidget:new{ text = d.combined or monthLabel(d.month),
                     face = fonts.small, fgcolor = Colors.small() }
             end
             if widget then

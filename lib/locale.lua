@@ -496,9 +496,9 @@ local function isIsoDateFormat()
 end
 
 -- Month label under the yearly chart's columns: with the ISO date format the
--- plain month number ("1", "2" ... "12"), otherwise the short month name.
+-- zero-padded month number ("01", "02" ... "12"), otherwise the short month name.
 local function monthAxisLabel(month_num, fallback)
-    if isIsoDateFormat() and month_num then return tostring(month_num) end
+    if isIsoDateFormat() and month_num then return string.format("%02d", month_num) end
     return shortMonthName(month_num) or fallback
 end
 

@@ -109,9 +109,10 @@ end
 local NO_MONTH = 13
 local function monthLabel(m)
     if m < 1 or m > 12 then return "\xE2\x80\x93" end
-    -- The same short names as under the monthly charts of the Reading
-    -- insights window (lower case with a dot in Hungarian).
-    return Locale.shortMonthName(m)
+    -- The same labels as under the monthly charts of the Reading insights
+    -- window: the short names (lower case with a dot in Hungarian), or the
+    -- zero-padded month number ("01".."12") with the ISO date format.
+    return Locale.monthAxisLabel(m)
 end
 
 -- The month (1..12) a book is shelved in, NO_MONTH when it has no date in the
