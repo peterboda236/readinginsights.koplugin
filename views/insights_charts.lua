@@ -335,7 +335,7 @@ local function buildMonthlyLineChart(popup_self, monthly_data, layout, fonts)
         if highlight[i] then current_idx = i end
 
         local mn = tonumber(tostring(m.month):match("%-(%d%d)$"))
-        axis_strs[i] = Locale.shortMonthName(mn) or m.label
+        axis_strs[i] = Locale.monthAxisLabel(mn, m.label)
 
         local month_year_label = Locale.formatMonthYear(popup_self.selected_year, mn)
         local month = m.month
@@ -496,7 +496,7 @@ local function buildMonthlyChart(popup_self, monthly_data, layout, fonts)
 
             table.insert(bars_row, tappable_bar)
 
-            local month_label_text = Locale.shortMonthName(month_num) or m.label
+            local month_label_text = Locale.monthAxisLabel(month_num, m.label)
             local month_label_widget = TextWidget:new{ text = month_label_text, face = font_small, fgcolor = Colors.small(), bold = is_current and true or false }
             table.insert(month_labels_row, CenterContainer:new{
                 dimen = Geom:new{ w = bar_width, h = month_label_widget:getSize().h },
@@ -575,8 +575,13 @@ local function buildWeeklyChart(popup_self, daily_data, layout, fonts, mode)
     -- format ("10. 20." / "10/20" ...) - the columns always run in week
     -- order, so the weekday adds little there. The last-7-days entries keep
     -- "Today" / "Yesterday" / weekday.
-    local function dayAxisText(d)
+    -- With the ISO date format every last-7-days column shows its date
+    -- ("10-20") instead of Today / Yesterday / the weekday.
+    local function dayAxisText(d, i)
         if d.date_str then return Locale.formatShortNumericDate(d.date_str) end
+        if d.midnight_ts and d.is_today == nil and Locale.isIsoDateFormat() then
+            return Locale.formatShortNumericDate(os.date("%Y-%m-%d", d.midnight_ts))
+        end
         return d.label or ""
     end
 
@@ -625,7 +630,7 @@ local function buildWeeklyChart(popup_self, daily_data, layout, fonts, mode)
             else
                 value_strs[pos] = Locale.formatDurationLabel(tonumber(d.seconds) or 0)
             end
-            axis_strs[pos] = dayAxisText(d)
+            axis_strs[pos] = dayAxisText(d, i)
             highlight[pos] = (WEEKLY_CHART_HIGHLIGHT_TODAY and isTodayEntry(d, i))
             on_tap[pos] = entryTapAction(d, i)
             if isTodayEntry(d, i) and not d.future then today_pos = pos end
@@ -749,7 +754,7 @@ local function buildWeeklyChart(popup_self, daily_data, layout, fonts, mode)
         end
 
         local day_label_widget = TextWidget:new{
-            text = dayAxisText(d), face = font_small, fgcolor = Colors.small(),
+            text = dayAxisText(d, i), face = font_small, fgcolor = Colors.small(),
             bold = (WEEKLY_CHART_HIGHLIGHT_TODAY and is_today_bar) and true or false,
         }
         table.insert(day_labels_row, CenterContainer:new{

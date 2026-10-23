@@ -490,6 +490,18 @@ local function formatShortNumericDate(date_str)
     return string.format("%02d/%02d", d, m)
 end
 
+-- True while the ISO date format (YYYY-MM-DD) is the active one.
+local function isIsoDateFormat()
+    return readDateFormatSetting() == DATE_FORMAT_YMD_DASH
+end
+
+-- Month label under the yearly chart's columns: with the ISO date format the
+-- plain month number ("1", "2" ... "12"), otherwise the short month name.
+local function monthAxisLabel(month_num, fallback)
+    if isIsoDateFormat() and month_num then return tostring(month_num) end
+    return shortMonthName(month_num) or fallback
+end
+
 -- The reverse, for the one place a date is typed in rather than shown (the
 -- manual book list's date field): returns the "YYYY-MM-DD" the store keeps,
 -- or nil if the string isn't a date in any accepted pattern. Only the shape
@@ -736,6 +748,8 @@ return {
     formatShortNumericDate     = formatShortNumericDate,
     formatDayOfMonth           = formatDayOfMonth,
     shortMonthName             = shortMonthName,
+    isIsoDateFormat            = isIsoDateFormat,
+    monthAxisLabel             = monthAxisLabel,
     formatMonthYear            = formatMonthYear,
     formatYearShortMonth       = formatYearShortMonth,
     shortMonthNames            = MONTH_NAMES_SHORT_FOR_DATE,
