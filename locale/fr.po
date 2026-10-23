@@ -2374,3 +2374,6 @@ msgstr "Aucune ligne, y compris verticale."
 
 msgid "Number and thickness of the divider lines. The line under the title of the Reading insights, Reading calendar and Reading shelf pages is not affected."
 msgstr "Nombre et épaisseur des lignes de séparation. La ligne sous le titre de Statistiques de lecture, Calendrier de lecture et Étagère de lecture n’est pas modifiée."
+
+msgid "weekday lowercase"
+msgstr "yes"

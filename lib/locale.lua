@@ -256,9 +256,8 @@ end
 -- Places that don't print a numeric date - weekday names, month names, the
 -- 8-week chart's axis labels - are deliberately left alone.
 --
--- No stored value means "what this plugin always did": YYYY. MM. DD. for
--- Hungarian, DD/MM/YYYY everywhere else, so nobody's dates change shape
--- until they pick a format themselves.
+-- No stored value means ISO (YYYY-MM-DD) in every language; anyone who has
+-- picked a format in the menu keeps it.
 local SETTINGS_KEY_DATE_FORMAT = "reading_insights_date_format"
 
 local DATE_FORMAT_YMD_DASH = "ymd_dash"   -- 2026-07-20
@@ -283,7 +282,7 @@ local DATE_FORMAT_HINTS = {
 }
 
 local function defaultDateFormat()
-    return (getLangBase() == "hu") and DATE_FORMAT_YMD_DOT or DATE_FORMAT_DMY
+    return DATE_FORMAT_YMD_DASH
 end
 
 local function readDateFormatSetting()

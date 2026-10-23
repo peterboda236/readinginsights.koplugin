@@ -70,7 +70,6 @@ local Locale, Colors, Fonts, Prefs, BookProgress, BookCalendar, ChapterInfo, Cha
     deps.BookStatsData, deps.VS, deps.Donut
 local _            = Locale._
 local N_           = Locale.N_
-local getLangBase  = Locale.getLangBase
 local formatNumber = Locale.formatNumber
 local formatCount  = Locale.formatCount
 
@@ -88,8 +87,8 @@ end
 
 -- Weekday names (os.date("*t").wday: 1=Sunday .. 7=Saturday) for the
 -- "started" / "expected finish" popup date lines, translated through _().
--- Hungarian puts the weekday after the full date and in lower case
--- ("2026. 06. 24., szerda"), so it lower-cases the translated name.
+-- The weekday goes in brackets after the date ("2026-06-24 (szerda)"), in
+-- lower case where the language writes it that way ("weekday lowercase").
 local WEEKDAY_NAMES = {
     "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday",
 }
@@ -118,23 +117,22 @@ local function formatEventDateTime(timestamp, always_full)
                         hour = 0, min = 0, sec = 0 }
     end
     local same_week = (not always_full) and mondayOf(t) == mondayOf(now)
-    local is_hu = (getLangBase() == "hu")
-
     if same_week then
         return _(WEEKDAY_NAMES[t.wday])
     end
 
-    -- The date itself follows the configured date format (Settings ▸
-    -- Settings ▸ Date & time ▸ "Date format"); only where the
-    -- weekday goes stays language-bound, since Hungarian wants it after
-    -- the date and in lower case ("2026. 06. 24., szerda").
+    -- "2026-10-23 (Friday)": the same shape as KOReader's own calendar day
+    -- view title, in every language. The date follows the configured date
+    -- format (ISO by default); the weekday is translated, and a language
+    -- that writes weekdays in lower case mid-sentence (Hungarian, French,
+    -- Portuguese, Ukrainian) opts in by translating "weekday lowercase" to
+    -- "yes". German and English keep the capital.
     local date_str = Locale.formatDateFromTS(timestamp)
-    if is_hu then
-        -- Hungarian: "2026. 10. 05., hétfő" - formatDate already writes the
-        -- spaced "2026. 10. 05." form, so only the comma and weekday follow.
-        return date_str .. ", " .. Locale.lowerFirst(_(WEEKDAY_NAMES[t.wday]))
+    local weekday  = _(WEEKDAY_NAMES[t.wday])
+    if _("weekday lowercase") == "yes" then
+        weekday = Locale.lowerFirst(weekday)
     end
-    return _(WEEKDAY_NAMES[t.wday]) .. ", " .. date_str
+    return date_str .. " (" .. weekday .. ")"
 end
 
 local function tappableWrap(widget, width)

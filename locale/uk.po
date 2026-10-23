@@ -2426,3 +2426,6 @@ msgstr "Без ліній, зокрема вертикальних."
 
 msgid "Number and thickness of the divider lines. The line under the title of the Reading insights, Reading calendar and Reading shelf pages is not affected."
 msgstr "Кількість і товщина роздільних ліній. Лінія під заголовком сторінок «Аналітика читання», «Календар читання» та «Полиця читання» не змінюється."
+
+msgid "weekday lowercase"
+msgstr "yes"

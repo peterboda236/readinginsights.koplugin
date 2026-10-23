@@ -2385,3 +2385,6 @@ msgstr "Nincs vonal, a függőleges sem."
 
 msgid "Number and thickness of the divider lines. The line under the title of the Reading insights, Reading calendar and Reading shelf pages is not affected."
 msgstr "A vonalak száma és vastagsága. A Reading insights, az Olvasási naptár és az Olvasási polc oldal címe alatti vonalat nem érinti."
+
+msgid "weekday lowercase"
+msgstr "yes"
