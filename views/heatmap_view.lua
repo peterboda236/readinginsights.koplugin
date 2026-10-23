@@ -448,7 +448,7 @@ function M.buildRangeHeatmapWidget(daily_map, start_t, end_t, fonts, max_width)
                 if fits then
                     year_label_span = { start_col = prev_col + 1, end_col = col - 1, text = tostring(d.year) }
                 else
-                    d.combined = tostring(d.year) .. " " .. MONTH_NAMES_SHORT[d.month]
+                    d.combined = Locale.formatYearShortMonth(d.year, d.month)
                 end
             end
             prev_col, prev_month = col, d.month
@@ -1493,7 +1493,12 @@ local function buildBox(popup_self, periods_back, force_fresh, width_override, d
     -- Month abbreviations are already lower-cased where the language
     -- wants it (see MONTH_NAMES_SHORT above).
     local m1, m2 = MONTH_NAMES_SHORT[st.month], MONTH_NAMES_SHORT[et.month]
-    if st.year == et.year then
+    if Locale.readDateFormatSetting() == "ymd_dash" then
+        -- ISO: "2026-04 – 2026-10", the year on both ends so a range that
+        -- crosses New Year reads the same way as one inside a year.
+        period_title = Locale.formatYearShortMonth(st.year, st.month)
+            .. " \xE2\x80\x93 " .. Locale.formatYearShortMonth(et.year, et.month)
+    elseif st.year == et.year then
         period_title = T(_("%1 – %2 %3"), m1, m2, tostring(et.year))
     else
         period_title = T(_("%1 %2 – %3 %4"),
