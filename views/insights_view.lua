@@ -409,7 +409,7 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
             HorizontalGroup:new{
                 align = "center",
                 UI.fixedCol(daily_header_cell, layout.col_width),
-                UI.buildColumnSeparator(layout.column_gap, header_h),
+                UI.buildColumnSeparator(layout.column_gap, header_h, false, true),
                 UI.fixedCol(weekly_header_cell, layout.col_width),
             },
         })
@@ -480,9 +480,9 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
         local goal_row = UI.buildTwoColRow(
             valueCell(goalText(today_secs, daily_goal_secs),  editDaily,  showDailyStreak, today_secs, daily_goal_secs),
             valueCell(goalText(week_secs,  weekly_goal_secs), editWeekly, showWeeklyStreak, week_secs, weekly_goal_secs),
-            layout)
+            layout, false, { join_above = true })
 
-        UI.addSectionWithRow(sections, goal_header, goal_row, layout, { gap_above_row = true })
+        UI.addSectionWithRow(sections, goal_header, goal_row, layout, { gap_above_row = true, split_header = true })
     end
 
     do
@@ -538,7 +538,7 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
                                   week_pages_val, week_pages_unit, "pages_avg" }
 
             -- One 2-column row: total on the left, daily average on the right.
-            local function weekRow(c)
+            local function weekRow(c, row_opts)
                 return UI.buildTwoColRow(
                     tappableCell(
                         buildValueLine(fonts.value, fonts.label, layout.col_width, c[1], c[2]),
@@ -546,22 +546,26 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
                     tappableCell(
                         buildValueLine(fonts.value, fonts.label, layout.col_width, c[4], c[5]),
                         layout.col_width, function() popup_self:showWeeklyTrendPopup(c[6]) end),
-                    layout)
+                    layout, false, row_opts)
             end
 
             -- Compact row (always shown), driven by the chart mode (tap the
             -- "Last 7 days" header to switch): time view = total time +
             -- daily avg time, pages view = total pages + daily avg pages.
-            local last_week_rows = { weekRow(pages_mode and pages_cells or time_cells) }
-            -- Optional second row with the other metric.
-            if VS.readWeeklyExtraRow() then
-                table.insert(last_week_rows, weekRow(pages_mode and time_cells or pages_cells))
+            -- With the optional second row (the other metric) the vertical
+            -- divider runs unbroken through the gap between the two rows.
+            local two_rows = VS.readWeeklyExtraRow()
+            local last_week_rows = { weekRow(pages_mode and pages_cells or time_cells,
+                two_rows and { join_below = Size.padding.small } or nil) }
+            if two_rows then
+                table.insert(last_week_rows, weekRow(pages_mode and time_cells or pages_cells,
+                    { join_above = true }))
             end
 
             local weekly_chart = buildWeeklyChart(popup_self, week_daily, layout, fonts, weekly_chart_mode)
             local last_week_content = VerticalGroup:new{ align = "left" }
             for idx, row in ipairs(last_week_rows) do
-                if idx > 1 then
+                if idx > 1 and UI.classicLines() then
                     table.insert(last_week_content, VerticalSpan:new{ width = Size.padding.small })
                 end
                 table.insert(last_week_content, UI.padded(layout.padding_h, row))
@@ -645,7 +649,7 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
                     layout)
                 table.insert(last_week_content, VerticalSpan:new{ width = Size.padding.small })
                 table.insert(last_week_content, UI.padded(layout.padding_h,
-                    Colors.newBar(layout.content_width, Size.line.thin, Colors.separator())))
+                    Colors.hLine(layout.content_width, Size.line.thin)))
                 table.insert(last_week_content, VerticalSpan:new{ width = Size.padding.small })
                 table.insert(last_week_content, UI.padded(layout.padding_h, vs_row))
             end
@@ -655,9 +659,13 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
             -- monthly chart's caption - switches the figures above and the
             -- chart together (here between reading time and pages per day),
             -- then the chart.
+            -- (No thin line above the weekly chart, unless "Classic divider
+            -- lines" is on.)
             table.insert(last_week_content, VerticalSpan:new{ width = Size.padding.small })
-            table.insert(last_week_content, UI.padded(layout.padding_h,
-                Colors.newBar(layout.content_width, Size.line.thin, Colors.separator())))
+            if UI.classicLines() then
+                table.insert(last_week_content, UI.padded(layout.padding_h,
+                    Colors.hLine(layout.content_width, Size.line.thin)))
+            end
             if weekly_chart then
                 local caption_text = pages_mode and _("Pages per day") or _("Reading time per day")
                 local caption_widget = TextWidget:new{
@@ -800,7 +808,7 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
         UI.fixedCol(tap_bw, half_col_width),
     }
 
-    local streak_data_row = UI.buildTwoColRow(current_cell, best_cell, layout)
+    local streak_data_row = UI.buildTwoColRow(current_cell, best_cell, layout, false, { join_above = true })
 
     -- Two-column streak header (tappable: shows date range for that streak).
     local streak_header_left  = UI.buildSectionHeader(fonts.section, _("Current streak"), layout.col_width, 0, HEADER_BG())
@@ -839,7 +847,7 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
         HorizontalGroup:new{
             align = "center",
             UI.fixedCol(tap_current_header, layout.col_width),
-            UI.buildColumnSeparator(layout.column_gap, sep_h),
+            UI.buildColumnSeparator(layout.column_gap, sep_h, false, true),
             UI.fixedCol(tap_best_header,    layout.col_width),
         },
     })
@@ -855,7 +863,7 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
 
     UI.addSectionWithRow(sections,
         streak_combined_header,
-        streak_rows, layout, { pad_row = false, gap_above_row = true })
+        streak_rows, layout, { pad_row = false, gap_above_row = true, split_header = true })
 
     local year_header = UI.padded(layout.padding_h,
         buildYearHeader(popup_self, fonts.section, fonts.label, layout, year_range, popup_self.selected_year))
@@ -893,7 +901,7 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
 
     year_header = trackYearSwipe(year_header)
     yearly_row  = trackYearSwipe(yearly_row)
-    UI.addSectionWithRow(sections, year_header, yearly_row, layout, { pad_row = false, no_bottom_line = not chart, bottom_line_thin = true, gap_above_row = true })
+    UI.addSectionWithRow(sections, year_header, yearly_row, layout, { pad_row = false, no_bottom_line = not (chart and UI.classicLines()), bottom_line_thin = true, gap_above_row = true })
 
     if chart then
         local chart_header_text = (popup_self.mode == VS.INSIGHTS_MODE_HOURS
@@ -945,7 +953,9 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
         tappable_chart_header = trackYearSwipe(tappable_chart_header)
         chart = trackYearSwipe(chart)
         UI.addSectionWithRow(sections, tappable_chart_header, chart, layout,
-            { add_divider = true, no_top_line = true, no_bottom_line = false,
+            { add_divider = true, no_top_line = true,
+              -- no thin line under the chart; the thick section line stays
+              no_bottom_line = VS.Opt.readShowReadingGoal() and not UI.classicLines(),
               bottom_line_thin = VS.Opt.readShowReadingGoal() })
     end
 
@@ -1048,7 +1058,7 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
             local separator = HorizontalGroup:new{
                 align = "center",
                 HorizontalSpan:new{ width = layout.column_gap },
-                Colors.newBar(Size.line.medium, row_h, Colors.separator()),
+                Colors.vLine(Size.line.medium, row_h),
             }
             local right_col = UI.fixedCol(
                 headerCol(right_widget, right_bg, layout.column_gap),
@@ -1126,7 +1136,7 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
             table.insert(sections, trackYearSwipe(wrapRow(UI.buildTwoColRow(left_cell, right_cell, layout))))
             table.insert(sections, VerticalSpan:new{ width = Size.padding.small })
             table.insert(sections, UI.padded(layout.padding_h,
-                Colors.newBar(layout.content_width, Size.line.thick, Colors.separator())))
+                Colors.hLine(layout.content_width, Size.line.thick)))
         end
 
         if show_ach then
@@ -1161,8 +1171,8 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
 
             UI.addSectionWithRow(sections,
                 paddedTwoColHeader(ach_title, latest_title, HEADER_BG()),
-                wrapRow(UI.buildTwoColRow(left_cell, right_cell, layout)),
-                layout, { pad_row = false, gap_above_row = true })
+                wrapRow(UI.buildTwoColRow(left_cell, right_cell, layout, false, { join_above = true })),
+                layout, { pad_row = false, gap_above_row = true, split_header = true })
         end
     end -- if show_goal or show_ach
 
@@ -2063,7 +2073,12 @@ function ReadingInsightsPopup:_buildUI()
             close_callback = (not self.readonly) and function() UIManager:close(self) end or nil,
             show_parent    = self,
             top_v_padding    = Size.padding.default,
-            bottom_v_padding = Size.padding.default,
+            -- The line under the title is the title bar's own (like the book
+            -- list's), so it sits the same distance below the text.
+            with_bottom_line      = true,
+            bottom_line_color     = Colors.separator(),
+            bottom_line_h_padding = layout.padding_h,
+            bottom_v_padding      = 0,
         }
 
         local title_bar_h = title_bar_inner:getSize().h
@@ -2077,7 +2092,6 @@ function ReadingInsightsPopup:_buildUI()
         local group = VerticalGroup:new{
             align = "left",
             title_bar_inner,
-            UI.padded(layout.padding_h, Colors.newBar(layout.content_width, Size.line.thick, Colors.separator())),
             sections,
             -- VerticalSpan reads `width` (a `height` field is ignored, which
             -- left this spacer at 0 px). Without a monthly chart to take

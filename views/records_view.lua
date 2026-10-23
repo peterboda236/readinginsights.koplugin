@@ -48,8 +48,8 @@ local Screen          = Device.screen
 -- and dismissable-popup helper (PopupUtil).
 -- Shared modules, passed in as one named table by main.lua (see there).
 local deps = ...
-local Locale, Colors, Fonts, PopupUtil, RecordsData =
-    deps.Locale, deps.Colors, deps.Fonts, deps.PopupUtil, deps.RecordsData
+local Locale, Colors, Fonts, PopupUtil, RecordsData, UI =
+    deps.Locale, deps.Colors, deps.Fonts, deps.PopupUtil, deps.RecordsData, deps.UI
 
 local _ = Locale._
 local N_ = Locale.N_
@@ -169,10 +169,7 @@ local function buildRecordRow(fonts, icon_glyph, label_text, value_text, sub_tex
 end
 
 local function buildSeparator(width)
-    return LineWidget:new{
-        dimen      = Geom:new{ w = width, h = Size.line.thin },
-        background = Colors.separator(),
-    }
+    return Colors.hLine(width, Size.line.thin)
 end
 
 -- Measures the icon / label / value(+sub) column widths needed across ALL
@@ -370,18 +367,22 @@ function RecordsPopup:_buildUI()
     }
     self._title_row = title_row
 
+    local classic = UI and UI.classicLines()
     local content = VerticalGroup:new{
         align = "left",
         HorizontalGroup:new{
             HorizontalSpan:new{ width = row_pad },
             title_row,
         },
-        VerticalSpan:new{ width = Size.padding.small },
-        HorizontalGroup:new{
+        -- No line under the title (unless "Classic divider lines" is on);
+        -- the spacing stays.
+        classic and VerticalSpan:new{ width = Size.padding.small } or
+            VerticalSpan:new{ width = 2 * Size.padding.small + Size.line.thick },
+        classic and HorizontalGroup:new{
             HorizontalSpan:new{ width = row_pad },
-            Colors.newBar(inner_w, Size.line.thick, Colors.separator()),
-        },
-        VerticalSpan:new{ width = Size.padding.small },
+            Colors.hLine(inner_w, Size.line.thick),
+        } or VerticalSpan:new{ width = 0 },
+        classic and VerticalSpan:new{ width = Size.padding.small } or VerticalSpan:new{ width = 0 },
         rows,
     }
 

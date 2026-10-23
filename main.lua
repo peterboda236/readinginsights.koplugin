@@ -213,6 +213,7 @@ local Fonts  = loadModule("lib/fonts.lua",  { Locale = Locale, PluginUtil = Plug
 local UI     = loadModule("lib/uikit.lua",  { Colors = Colors })
 
 local ViewSettings  = loadModule("lib/insights_settings.lua", { Prefs = Prefs })
+UI.bindSettings(ViewSettings)
 local InsightsCache = loadModule("lib/insights_cache.lua")
 
 -- The reader's hand-kept list of finished books (books with no rows in the
@@ -316,7 +317,7 @@ local StreakCalendar = loadModule("views/streak_calendar_view.lua", {
 -- Streak/Heatmap/AchievementsView.
 local Records = loadModule("views/records_view.lua", {
     Locale = Locale, Colors = Colors, Fonts = Fonts, PopupUtil = PopupUtil,
-    RecordsData = RecordsData,
+    RecordsData = RecordsData, UI = UI,
 })
 
 -- The Book info popup: cover + title / author / series. Its data (authors

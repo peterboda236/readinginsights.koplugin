@@ -2068,3 +2068,36 @@ msgstr "按星期的已读页数"
 
 msgid "Share of reading time by weekday"
 msgstr "按星期的阅读时间占比"
+
+msgid "Classic divider lines"
+msgstr "经典分隔线"
+
+msgid "Off: dividers only above section headers, vertical dividers run unbroken through headers and rows, and there are no thin lines under headers or around the charts. On: the original look with a thin line under every header."
+msgstr "关闭：分隔线只出现在各栏目标题上方，竖向分隔线贯穿标题和各行且不中断，标题下方和图表周围没有细线。开启：恢复原来的样式，每个标题下方都有一条细线。"
+
+msgid "Divider lines"
+msgstr "分隔线"
+
+msgid "Normal"
+msgstr "正常"
+
+msgid "Fewer"
+msgstr "较少"
+
+msgid "Fewer, thin"
+msgstr "较少，细线"
+
+msgid "Classic look: a line under every header."
+msgstr "经典外观：每个标题下方有一条线。"
+
+msgid "Only the lines between sections."
+msgstr "仅保留各部分之间的线。"
+
+msgid "Like Fewer, but with 1px thin lines."
+msgstr "与“较少”相同，但使用 1 px 细线。"
+
+msgid "No lines at all, vertical ones included."
+msgstr "没有任何线条，包括竖线。"
+
+msgid "Number and thickness of the divider lines. The line under the title of the Reading insights, Reading calendar and Reading shelf pages is not affected."
+msgstr "分隔线的数量和粗细。“阅读洞察”“阅读日历”和“阅读书架”页面标题下方的线不受影响。"

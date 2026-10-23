@@ -315,7 +315,7 @@ local function buildBookCalendarGrid(daily_map, year, month, day_font, small_fon
             align = "center",
             CenterContainer:new{ dimen = Geom:new{ w = week_col_w, h = height }, label },
             HorizontalSpan:new{ width = WEEK_COL_SIDE_PAD },
-            Colors.newBar(Size.line.thin, height, Colors.separator()),
+            Colors.vLine(Size.line.thin, height),
             HorizontalSpan:new{ width = WEEK_COL_SIDE_PAD },
         }
     end

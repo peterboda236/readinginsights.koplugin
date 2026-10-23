@@ -45,6 +45,7 @@ Exposes:
 local Blitbuffer  = require("ffi/blitbuffer")
 local ConfirmBox  = require("ui/widget/confirmbox")
 local Geom        = require("ui/geometry")
+local Size        = require("ui/size")
 local InfoMessage = require("ui/widget/infomessage")
 local InputDialog = require("ui/widget/inputdialog")
 local LineWidget  = require("ui/widget/linewidget")
@@ -127,10 +128,16 @@ end
 
 function ColorBar:paintTo(bb, x, y)
     if not self.color then return end
+    -- draw_w / draw_h: paint a thinner bar centered inside the (unchanged)
+    -- width x height box, so the layout around it does not move.
+    local w = math.min(self.draw_w or self.width,  self.width)
+    local h = math.min(self.draw_h or self.height, self.height)
+    x = x + math.floor((self.width  - w) / 2)
+    y = y + math.floor((self.height - h) / 2)
     if Blitbuffer.isColor8(self.color) then
-        bb:paintRect(x, y, self.width, self.height, self.color)
+        bb:paintRect(x, y, w, h, self.color)
     else
-        bb:paintRectRGB32(x, y, self.width, self.height, self.color)
+        bb:paintRectRGB32(x, y, w, h, self.color)
     end
 end
 
@@ -307,6 +314,39 @@ end
 -- activeBar()/inactiveBar().
 function M.newBar(width, height, color)
     return ColorBar:new{ width = width, height = height, color = color }
+end
+
+-- Divider lines (Settings > Appearance > Divider lines, see Prefs.readDividerStyle):
+-- how a divider is drawn is "normal" (original thickness), "thin" (horizontal
+-- dividers drawn 1px thin, style "less_thin") or "off" (no horizontal and no
+-- vertical dividers). The box a divider occupies never changes, so switching
+-- does not move anything. The lines under the Reading insights / Reading
+-- calendar / Reading shelf titles are the title bar's own and not affected.
+function M.separatorMode()
+    local style = Prefs.readDividerStyle()
+    if style == "off" then return "off" end
+    if style == "less_thin" then return "thin" end
+    return "normal"
+end
+
+-- Horizontal divider line: width x height box in the separator color.
+function M.hLine(width, height)
+    local mode = M.separatorMode()
+    local bar = ColorBar:new{ width = width, height = height, color = M.separator() }
+    if mode == "off" then
+        bar.color = nil
+    elseif mode == "thin" then
+        bar.draw_h = Size.line.thin
+    end
+    return bar
+end
+
+-- Vertical divider line: hidden when the dividers are off, otherwise
+-- unchanged (the thickness setting only concerns the horizontal ones).
+function M.vLine(width, height)
+    local bar = ColorBar:new{ width = width, height = height, color = M.separator() }
+    if M.separatorMode() == "off" then bar.color = nil end
+    return bar
 end
 
 function M.setHex(key, hex)

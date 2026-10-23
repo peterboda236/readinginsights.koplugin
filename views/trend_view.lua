@@ -209,7 +209,7 @@ function M.buildSummaryRow(weeks, kind, width, fonts)
         align = "center",
         cell(left),
         HorizontalSpan:new{ width = math.floor(gap / 2) },
-        Colors.newBar(Size.line.thin, row_h, Colors.separator()),
+        Colors.vLine(Size.line.thin, row_h),
         HorizontalSpan:new{ width = gap - math.floor(gap / 2) },
         cell(right),
     }
@@ -483,8 +483,8 @@ function M.buildLine8WeekChart(weeks, metric, chart_width, fonts)
     return M.buildTrendChart(weeks, M.kindOf(metric), chart_width, fonts)
 end
 
--- Everything inside the popup box: title, thin line, the total / daily
--- average row, then the chart with the week dates at its bottom.
+-- Everything inside the popup box: title, the total / daily average row,
+-- then the chart with the week dates at its bottom.
 function M.buildContent(weeks, metric, width, fonts)
     local mode = M.modeOf(metric)
     local kind = M.kindOf(mode)
@@ -498,6 +498,7 @@ function M.buildContent(weeks, metric, width, fonts)
     -- Same small gaps as the "Last 7 days" section of the insights page:
     -- title, thin line, caption, chart, thin line, row.
     local gap = Size.padding.small
+    local classic = VS and VS.Opt and VS.Opt.readClassicLines and VS.Opt.readClassicLines()
     local chart, handle = M.buildTrendChart(weeks, kind, width, fonts, mode:sub(-4) == "_avg")
 
     -- Same look as the caption above the monthly chart: label font and
@@ -514,18 +515,33 @@ function M.buildContent(weeks, metric, width, fonts)
     handle = handle or {}
     handle.caption = caption
 
-    return VerticalGroup:new{
-        align = "left",
+    -- Same order and spacing in both looks - title, the total / daily
+    -- average row, the chart's caption, then the chart, like the insights
+    -- page sections. The only difference: "Classic divider lines" adds the
+    -- thin lines under the title and above the caption.
+    local padded_title = FrameContainer:new{
+        background     = Blitbuffer.COLOR_WHITE,
+        bordersize     = 0,
+        padding        = 0,
+        padding_top    = Size.padding.small,
+        padding_bottom = Size.padding.small,
         title,
-        VerticalSpan:new{ width = gap },
-        Colors.newBar(width, Size.line.thin, Colors.separator()),
-        caption,
-        chart,
-        VerticalSpan:new{ width = gap },
-        Colors.newBar(width, Size.line.thin, Colors.separator()),
-        VerticalSpan:new{ width = gap },
-        M.buildSummaryRow(weeks, kind, width, fonts),
-    }, handle
+    }
+    local function rule()
+        return Colors.hLine(width, Size.line.thin)
+    end
+    local out = VerticalGroup:new{ align = "left", padded_title }
+    table.insert(out, VerticalSpan:new{ width = gap })
+    if classic then
+        table.insert(out, rule())
+        table.insert(out, VerticalSpan:new{ width = gap })
+    end
+    table.insert(out, M.buildSummaryRow(weeks, kind, width, fonts))
+    table.insert(out, VerticalSpan:new{ width = gap })
+    if classic then table.insert(out, rule()) end
+    table.insert(out, caption)
+    table.insert(out, chart)
+    return out, handle
 end
 
 -- Full-screen tap-anywhere-to-close popup that hosts the trend chart.

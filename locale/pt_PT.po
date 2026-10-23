@@ -2341,3 +2341,36 @@ msgstr "Páginas lidas por dia da semana"
 
 msgid "Share of reading time by weekday"
 msgstr "Percentagem do tempo de leitura por dia da semana"
+
+msgid "Classic divider lines"
+msgstr "Linhas separadoras clássicas"
+
+msgid "Off: dividers only above section headers, vertical dividers run unbroken through headers and rows, and there are no thin lines under headers or around the charts. On: the original look with a thin line under every header."
+msgstr "Desligado: separadores apenas acima dos títulos das secções, separador vertical contínuo através dos títulos e das linhas, sem linhas finas por baixo dos títulos nem à volta dos gráficos. Ligado: o aspeto original, com uma linha fina por baixo de cada título."
+
+msgid "Divider lines"
+msgstr "Linhas separadoras"
+
+msgid "Normal"
+msgstr "Normal"
+
+msgid "Fewer"
+msgstr "Menos"
+
+msgid "Fewer, thin"
+msgstr "Menos, finas"
+
+msgid "Classic look: a line under every header."
+msgstr "Vista clássica: uma linha sob cada cabeçalho."
+
+msgid "Only the lines between sections."
+msgstr "Apenas as linhas entre as secções."
+
+msgid "Like Fewer, but with 1px thin lines."
+msgstr "Como Menos, mas com linhas finas de 1 px."
+
+msgid "No lines at all, vertical ones included."
+msgstr "Sem linhas, incluindo as verticais."
+
+msgid "Number and thickness of the divider lines. The line under the title of the Reading insights, Reading calendar and Reading shelf pages is not affected."
+msgstr "Número e espessura das linhas separadoras. A linha sob o título de Reading Insights, Calendário de leitura e Estante de leitura não é afetada."

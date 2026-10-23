@@ -950,6 +950,24 @@ function M.Opt.saveBookSectionStyle(value)
     Prefs.save(M.Opt.BOOK_SECTION_STYLE_KEY, value)
 end
 
+-- Settings > Appearance > "Divider lines" (see Prefs.readDividerStyle):
+-- "normal" is the classic look - a thin line under every header, thin lines
+-- around the charts, vertical dividers broken between rows. The other
+-- styles ("less", "less_thin", "off") use the sparser layout: lines only
+-- above section headers and unbroken vertical dividers ("off" then hides
+-- the lines themselves, see colors.lua).
+function M.Opt.readDividerStyle()
+    return Prefs.readDividerStyle()
+end
+
+function M.Opt.saveDividerStyle(value)
+    Prefs.saveDividerStyle(value)
+end
+
+function M.Opt.readClassicLines()
+    return Prefs.readDividerStyle() == "normal"
+end
+
 function M.Opt.readShowCellBars()
     return M.readBoolSetting(M.Opt.SHOW_CELL_BARS_KEY, M.Opt.SHOW_CELL_BARS_DEFAULT)
 end

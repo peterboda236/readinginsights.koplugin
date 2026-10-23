@@ -376,7 +376,7 @@ msgid "This book"
 msgstr "Könyv"
 
 msgid "Pace"
-msgstr "Tempó"
+msgstr "Haladás"
 
 msgid "Chapters"
 msgstr "Fejezetek"
@@ -1695,7 +1695,7 @@ msgid "Started / expected finish row"
 msgstr "„Kezdve / várható befejezés” sor"
 
 msgid "Show the \"started …\" and \"expected finish\" date row in the \"Pace\" section."
-msgstr "A „kezdve…” és „várható befejezés” dátumsor megjelenítése a „Tempó” szakaszban."
+msgstr "A „kezdve…” és „várható befejezés” dátumsor megjelenítése a „Haladás” szakaszban."
 
 msgid "Hamburger menu"
 msgstr "Hamburger menü"
@@ -1749,7 +1749,7 @@ msgid "Show the row with the time read so far and the reading time left in the \
 msgstr "Az eddig olvasott és a hátralévő olvasási időt mutató sor megjelenítése a „Könyv” szekcióban. Ha a szekció minden eleme ki van kapcsolva, a fejléc is eltűnik."
 
 msgid "Show the row with today's reading time and the average time per day in the \"Pace\" section. If this and the started / expected finish row are both off, the whole \"Pace\" section is hidden."
-msgstr "A mai olvasási időt és a napi átlagot mutató sor megjelenítése a „Tempó” szakaszban. Ha ez és a „kezdve / várható befejezés” sor is ki van kapcsolva, a teljes „Tempó” szekció eltűnik."
+msgstr "A mai olvasási időt és a napi átlagot mutató sor megjelenítése a „Haladás” szakaszban. Ha ez és a „kezdve / várható befejezés” sor is ki van kapcsolva, a teljes „Haladás” szekció eltűnik."
 
 msgid "All chapters"
 msgstr "Összes fejezet"
@@ -2352,3 +2352,36 @@ msgstr "Olvasott oldalak a hét napjai szerint"
 
 msgid "Share of reading time by weekday"
 msgstr "Olvasási idő aránya a hét napjai szerint"
+
+msgid "Classic divider lines"
+msgstr "Klasszikus elválasztó vonalak"
+
+msgid "Off: dividers only above section headers, vertical dividers run unbroken through headers and rows, and there are no thin lines under headers or around the charts. On: the original look with a thin line under every header."
+msgstr "Ki: elválasztó csak a szakaszcímek fölött van, a függőleges elválasztó megszakítás nélkül fut a címeken és soron át, a címek alatt és a diagramok körül nincs vékony vonal. Be: az eredeti kinézet, minden cím alatt vékony vonallal."
+
+msgid "Divider lines"
+msgstr "Vonalak"
+
+msgid "Normal"
+msgstr "Normál"
+
+msgid "Fewer"
+msgstr "Kevesebb"
+
+msgid "Fewer, thin"
+msgstr "Kevesebb vékonyan"
+
+msgid "Classic look: a line under every header."
+msgstr "Klasszikus nézet: minden cím alatt vonal."
+
+msgid "Only the lines between sections."
+msgstr "Csak a szekciók közötti vonalak."
+
+msgid "Like Fewer, but with 1px thin lines."
+msgstr "Mint a Kevesebb, de 1 px vékony vonalakkal."
+
+msgid "No lines at all, vertical ones included."
+msgstr "Nincs vonal, a függőleges sem."
+
+msgid "Number and thickness of the divider lines. The line under the title of the Reading insights, Reading calendar and Reading shelf pages is not affected."
+msgstr "A vonalak száma és vastagsága. A Reading insights, az Olvasási naptár és az Olvasási polc oldal címe alatti vonalat nem érinti."

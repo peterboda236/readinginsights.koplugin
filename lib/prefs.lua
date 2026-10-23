@@ -108,4 +108,30 @@ function M.weekStartWday()
     return M.readWeekStart() == "sunday" and 0 or 1
 end
 
+-- ---------------------------------------------------------------------
+-- Shared "Divider lines" setting (Settings > Appearance > Divider lines).
+--   normal     the classic look: a line under every header, thin lines
+--              around the charts, original thickness (default)
+--   less       fewer lines: only the ones between sections, original thickness
+--   less_thin  fewer lines, all horizontal dividers drawn 1px thin
+--   off        no dividers at all, horizontal or vertical
+-- Read by colors.lua (how a line is drawn) and insights_settings.lua (which
+-- lines exist), hence kept here. Older versions had a "Classic divider
+-- lines" switch: if it was explicitly turned off, that choice becomes "less".
+-- ---------------------------------------------------------------------
+local DIVIDER_STYLE_KEY    = "reading_insights_divider_style"
+local LEGACY_CLASSIC_KEY   = "reading_insights_classic_lines"
+local VALID_DIVIDER_STYLE  = { normal = true, less = true, less_thin = true, off = true }
+
+function M.readDividerStyle()
+    local v = M.read(DIVIDER_STYLE_KEY, nil)
+    if VALID_DIVIDER_STYLE[v] then return v end
+    if M.read(LEGACY_CLASSIC_KEY, nil) == false then return "less" end
+    return "normal"
+end
+
+function M.saveDividerStyle(value)
+    if VALID_DIVIDER_STYLE[value] then M.save(DIVIDER_STYLE_KEY, value) end
+end
+
 return M

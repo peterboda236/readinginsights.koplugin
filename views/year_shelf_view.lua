@@ -604,12 +604,14 @@ function YearShelfPopup:_rebuild()
         close_callback         = (not self.readonly) and function() UIManager:close(self) end or nil,
         show_parent            = self,
         top_v_padding          = Size.padding.default,
-        bottom_v_padding       = Size.padding.default,
+        -- The line is the title bar's own (like the book list's).
+        with_bottom_line       = true,
+        bottom_line_color      = Colors.separator(),
+        bottom_line_h_padding  = Size.padding.large,
+        bottom_v_padding       = 0,
     }
     self.title_bar = title_bar
     local side_pad = Size.padding.large
-    local title_sep = UI.padded(side_pad,
-        Colors.newBar(screen_w - 2 * side_pad, Size.line.thick, Colors.separator()))
     self._top_h = title_bar:getSize().h
 
     -- Year row: built like the year row of the Reading insights window
@@ -673,12 +675,15 @@ function YearShelfPopup:_rebuild()
     }
     -- Drawn with a little room from the screen's edge, like the lines around it.
     local year_row_padded = UI.padded(side_pad, year_header)
-    local year_sep = UI.padded(side_pad,
-        Colors.newBar(content_w, Size.line.thin, Colors.separator()))
+    -- No line under the year header (lines go above headers only); a spacer
+    -- of the same height keeps the layout.
+    local year_sep = UI.classicLines()
+        and UI.padded(side_pad, Colors.hLine(content_w, Size.line.thin))
+        or VerticalSpan:new{ width = Size.line.thin }
     -- The same small gaps as in the insights window: header - gap - thin line
     -- - gap - what follows.
     local year_gap = Size.padding.small
-    self._year_row_top    = self._top_h + title_sep:getSize().h
+    self._year_row_top    = self._top_h
     self._year_row_bottom = self._year_row_top + year_header:getSize().h
         + year_gap + year_sep:getSize().h + year_gap
 
@@ -832,7 +837,6 @@ function YearShelfPopup:_rebuild()
     local content = VerticalGroup:new{
         align = "left",
         title_bar,
-        title_sep,
         year_row_padded,
         VerticalSpan:new{ width = year_gap },
         year_sep,

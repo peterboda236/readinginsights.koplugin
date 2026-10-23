@@ -56,6 +56,17 @@ local Colors =
 
 local M = {}
 
+-- "Classic divider lines" (Settings > Advanced settings): the plugin's
+-- original look. Off by default. The settings module is handed over by
+-- main.lua (bindSettings) once both are loaded; until then, or if the
+-- setting can't be read, the new look applies.
+local VS_
+function M.bindSettings(vs) VS_ = vs end
+function M.classicLines()
+    local ok, v = pcall(function() return VS_ and VS_.Opt.readClassicLines() end)
+    return ok and v and true or false
+end
+
 -- Landscape vs. portrait, used to switch a few sections/popups between a
 -- layout tuned for a narrow portrait screen and one that makes better use
 -- of the extra horizontal room in landscape (e.g. laying value cells out
@@ -115,15 +126,21 @@ end
 
 -- The vertical line between the two columns, with a little breathing room
 -- above and below it.
-function M.buildColumnSeparator(column_gap, height)
+-- `no_top_pad` / `no_bottom_pad` drop that end's breathing room, so the line
+-- runs flush into the neighbouring row's line (see buildTwoColRow's
+-- `join_above` / `join_below`).
+function M.buildColumnSeparator(column_gap, height, no_top_pad, no_bottom_pad)
+    if M.classicLines() then no_top_pad, no_bottom_pad = false, false end
     local v_padding = Size.padding.default
+    local top_pad    = no_top_pad    and 0 or v_padding
+    local bottom_pad = no_bottom_pad and 0 or v_padding
     return HorizontalGroup:new{
         HorizontalSpan:new{ width = column_gap },
         VerticalGroup:new{
             align = "center",
-            VerticalSpan:new{ width = v_padding },
-            Colors.newBar(Size.line.medium, height - 2 * v_padding, Colors.separator()),
-            VerticalSpan:new{ width = v_padding },
+            VerticalSpan:new{ width = top_pad },
+            Colors.vLine(Size.line.medium, height - top_pad - bottom_pad),
+            VerticalSpan:new{ width = bottom_pad },
         },
         HorizontalSpan:new{ width = column_gap },
     }
@@ -226,13 +243,41 @@ function M.padBottom(cell, extra)
     }
 end
 
+-- The stretch of vertical divider between a two-column header row and the
+-- value row under it, so the line runs on unbroken from the header into the
+-- values. `height` is the gap between the two rows; `pad` insets it by
+-- layout.padding_h like the padded rows around it.
+function M.buildSplitGap(layout, height, pad)
+    local gap = HorizontalGroup:new{
+        HorizontalSpan:new{ width = layout.col_width },
+        M.buildColumnSeparator(layout.column_gap, height, true, true),
+        HorizontalSpan:new{ width = layout.col_width },
+    }
+    return pad and M.padded(layout.padding_h, gap) or gap
+end
+
 -- One row of the two-column grid. `hide_separator` keeps the columns where
 -- they are but leaves the gap between them empty.
-function M.buildTwoColRow(left_widget, right_widget, layout, hide_separator)
+-- `opts` (optional) lets stacked rows share one unbroken vertical line:
+--   join_below = n    the row is n px taller (the gap before the next row)
+--                     and its line runs down through that gap
+--   join_above = true the line starts flush at the top of the row, meeting
+--                     the line of the row above (which used join_below)
+--   flush_bottom = true the line runs flush to the bottom of the row (used by
+--                     header rows, with M.buildSplitGap carrying the line on
+--                     down to the value row under the header)
+function M.buildTwoColRow(left_widget, right_widget, layout, hide_separator, opts)
+    opts = (type(opts) == "table" and not M.classicLines()) and opts or {}
+    local extra = opts.join_below or 0
+    if extra > 0 then
+        left_widget  = M.padBottom(left_widget,  extra)
+        right_widget = M.padBottom(right_widget, extra)
+    end
     local row_height = math.max(left_widget:getSize().h, right_widget:getSize().h)
     local separator = hide_separator
         and HorizontalSpan:new{ width = layout.separator_width }
-        or  M.buildColumnSeparator(layout.column_gap, row_height)
+        or  M.buildColumnSeparator(layout.column_gap, row_height,
+                opts.join_above and true or false, (extra > 0) or (opts.flush_bottom and true or false))
     return HorizontalGroup:new{
         align = "center",
         M.fixedCol(left_widget,  layout.col_width, row_height),
@@ -289,7 +334,10 @@ end
 -- opts (all optional):
 --   pad_row          = false  row is inserted without the horizontal padding
 --   add_divider      = false  no divider or closing line at all
---   no_top_line      = true   skip the thin divider under the header
+--   top_line         = true   draw a thin divider under the header (off by
+--                             default: lines go above headers only)
+--   split_header     = true   header and row are two-column: carry the
+--                             vertical divider through the gap between them
 --   no_bottom_line   = true   skip the thick line under the row
 --   bottom_line_thin = true   draw the line under the row thin instead of
 --                             thick (ignored if no_bottom_line is set)
@@ -302,33 +350,46 @@ function M.addSectionWithRow(sections, header_widget, row, layout, opts)
     local pad_row          = true
     local add_divider      = true
     local no_bottom_line   = false
-    local no_top_line      = false
+    local top_line         = M.classicLines()
     local bottom_line_thin = false
     local gap_above_row    = false
+    local split_header     = false
     if type(opts) == "table" then
         if opts.pad_row          == false then pad_row          = false end
         if opts.add_divider      == false then add_divider      = false end
         if opts.no_bottom_line   == true  then no_bottom_line   = true  end
-        if opts.no_top_line      == true  then no_top_line      = true  end
+        if opts.top_line         == true  then top_line         = true  end
+        if M.classicLines() and opts.no_top_line == true then top_line = false end
         if opts.bottom_line_thin == true  then bottom_line_thin = true  end
         if opts.gap_above_row    == true  then gap_above_row    = true  end
+        if opts.split_header     == true  then split_header     = true  end
     end
 
     table.insert(sections, header_widget)
-    table.insert(sections, VerticalSpan:new{ width = Size.padding.small })
-    if add_divider and not no_top_line then
-        table.insert(sections, M.padded(layout.padding_h,
-            Colors.newBar(layout.content_width, Size.line.thin, Colors.separator())))
-    end
-    if gap_above_row then
+    -- No divider under a section header (only above it, drawn by the
+    -- caller); `top_line = true` brings it back.
+    if split_header and not M.classicLines() then
+        -- Two-column header over a two-column row: the vertical divider
+        -- runs through the gap between them without a break.
+        local gap_h = Size.padding.small * (gap_above_row and 2 or 1)
+        if add_divider and top_line then gap_h = gap_h + Size.line.thin end
+        table.insert(sections, M.buildSplitGap(layout, gap_h, true))
+    else
         table.insert(sections, VerticalSpan:new{ width = Size.padding.small })
+        if add_divider and top_line then
+            table.insert(sections, M.padded(layout.padding_h,
+                Colors.hLine(layout.content_width, Size.line.thin)))
+        end
+        if gap_above_row then
+            table.insert(sections, VerticalSpan:new{ width = Size.padding.small })
+        end
     end
     table.insert(sections, pad_row and M.padded(layout.padding_h, row) or row)
     table.insert(sections, VerticalSpan:new{ width = Size.padding.small })
     if add_divider and not no_bottom_line then
         local bottom_line_size = bottom_line_thin and Size.line.thin or Size.line.thick
         table.insert(sections, M.padded(layout.padding_h,
-            Colors.newBar(layout.content_width, bottom_line_size, Colors.separator())))
+            Colors.hLine(layout.content_width, bottom_line_size)))
     end
 end
 

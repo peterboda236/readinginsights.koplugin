@@ -2343,3 +2343,36 @@ msgstr "Pages read by weekday"
 
 msgid "Share of reading time by weekday"
 msgstr "Share of reading time by weekday"
+
+msgid "Classic divider lines"
+msgstr "Classic divider lines"
+
+msgid "Off: dividers only above section headers, vertical dividers run unbroken through headers and rows, and there are no thin lines under headers or around the charts. On: the original look with a thin line under every header."
+msgstr "Off: dividers only above section headers, vertical dividers run unbroken through headers and rows, and there are no thin lines under headers or around the charts. On: the original look with a thin line under every header."
+
+msgid "Divider lines"
+msgstr "Divider lines"
+
+msgid "Normal"
+msgstr "Normal"
+
+msgid "Fewer"
+msgstr "Fewer"
+
+msgid "Fewer, thin"
+msgstr "Fewer, thin"
+
+msgid "Classic look: a line under every header."
+msgstr "Classic look: a line under every header."
+
+msgid "Only the lines between sections."
+msgstr "Only the lines between sections."
+
+msgid "Like Fewer, but with 1px thin lines."
+msgstr "Like Fewer, but with 1px thin lines."
+
+msgid "No lines at all, vertical ones included."
+msgstr "No lines at all, vertical ones included."
+
+msgid "Number and thickness of the divider lines. The line under the title of the Reading insights, Reading calendar and Reading shelf pages is not affected."
+msgstr "Number and thickness of the divider lines. The line under the title of the Reading insights, Reading calendar and Reading shelf pages is not affected."

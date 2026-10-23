@@ -1436,10 +1436,12 @@ local function buildBox(popup_self, periods_back, force_fresh, width_override, d
     -- and reserves no space at all.)
     local LEGEND_GAP = Size.padding.small
     local function sectionSeparator()
-        return LineWidget:new{
-            dimen      = Geom:new{ w = content_width, h = Size.line.thin },
-            background = Colors.separator(),
-        }
+        -- No rule between the sections unless "Classic divider lines" is on
+        -- (a spacer of the same height keeps the layout).
+        if not UI.classicLines() then
+            return VerticalSpan:new{ width = Size.line.thin }
+        end
+        return Colors.hLine(content_width, Size.line.thin)
     end
 
     -- Peak hour line (under the time-of-day view) and the weekday bar chart

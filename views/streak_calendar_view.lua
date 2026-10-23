@@ -419,7 +419,7 @@ local function buildStreakMonthGrid(year, month, read_set, fonts, cell_w, cell_h
             align = "center",
             CenterContainer:new{ dimen = Geom:new{ w = week_col_w, h = height }, label },
             HorizontalSpan:new{ width = WEEK_COL_SIDE_PAD },
-            Colors.newBar(Size.line.thin, height, Colors.separator()),
+            Colors.vLine(Size.line.thin, height),
             HorizontalSpan:new{ width = WEEK_COL_SIDE_PAD },
         }
     end
@@ -1228,7 +1228,7 @@ function StreakHistoryPopup:_rebuild()
     -- headers (used above the streak caption).
     local function divider(thick)
         table.insert(content, VerticalSpan:new{ width = Size.padding.small })
-        table.insert(content, Colors.newBar(cont_w, thick and Size.line.thick or Size.line.thin, Colors.separator()))
+        table.insert(content, Colors.hLine(cont_w, thick and Size.line.thick or Size.line.thin))
         table.insert(content, VerticalSpan:new{ width = Size.padding.small })
     end
 
@@ -1271,7 +1271,13 @@ function StreakHistoryPopup:_rebuild()
     }
     table.insert(content, caption)   -- left-aligned
 
-    divider()
+    -- No line under the caption (lines go above headings only); the same
+    -- spacing is kept.
+    if UI.classicLines() then
+        divider()
+    else
+        table.insert(content, VerticalSpan:new{ width = 2 * Size.padding.small + Size.line.thin })
+    end
 
     local info = self:_buildInfo(cont_w, fonts)
     if info then table.insert(content, info) end
@@ -1782,11 +1788,13 @@ function StreakDatePopup:_rebuild()
         close_callback   = (not self.readonly) and function() UIManager:close(self) end or nil,
         show_parent      = self,
         top_v_padding    = Size.padding.default,
-        bottom_v_padding = Size.padding.default,
+        -- The line is the title bar's own (like the book list's).
+        with_bottom_line      = true,
+        bottom_line_color     = Colors.separator(),
+        bottom_line_h_padding = inner_padding,
+        bottom_v_padding      = 0,
     }
-    local title_sep = UI.padded(inner_padding,
-        Colors.newBar(screen_w - 2 * inner_padding, Size.line.thick, Colors.separator()))
-    local top_h = title_bar:getSize().h + title_sep:getSize().h
+    local top_h = title_bar:getSize().h
     self._top_h = top_h
     -- The page's bottom edge: the streak section sits right on it (just this
     -- much air under it), the calendar above takes the space that is left.
@@ -1800,7 +1808,7 @@ function StreakDatePopup:_rebuild()
     -- (The "Last read: <date>" line used to sit here; it is gone so the
     -- calendar above gets its height - larger covers.)
     table.insert(tail, Colors.newBar(cont_w, Size.padding.large, Blitbuffer.COLOR_WHITE))
-    table.insert(tail, Colors.newBar(cont_w, Size.line.thick, Colors.separator()))
+    table.insert(tail, Colors.hLine(cont_w, Size.line.thick))
     -- (No separate gap here: the standard section header below carries its
     -- own small padding above and below its text, like in every other view.)
 
@@ -1823,10 +1831,16 @@ function StreakDatePopup:_rebuild()
     -- below): remembering where it starts lets that block measure its
     -- on-screen height without hardcoding every row/spacer size twice.
     local tail_streak_start = #tail + 1
-    table.insert(tail, UI.buildTwoColRow(cur_hdr, best_hdr, layout))
-    table.insert(tail, VerticalSpan:new{ width = Size.padding.small })
-    table.insert(tail, Colors.newBar(cont_w, Size.line.thin, Colors.separator()))
-    table.insert(tail, VerticalSpan:new{ width = Size.padding.small })
+    -- No line under the headers; the vertical divider runs on unbroken from
+    -- the header row, through the gap, into the value row.
+    table.insert(tail, UI.buildTwoColRow(cur_hdr, best_hdr, layout, false, { flush_bottom = true }))
+    if UI.classicLines() then
+        table.insert(tail, VerticalSpan:new{ width = Size.padding.small })
+        table.insert(tail, Colors.hLine(cont_w, Size.line.thin))
+        table.insert(tail, VerticalSpan:new{ width = Size.padding.small })
+    else
+        table.insert(tail, UI.buildSplitGap(layout, 2 * Size.padding.small, false))
+    end
 
     -- Stats row: each streak's column split into days | weeks, at row_h.
     local function daysWeeksCell(days, weeks)
@@ -1842,7 +1856,7 @@ function StreakDatePopup:_rebuild()
     table.insert(tail, UI.buildTwoColRow(
         daysWeeksCell(self.cur_days,  self.cur_weeks),
         daysWeeksCell(self.best_days, self.best_weeks),
-        layout))
+        layout, false, { join_above = true }))
     local tail_streak_end = #tail
     local tail_h = 0
     for _i, w in ipairs(tail) do tail_h = tail_h + w:getSize().h end
@@ -1939,7 +1953,6 @@ function StreakDatePopup:_rebuild()
         VerticalGroup:new{
             align = "left",
             title_bar,
-            title_sep,
             CenterContainer:new{
                 dimen = Geom:new{ w = screen_w, h = screen_h - top_h },
                 self.box_content,

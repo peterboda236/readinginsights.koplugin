@@ -2393,3 +2393,36 @@ msgstr "Прочитано сторінок за днями тижня"
 
 msgid "Share of reading time by weekday"
 msgstr "Частка часу читання за днями тижня"
+
+msgid "Classic divider lines"
+msgstr "Класичні роздільні лінії"
+
+msgid "Off: dividers only above section headers, vertical dividers run unbroken through headers and rows, and there are no thin lines under headers or around the charts. On: the original look with a thin line under every header."
+msgstr "Вимкнено: роздільники лише над заголовками розділів, вертикальний роздільник проходить без розривів через заголовки та рядки, а тонких ліній під заголовками й навколо діаграм немає. Увімкнено: початковий вигляд з тонкою лінією під кожним заголовком."
+
+msgid "Divider lines"
+msgstr "Роздільні лінії"
+
+msgid "Normal"
+msgstr "Звичайні"
+
+msgid "Fewer"
+msgstr "Менше"
+
+msgid "Fewer, thin"
+msgstr "Менше, тонкі"
+
+msgid "Classic look: a line under every header."
+msgstr "Класичний вигляд: лінія під кожним заголовком."
+
+msgid "Only the lines between sections."
+msgstr "Лише лінії між розділами."
+
+msgid "Like Fewer, but with 1px thin lines."
+msgstr "Як «Менше», але з тонкими лініями 1 px."
+
+msgid "No lines at all, vertical ones included."
+msgstr "Без ліній, зокрема вертикальних."
+
+msgid "Number and thickness of the divider lines. The line under the title of the Reading insights, Reading calendar and Reading shelf pages is not affected."
+msgstr "Кількість і товщина роздільних ліній. Лінія під заголовком сторінок «Аналітика читання», «Календар читання» та «Полиця читання» не змінюється."
