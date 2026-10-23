@@ -2366,8 +2366,8 @@ msgstr "Klassische Ansicht: eine Linie unter jeder Überschrift."
 msgid "Only the lines between sections."
 msgstr "Nur die Linien zwischen den Abschnitten."
 
-msgid "Like Fewer, but with 1px thin lines."
-msgstr "Wie Weniger, aber mit 1 px dünnen Linien."
+msgid "Like Fewer, but with thinner lines."
+msgstr "Wie Weniger, aber mit dünneren Linien."
 
 msgid "No lines at all, vertical ones included."
 msgstr "Keine Linien, auch keine senkrechten."

@@ -318,7 +318,7 @@ end
 
 -- Divider lines (Settings > Appearance > Divider lines, see Prefs.readDividerStyle):
 -- how a divider is drawn is "normal" (original thickness), "thin" (horizontal
--- dividers drawn 1px thin, style "less_thin") or "off" (no horizontal and no
+-- dividers capped at Size.line.medium, thinner ones unchanged, style "less_thin") or "off" (no horizontal and no
 -- vertical dividers). The box a divider occupies never changes, so switching
 -- does not move anything. The lines under the Reading insights / Reading
 -- calendar / Reading shelf titles are the title bar's own and not affected.
@@ -336,7 +336,7 @@ function M.hLine(width, height)
     if mode == "off" then
         bar.color = nil
     elseif mode == "thin" then
-        bar.draw_h = Size.line.thin
+        bar.draw_h = Size.line.medium
     end
     return bar
 end

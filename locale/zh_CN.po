@@ -2093,8 +2093,8 @@ msgstr "经典外观：每个标题下方有一条线。"
 msgid "Only the lines between sections."
 msgstr "仅保留各部分之间的线。"
 
-msgid "Like Fewer, but with 1px thin lines."
-msgstr "与“较少”相同，但使用 1 px 细线。"
+msgid "Like Fewer, but with thinner lines."
+msgstr "与“较少”相同，但线条更细。"
 
 msgid "No lines at all, vertical ones included."
 msgstr "没有任何线条，包括竖线。"

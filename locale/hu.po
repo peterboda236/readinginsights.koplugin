@@ -2377,8 +2377,8 @@ msgstr "Klasszikus nézet: minden cím alatt vonal."
 msgid "Only the lines between sections."
 msgstr "Csak a szekciók közötti vonalak."
 
-msgid "Like Fewer, but with 1px thin lines."
-msgstr "Mint a Kevesebb, de 1 px vékony vonalakkal."
+msgid "Like Fewer, but with thinner lines."
+msgstr "Mint a Kevesebb, de vékonyabb vonalakkal."
 
 msgid "No lines at all, vertical ones included."
 msgstr "Nincs vonal, a függőleges sem."

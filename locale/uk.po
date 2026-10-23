@@ -2418,8 +2418,8 @@ msgstr "Класичний вигляд: лінія під кожним заго
 msgid "Only the lines between sections."
 msgstr "Лише лінії між розділами."
 
-msgid "Like Fewer, but with 1px thin lines."
-msgstr "Як «Менше», але з тонкими лініями 1 px."
+msgid "Like Fewer, but with thinner lines."
+msgstr "Як «Менше», але з тоншими лініями."
 
 msgid "No lines at all, vertical ones included."
 msgstr "Без ліній, зокрема вертикальних."

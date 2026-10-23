@@ -441,13 +441,13 @@ function M.build(self, deps)
 
     -- Settings > Appearance > Divider lines. Normal (default) = the classic
     -- look; the "Fewer" styles keep only the lines between sections (normal
-    -- or 1px thin); Off = no dividers at all, vertical ones included. The
+    -- or thinner); Off = no dividers at all, vertical ones included. The
     -- lines under the Reading insights / Reading calendar / Reading shelf
     -- titles are not affected.
     local DIVIDER_STYLES = {
         { "normal",    _("Normal"),      _("Classic look: a line under every header.") },
         { "less",      _("Fewer"),       _("Only the lines between sections.") },
-        { "less_thin", _("Fewer, thin"), _("Like Fewer, but with 1px thin lines.") },
+        { "less_thin", _("Fewer, thin"), _("Like Fewer, but with thinner lines.") },
         { "off",       _("Off"),         _("No lines at all, vertical ones included.") },
     }
     local divider_items = {}

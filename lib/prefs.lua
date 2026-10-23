@@ -113,7 +113,7 @@ end
 --   normal     the classic look: a line under every header, thin lines
 --              around the charts, original thickness (default)
 --   less       fewer lines: only the ones between sections, original thickness
---   less_thin  fewer lines, all horizontal dividers drawn 1px thin
+--   less_thin  fewer lines, horizontal dividers capped at Size.line.medium
 --   off        no dividers at all, horizontal or vertical
 -- Read by colors.lua (how a line is drawn) and insights_settings.lua (which
 -- lines exist), hence kept here. Older versions had a "Classic divider

@@ -2368,8 +2368,8 @@ msgstr "Classic look: a line under every header."
 msgid "Only the lines between sections."
 msgstr "Only the lines between sections."
 
-msgid "Like Fewer, but with 1px thin lines."
-msgstr "Like Fewer, but with 1px thin lines."
+msgid "Like Fewer, but with thinner lines."
+msgstr "Like Fewer, but with thinner lines."
 
 msgid "No lines at all, vertical ones included."
 msgstr "No lines at all, vertical ones included."

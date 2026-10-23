@@ -2366,8 +2366,8 @@ msgstr "Vue classique : une ligne sous chaque en-tête."
 msgid "Only the lines between sections."
 msgstr "Seulement les lignes entre les sections."
 
-msgid "Like Fewer, but with 1px thin lines."
-msgstr "Comme Moins, mais avec des lignes fines de 1 px."
+msgid "Like Fewer, but with thinner lines."
+msgstr "Comme Moins, mais avec des lignes plus fines."
 
 msgid "No lines at all, vertical ones included."
 msgstr "Aucune ligne, y compris verticale."
