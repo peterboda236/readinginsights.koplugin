@@ -277,7 +277,7 @@ end
 -- content so buildPagesSplitValue can decide whether the full "page"/
 -- "pages" word still fits before the row is actually assembled.
 local function splitHalfWidth(layout)
-    local sub_gap = math.max(math.floor(layout.column_gap / 2), Size.padding.small)
+    local sub_gap = layout.column_gap
     local sub_separator_width = 2 * sub_gap + Size.line.medium
     return math.floor((layout.col_width - sub_separator_width) / 2)
 end
@@ -339,7 +339,7 @@ end
 -- buildSplitCellValue/buildPagesSplitValue above), used for both the time
 -- view (plain "hh:mm" value, no unit) and the pages view (value + unit).
 local function buildSplitTimeCell(layout, side1, side2)
-    local sub_gap = math.max(math.floor(layout.column_gap / 2), Size.padding.small)
+    local sub_gap = layout.column_gap
     local half_width = splitHalfWidth(layout)
     local sub_layout = { col_width = half_width, column_gap = sub_gap }
     return UI.buildTwoColRow(side1, side2, sub_layout)
@@ -1021,7 +1021,7 @@ function ReadingStatsPopup:_buildUI()
     local function build(centered)
         local border_w = centered and Size.border.window or 0
         local frame_w  = centered and math.floor(screen_w * 0.94) or screen_w
-        self._layout   = UI.buildLayout(frame_w - 2 * border_w, Size.padding.large, Screen:scaleBySize(20))
+        self._layout   = UI.buildLayout(frame_w - 2 * border_w, Size.padding.large, Size.padding.large)
         self._centered = centered
         local sections = buildSections(self._stats, self._fonts, self._layout, self)
 

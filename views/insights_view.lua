@@ -177,7 +177,7 @@ end
 local function getCachedLayout()
     local screen_w = Screen:getWidth()
     if not _cached_layout or _cached_layout.full_width ~= screen_w then
-        _cached_layout = UI.buildLayout(screen_w, Size.padding.large, Screen:scaleBySize(20))
+        _cached_layout = UI.buildLayout(screen_w, Size.padding.large, Size.padding.large)
     end
     return _cached_layout
 end
@@ -763,8 +763,8 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
     -- Single data row: each Current/Best column is split into a days sub-cell
     -- and a weeks sub-cell (tappable, each shows its own date range), giving
     -- a 2x2 grid overall: [Current | Best] header, [days|weeks  days|weeks] data.
-    local inner_gap        = math.floor(layout.column_gap / 2)
-    local half_col_width   = math.floor((layout.col_width - inner_gap) / 2)
+    local inner_gap        = layout.column_gap
+    local half_col_width   = math.floor((layout.col_width - (2 * inner_gap + Size.line.medium)) / 2)
 
     local cd_line = buildValueLine(fonts.value, fonts.label, half_col_width, cd_val, cd_unit)
     local cw_line = buildValueLine(fonts.value, fonts.label, half_col_width, cw_val, cw_unit)

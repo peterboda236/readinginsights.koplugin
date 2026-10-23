@@ -1818,8 +1818,8 @@ function StreakDatePopup:_rebuild()
     --   [ days | weeks   | days | weeks ]
     -- The days|weeks value line (fonts.value) sets the height (row_h) of the
     -- value row, so both streaks' cells are the same height.
-    local inner_gap = math.floor(layout.column_gap / 2)
-    local half_col  = math.floor((col_w - inner_gap) / 2)
+    local inner_gap = layout.column_gap
+    local half_col  = math.floor((col_w - (2 * inner_gap + Size.line.medium)) / 2)
     local row_h = buildValueLine(fonts.value, fonts.label, half_col, "0", N_("day", "days", 0)):getSize().h
 
     -- The shared section header (UI.buildSectionHeader), exactly as on the
@@ -2166,7 +2166,10 @@ local function showStreaksPopup(streaks, opts)
     opts = opts or {}
     local fonts = getCachedFonts()
     local inner_padding = Size.padding.large
-    local column_gap = Size.padding.large
+    -- Same gap as the Reading insights page (equal to the left screen-edge
+    -- margin), so the right-hand column (Best streak) starts at the same x
+    -- there and here.
+    local column_gap = inner_padding
     local screen_w = Screen:getWidth()
     local screen_h = Screen:getHeight()
 
