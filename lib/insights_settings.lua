@@ -1007,6 +1007,10 @@ M.Opt.BOOK_INFO_KEYS = {
     author  = "reading_insights_book_info_author",
     series  = "reading_insights_book_info_series",
     description = "reading_insights_book_info_description",
+    -- Settings > Appearance > Covers > "Dark border in night mode": the cover
+    -- frame is painted near-black (like Bookshelf's) instead of white in night
+    -- mode. On by default.
+    dark_border = "reading_insights_cover_dark_night_border",
 }
 
 function M.Opt.readBookInfo(name)
@@ -1027,15 +1031,20 @@ end
 -- each on or off. (They keep the keys they had when they were Book info
 -- options, so an existing choice carries over.) Returns the sizes in pixels,
 -- 0 for what is switched off:
---   { border = <frame thickness>, radius = <corner radius>, shadow = <shadow offset> }
+--   { border = <frame thickness>, radius = <corner radius>, shadow = <shadow offset>,
+--     dark_night_border = <bool, near-black frame in night mode> }
 -- The shadow lies outside the cover's own size, the frame inside it.
 function M.Opt.coverDecor()
     local Screen = require("device").screen
     local function S(n) return Screen:scaleBySize(n) end
     return {
-        border = M.Opt.readBookInfo("border")  and math.max(2, S(1)) or 0,
+        border = M.Opt.readBookInfo("border")  and 1 or 0,
         radius = M.Opt.readBookInfo("rounded") and S(4) or 0,
         shadow = M.Opt.readBookInfo("shadow")  and S(4) or 0,
+        -- true: in night mode the frame is painted near-black (see
+        -- CoverFrame.borderColor); meaningless without a frame
+        dark_night_border = M.Opt.readBookInfo("border")
+            and M.Opt.readBookInfo("dark_border") or false,
     }
 end
 

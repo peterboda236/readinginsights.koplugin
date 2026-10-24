@@ -51,8 +51,38 @@ local Colors = deps and deps.Colors
 -- refresh in night mode so the same value displays dark on both modes.
 local DEFAULT_SHADOW_GRAY = Blitbuffer.Color8(0x80)
 
--- Read on every paint, so a changed colour shows up at once.
+-- Night mode default: like Bookshelf, paint 0xD9 (gray(0.15)) so that the
+-- framebuffer inversion displays it as a dark grey 0x26. The day default
+-- (0x80) would invert to ~0x7F, a bright halo on the black night page.
+local NIGHT_SHADOW_GRAY = Blitbuffer.gray(0.15)
+
+-- Frame colour. Black by default, which night mode inverts to a white frame.
+-- With "Dark border in night mode" (decor.dark_night_border) the frame is
+-- painted 0xFA in night mode instead - displayed as ~98% black, like
+-- Bookshelf's night border: a black cover on the black page still keeps a
+-- faint frame rather than a bright one.
+local NIGHT_DARK_BORDER = Blitbuffer.Color8(0xFA)
+
+local function borderColor(dark_night_border)
+    local Screen = require("device").screen
+    if dark_night_border and Screen and Screen.night_mode then
+        return NIGHT_DARK_BORDER
+    end
+    return Blitbuffer.COLOR_BLACK
+end
+
+-- Read on every paint, so a changed colour shows up at once. In night mode
+-- the built-in default is swapped for the night shadow; a colour the user
+-- picked explicitly under Settings > Appearance > Colors always wins.
 local function shadowColor()
+    local Screen = require("device").screen
+    if Screen and Screen.night_mode then
+        local is_default = true
+        if Colors and Colors.getHex and Colors.getDefaultHex then
+            is_default = Colors.getHex("cover_shadow") == Colors.getDefaultHex("cover_shadow")
+        end
+        if is_default then return NIGHT_SHADOW_GRAY end
+    end
     local c = Colors and Colors.coverShadow and Colors.coverShadow()
     return c or DEFAULT_SHADOW_GRAY
 end
@@ -212,6 +242,7 @@ end
 
 CoverFrame.Shadow     = CoverShadow
 CoverFrame.shadowColor = shadowColor
+CoverFrame.borderColor = borderColor
 -- Kept for callers that read the constant: the colour as of now.
 CoverFrame.SHADOW_GRAY = DEFAULT_SHADOW_GRAY
 
@@ -278,7 +309,7 @@ function CoverFrame.paint(bb, x, y, w, h, pic, decor)
         width  = w, height = h,
         border = border, radius = radius,
         bg     = Blitbuffer.COLOR_WHITE,
-        fg     = Blitbuffer.COLOR_BLACK,
+        fg     = borderColor(decor.dark_night_border),
         shadow_color  = shadow > 0 and shadowColor() or nil,
         shadow_offset = shadow,
     }:paintTo(bb, x, y)

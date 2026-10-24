@@ -530,7 +530,8 @@ local function buildStreakMonthGrid(year, month, read_set, fonts, cell_w, cell_h
         -- the backmost cover (the one at the bottom of the pile) throws a
         -- shadow - it is the pile's shadow; the covers above it have none,
         -- so no shadow falls across a neighbouring cover.
-        local back_decor = { border = decor.border, radius = decor.radius, shadow = 0 }
+        local back_decor = { border = decor.border, radius = decor.radius, shadow = 0,
+                         dark_night_border = decor.dark_night_border }
         for n = 1, k - 1 do
             list[n].decor = back_decor
             list[n].fw, list[n].fh = list[n].w, list[n].h

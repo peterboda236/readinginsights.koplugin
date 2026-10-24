@@ -1441,6 +1441,21 @@ function M.build(self, deps)
             _("Draw a drop shadow behind the covers (Book info, Reading calendar and Reading shelf)."), false),
         bookInfoToggle("border", _("Cover border"),
             _("Draw a thin frame around the covers (Book info, Reading calendar and Reading shelf)."), false),
+        {
+            text = _("Dark border in night mode"),
+            help_text = _("In night mode, draw the cover frame in near-black (as Bookshelf does) instead of white, so it stays subtle. Needs \"Cover border\" to be on."),
+            keep_menu_open = true,
+            enabled_func = function()
+                return deps.ViewSettings.Opt.readBookInfo("border")
+            end,
+            checked_func = function()
+                return deps.ViewSettings.Opt.readBookInfo("dark_border")
+            end,
+            callback = function()
+                deps.ViewSettings.Opt.saveBookInfo("dark_border",
+                    not deps.ViewSettings.Opt.readBookInfo("dark_border"))
+            end,
+        },
     })
 
     I.book_info = {

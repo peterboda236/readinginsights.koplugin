@@ -2376,3 +2376,9 @@ msgstr "No lines at all, vertical ones included."
 
 msgid "Number and thickness of the divider lines. The line under the title of the Reading insights, Reading calendar and Reading shelf pages is not affected."
 msgstr "Number and thickness of the divider lines. The line under the title of the Reading insights, Reading calendar and Reading shelf pages is not affected."
+
+msgid "Dark border in night mode"
+msgstr "Dark border in night mode"
+
+msgid "In night mode, draw the cover frame in near-black (as Bookshelf does) instead of white, so it stays subtle. Needs \"Cover border\" to be on."
+msgstr "In night mode, draw the cover frame in near-black (as Bookshelf does) instead of white, so it stays subtle. Needs \"Cover border\" to be on."

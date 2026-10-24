@@ -2377,3 +2377,9 @@ msgstr "Nombre et épaisseur des lignes de séparation. La ligne sous le titre d
 
 msgid "weekday lowercase"
 msgstr "yes"
+
+msgid "Dark border in night mode"
+msgstr "Cadre sombre en mode nuit"
+
+msgid "In night mode, draw the cover frame in near-black (as Bookshelf does) instead of white, so it stays subtle. Needs \"Cover border\" to be on."
+msgstr "En mode nuit, dessine le cadre de la couverture en presque noir (comme Bookshelf) au lieu de blanc, pour qu’il reste discret. Nécessite « Cadre de la couverture »."

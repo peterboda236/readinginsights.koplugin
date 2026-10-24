@@ -26,7 +26,8 @@ column, one left-aligned line with the pages read and the reading time
 with statistics, level with the bottom of the cover (its shadow included);
 without a cover it follows the text one large padding below it. The
 description gets that much fewer lines. A book without a cover image gets
-an empty frame with a diagonal line through it in the cover's place. `save_rating` (optional)
+the Reading shelf's stand-in card (a centred book icon, no title) in the
+cover's place. `save_rating` (optional)
 replaces how a rating is stored (hand-added books keep theirs in their own
 list).
 
@@ -74,6 +75,7 @@ local HorizontalSpan = require("ui/widget/horizontalspan")
 local ImageWidget = require("ui/widget/imagewidget")
 local InfoMessage = require("ui/widget/infomessage")
 local InputContainer = require("ui/widget/container/inputcontainer")
+local MovableContainer = require("ui/widget/container/movablecontainer")
 local OverlapGroup = require("ui/widget/overlapgroup")
 local Widget = require("ui/widget/widget")
 local RenderText = require("ui/rendertext")
@@ -220,12 +222,19 @@ local function textBlock(txt, face, color, width, max_lines)
     }
 end
 
--- The stand-in for a missing cover: white, with one line from the bottom
--- left corner to the top right one (drawn pixel column by pixel column, so
--- it needs nothing from Blitbuffer but paintRect).
+-- The stand-in for a missing cover, drawn like the Reading shelf's (year list)
+-- thumbnails of books without a cover: a white card with a book icon and,
+-- under it, the start of the title in a small face (cut with an ellipsis when
+-- too long) - when `title` is given; Book info leaves it out, the title is
+-- right beside the cover, so only the centred icon shows. `no_outline`: the card sits inside the covers' own frame, which
+-- is its edge; without a frame it gets a thin outline of its own.
+local NOCOVER_STROKE = 0x6E
+
 local NoCover = Widget:extend{
-    width  = 0,
-    height = 0,
+    width      = 0,
+    height     = 0,
+    title      = nil,
+    no_outline = false,
 }
 
 function NoCover:getSize()
@@ -233,18 +242,56 @@ function NoCover:getSize()
 end
 
 function NoCover:paintTo(bb, x, y)
-    self.dimen = Geom:new{ x = x, y = y, w = self.width, h = self.height }
-    bb:paintRect(x, y, self.width, self.height, Blitbuffer.COLOR_WHITE)
     local w, h = self.width, self.height
+    self.dimen = Geom:new{ x = x, y = y, w = w, h = h }
+    bb:paintRect(x, y, w, h, Blitbuffer.COLOR_WHITE)
     if w < 2 or h < 2 then return end
-    local thick = math.max(2, S(1))
-    local function line_y(i)
-        return y + h - 1 - math.floor(i * (h - 1) / (w - 1))
+    local stroke = Blitbuffer.Color8(NOCOVER_STROKE)
+    local line   = math.max(1, S(1))
+
+    if not self.no_outline then bb:paintBorder(x, y, w, h, line, stroke) end
+
+    -- Too small for any detail.
+    if w < S(26) or h < S(34) then return end
+
+    local icon_w = math.floor(math.min(w * 0.36, h * 0.28))
+    local icon_h = math.floor(icon_w * 1.2)
+    local gap    = math.floor(icon_h * 0.3)
+    local tw
+    local pad = math.max(2, math.floor(w * 0.08))
+    local title = self.title
+    if type(title) == "string" and title ~= "" then
+        -- Fixed size 8 (the smallest size the plugin's fonts use), whatever
+        -- the font size settings are.
+        local face
+        pcall(function() face = require("ui/font"):getFace("NotoSans-Regular.ttf", 8) end)
+        face = face or Fonts.getScaledFace("stats_label", 0.4)
+        local okt, widget = pcall(TextWidget.new, TextWidget, {
+            text = title, face = face, max_width = w - 2 * pad,
+            fgcolor = Blitbuffer.Color8(0x40),
+        })
+        if okt and widget then tw = widget end
     end
-    for i = 0, w - 2 do
-        local y0, y1 = line_y(i), line_y(i + 1)
-        local top = math.min(y0, y1)
-        bb:paintRect(x + i, top, thick, math.abs(y0 - y1) + 1, Blitbuffer.COLOR_BLACK)
+    local th = tw and tw:getSize().h or 0
+    local total = icon_h + (tw and (gap + th) or 0)
+    if tw and total > h - 2 * pad then
+        tw:free(); tw = nil; total = icon_h
+    end
+
+    local iy = y + math.floor((h - total) / 2)
+    local ix = x + math.floor((w - icon_w) / 2)
+    local t  = math.max(1, math.floor(icon_w / 11))
+
+    -- Book icon: outlined volume, a spine line near the left edge and the
+    -- page block's line near the bottom.
+    pcall(bb.paintBorder, bb, ix, iy, icon_w, icon_h, t, stroke, math.max(1, math.floor(icon_w * 0.1)))
+    bb:paintRect(ix + math.floor(icon_w * 0.28), iy, t, icon_h, stroke)
+    bb:paintRect(ix + math.floor(icon_w * 0.28), iy + icon_h - math.floor(icon_h * 0.22), icon_w - math.floor(icon_w * 0.28), t, stroke)
+
+    if tw then
+        local sz = tw:getSize()
+        tw:paintTo(bb, x + math.floor((w - sz.w) / 2), iy + icon_h + gap)
+        tw:free()
     end
 end
 
@@ -352,8 +399,8 @@ function BookInfoPopup:_loadCover()
     return bb
 end
 
--- The cover block: the framed cover (a book without one gets an empty frame
--- with a diagonal line through it) plus its drop shadow, sized by coverGeom
+-- The cover block: the framed cover (a book without one gets the same
+-- stand-in card as the Reading shelf, minus the title: a centred book icon) plus its drop shadow, sized by coverGeom
 -- to the box max_w x max_h. Returns the widget and its on-screen size
 -- (shadow included).
 function BookInfoPopup:_buildCover(decor, max_w, max_h, bb, bw, bh)
@@ -380,7 +427,10 @@ function BookInfoPopup:_buildCover(decor, max_w, max_h, bb, bw, bh)
         end
     end
     if not inner then
-        inner = NoCover:new{ width = iw, height = ih }
+        inner = NoCover:new{
+            width = iw, height = ih,
+            no_outline = border > 0,
+        }
     end
 
     local outer_w, outer_h = iw + 2 * border, ih + 2 * border
@@ -389,7 +439,7 @@ function BookInfoPopup:_buildCover(decor, max_w, max_h, bb, bw, bh)
         width  = outer_w, height = outer_h,
         border = border,  radius = radius,
         bg     = Blitbuffer.COLOR_WHITE,
-        fg     = Blitbuffer.COLOR_BLACK,
+        fg     = CoverFrame.borderColor(decor.dark_night_border),
         shadow_color  = shadow > 0 and CoverFrame.shadowColor() or nil,
         shadow_offset = shadow,
     }
@@ -747,9 +797,18 @@ function BookInfoPopup:_buildUI()
         row,
     }
 
+    -- The popup can be dragged around the screen: a swipe moves it (kept on
+    -- the screen), a slower drag (pan) moves it freely. Hold events are left
+    -- to the popup itself (a long press on the stars edits the rating, on a
+    -- missing cover says why), so hold-and-drag is not used. A swipe that
+    -- starts outside the popup still closes it (see onSwipe).
+    self.movable = MovableContainer:new{
+        ignore_events = { "hold", "hold_pan", "hold_release" },
+        self.popup_frame,
+    }
     self[1] = CenterContainer:new{
         dimen = Geom:new{ w = screen_w, h = screen_h },
-        self.popup_frame,
+        self.movable,
     }
 end
 

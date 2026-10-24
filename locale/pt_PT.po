@@ -2377,3 +2377,9 @@ msgstr "Número e espessura das linhas separadoras. A linha sob o título de Rea
 
 msgid "weekday lowercase"
 msgstr "yes"
+
+msgid "Dark border in night mode"
+msgstr "Moldura escura no modo noturno"
+
+msgid "In night mode, draw the cover frame in near-black (as Bookshelf does) instead of white, so it stays subtle. Needs \"Cover border\" to be on."
+msgstr "No modo noturno, desenha a moldura da capa quase preta (como o Bookshelf) em vez de branca, para ficar discreta. Requer «Moldura da capa»."

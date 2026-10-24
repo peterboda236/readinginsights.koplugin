@@ -2388,3 +2388,9 @@ msgstr "A vonalak száma és vastagsága. A Reading insights, az Olvasási napt�
 
 msgid "weekday lowercase"
 msgstr "yes"
+
+msgid "Dark border in night mode"
+msgstr "Sötét keret éjszakai módban"
+
+msgid "In night mode, draw the cover frame in near-black (as Bookshelf does) instead of white, so it stays subtle. Needs \"Cover border\" to be on."
+msgstr "Éjszakai módban a borító keretét közel feketére festi (mint a Bookshelf) fehér helyett, így visszafogott marad. A „Borító kerete” bekapcsolását igényli."

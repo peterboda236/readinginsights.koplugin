@@ -2374,3 +2374,9 @@ msgstr "Keine Linien, auch keine senkrechten."
 
 msgid "Number and thickness of the divider lines. The line under the title of the Reading insights, Reading calendar and Reading shelf pages is not affected."
 msgstr "Anzahl und Stärke der Trennlinien. Die Linie unter dem Titel von Leseeinblicke, Lesekalender und Lesebord bleibt unverändert."
+
+msgid "Dark border in night mode"
+msgstr "Dunkler Rahmen im Nachtmodus"
+
+msgid "In night mode, draw the cover frame in near-black (as Bookshelf does) instead of white, so it stays subtle. Needs \"Cover border\" to be on."
+msgstr "Zeichnet den Cover-Rahmen im Nachtmodus fast schwarz (wie Bookshelf) statt weiß, damit er dezent bleibt. Benötigt „Cover-Rahmen“."

@@ -2101,3 +2101,9 @@ msgstr "没有任何线条，包括竖线。"
 
 msgid "Number and thickness of the divider lines. The line under the title of the Reading insights, Reading calendar and Reading shelf pages is not affected."
 msgstr "分隔线的数量和粗细。“阅读洞察”“阅读日历”和“阅读书架”页面标题下方的线不受影响。"
+
+msgid "Dark border in night mode"
+msgstr "夜间模式下使用深色边框"
+
+msgid "In night mode, draw the cover frame in near-black (as Bookshelf does) instead of white, so it stays subtle. Needs \"Cover border\" to be on."
+msgstr "夜间模式下，封面边框使用接近黑色（与 Bookshelf 相同）而非白色，更为低调。需要开启“封面边框”。"

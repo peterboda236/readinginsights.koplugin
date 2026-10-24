@@ -2429,3 +2429,9 @@ msgstr "Кількість і товщина роздільних ліній. Л
 
 msgid "weekday lowercase"
 msgstr "yes"
+
+msgid "Dark border in night mode"
+msgstr "Темна рамка в нічному режимі"
+
+msgid "In night mode, draw the cover frame in near-black (as Bookshelf does) instead of white, so it stays subtle. Needs \"Cover border\" to be on."
+msgstr "У нічному режимі малює рамку обкладинки майже чорною (як у Bookshelf) замість білої, щоб вона була непомітною. Потрібна увімкнена «Рамка обкладинки»."
