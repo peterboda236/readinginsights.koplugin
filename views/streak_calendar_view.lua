@@ -481,6 +481,8 @@ local function buildStreakMonthGrid(year, month, read_set, fonts, cell_w, cell_h
     -- centred in the free area; two or three are drawn as one book on another
     -- - the runners-up peek out behind the front one at the bottom right, a
     -- step each. More than MAX_STACK books show a "+N" tag for the rest.
+    -- (Without a cover shadow the pile is turned upside down: the front book
+    -- at the bottom left, the others behind it, a step to the right and up.)
     local MAX_STACK = 3
     local function dayCovers(books)
         local k = math.min(#books, MAX_STACK)
@@ -524,6 +526,31 @@ local function buildStreakMonthGrid(year, month, read_set, fonts, cell_w, cell_h
             front.x = pad + math.floor((area_w - front.fw) / 2)
             front.y = area_top + math.floor((area_h - front.fh) / 2)
             return { front }
+        end
+        -- Without a shadow the pile is turned upside down: the first (front)
+        -- book sits at the bottom left, the others peek out behind it, each
+        -- a step further to the right and up (the lower, the nearer). With a
+        -- shadow the pile below (front book top left, the others behind it
+        -- at the bottom right) is kept.
+        if deco_shadow == 0 then
+            local mw, mh = 0, 0
+            for n = 1, k do
+                local d = (n - 1) * back_off
+                mw = math.max(mw, d + list[n].w)
+                mh = math.max(mh, d + list[n].h)
+            end
+            local gx = pad + math.floor((area_w - mw) / 2)
+            local gy = area_top + math.floor((area_h - mh) / 2)
+            -- back to front: the last book first, the front one last
+            local out = {}
+            for n = k, 1, -1 do
+                local c = list[n]
+                local d = (n - 1) * back_off
+                c.x = gx + d
+                c.y = gy + mh - d - c.h
+                out[#out + 1] = c
+            end
+            return out
         end
         -- Several books: the first (front) one sits at the top left, the
         -- others peek out behind it at the bottom right, a step each. Only
