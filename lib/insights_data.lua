@@ -1117,9 +1117,9 @@ function M.getAllTimeStats(shared_conn)
         if not base then
             base = { duration = 0, pages = 0, book_count = 0 }
             StatsDb.withStatement(conn, string.format([[
-                SELECT SUM(sum_dur), COUNT(DISTINCT dedup_page)
+                SELECT SUM(sum_dur), COUNT(*)
                 FROM (
-                    SELECT SUM(duration) AS sum_dur, id_book || '-' || page AS dedup_page
+                    SELECT SUM(duration) AS sum_dur
                     FROM page_stat
                     WHERE date(start_time, 'unixepoch', 'localtime') < '%s'
                     GROUP BY id_book, page, date(start_time, 'unixepoch', 'localtime')
@@ -1138,7 +1138,7 @@ function M.getAllTimeStats(shared_conn)
             end)
         end
 
-        local t = { duration = 0, new_pages = 0, new_books = 0 }
+        local t = { duration = 0, pages = 0, new_books = 0 }
 
         local day_lo, day_hi = M.dayBounds(today)
 
@@ -1149,22 +1149,19 @@ function M.getAllTimeStats(shared_conn)
             for row in stmt:rows() do t.duration = tonumber(row[1]) or 0 end
         end)
 
-        -- "Pages seen for the first time today", asked the cheap way round.
-        -- The obvious phrasing - take today's pages, then for each one check
-        -- that no earlier row exists - runs that check once per page, and
-        -- each check re-scans history. Asking instead for the first time
-        -- every page was ever seen, and counting the ones that land in
-        -- today, is a single grouped pass: 64ms -> 8ms on a real
-        -- statistics.sqlite3, with identical answers on every one of its 79
-        -- days.
+        -- Pages read today, counted like every other page total here: one
+        -- per book/page/day. The base above uses the same grouping, so the
+        -- all-time total equals the sum of the per-day totals (Last 7 days,
+        -- monthly, yearly) and a page read on several days counts once per
+        -- day.
         StatsDb.withStatement(conn, string.format([[
             SELECT COUNT(*) FROM (
-                SELECT id_book, page, MIN(start_time) AS first_seen
-                FROM page_stat GROUP BY id_book, page
+                SELECT 1 FROM page_stat
+                WHERE start_time >= %d AND start_time < %d
+                GROUP BY id_book, page
             )
-            WHERE first_seen >= %d AND first_seen < %d
         ]], day_lo, day_hi), function(stmt)
-            for row in stmt:rows() do t.new_pages = tonumber(row[1]) or 0 end
+            for row in stmt:rows() do t.pages = tonumber(row[1]) or 0 end
         end)
 
         -- Not rewritten like the pages query above: there are only ever a
@@ -1193,7 +1190,7 @@ function M.getAllTimeStats(shared_conn)
         if Cache._stale_cache.all_time then return Cache._stale_cache.all_time end
         merged = {
             base        = cached_base or { duration = 0, pages = 0, book_count = 0 },
-            today_stats = { duration = 0, new_pages = 0, new_books = 0 },
+            today_stats = { duration = 0, pages = 0, new_books = 0 },
         }
     end
 
@@ -1206,7 +1203,7 @@ function M.getAllTimeStats(shared_conn)
     local mins = Math.round(duration / 60)
     local result = {
         hours      = math.floor(mins / 60),
-        pages      = base.pages + today_stats.new_pages,
+        pages      = base.pages + today_stats.pages,
         book_count = base.book_count + today_stats.new_books,
         duration   = duration,
     }
