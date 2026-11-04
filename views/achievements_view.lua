@@ -24,6 +24,10 @@ only the widget that draws it.
 local InfoMessage = require("ui/widget/infomessage")
 local UIManager   = require("ui/uimanager")
 
+-- SimpleUI swaps plain InfoMessages for its own non-modal toast, which then
+-- lands under this modal list. It only swaps the exact class, not subclasses.
+local AchievementInfo = InfoMessage:extend{}
+
 -- Shared modules, passed in as one named table by main.lua (see there).
 local deps = ...
 local Achievements, Locale, ListWidget =
@@ -79,7 +83,7 @@ function M.show(on_close)
                     sort_title = title,
                     sort_time  = (earned and it.earned_ts) or 0,
                     callback = function()
-                        UIManager:show(InfoMessage:new{
+                        UIManager:show(AchievementInfo:new{
                             text = def.icon .. "  " .. title .. "\n\n" .. desc,
                         })
                     end,
