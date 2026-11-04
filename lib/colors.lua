@@ -312,6 +312,33 @@ end
 -- always renders the given color correctly - see the ColorBar widget
 -- above. `color` is a Blitbuffer color object, e.g. from getColor()/
 -- activeBar()/inactiveBar().
+-- A bar drawn as diagonal stripes inside an outline (today's bar in the
+-- weekly chart). Both take the gray of `color`.
+local HatchBar = Widget:extend{
+    width  = nil,
+    height = nil,
+    color  = nil,
+}
+
+function HatchBar:getSize()
+    return Geom:new{ w = self.width, h = self.height }
+end
+
+function HatchBar:paintTo(bb, x, y)
+    local c = self.color
+    if not c then return end
+    if not Blitbuffer.isColor8(c) then c = c:getColor8() end
+    bb:hatchRect(x, y, self.width, self.height, Size.line.thick, c)
+    local bw = math.min(Size.border.default, math.floor(self.height / 2))
+    if bw > 0 then
+        bb:paintBorder(x, y, self.width, self.height, bw, c)
+    end
+end
+
+function M.newHatchBar(width, height, color)
+    return HatchBar:new{ width = width, height = height, color = color }
+end
+
 function M.newBar(width, height, color)
     return ColorBar:new{ width = width, height = height, color = color }
 end

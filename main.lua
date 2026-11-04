@@ -210,7 +210,7 @@ local DateUtil = loadModule("lib/dateutil.lua")
 local _ = Locale._
 local Colors = loadModule("lib/colors.lua", { Locale = Locale, PluginUtil = PluginUtil, Prefs = Prefs })
 local Fonts  = loadModule("lib/fonts.lua",  { Locale = Locale, PluginUtil = PluginUtil, Prefs = Prefs })
-local UI     = loadModule("lib/uikit.lua",  { Colors = Colors })
+local UI     = loadModule("lib/uikit.lua",  { Colors = Colors, PluginUtil = PluginUtil })
 
 local ViewSettings  = loadModule("lib/insights_settings.lua", { Prefs = Prefs })
 UI.bindSettings(ViewSettings)
@@ -353,7 +353,7 @@ local InsightsCharts = loadModule("views/insights_charts.lua", {
 })
 
 local Insights = loadModule("views/insights_view.lua", {
-    Headers = InsightsHeaders, Charts = InsightsCharts,
+    Headers = InsightsHeaders, Charts = InsightsCharts, Donut = Donut,
     Locale = Locale, Colors = Colors, Fonts = Fonts,
     PopupUtil = PopupUtil, VS = ViewSettings, Cache = InsightsCache, UI = UI,
     Trend = Trend, Heatmap = Heatmap, BookList = BookList, Data = InsightsData,

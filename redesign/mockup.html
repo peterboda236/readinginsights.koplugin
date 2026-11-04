@@ -1,0 +1,228 @@
+<title>Reading Insights Redesign</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: two e-ink screens side by side (current vs proposed), notes below. Screens stay paper-white in both themes. */
+:root{
+  --bg:#eceae4; --fg:#1d1c1a; --muted:#5f5c56; --rule:#c9c5bb;
+  --paper:#fbfbf8; --ink:#141414; --ink2:#5a5a5a; --ink3:#9a9a9a; --fill:#e6e6e3; --fill2:#cfcfcb;
+  --serif:"Source Serif 4", Georgia, serif;
+  --sans:"IBM Plex Sans", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#1b1a18;--fg:#ecebe6;--muted:#a6a39b;--rule:#3a3833;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#1b1a18;--fg:#ecebe6;--muted:#a6a39b;--rule:#3a3833;color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px 48px}
+.wrap{max-width:900px;margin:0 auto;display:flex;flex-direction:column;gap:28px}
+h1{font-family:var(--serif);font-weight:600;font-size:1.6rem;margin:0;text-wrap:balance}
+.lead{color:var(--muted);margin:6px 0 0;max-width:62ch;line-height:1.5}
+.screens{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:24px;align-items:start}
+.cap{font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;font-weight:600}
+.dev{background:#2b2b2b;border-radius:18px;padding:14px 12px 22px;max-width:400px}
+.scr{background:var(--paper);color:var(--ink);font-family:var(--serif);font-size:13px;line-height:1.25;overflow:hidden;border-radius:3px}
+.tb{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-bottom:2px solid var(--ink);font-weight:700;font-size:15px}
+.tb span{font-weight:400;font-size:16px}
+svg.i{width:15px;height:15px;stroke:var(--ink);fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.num{font-weight:700;font-size:17px;font-variant-numeric:tabular-nums}
+.lbl{color:var(--ink2);font-size:12px}
+
+/* current */
+.old .hd{background:var(--fill);font-weight:700;padding:4px 8px;display:flex}
+.old .hd>div{flex:1}
+.old .row{display:flex;padding:5px 8px}
+.old .row>div{flex:1;padding-right:6px}
+.old .row>div+div{border-left:2px solid var(--ink);padding-left:8px}
+.old .sec{border-bottom:3px solid var(--ink)}
+.old .gbar{height:4px;background:var(--fill2);margin-top:4px}.old .gbar i{display:block;height:100%;background:var(--ink)}
+.old .cc{color:var(--ink2);font-size:12px;padding:3px 10px}
+.bars{display:flex;align-items:flex-end;gap:5px;height:56px;padding:0 10px}
+.bars i{flex:1;background:var(--ink);display:block}
+.bars i.o{background:var(--ink3)}
+.days{display:flex;gap:5px;padding:2px 10px 5px;font-size:10px;color:var(--ink2)}
+.days span{flex:1;text-align:center}
+
+/* proposed */
+.new{padding-bottom:6px}
+.card{margin:7px 8px 0;border:1.5px solid var(--ink);border-radius:8px;padding:7px 9px}
+.ch{display:flex;align-items:center;gap:6px;font-weight:700;font-size:13.5px;margin-bottom:5px}
+.ch .sp{flex:1}
+.go{font-size:15px;color:var(--ink2);font-weight:400;line-height:1}
+.chip{font-family:var(--sans);font-size:10.5px;border:1.2px solid var(--ink);border-radius:20px;padding:1px 7px;font-weight:500;display:inline-flex;gap:3px;align-items:center}
+.seg{display:inline-flex;border:1.2px solid var(--ink);border-radius:20px;overflow:hidden;font-family:var(--sans);font-size:10.5px}
+.seg b{padding:1px 7px;font-weight:500}.seg b.on{background:var(--ink);color:var(--paper)}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ring{display:flex;align-items:center;gap:8px}
+.ring svg{width:44px;height:44px;flex:none}
+.delta{font-family:var(--sans);font-size:11px;color:var(--ink2);margin-top:2px}
+.delta b{color:var(--ink)}
+.pbar{height:8px;border-radius:5px;background:var(--fill2);overflow:hidden;margin:4px 0 3px}.pbar i{display:block;height:100%;background:var(--ink);border-radius:5px}
+.dots{display:flex;gap:3px;margin-top:4px}.dots i{width:9px;height:9px;border-radius:50%;border:1.3px solid var(--ink)}.dots i.f{background:var(--ink)}
+.yr{display:flex;align-items:center;justify-content:space-between;font-weight:700}
+.yr .s{color:var(--ink3);font-weight:400;font-size:12px}
+.mbars{display:flex;align-items:flex-end;gap:4px;height:48px;margin-top:6px}
+.mbars i{flex:1;background:var(--ink);border-radius:2px 2px 0 0;display:block}
+.mbars i.o{background:var(--fill2)}
+.mlab{display:flex;gap:4px;font-size:9.5px;color:var(--ink2);margin-top:2px}.mlab span{flex:1;text-align:center}
+.wbars{display:flex;align-items:flex-end;gap:6px;height:50px;margin-top:6px}
+.wbars i{flex:1;background:var(--ink);border-radius:2px 2px 0 0;display:block}
+.wbars i.t{background:repeating-linear-gradient(45deg,var(--ink) 0 2px,var(--paper) 2px 4px);border:1.2px solid var(--ink)}
+.pill{font-family:var(--sans);font-size:10.5px;background:var(--ink);color:var(--paper);border-radius:20px;padding:1px 7px;font-weight:500}
+.vs{border-left:1.5px solid var(--fill2);padding-left:8px}
+
+.notes{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px 28px}
+.note h3{font-family:var(--serif);font-size:1rem;margin:0 0 4px}
+.note p{margin:0;color:var(--muted);line-height:1.5;font-size:.88rem}
+.legend{display:flex;flex-wrap:wrap;gap:10px 22px;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);padding-block:12px;font-size:.88rem}
+.legend span{display:inline-flex;align-items:center;gap:8px}
+.lg{background:var(--paper);color:var(--ink);border-radius:4px;padding:2px 6px;font-family:var(--serif)}
+</style>
+
+<svg width="0" height="0" style="position:absolute">
+ <symbol id="target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2"/></symbol>
+ <symbol id="week" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></symbol>
+ <symbol id="flame" viewBox="0 0 24 24"><path d="M12 3c1 4 6 6 6 11a6 6 0 0 1-12 0c0-3 2-4 3-7 1 2 2 3 3 3 0-3-1-5 0-7z"/></symbol>
+ <symbol id="chart" viewBox="0 0 24 24"><path d="M4 20h16M7 16v-5M12 16V6M17 16v-8"/></symbol>
+ <symbol id="book" viewBox="0 0 24 24"><path d="M4 5c3-1 6-1 8 1 2-2 5-2 8-1v14c-3-1-6-1-8 1-2-2-5-2-8-1z"/><path d="M12 6v14"/></symbol>
+ <symbol id="trophy" viewBox="0 0 24 24"><path d="M8 4h8v5a4 4 0 0 1-8 0zM8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8 20h8"/></symbol>
+ <symbol id="clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+ <symbol id="pen" viewBox="0 0 24 24"><path d="M4 20l4-1 11-11-3-3L5 16z"/></symbol>
+</svg>
+
+<div class="wrap">
+ <header>
+  <h1>Reading insights: yeni görünüm taslağı</h1>
+  <p class="lead">Soldaki ekran şu anki düzen, sağdaki öneri. Sağdaki ekranda soldaki verilerin hepsi duruyor, sadece kartlara, halkalara, çubuklara ve ikonlara dönüştürüldü. Rakamlar örnek.</p>
+ </header>
+
+ <div class="legend">
+  <span><span class="lg">›</span> dokun: detay açılır</span>
+  <span><span class="lg"><svg class="i" style="width:12px;height:12px"><use href="#pen"/></svg></span> uzun bas: düzenle / ayar</span>
+  <span><span class="lg">‹ 2026 ›</span> kaydır veya dokun: yıl / hafta değişir</span>
+  <span><span class="lg"><span class="seg" style="font-size:10px"><b class="on">Time</b><b>Pages</b></span></span> dokun: görünüm değişir</span>
+ </div>
+
+ <div class="screens">
+  <div>
+   <div class="cap">Şimdi</div>
+   <div class="dev"><div class="scr old">
+    <div class="tb"><span>☰</span>Reading insights<span>✕</span></div>
+    <div class="sec">
+     <div class="hd"><div>Daily goal</div><div>Weekly goal</div></div>
+     <div class="row"><div><span class="num">0:23 / 0:30</span><div class="gbar"><i style="width:77%"></i></div></div><div><span class="num">3:40 / 3:30 ✓</span><div class="gbar"><i style="width:100%"></i></div></div></div>
+    </div>
+    <div class="sec">
+     <div class="hd"><div>Last 7 days</div></div>
+     <div class="row"><div><span class="num">4h 12m</span> <span class="lbl">reading time</span></div><div><span class="num">36m</span> <span class="lbl">daily avg time</span></div></div>
+     <div class="row" style="border-top:1px solid var(--ink3)"><div><span class="num">+1h 05m</span> <span class="lbl">time vs prev. 7d</span></div><div><span class="num">+9m</span> <span class="lbl">daily avg time</span></div></div>
+     <div class="cc">Reading time per day</div>
+     <div class="bars"><i style="height:40%"></i><i style="height:65%"></i><i style="height:20%"></i><i style="height:90%"></i><i style="height:55%"></i><i style="height:75%"></i><i style="height:45%"></i></div>
+     <div class="days"><span>Th</span><span>Fr</span><span>Sa</span><span>Su</span><span>Mo</span><span>Tu</span><span>We</span></div>
+    </div>
+    <div class="sec">
+     <div class="hd"><div>Current streak</div><div>Best streak</div></div>
+     <div class="row"><div><span class="num">5</span> <span class="lbl">days</span> &nbsp;<span class="num">3</span> <span class="lbl">weeks</span></div><div><span class="num">21</span> <span class="lbl">days</span> &nbsp;<span class="num">9</span> <span class="lbl">weeks</span></div></div>
+    </div>
+    <div class="sec">
+     <div class="hd" style="justify-content:space-between"><span style="font-weight:400">2025</span><span>2026</span><span style="font-weight:400;color:var(--ink3)">2027</span></div>
+     <div class="row"><div><span class="num">128h</span> <span class="lbl">reading time</span></div><div><span class="num">25m</span> <span class="lbl">daily avg time</span></div></div>
+     <div class="cc">Reading time per month</div>
+     <div class="bars" style="height:48px;gap:4px"><i style="height:50%"></i><i style="height:35%"></i><i style="height:60%"></i><i style="height:80%"></i><i style="height:45%"></i><i style="height:70%"></i><i style="height:95%"></i><i style="height:85%"></i><i style="height:40%"></i><i style="height:55%"></i><i style="height:30%"></i><i style="height:2%" class="o"></i></div>
+     <div class="days" style="gap:4px"><span>J</span><span>F</span><span>M</span><span>A</span><span>M</span><span>J</span><span>J</span><span>A</span><span>S</span><span>O</span><span>N</span><span>D</span></div>
+     <div class="row" style="border-top:1px solid var(--ink3)"><div><span class="num">24 / 30</span> <span class="lbl">books finished</span></div><div><span class="num">2</span> <span class="lbl">books ahead of pace</span></div></div>
+    </div>
+    <div class="sec">
+     <div class="hd"><div>Achievements</div><div>Latest</div></div>
+     <div class="row"><div><span class="num">18/42 ★</span> <span class="lbl">earned</span></div><div class="lbl">☾ Night owl</div></div>
+    </div>
+    <div>
+     <div class="hd"><div>All time</div></div>
+     <div class="row"><div><span class="num">1,042h</span> <span class="lbl">reading time</span></div><div><span class="num">312,450</span> <span class="lbl">pages read</span></div></div>
+    </div>
+   </div></div>
+  </div>
+
+  <div>
+   <div class="cap">Öneri</div>
+   <div class="dev"><div class="scr new">
+    <div class="tb"><span>☰</span>Reading insights<span>✕</span></div>
+
+    <div class="g2" style="margin:7px 8px 0">
+     <div class="card" style="margin:0">
+      <div class="ch"><svg class="i"><use href="#target"/></svg>Daily goal<span class="sp"></span><svg class="i" style="width:11px;height:11px;stroke:var(--ink3)"><use href="#pen"/></svg></div>
+      <div class="ring">
+       <svg viewBox="0 0 44 44"><circle cx="22" cy="22" r="18" stroke="#cfcfcb" stroke-width="5" fill="none"/><circle cx="22" cy="22" r="18" stroke="#141414" stroke-width="5" fill="none" stroke-dasharray="87 113" transform="rotate(-90 22 22)"/><text x="22" y="26" text-anchor="middle" font-size="11" font-weight="700" fill="#141414" font-family="Source Serif 4,serif">77%</text></svg>
+       <div><div class="num" style="font-size:15px">0:23</div><div class="lbl">of 0:30</div></div>
+      </div>
+     </div>
+     <div class="card" style="margin:0">
+      <div class="ch"><svg class="i"><use href="#target"/></svg>Weekly goal<span class="sp"></span><svg class="i" style="width:11px;height:11px;stroke:var(--ink3)"><use href="#pen"/></svg></div>
+      <div class="ring">
+       <svg viewBox="0 0 44 44"><circle cx="22" cy="22" r="18" stroke="#141414" stroke-width="5" fill="none"/><path d="M15 22l5 5 9-10" stroke="#141414" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+       <div><div class="num" style="font-size:15px">3:40</div><div class="lbl">of 3:30</div></div>
+      </div>
+     </div>
+    </div>
+
+    <div class="card">
+     <div class="ch"><svg class="i"><use href="#week"/></svg>Last 7 days<svg class="i" style="width:11px;height:11px;stroke:var(--ink3)"><use href="#pen"/></svg><span class="sp"></span><span class="seg"><b class="on">Time</b><b>Pages</b></span></div>
+     <div class="g2">
+      <div><span class="num">4h 12m</span> <span class="go">›</span><div class="lbl">reading time</div><div class="delta"><b>▲ 1h 05m</b> vs prev. 7d</div></div>
+      <div class="vs"><span class="num">36m</span> <span class="go">›</span><div class="lbl">daily avg time</div><div class="delta"><b>▲ 9m</b> vs prev. 7d</div></div>
+     </div>
+     <div class="wbars"><i style="height:40%"></i><i style="height:65%"></i><i style="height:20%"></i><i style="height:90%"></i><i style="height:55%"></i><i style="height:75%"></i><i class="t" style="height:45%"></i></div>
+     <div class="mlab" style="gap:6px"><span>Th</span><span>Fr</span><span>Sa</span><span>Su</span><span>Mo</span><span>Tu</span><span><b>We</b></span></div>
+    </div>
+
+    <div class="card">
+     <div class="ch"><svg class="i"><use href="#flame"/></svg>Streaks<span class="sp"></span><span class="go">›</span></div>
+     <div class="g2">
+      <div><div class="lbl" style="font-weight:600;color:var(--ink)">Current</div><span class="num">5</span> <span class="lbl">days</span> · <span class="num">3</span> <span class="lbl">weeks</span><div class="dots"><i></i><i></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i></div></div>
+      <div class="vs"><div class="lbl" style="font-weight:600;color:var(--ink)">Best</div><span class="num">21</span> <span class="lbl">days</span> · <span class="num">9</span> <span class="lbl">weeks</span><div class="pbar" style="height:6px;margin-top:6px"><i style="width:24%"></i></div></div>
+     </div>
+    </div>
+
+    <div class="card">
+     <div class="yr"><span class="s">‹ 2025</span><span style="display:flex;gap:6px;align-items:center"><svg class="i"><use href="#chart"/></svg>2026 <span class="go">›</span></span><span class="s">2027 ›</span></div>
+     <div class="g2" style="margin-top:5px">
+      <div><span class="num">128h</span> <span class="go">›</span><div class="lbl">reading time</div></div>
+      <div class="vs"><span class="num">25m</span> <span class="go">›</span><div class="lbl">daily avg time</div></div>
+     </div>
+     <div style="margin-top:6px"><span class="chip">Reading time per month ▾</span></div>
+     <div class="mbars"><i style="height:50%"></i><i style="height:35%"></i><i style="height:60%"></i><i style="height:80%"></i><i style="height:45%"></i><i style="height:70%"></i><i style="height:95%"></i><i style="height:85%"></i><i style="height:40%"></i><i style="height:55%"></i><i style="height:30%"></i><i class="o" style="height:4%"></i></div>
+     <div class="mlab"><span>J</span><span>F</span><span>M</span><span>A</span><span>M</span><span>J</span><span>J</span><span>A</span><span>S</span><span>O</span><span>N</span><span>D</span></div>
+    </div>
+
+    <div class="g2" style="margin:7px 8px 0">
+     <div class="card" style="margin:0">
+      <div class="ch"><svg class="i"><use href="#book"/></svg>Reading goal<span class="sp"></span><svg class="i" style="width:11px;height:11px;stroke:var(--ink3)"><use href="#pen"/></svg></div>
+      <span class="num">24</span><span class="lbl"> / 30 books finished</span>
+      <div class="pbar"><i style="width:80%"></i></div>
+      <span class="pill">▲ 2 ahead of pace</span>
+     </div>
+     <div class="card" style="margin:0">
+      <div class="ch"><svg class="i"><use href="#trophy"/></svg>Achievements<span class="sp"></span><span class="go">›</span></div>
+      <span class="num">18</span><span class="lbl"> / 42 earned</span> <span class="pill">★ new</span>
+      <div class="pbar"><i style="width:43%"></i></div>
+      <div class="lbl">Latest: ☾ Night owl</div>
+     </div>
+    </div>
+
+    <div class="card">
+     <div class="ch"><svg class="i"><use href="#clock"/></svg>All time<span class="sp"></span><span class="go">›</span></div>
+     <div class="g2">
+      <div><span class="num">1,042h</span><div class="lbl">reading time</div></div>
+      <div class="vs"><span class="num">312,450</span><div class="lbl">pages read</div></div>
+     </div>
+    </div>
+   </div></div>
+  </div>
+ </div>
+
+ <div class="notes">
+  <div class="note"><h3>Hedefler</h3><p>Günlük ve haftalık hedef halka oldu, tamamlanınca halkanın içinde ✓ çıkıyor. Kalem işareti uzun basınca hedefin düzenlendiğini gösteriyor. Dokununca açılan hedef serisi aynı kalıyor.</p></div>
+  <div class="note"><h3>Son 7 gün</h3><p>Time / Pages anahtarı göründüğü yerde duruyor. Önceki 7 günle fark ayrı bir satır olmak yerine her rakamın altına ▲ / ▼ ile geldi. Bugünün çubuğu taralı.</p></div>
+  <div class="note"><h3>Seriler</h3><p>Dört rakam tek kartta toplandı. Mevcut serinin altında son 7 günün noktaları, en iyi serinin altında mevcut serinin rekora oranını gösteren çubuk var.</p></div>
+  <div class="note"><h3>Yıl</h3><p>‹ 2025 · 2026 · 2027 › oklarıyla kaydırılabildiği belli oluyor. Grafik başlığı ▾ işaretli bir çip oldu, böylece dokununca seçim listesinin açıldığı anlaşılıyor.</p></div>
+  <div class="note"><h3>Okuma hedefi ve başarımlar</h3><p>Yan yana iki kart, ikisinde de ilerleme çubuğu var. Hedefe göre ilerleme ve yeni başarım rozeti, düz metin yerine dolu bir hap içinde gösteriliyor.</p></div>
+  <div class="note"><h3>E-ink sınırları</h3><p>Sadece siyah, beyaz ve iki gri ton kullanılıyor; gradyan ve animasyon yok. İkonlar ince çizgili ve tek renk.</p></div>
+ </div>
+</div>

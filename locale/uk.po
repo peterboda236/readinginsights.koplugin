@@ -150,6 +150,21 @@ msgstr "Поточна серія"
 msgid "Best streak"
 msgstr "Найкраща серія"
 
+msgid "Streaks"
+msgstr "Серії"
+
+msgid "Current"
+msgstr "Поточна"
+
+msgid "Best"
+msgstr "Найкраща"
+
+msgid "%1 day to beat your record"
+msgstr "Днів до нового рекорду: %1"
+
+msgid "%1 days to beat your record"
+msgstr "Днів до нового рекорду: %1"
+
 msgid "Days read per month"
 msgstr "Днів читання на місяць"
 
@@ -2087,11 +2102,14 @@ msgstr "с. vs попер. 7 дн."
 msgid "daily avg pg"
 msgstr "сер. с./д"
 
-msgid "Daily / weekly goal bar"
-msgstr "Смуга денної / тижневої мети"
+msgid "Daily / weekly goal ring"
+msgstr "Кільце денної / тижневої мети"
 
-msgid "Show a thin progress bar under the daily and weekly goal values."
-msgstr "Показувати тонку смугу прогресу під значеннями денної та тижневої мети."
+msgid "Show a progress ring next to the daily and weekly goal values."
+msgstr "Показувати кільце прогресу поруч зі значеннями денної та тижневої мети."
+
+msgid "of %1"
+msgstr "з %1"
 
 msgid "Progress bar"
 msgstr "Смуга прогресу"

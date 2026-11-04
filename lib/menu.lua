@@ -599,8 +599,8 @@ function M.build(self, deps)
             end,
         }
         I.goal_bar = {
-            text = _("Daily / weekly goal bar"),
-            help_text = _("Show a thin progress bar under the daily and weekly goal values."),
+            text = _("Daily / weekly goal ring"),
+            help_text = _("Show a progress ring next to the daily and weekly goal values."),
             keep_menu_open = true,
             enabled_func = function() return deps.ViewSettings.readShowTimeGoals() end,
             checked_func = function() return deps.ViewSettings.readShowTimeGoalBar() end,

@@ -720,7 +720,9 @@ local function buildWeeklyChart(popup_self, daily_data, layout, fonts, mode)
         local bar_column = VerticalGroup:new{ align = "center" }
         table.insert(bar_column, centered_label)
         if bar_h > 0 then
-            table.insert(bar_column, Colors.newBar(bar_width, bar_h, bar_color))
+            local hatched = WEEKLY_CHART_HIGHLIGHT_TODAY and is_today_bar and bar_h > 2 * Size.border.default
+            table.insert(bar_column, hatched and Colors.newHatchBar(bar_width, bar_h, bar_color)
+                                             or  Colors.newBar(bar_width, bar_h, bar_color))
         end
         table.insert(bar_column, Colors.newBar(bar_width, baseline_h, bar_color))
 
