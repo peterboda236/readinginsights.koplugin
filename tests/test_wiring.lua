@@ -59,6 +59,10 @@ for _, n in ipairs(names) do
                isTouchDevice = function() return true end, hasKeys = function() return false end,
                hasFrontlight = function() return false end, isAndroid = function() return false end }
     end
+    -- An empty folder: the generic stub's dir() iterator would never end.
+    if n == "libs/libkoreader-lfs" then
+      return { dir = function() return function() return nil end end, attributes = function() return nil end }
+    end
     if n == "optmath" then return { round = function(x) return math.floor((x or 0)+0.5) end } end
     if n == "ui/size" then
       return { padding = { small = 2, default = 4, large = 8 }, line = { thin = 1, medium = 2, thick = 3 },
@@ -175,16 +179,18 @@ check("all modules load without error", true)
 check("uikit exports the layout helpers", type(UI.buildLayout) == "function")
 check("uikit exports the merged row helpers",
       type(UI.buildTwoColRow) == "function" and type(UI.addSectionWithRow) == "function")
-check("trend exposes Popup + chart builders",
-      Trend.Popup ~= nil and type(Trend.buildLine8WeekChart) == "function"
-      and type(Trend.trendTitle) == "function" and type(Trend.totalForMetric) == "function")
+check("trend exposes Popup + what the insights view calls",
+      Trend.Popup ~= nil and type(Trend.buildContent) == "function"
+      and type(Trend.modeOf) == "function" and type(Trend.trendTitle) == "function"
+      and type(Trend.popupOnTap) == "function" and type(Trend.popupOnHold) == "function")
 check("heatmap exposes Popup, builders and bind",
       Heatmap.Popup ~= nil and type(Heatmap.bind) == "function"
       and type(Heatmap.buildRangeHeatmapWidget) == "function"
       and type(Heatmap.getHeatmapPeriodRange) == "function")
-check("booklist exposes Checklist, lists and bind",
-      BookList.Checklist ~= nil and type(BookList.bind) == "function"
-      and type(BookList.showBooksForPeriod) == "function")
+check("booklist exposes its lists and bind",
+      type(BookList.bind) == "function" and type(BookList.showBookList) == "function"
+      and type(BookList.showBooksForPeriod) == "function"
+      and type(BookList.showFinishedChecklist) == "function")
 check("chapter bar exposes build + settings",
       type(ChapterBar.build) == "function" and type(ChapterBar.readHeightSetting) == "function"
       and ChapterBar.PAGE_SIZE == 25)
