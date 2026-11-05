@@ -777,7 +777,7 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
                 or (popup_self.mode == VS.INSIGHTS_MODE_BOOKS and _("Books per month"))
                 or _("Days read per month")
             if not popup_self.readonly then caption = caption .. " \u{25BE}" end
-            local chip = UI.buildChip(caption, fonts.small)
+            local chip = UI.buildPill(caption, fonts.small, true)
             local chip_cell = InputContainer:new{
                 dimen = Geom:new{ x = 0, y = 0, w = chip:getSize().w, h = chip:getSize().h },
                 chip,
@@ -894,7 +894,7 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
                 VerticalSpan:new{ width = gap },
                 UI.buildRoundBar(ratio, inner_w, bar_h),
                 VerticalSpan:new{ width = gap },
-                UI.buildPill(pace, fonts.small, inner_w),
+                UI.buildPill(pace, fonts.small, false, inner_w),
             }
             -- Tap: the books finished that year; hold: the finished-books
             -- menu (correct the list, set the goal). Swiping it pages the
@@ -2619,35 +2619,16 @@ function ReadingInsightsPopup:onSwipe(arg, ges_ev)
         end
         return false
     end
-    -- The year zone is one continuous full-width band: from the top of the
-    -- first year widget (year header) to the bottom of the last one (monthly
-    -- chart / reading goal row), including the gaps and divider lines between
-    -- them and the short caption rows that don't span the whole width.
-    local function inYearZone()
-        local pos = ges_ev.pos
-        if not pos then return false end
-        local top, bottom
-        for _idx, w in ipairs(self._year_swipe_targets or {}) do
-            local d = w.dimen
-            if d and d.h and d.h > 0 then
-                if not top or d.y < top then top = d.y end
-                if not bottom or d.y + d.h > bottom then bottom = d.y + d.h end
-            end
-        end
-        return top ~= nil and pos.y >= top and pos.y <= bottom
-    end
     -- Sideways swipes only act where they start:
-    --   - on the weekly section (calendar-week view) -> page the week
-    --   - on the year header, its stats row, the monthly chart or the
-    --     reading goal row
-    --                                                -> page the year
+    --   - on the weekly card (calendar-week view)    -> page the week
+    --   - on the year card or the reading goal card  -> page the year
     -- A sideways swipe anywhere else is ignored.
     if west or east then
         if VS.readWeeklyViewIsCalendar() and inside(self._week_swipe_targets) then
             if west then return self:onGoToNextWeek() end
             return self:onGoToPrevWeek()
         end
-        if inYearZone() then
+        if inside(self._year_swipe_targets) then
             if west then return self:onGoToNextYear() end
             return self:onGoToPrevYear()
         end

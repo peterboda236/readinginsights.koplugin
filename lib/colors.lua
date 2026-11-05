@@ -308,10 +308,6 @@ function M.getColor(key)
     return color
 end
 
--- Solid-color rectangle (bar segment, baseline, trend dot, ...) that
--- always renders the given color correctly - see the ColorBar widget
--- above. `color` is a Blitbuffer color object, e.g. from getColor()/
--- activeBar()/inactiveBar().
 -- A bar drawn as diagonal stripes inside an outline (today's bar in the
 -- weekly chart). Both take the gray of `color`.
 local HatchBar = Widget:extend{
@@ -339,6 +335,10 @@ function M.newHatchBar(width, height, color)
     return HatchBar:new{ width = width, height = height, color = color }
 end
 
+-- Solid-color rectangle (bar segment, baseline, trend dot, ...) that
+-- always renders the given color correctly - see the ColorBar widget
+-- above. `color` is a Blitbuffer color object, e.g. from getColor()/
+-- activeBar()/inactiveBar().
 function M.newBar(width, height, color)
     return ColorBar:new{ width = width, height = height, color = color }
 end

@@ -524,35 +524,24 @@ function M.buildSegmented(labels, active, face)
     }
 end
 
--- An outlined pill around a short text ("Reading time per month ▾").
-function M.buildChip(text, face)
-    local fg = grayColor(Colors.value())
-    local tw = TextWidget:new{ text = text, face = face, fgcolor = fg }
-    local h  = tw:getSize().h
-    return FrameContainer:new{
-        background    = Blitbuffer.COLOR_WHITE,
-        bordersize    = Size.border.default,
-        color         = fg,
-        radius        = math.floor(h / 2) + Size.padding.tiny + Size.border.default,
-        padding       = Size.padding.tiny,
-        padding_left  = Size.padding.default,
-        padding_right = Size.padding.default,
-        tw,
-    }
-end
-
--- A filled pill with white text ("▲ 2 books ahead of pace", "★ new").
-function M.buildPill(text, face, max_width)
+-- A pill around a short text: filled with white text ("▲ 2 books ahead of
+-- pace", "★ new"), or with `outline` just its border ("Reading time per
+-- month ▾"). `max_width` (optional) caps the whole pill.
+function M.buildPill(text, face, outline, max_width)
+    local fg  = grayColor(Colors.value())
     local pad = Size.padding.default
+    local border = outline and Size.border.default or 0
+    local inset  = outline and Size.padding.tiny or 0
     local tw = TextWidget:new{
-        text = text, face = face, fgcolor = Blitbuffer.COLOR_WHITE,
-        max_width = max_width and math.max(1, max_width - 2 * pad) or nil,
+        text = text, face = face, fgcolor = outline and fg or Blitbuffer.COLOR_WHITE,
+        max_width = max_width and math.max(1, max_width - 2 * (pad + border)) or nil,
     }
     return FrameContainer:new{
-        background    = grayColor(Colors.value()),
-        bordersize    = 0,
-        radius        = math.floor(tw:getSize().h / 2),
-        padding       = 0,
+        background    = outline and Blitbuffer.COLOR_WHITE or fg,
+        bordersize    = border,
+        color         = fg,
+        radius        = math.floor(tw:getSize().h / 2) + inset + border,
+        padding       = inset,
         padding_left  = pad,
         padding_right = pad,
         tw,
@@ -600,10 +589,8 @@ function M.cardHeader(icon, title, face, width, hold_hint, right)
     if right then
         -- Measured from the parts, not row:getSize(): that would cache the
         -- row's layout before the last two widgets are in it.
-        local used = title_w:getSize().w + right:getSize().w
-        if icon then used = used + icon_sz + gap end
-        if hold_hint then used = used + gap + pen_sz end
-        table.insert(row, HorizontalSpan:new{ width = math.max(0, width - used) })
+        local span = width - fixed - title_w:getSize().w + gap
+        table.insert(row, HorizontalSpan:new{ width = math.max(0, span) })
         table.insert(row, right)
     end
     return row
@@ -669,13 +656,15 @@ end
 -- ("▲ 1:05" in bold, then e.g. "vs prev. 7d").
 function M.buildStatCell(fonts, width, value, unit, opts)
     opts = opts or {}
+    local chevron = opts.chevron and TextWidget:new{ text = "\u{203A}", face = fonts.value, fgcolor = Colors.label() }
+    local chevron_w = chevron and (chevron:getSize().w + Size.padding.default) or 0
     local top = HorizontalGroup:new{
         align = "center",
-        TextWidget:new{ text = value, face = fonts.value, fgcolor = Colors.value(), max_width = width },
+        TextWidget:new{ text = value, face = fonts.value, fgcolor = Colors.value(), max_width = math.max(1, width - chevron_w) },
     }
-    if opts.chevron then
+    if chevron then
         table.insert(top, HorizontalSpan:new{ width = Size.padding.default })
-        table.insert(top, TextWidget:new{ text = "\u{203A}", face = fonts.value, fgcolor = Colors.label() })
+        table.insert(top, chevron)
     end
     local cell = VerticalGroup:new{
         align = "left",
