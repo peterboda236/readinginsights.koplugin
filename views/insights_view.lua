@@ -80,6 +80,9 @@ local Locale, Colors, Fonts, PopupUtil, VS, Cache, UI, Trend, Heatmap, BookList,
 -- The charts and header rows this view lays out (views/insights_charts.lua,
 -- views/insights_headers.lua - split out of this file).
 local Charts, Headers = deps.Charts, deps.Headers
+-- The "Cards" look (Settings > Reading insights popup > Look) and its pages
+-- (views/cards_look/sections.lua, views/cards_look/pages.lua).
+local Cards, Pages = deps.Cards, deps.Pages
 local buildMonthlyChart, buildWeeklyChart = Charts.buildMonthlyChart, Charts.buildWeeklyChart
 local buildAlignedSectionHeader, buildYearHeader, buildWeekNavHeader =
     Headers.buildAlignedSectionHeader, Headers.buildYearHeader, Headers.buildWeekNavHeader
@@ -1981,7 +1984,7 @@ function ReadingInsightsPopup:_buildUI()
     if self._initial_loading then
         local title_bar_inner = TitleBar:new{
             fullscreen     = true,
-            width          = screen_w,
+            width          = content_w,
             align          = "left",
             title          = self:_titleBarText(),
             -- Hamburger menu, top left: quick access to the streak/heatmap/
@@ -2037,13 +2040,20 @@ function ReadingInsightsPopup:_buildUI()
     -- Extra pixels in force during the latest buildContent() (see the fit).
     local built_extra = 0
 
-    local function buildContent()
+    local cards = VS.readLookIsCards()
+    -- Cards only: width the page is laid out for - the screen, or less the
+    -- scroll bar once the page turns out taller than the screen (see below).
+    local content_w = screen_w
+
+    -- `paginate` (Cards only): show only the current page of the sections
+    -- (see views/cards_look/pages.lua) instead of all of them.
+    local function buildContent(paginate)
         VS.Opt.built_weekly  = false
         VS.Opt.built_monthly = false
         if not auto_fit then VS.Opt.monthly_extra_px = 0 end
         built_extra = VS.Opt.monthly_extra_px or 0
 
-        local sections = buildInsightsSections(
+        local sections = (cards and Cards.buildSections or buildInsightsSections)(
             self,
             self._streaks    or { current_days=0, best_days=0, current_weeks=0, best_weeks=0 },
             self._yearly     or { days=0, pages=0, duration=0 },
@@ -2084,6 +2094,15 @@ function ReadingInsightsPopup:_buildUI()
         local title_bar_h = title_bar_inner:getSize().h
         self._title_bar_height = title_bar_h
         self.title_bar = title_bar_inner
+
+        if paginate then
+            local group = VerticalGroup:new{
+                align = "left",
+                title_bar_inner,
+                Pages.paginate(self, sections, screen_h - title_bar_h, fonts, content_w),
+            }
+            return group, group:getSize().h
+        end
 
         -- Manual mode keeps the generous title-bar-tall bottom spacer it
         -- always had (the page is expected to scroll there anyway); auto
@@ -2149,7 +2168,11 @@ function ReadingInsightsPopup:_buildUI()
             if delta_points == 0 then break end
 
             local current = VS.Opt.auto_height or VS.DEFAULT_MONTHLY_BAR_HEIGHT
-            local new_height = math.max(VS.Opt.AUTO_MIN,
+            -- Cards: the open popup goes on pages rather than flatten the
+            -- charts; the sleep screen has one screen only, so it may shrink
+            -- them all the way.
+            local min_height = (cards and not self.readonly) and VS.Opt.AUTO_MIN_SCROLL or VS.Opt.AUTO_MIN
+            local new_height = math.max(min_height,
                 math.min(VS.Opt.AUTO_MAX, current + delta_points))
 
             -- Clamped, so another build would produce the exact same page:
@@ -2210,7 +2233,10 @@ function ReadingInsightsPopup:_buildUI()
         VS.Opt.settings_sig = sig
     end
 
-    if content_h > screen_h then
+    -- Cards: only the sleep screen shrinks its text, the open popup goes on
+    -- pages instead.
+    local shrink_text = not (cards and not self.readonly)
+    if content_h > screen_h and shrink_text then
         local FONT_SCALE_MIN = 0.5
         local remembered     = VS.Opt.font_scale
         local scale          = 1
@@ -2240,18 +2266,55 @@ function ReadingInsightsPopup:_buildUI()
             if scale <= FONT_SCALE_MIN then break end
         end
         VS.Opt.font_scale = best  -- nil when it never fitted: don't pin a bad guess
-    else
+    elseif shrink_text then
         VS.Opt.font_scale = nil
     end
 
+    -- Cards: still taller than the screen, the open popup shows the
+    -- sections on pages (see views/cards_look/pages.lua).
+    self._page_count = 1
+    if cards and content_h > screen_h and not self.readonly then
+        local discarded = content
+        content, content_h = buildContent(true)
+        pcall(function() if discarded.free then discarded:free() end end)
+    end
+    if self._page_count <= 1 then self._page = 1 end
+
     local ScrollableContainer = require("ui/widget/container/scrollablecontainer")
+
+    -- Cards: a page taller than the screen (a single section taller than
+    -- the screen, or the sleep screen at its smallest text) gets a scroll
+    -- bar on the right, which takes width from the page: lay it out again
+    -- that much narrower, or its right edge would be cut off. Making it
+    -- narrower can only make it taller, so it still scrolls afterwards.
+    if cards and content_h > screen_h then
+        content_w = screen_w - ScrollableContainer:getScrollbarWidth()
+        layout = UI.buildLayout(content_w, Size.padding.large, Size.padding.large)
+        local discarded = content
+        content, content_h = buildContent(self._page_count > 1)
+        pcall(function() if discarded.free then discarded:free() end end)
+    end
 
     self.scroll_container = ScrollableContainer:new{
         dimen               = Geom:new{ w = screen_w, h = screen_h },
         show_parent         = self,
         scroll_bar_position = "right",
+        -- Cards: a scrolling page would otherwise keep the popup's own
+        -- gestures: long press (the container scrolls with press-and-drag;
+        -- it still scrolls with a drag or an up/down swipe), sideways swipes
+        -- (year / week) and a swipe down at the top of the page (close).
+        ignore_events       = cards and { "hold", "hold_pan", "hold_release" } or nil,
         content,
     }
+    if cards then
+        local onScrollableSwipe = self.scroll_container.onScrollableSwipe
+        self.scroll_container.onScrollableSwipe = function(sc, arg, ges)
+            local dir = ges and ges.direction
+            if dir == "east" or dir == "west" then return false end
+            if dir == "south" and (sc._scroll_offset_y or 0) <= 0 then return false end
+            return onScrollableSwipe(sc, arg, ges)
+        end
+    end
 
     self.popup_frame = FrameContainer:new{
         background = Blitbuffer.COLOR_WHITE,
@@ -2807,24 +2870,54 @@ function ReadingInsightsPopup:onSwipe(arg, ges_ev)
     --   - on the year header, its stats row, the monthly chart or the
     --     reading goal row
     --                                                -> page the year
-    -- A sideways swipe anywhere else is ignored.
+    -- A sideways swipe anywhere else is ignored. Cards: only inside the year
+    -- card or the reading goal card (the Achievements card next to the goal
+    -- card is in the band, so the band is not used there).
     if west or east then
         if VS.readWeeklyViewIsCalendar() and inside(self._week_swipe_targets) then
             if west then return self:onGoToNextWeek() end
             return self:onGoToPrevWeek()
         end
-        if inYearZone() then
+        local in_year
+        if VS.readLookIsCards() then
+            in_year = inside(self._year_swipe_targets)
+        else
+            in_year = inYearZone()
+        end
+        if in_year then
             if west then return self:onGoToNextYear() end
             return self:onGoToPrevYear()
         end
         return true
     end
+    -- Cards on more than one page: up / down turns the page, down on the
+    -- first page still closes.
+    local pages = self._page_count or 1
+    if pages > 1 and (dir == "north" or dir == "up") then
+        if (self._page or 1) < pages then
+            return self:_goToPage((self._page or 1) + 1)
+        end
+        return true
+    end
     if dir == "south" or dir == "down" then
         if self.readonly then return true end
+        if pages > 1 and (self._page or 1) > 1 then
+            return self:_goToPage(self._page - 1)
+        end
         UIManager:close(self)
         return true
     end
     return false
+end
+
+-- Cards: shows page `page` of the sections (see views/cards_look/pages.lua).
+function ReadingInsightsPopup:_goToPage(page)
+    self._page = page
+    self:_buildUI()
+    UIManager:setDirty(self, function()
+        return "ui", self.popup_frame.dimen
+    end)
+    return true
 end
 
 -- Hold dispatch by touch position:

@@ -59,6 +59,10 @@ for _, n in ipairs(names) do
                isTouchDevice = function() return true end, hasKeys = function() return false end,
                hasFrontlight = function() return false end, isAndroid = function() return false end }
     end
+    -- An empty folder: the generic stub's dir() iterator would never end.
+    if n == "libs/libkoreader-lfs" then
+      return { dir = function() return function() return nil end end, attributes = function() return nil end }
+    end
     if n == "optmath" then return { round = function(x) return math.floor((x or 0)+0.5) end } end
     if n == "ui/size" then
       return { padding = { small = 2, default = 4, large = 8 }, line = { thin = 1, medium = 2, thick = 3 },
@@ -106,7 +110,7 @@ local BookCalendarData = load("lib/book_calendar_data.lua", { StatsDb = StatsDb 
 local Locale = load("lib/locale.lua", { PluginUtil = PluginUtil })
 local Colors = load("lib/colors.lua", { Locale = Locale, PluginUtil = PluginUtil, Prefs = Prefs })
 local Fonts  = load("lib/fonts.lua",  { Locale = Locale, PluginUtil = PluginUtil, Prefs = Prefs })
-local UI     = load("lib/uikit.lua",  { Colors = Colors })
+local UI     = load("lib/uikit.lua",  { Colors = Colors, PluginUtil = PluginUtil })
 local ViewSettings  = load("lib/insights_settings.lua", { Prefs = Prefs })
 local InsightsCache = load("lib/insights_cache.lua")
 local ChapterBar = load("widgets/chapterbarwidget.lua", { Colors = Colors, Fonts = Fonts, UI = UI })
@@ -118,11 +122,29 @@ local Heatmap = load("views/heatmap_view.lua", { Colors = Colors, Fonts = Fonts,
 local BookList = load("views/booklist_view.lua",
     { Colors = Colors, Locale = Locale, VS = ViewSettings, UI = UI, Data = InsightsData })
 local Menu    = load("lib/menu.lua", { Locale = Locale })
+local DateUtil = load("lib/dateutil.lua")
+
+-- The insights popup's header rows and charts, and the Cards look with its
+-- pages, wired the way main.lua does it.
+local InsightsHeaders = load("views/insights_headers.lua", {
+    Locale = Locale, Colors = Colors, UI = UI, Data = InsightsData,
+})
+local InsightsCharts = load("views/insights_charts.lua", {
+    Locale = Locale, Colors = Colors, UI = UI, VS = ViewSettings,
+    Trend = Trend, DateUtil = DateUtil,
+})
+local InsightsCards = load("views/cards_look/sections.lua", {
+    Locale = Locale, Colors = Colors, VS = ViewSettings, UI = UI, Data = InsightsData,
+    Charts = InsightsCharts, Headers = InsightsHeaders,
+})
+local InsightsPages = load("views/cards_look/pages.lua", { Colors = Colors })
 
 -- The three view files themselves. Loading these exercises the bind() calls
 -- insights_view.lua makes at load time, and every top-level statement in the
 -- biggest files in the plugin.
 local Insights = load("views/insights_view.lua", {
+    Headers = InsightsHeaders, Charts = InsightsCharts,
+    Cards = InsightsCards, Pages = InsightsPages,
     Locale = Locale, Colors = Colors, Fonts = Fonts,
     PopupUtil = PopupUtil, VS = ViewSettings, Cache = InsightsCache, UI = UI,
     Trend = Trend, Heatmap = Heatmap, BookList = BookList, Data = InsightsData,
@@ -157,20 +179,36 @@ check("all modules load without error", true)
 check("uikit exports the layout helpers", type(UI.buildLayout) == "function")
 check("uikit exports the merged row helpers",
       type(UI.buildTwoColRow) == "function" and type(UI.addSectionWithRow) == "function")
-check("trend exposes Popup + chart builders",
-      Trend.Popup ~= nil and type(Trend.buildLine8WeekChart) == "function"
-      and type(Trend.trendTitle) == "function" and type(Trend.totalForMetric) == "function")
+check("trend exposes Popup + what the insights view calls",
+      Trend.Popup ~= nil and type(Trend.buildContent) == "function"
+      and type(Trend.modeOf) == "function" and type(Trend.trendTitle) == "function"
+      and type(Trend.popupOnTap) == "function" and type(Trend.popupOnHold) == "function")
 check("heatmap exposes Popup, builders and bind",
       Heatmap.Popup ~= nil and type(Heatmap.bind) == "function"
       and type(Heatmap.buildRangeHeatmapWidget) == "function"
       and type(Heatmap.getHeatmapPeriodRange) == "function")
-check("booklist exposes Checklist, lists and bind",
-      BookList.Checklist ~= nil and type(BookList.bind) == "function"
-      and type(BookList.showBooksForPeriod) == "function")
+check("booklist exposes its lists and bind",
+      type(BookList.bind) == "function" and type(BookList.showBookList) == "function"
+      and type(BookList.showBooksForPeriod) == "function"
+      and type(BookList.showFinishedChecklist) == "function")
 check("chapter bar exposes build + settings",
       type(ChapterBar.build) == "function" and type(ChapterBar.readHeightSetting) == "function"
       and ChapterBar.PAGE_SIZE == 25)
 check("menu exposes build", type(Menu.build) == "function")
+check("insights headers + charts expose their builders",
+      type(InsightsHeaders.buildYearHeader) == "function"
+      and type(InsightsHeaders.buildWeekNavHeader) == "function"
+      and type(InsightsCharts.buildMonthlyChart) == "function"
+      and type(InsightsCharts.buildWeeklyChart) == "function")
+check("cards look exposes buildSections + paginate",
+      type(InsightsCards.buildSections) == "function"
+      and type(InsightsPages.paginate) == "function")
+check("look is Classic by default", ViewSettings.readLookIsCards() == false
+      and ViewSettings.readLookSetting() == ViewSettings.LOOK_CLASSIC)
+ViewSettings.saveLookSetting(ViewSettings.LOOK_CARDS)
+check("look switches to Cards", ViewSettings.readLookIsCards() == true)
+ViewSettings.saveLookSetting(ViewSettings.LOOK_CLASSIC)
+check("look switches back to Classic", ViewSettings.readLookIsCards() == false)
 check("insights data exposes its queries and batch helper",
       type(InsightsData.withBatchConnection) == "function"
       and type(InsightsData.getBooksForPeriod) == "function"

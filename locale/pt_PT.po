@@ -135,6 +135,21 @@ msgstr "Sequência atual"
 msgid "Best streak"
 msgstr "Melhor sequência"
 
+msgid "Streaks"
+msgstr "Sequências"
+
+msgid "Current"
+msgstr "Atual"
+
+msgid "Best"
+msgstr "Melhor"
+
+msgid "%1 day to beat your record"
+msgstr "Falta %1 dia para o novo recorde"
+
+msgid "%1 days to beat your record"
+msgstr "Faltam %1 dias para o novo recorde"
+
 msgid "Days read per month"
 msgstr "Dias lidos por mês"
 
@@ -1891,6 +1906,9 @@ msgstr "Sem leitura em %1"
 msgid "of yearly goal"
 msgstr "da meta anual"
 
+msgid "new"
+msgstr "novo"
+
 msgid "Latest"
 msgstr "Mais recente"
 
@@ -2043,6 +2061,24 @@ msgstr "Barra da meta diária / semanal"
 
 msgid "Show a thin progress bar under the daily and weekly goal values."
 msgstr "Mostrar uma barra de progresso fina sob os valores das metas diária e semanal."
+
+msgid "Look"
+msgstr "Aspeto"
+
+msgid "Cards"
+msgstr "Cartões"
+
+msgid "Classic: the original layout. Cards: each section in a card with an icon; when the page doesn't fit the screen it is split into pages (swipe up / down)."
+msgstr "Clássico: o esquema original. Cartões: cada secção num cartão com um ícone; quando a página não cabe no ecrã, é dividida em páginas (deslizar para cima / baixo)."
+
+msgid "Daily / weekly goal ring"
+msgstr "Anel da meta diária / semanal"
+
+msgid "Show a progress ring next to the daily and weekly goal values."
+msgstr "Mostrar um anel de progresso ao lado dos valores das metas diária e semanal."
+
+msgid "of %1"
+msgstr "de %1"
 
 msgid "Progress bar"
 msgstr "Barra de progresso"

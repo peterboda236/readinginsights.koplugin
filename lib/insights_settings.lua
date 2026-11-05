@@ -141,7 +141,9 @@ M.Opt = {
     -- built so the whole page ends up as close to exactly one screen tall
     -- as possible. The charts grow into whatever vertical space the other
     -- sections leave over, and - the point of the exercise - the page never
-    -- becomes taller than the screen, so the scroll bar never appears.
+    -- becomes taller than the screen, so the scroll bar never appears. In
+    -- the Cards look the open popup stops at AUTO_MIN_SCROLL and puts the
+    -- sections on pages instead.
     --
     -- false: the two fixed values above are used, exactly as before (a
     -- value that's too large then makes the page scroll again, which is
@@ -154,6 +156,10 @@ M.Opt = {
     -- a chart the user couldn't also have dialed in by hand.
     AUTO_MIN = 10,
     AUTO_MAX = 200,
+    -- Cards look: lowest auto height in the open popup; below it the
+    -- sections are put on pages (the sleep screen still goes down to
+    -- AUTO_MIN).
+    AUTO_MIN_SCROLL = 60,
 
     -- Heights currently in force in auto mode: set by _buildUI's fit loop
     -- right before it (re)builds the sections, read back by the two chart
@@ -566,7 +572,8 @@ function M.saveShowTimeGoals(value)
 end
 
 -- Whether the thin (5 px) progress bar under the daily / weekly goal values
--- is drawn (default: on).
+-- (Classic look) or the progress ring next to them (Cards look) is drawn
+-- (default: on).
 function M.readShowTimeGoalBar()
     return Prefs.read(M.SETTINGS_KEY_SHOW_TIME_GOAL_BAR, true) ~= false
 end
@@ -715,6 +722,25 @@ end
 
 function M.saveMonthlyStyleSetting(value)
     Prefs.save(M.SETTINGS_KEY_MONTHLY_STYLE, value)
+end
+
+-- Look of the insights popup (Settings > Reading insights popup > Look):
+-- "classic" (default) or "cards" (views/cards_look/sections.lua).
+M.SETTINGS_KEY_LOOK = "reading_insights_look"
+M.LOOK_CLASSIC = "classic"
+M.LOOK_CARDS   = "cards"
+
+function M.readLookSetting()
+    if Prefs.read(M.SETTINGS_KEY_LOOK, nil) == M.LOOK_CARDS then return M.LOOK_CARDS end
+    return M.LOOK_CLASSIC
+end
+
+function M.saveLookSetting(value)
+    Prefs.save(M.SETTINGS_KEY_LOOK, value)
+end
+
+function M.readLookIsCards()
+    return M.readLookSetting() == M.LOOK_CARDS
 end
 
 -- Style of the "Last 7 days" chart (Settings > Reading insights popup >
