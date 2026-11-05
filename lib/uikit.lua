@@ -472,7 +472,7 @@ function M.buildCard(content, width)
     return FrameContainer:new{
         background     = Blitbuffer.COLOR_WHITE,
         bordersize     = M.cardBorder(),
-        color          = grayColor(Colors.separator()),
+        color          = grayColor(Colors.cardsColor("separator")),
         radius         = Size.radius.button,
         padding        = 0,
         padding_top    = Size.padding.small,
@@ -638,10 +638,10 @@ function RoundBar:paintTo(bb, x, y)
     local w, h = self.width, self.height
     if w <= 0 or h <= 0 then return end
     local r = math.floor(h / 2)
-    bb:paintRoundedRect(x, y, w, h, grayColor(Colors.inactiveBar()), r)
+    bb:paintRoundedRect(x, y, w, h, grayColor(Colors.cardsColor("inactive_bar")), r)
     local done_w = math.floor(w * math.max(0, math.min(1, self.ratio)))
     if done_w > 0 then
-        bb:paintRoundedRect(x, y, done_w, h, grayColor(Colors.activeBar()), math.min(r, math.floor(done_w / 2)))
+        bb:paintRoundedRect(x, y, done_w, h, grayColor(Colors.cardsColor("active_bar")), math.min(r, math.floor(done_w / 2)))
     end
 end
 

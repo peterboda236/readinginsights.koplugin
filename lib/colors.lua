@@ -289,6 +289,22 @@ end
 
 local M = {}
 
+-- Cards look: the mockup's black and light gray in place of the gray
+-- defaults. A color the user changed in Settings > Colors is used as set.
+local CARDS_DEFAULTS = {
+    active_bar   = "#000000",
+    inactive_bar = "#CCCCCC",
+    separator    = "#000000",
+}
+local _cards_cache = {}
+
+function M.cardsColor(key)
+    local hex = CARDS_DEFAULTS[key]
+    if not hex or readHex(key) ~= DEFAULTS[key] then return M.getColor(key) end
+    if not _cards_cache[key] then _cards_cache[key] = buildColor(hex) end
+    return _cards_cache[key]
+end
+
 function M.getDefaultHex(key)
     return DEFAULTS[key]
 end

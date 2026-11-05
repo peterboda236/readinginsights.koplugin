@@ -350,8 +350,8 @@ function M.buildSections(popup_self, streaks, yearly_stats, year_range, monthly_
                 text         = (goal > 0 and done >= goal) and "\u{2713}" or (math.floor(ratio * 100) .. "%"),
                 face         = fonts.small,
                 text_color   = Colors.value(),
-                read_color   = Colors.activeBar(),
-                unread_color = Colors.inactiveBar(),
+                read_color   = Colors.cardsColor("active_bar"),
+                unread_color = Colors.cardsColor("inactive_bar"),
             } or nil
             local content
             if ring then
@@ -732,7 +732,7 @@ function M.buildSections(popup_self, streaks, yearly_stats, year_range, monthly_
             buildYearlyRow(popup_self, yearly_stats, fonts, ilayout),
         }
 
-        local chart = buildMonthlyChart(popup_self, monthly_data, ilayout, fonts)
+        local chart = buildMonthlyChart(popup_self, monthly_data, ilayout, fonts, true)
         if chart then
             local caption = (popup_self.mode == VS.INSIGHTS_MODE_HOURS and _("Reading time per month"))
                 or (popup_self.mode == VS.INSIGHTS_MODE_PAGES and _("Pages per month"))
