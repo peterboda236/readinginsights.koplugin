@@ -1913,6 +1913,9 @@ msgstr "Nincs olvasás ezen a napon: %1"
 msgid "of yearly goal"
 msgstr "az éves célból"
 
+msgid "new"
+msgstr "új"
+
 msgid "Latest"
 msgstr "Legutolsó"
 

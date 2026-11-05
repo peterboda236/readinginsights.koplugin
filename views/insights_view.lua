@@ -279,47 +279,15 @@ local function buildYearlyRow(popup_self, yearly_stats, fonts, layout)
         right_unit  = _("of days read")
     end
 
-    local left_line = buildValueLine(
-        fonts.value, fonts.label, layout.col_width, left_value, left_unit)
-    local pages_val = buildValueLine(
-        fonts.value, fonts.label, layout.col_width, right_value, right_unit)
-
+    -- Stacked value cells (tap: the books of that year), `layout` is the
+    -- inside of the year card.
     local selected_year_for_tap = popup_self.selected_year
-
-    local left_cell = InputContainer:new{
-        dimen = Geom:new{ x = 0, y = 0, w = layout.col_width, h = left_line:getSize().h },
-        left_line,
-    }
-    left_cell.ges_events = {
-        Tap = { GestureRange:new{ ges = "tap", range = left_cell.dimen } },
-    }
-    function left_cell:onTap()
-        popup_self:showBooksForYear(selected_year_for_tap)
-        return true
+    local function cell(value, unit)
+        local c = UI.buildStatCell(fonts, layout.col_width, value, unit, { chevron = not popup_self.readonly })
+        return tappableCell(c, layout.col_width, function() popup_self:showBooksForYear(selected_year_for_tap) end)
     end
-
-    local right_cell = InputContainer:new{
-        dimen = Geom:new{ x = 0, y = 0, w = layout.col_width, h = pages_val:getSize().h },
-        pages_val,
-    }
-    right_cell.ges_events = {
-        Tap = { GestureRange:new{ ges = "tap", range = right_cell.dimen } },
-    }
-    function right_cell:onTap()
-        popup_self:showBooksForYear(selected_year_for_tap)
-        return true
-    end
-
-    local yearly_row = UI.buildTwoColRow(left_cell, right_cell, layout)
-
-    return VerticalGroup:new{
-        align = "left",
-        FrameContainer:new{
-            bordersize = 0,
-            padding    = 0,
-            UI.padded(layout.padding_h, yearly_row),
-        },
-    }
+    return UI.buildTwoColRow(cell(left_value, left_unit), cell(right_value, right_unit),
+        layout, false, nil, Size.line.thin)
 end
 
 -- Any tap / swipe / key dismisses; onShow/onCloseWidget mark the popup box
@@ -775,15 +743,11 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
         UI.addCard(sections, tap_card, layout)
     end
 
-    local year_header = UI.padded(layout.padding_h,
-        buildYearHeader(popup_self, fonts.section, fonts.label, layout, year_range, popup_self.selected_year))
-    local yearly_row  = buildYearlyRow(popup_self, yearly_stats, fonts, layout)
-
     popup_self._year_swipe_targets = {}
     -- A horizontal swipe over any widget wrapped with this pages the year
-    -- (see onSwipe): the year header, its stats row (reading time, average
-    -- time...), the monthly chart and the reading goal row. The wrapper only keeps track of where the widget is on screen
-    -- (its dimen follows the paint).
+    -- (see onSwipe): the year card and the reading goal row. The wrapper
+    -- only keeps track of where the widget is on screen (its dimen follows
+    -- the paint).
     local function trackYearSwipe(w)
         local sz = w:getSize()
         local box = InputContainer:new{
@@ -793,81 +757,50 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
         table.insert(popup_self._year_swipe_targets, box)
         return box
     end
-    local chart = buildMonthlyChart(popup_self, monthly_data, layout, fonts)
-    -- The few pixels the auto-fit could not hand out as whole bar points
-    -- (see _buildUI's fit) go here, under the monthly chart, so the page
-    -- ends exactly at the bottom of the screen. The bars themselves stay
-    -- the same height as the weekly chart's.
-    if chart and VS.Opt.readBarHeightAuto() then
-        local extra_px = VS.Opt.monthly_extra_px or 0
-        if extra_px > 0 then
-            chart = VerticalGroup:new{
-                align = "left",
-                chart,
-                VerticalSpan:new{ width = extra_px },
+
+    -- One card: year header (‹ prev · selected › · next ›), the year's
+    -- stats, the chart caption as a chip (tap: the four views) and the
+    -- monthly chart.
+    do
+        local ilayout = UI.cardLayout(layout)
+        local body = VerticalGroup:new{
+            align = "left",
+            buildYearHeader(popup_self, fonts.section, fonts.label, fonts.value, ilayout, year_range, popup_self.selected_year),
+            VerticalSpan:new{ width = Size.padding.small },
+            buildYearlyRow(popup_self, yearly_stats, fonts, ilayout),
+        }
+
+        local chart = buildMonthlyChart(popup_self, monthly_data, ilayout, fonts)
+        if chart then
+            local caption = (popup_self.mode == VS.INSIGHTS_MODE_HOURS and _("Reading time per month"))
+                or (popup_self.mode == VS.INSIGHTS_MODE_PAGES and _("Pages per month"))
+                or (popup_self.mode == VS.INSIGHTS_MODE_BOOKS and _("Books per month"))
+                or _("Days read per month")
+            if not popup_self.readonly then caption = caption .. " \u{25BE}" end
+            local chip = UI.buildChip(caption, fonts.small)
+            local chip_cell = InputContainer:new{
+                dimen = Geom:new{ x = 0, y = 0, w = chip:getSize().w, h = chip:getSize().h },
+                chip,
             }
+            if not popup_self.readonly then
+                chip_cell.ges_events = { Tap = { GestureRange:new{ ges = "tap", range = chip_cell.dimen } } }
+                chip_cell.onTap = function() popup_self:showInsightsModePicker(); return true end
+            end
+            table.insert(body, VerticalSpan:new{ width = Size.padding.default })
+            table.insert(body, chip_cell)
+            table.insert(body, VerticalSpan:new{ width = Size.padding.small })
+            table.insert(body, chart)
+            -- The few pixels the auto-fit could not hand out as whole bar
+            -- points (see _buildUI's fit) go under the chart, so the page
+            -- ends exactly at the bottom of the screen.
+            local extra_px = VS.Opt.readBarHeightAuto() and (VS.Opt.monthly_extra_px or 0) or 0
+            if extra_px > 0 then
+                table.insert(body, VerticalSpan:new{ width = extra_px })
+            end
         end
-    end
 
-    year_header = trackYearSwipe(year_header)
-    yearly_row  = trackYearSwipe(yearly_row)
-    newBlock()
-    UI.addSectionWithRow(sections, year_header, yearly_row, layout, { pad_row = false, no_bottom_line = not (chart and UI.classicLines()), bottom_line_thin = true, gap_above_row = true })
-
-    if chart then
-        local chart_header_text = (popup_self.mode == VS.INSIGHTS_MODE_HOURS
-            and _("Reading time per month"))
-            or (popup_self.mode == VS.INSIGHTS_MODE_PAGES
-            and _("Pages per month"))
-            or (popup_self.mode == VS.INSIGHTS_MODE_BOOKS
-            and _("Books per month"))
-            or _("Days read per month")
-        chart_header_text = chart_header_text
-        --.. " \xe2\x80\xba"
-        -- Styled like the label captions under a value (e.g. "pages read",
-        -- "reading time" - fonts.label/Colors.label()) rather than a bold
-        -- section title, and with no divider under it (no_top_line below),
-        -- so it reads as a lightweight caption for the chart rather than a
-        -- heavyweight section header.
-        local chart_header_text_widget = TextWidget:new{
-            text = chart_header_text, face = fonts.label, fgcolor = Colors.label(),
-        }
-        local chart_header = FrameContainer:new{
-            background     = Blitbuffer.COLOR_WHITE,
-            bordersize     = 0,
-            padding_top    = Size.padding.small,
-            padding_bottom = Size.padding.small,
-            padding_left   = Size.padding.large,
-            padding_right  = 0,
-            chart_header_text_widget,
-        }
-        local tappable_chart_header = InputContainer:new{
-            dimen = Geom:new{ x = 0, y = 0, w = chart_header:getSize().w, h = chart_header:getSize().h },
-            chart_header,
-        }
-        tappable_chart_header.ges_events = {
-            Tap  = { GestureRange:new{ ges = "tap",  range = tappable_chart_header.dimen } },
-        }
-        -- A tap opens the list of the four views.
-        function tappable_chart_header:onTap()
-            if not popup_self.readonly then popup_self:showInsightsModePicker() end
-            return true
-        end
-        -- The divider below the chart depends on what follows it:
-        --   - reading goal on: its row follows with no header of its own,
-        --     so a thin line keeps it visually tied to the chart section.
-        --   - otherwise (achievements header, or "All time" when both
-        --     sections are off): the regular thick line.
-        -- no_top_line: no divider directly under the chart header - it now
-        -- reads as a plain caption for the chart rather than a section
-        -- title with its own separator line.
-        tappable_chart_header = trackYearSwipe(tappable_chart_header)
-        chart = trackYearSwipe(chart)
-        UI.addSectionWithRow(sections, tappable_chart_header, chart, layout,
-            { add_divider = true, no_top_line = true,
-              -- no thin line under the chart; the thick section line stays
-              no_bottom_line = VS.Opt.readShowReadingGoal() and not UI.classicLines(),
-              bottom_line_thin = VS.Opt.readShowReadingGoal() })
+        newBlock()
+        UI.addCard(sections, trackYearSwipe(UI.buildCard(body, layout.content_width)), layout)
     end
 
     -- Long-press targets for the reading-goal section (its headers and
@@ -876,10 +809,9 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
     -- { w = widget, fn = function }.
     popup_self._goal_hold_targets = {}
 
-    -- The reading-goal and achievements sections are switched on/off
-    -- independently (Settings > Reading insights popup). With the goal on it
-    -- comes first (a headerless row); the achievements section follows below
-    -- it, with a header of its own. With both off nothing is drawn.
+    -- Reading goal and Achievements: two cards side by side (each one
+    -- full width when the other is switched off in Settings > Reading
+    -- insights popup).
     local show_goal = VS.Opt.readShowReadingGoal()
     local show_ach  = VS.Opt.readShowAchievements() and Achievements ~= nil
 
@@ -888,137 +820,54 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
         local finished_count = goal_finished_count or 0
         local goal_value     = VS.readReadingGoal(goal_year)
 
-        local function addHold(widget, fn)
-            table.insert(popup_self._goal_hold_targets, { w = widget, fn = fn })
-        end
-
-        -- Actions shared by the cells and their header labels, so a tap/hold
-        -- on the "Reading goal"/"Achievements" title behaves like the cell
-        -- under it.
         local function openFinished()     popup_self:showFinishedBooksForYear(goal_year) end
         local function openFinishedMenu() popup_self:showFinishedBooksMenu(goal_year) end
-        local function editGoal()         popup_self:editReadingGoal(goal_year) end
         -- Shared with the hamburger menu - see
         -- ReadingInsightsPopup:openAchievementsList() above.
         local function openAchievements() popup_self:openAchievementsList() end
 
-        -- A value/label data cell (col_width wide) with a tap action.
-        local function dataCell(line, on_tap)
-            local cell = InputContainer:new{
-                dimen = Geom:new{ x = 0, y = 0, w = layout.col_width, h = line:getSize().h },
-                line,
-            }
-            cell.ges_events = { Tap = { GestureRange:new{ ges = "tap", range = cell.dimen } } }
-            cell.onTap = function() on_tap(); return true end
-            return cell
-        end
+        local both    = show_goal and show_ach
+        local card_w  = both and math.floor((layout.content_width - layout.column_gap) / 2) or layout.content_width
+        local inner_w = UI.cardInnerWidth(card_w)
+        local bar_h   = Screen:scaleBySize(6)
+        local gap     = Size.padding.small
 
-        -- An interactive section-title cell, so the header label is tappable
-        -- like the cell below it. `width` defaults to one column.
-        local function headerCell(text, on_tap, width)
-            local tw = TextWidget:new{ text = text, face = fonts.section, fgcolor = Colors.section() }
-            local cell = InputContainer:new{
-                dimen = Geom:new{ x = 0, y = 0, w = width or layout.col_width, h = tw:getSize().h },
-                tw,
-            }
-            if on_tap then
-                cell.ges_events = { Tap = { GestureRange:new{ ges = "tap", range = cell.dimen } } }
-                cell.onTap = function() on_tap(); return true end
-            end
-            return cell
-        end
-
-        -- Same small top/bottom padding buildSectionHeader wraps its title
-        -- in, but baked into each column individually (instead of once for
-        -- the whole row), so one column can get its own background (used to
-        -- gray out only "Achievements", not "Reading goal" next to it -
-        -- see HEADER_BG above) while staying the same height as the other.
-        -- `extra_left_gap`, when given, adds that much blank space *inside*
-        -- the (possibly colored) frame before the widget - used to let a
-        -- colored column's background absorb the gap before it, so it
-        -- reaches right up to the column divider instead of stopping short
-        -- with a visible white sliver in between.
-        local function headerCol(widget, background, extra_left_gap)
-            local content = widget
-            if extra_left_gap then
-                content = HorizontalGroup:new{
-                    align = "center",
-                    HorizontalSpan:new{ width = extra_left_gap },
-                    widget,
-                }
-            end
-            return FrameContainer:new{
-                background     = background or Blitbuffer.COLOR_WHITE,
-                bordersize     = 0,
-                padding_top    = Size.padding.small,
-                padding_bottom = Size.padding.small,
-                padding_left   = 0,
-                padding_right  = 0,
-                content,
-            }
-        end
-
-        -- Two-column title row (goal_title | ach_title). Built by hand
-        -- rather than via UI.buildTwoColRow so the right column's
-        -- background - when given - can start right after the divider
-        -- line (covering what would otherwise be a plain gap), reaching
-        -- all the way to the line instead of floating short of it.
-        local function paddedTwoColHeader(left_widget, right_widget, right_bg)
-            local left_col  = UI.fixedCol(headerCol(left_widget), layout.col_width)
-            local row_h     = left_col:getSize().h
-            local separator = HorizontalGroup:new{
+        -- Bold value, then the label after it on the same line, then an
+        -- optional pill when it still fits.
+        local function valueLine(value, label, pill)
+            local v = TextWidget:new{ text = value, face = fonts.value, fgcolor = Colors.value() }
+            local rest = inner_w - v:getSize().w - gap
+            local pill_w = pill and (pill:getSize().w + gap) or 0
+            if pill and rest - pill_w < inner_w / 4 then pill, pill_w = nil, 0 end
+            local row = HorizontalGroup:new{
                 align = "center",
-                HorizontalSpan:new{ width = layout.column_gap },
-                Colors.vLine(Size.line.medium, row_h),
+                v,
+                HorizontalSpan:new{ width = gap },
+                TextWidget:new{ text = label, face = fonts.label, fgcolor = Colors.label(), max_width = math.max(1, rest - pill_w) },
             }
-            local right_col = UI.fixedCol(
-                headerCol(right_widget, right_bg, layout.column_gap),
-                layout.col_width + layout.column_gap, row_h)
-
-            return FrameContainer:new{
-                background = Blitbuffer.COLOR_WHITE,
-                bordersize = 0,
-                padding    = 0,
-                UI.padded(layout.padding_h,
-                    HorizontalGroup:new{ align = "center", left_col, separator, right_col }),
-            }
+            if pill then
+                table.insert(row, HorizontalSpan:new{ width = gap })
+                table.insert(row, pill)
+            end
+            return row
         end
 
-        local function wrapRow(row)
-            return VerticalGroup:new{
-                align = "left",
-                FrameContainer:new{ bordersize = 0, padding = 0, UI.padded(layout.padding_h, row) },
-            }
-        end
+        local cards = {}
 
         if show_goal then
-            -- No header of its own: "24 / 30 books finished" | "80% of
-            -- yearly goal". Tapping either cell opens the finished books,
-            -- long press opens the finished-books menu.
-            local percent = 0
-            if goal_value > 0 then
-                percent = math.floor(finished_count / goal_value * 100 + 0.5)
-            end
-            local left_value = formatCount(finished_count) .. " / " .. formatCount(goal_value)
-            local left_line  = buildValueLine(fonts.value, fonts.label, layout.col_width,
-                left_value, N_("book finished", "books finished", finished_count))
-            local right_line = buildValueLine(fonts.value, fonts.label, layout.col_width,
-                formatCount(percent) .. "%", _("of yearly goal"))
-
-            -- With a goal set, the percentage is replaced by:
+            -- "5 / 12 books finished", the progress bar, and the pace in a
+            -- pill:
             --   closed year  -> "Goal reached" / "Goal not reached"
-            --   current year -> the pace: "3 books ahead of pace" /
-            --                   "1 book behind pace" / "On track" / "Goal reached"
+            --   current year -> "▲ 3 books ahead of pace" / "▼ 1 book behind
+            --                   pace" / "On track" / "Goal reached"
+            --   otherwise    -> "40% of yearly goal"
             -- Pace uses the day of the year and whole books only (floor), so
-            -- "On track" covers less than a book either way. Text without a
-            -- number is plain label-font text; only numbers are bold.
+            -- "On track" covers less than a book either way.
+            local ratio = (goal_value > 0) and math.min(1, finished_count / goal_value) or 0
+            local pace = formatCount(math.floor(ratio * 100 + 0.5)) .. "% " .. _("of yearly goal")
             local this_year = tonumber(os.date("%Y"))
-            local function plainText(txt)
-                return buildValueLine(fonts.value, fonts.label, layout.col_width, "", txt)
-            end
             if goal_value > 0 and goal_year < this_year then
-                right_line = plainText(finished_count >= goal_value
-                    and _("Goal reached") or _("Goal not reached"))
+                pace = finished_count >= goal_value and _("Goal reached") or _("Goal not reached")
             elseif goal_value > 0 and goal_year == this_year then
                 local y = goal_year
                 local leap = (y % 4 == 0 and y % 100 ~= 0) or (y % 400 == 0)
@@ -1026,66 +875,83 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
                 local diff = finished_count - expected
                 local n = math.floor(math.abs(diff))
                 if finished_count >= goal_value then
-                    right_line = plainText(_("Goal reached"))
+                    pace = _("Goal reached")
                 elseif n == 0 then
-                    right_line = plainText(_("On track"))
+                    pace = _("On track")
                 elseif diff > 0 then
-                    right_line = buildValueLine(fonts.value, fonts.label, layout.col_width,
-                        formatCount(n), N_("book ahead of pace", "books ahead of pace", n))
+                    pace = "\u{25B2} " .. formatCount(n) .. " " .. N_("book ahead of pace", "books ahead of pace", n)
                 else
-                    right_line = buildValueLine(fonts.value, fonts.label, layout.col_width,
-                        formatCount(n), N_("book behind pace", "books behind pace", n))
+                    pace = "\u{25BC} " .. formatCount(n) .. " " .. N_("book behind pace", "books behind pace", n)
                 end
             end
 
-            local left_cell  = dataCell(left_line, openFinished)
-            addHold(left_cell, openFinishedMenu)
-            local right_cell = dataCell(right_line, openFinished)
-            addHold(right_cell, openFinishedMenu)
-
-            table.insert(sections, VerticalSpan:new{ width = Size.padding.small })
-            table.insert(sections, trackYearSwipe(wrapRow(UI.buildTwoColRow(left_cell, right_cell, layout))))
-            table.insert(sections, VerticalSpan:new{ width = Size.padding.small })
-            table.insert(sections, UI.padded(layout.padding_h,
-                Colors.hLine(layout.content_width, Size.line.thick)))
+            local body = VerticalGroup:new{
+                align = "left",
+                UI.cardHeader("book", _("Reading goal"), fonts.section, inner_w, not popup_self.readonly),
+                VerticalSpan:new{ width = gap },
+                valueLine(formatCount(finished_count),
+                    "/ " .. formatCount(goal_value) .. " " .. N_("book finished", "books finished", finished_count)),
+                VerticalSpan:new{ width = gap },
+                UI.buildRoundBar(ratio, inner_w, bar_h),
+                VerticalSpan:new{ width = gap },
+                UI.buildPill(pace, fonts.small, inner_w),
+            }
+            -- Tap: the books finished that year; hold: the finished-books
+            -- menu (correct the list, set the goal). Swiping it pages the
+            -- year, like the year card.
+            table.insert(cards, { body = body, tap = openFinished, hold = openFinishedMenu, year = true })
         end
 
         if show_ach then
-            -- Header "Achievements | Latest", then: "earned/total earned" |
-            -- name of the most recently earned achievement.
             local earned_count = Achievements.earnedCount()
             local ach_total    = Achievements.totalCount()
-            -- Trailing star = achievements earned since the list was last
-            -- opened (see Achievements.newCount); tapping opens & clears it.
-            local has_new      = Achievements.newCount() > 0
-            local left_value   = formatCount(earned_count) .. "/" .. formatCount(ach_total)
-                                 .. (has_new and " ★" or "")
-            local left_line    = buildValueLine(fonts.value, fonts.label, layout.col_width,
-                left_value, _("earned"))
-
-            -- The latest achievement's icon + name, in the regular (non-bold)
-            -- explanatory-text face used for the unit labels.
+            -- "★ new" = achievements earned since the list was last opened
+            -- (see Achievements.newCount); opening the list clears it.
+            local new_pill = (Achievements.newCount() > 0)
+                and UI.buildPill("\u{2605} " .. _("new"), fonts.small) or nil
             local latest = Achievements.latest()
-            local right_line = TextBoxWidget:new{
-                text      = latest and (latest.icon .. "  " .. latest.title) or "–",
-                face      = fonts.label,
-                fgcolor   = Colors.label(),
-                width     = layout.col_width,
-                alignment = "left",
+            local chevron = (not popup_self.readonly)
+                and TextWidget:new{ text = "\u{203A}", face = fonts.value, fgcolor = Colors.label() } or nil
+
+            local body = VerticalGroup:new{
+                align = "left",
+                UI.cardHeader("trophy", _("Achievements"), fonts.section, inner_w, false, chevron),
+                VerticalSpan:new{ width = gap },
+                valueLine(formatCount(earned_count), "/ " .. formatCount(ach_total) .. " " .. _("earned"), new_pill),
+                VerticalSpan:new{ width = gap },
+                UI.buildRoundBar(ach_total > 0 and earned_count / ach_total or 0, inner_w, bar_h),
+                VerticalSpan:new{ width = gap },
+                TextWidget:new{
+                    text = _("Latest: ") .. (latest and (latest.icon .. " " .. latest.title) or "\u{2013}"),
+                    face = fonts.small, fgcolor = Colors.label(), max_width = inner_w,
+                },
             }
-
-            local left_cell  = dataCell(left_line, openAchievements)
-            local right_cell = dataCell(right_line, openAchievements)
-
-            local ach_title    = headerCell(_("Achievements"), openAchievements)
-            local latest_title = headerCell(_("Latest"), openAchievements)
-
-            newBlock()
-            UI.addSectionWithRow(sections,
-                paddedTwoColHeader(ach_title, latest_title, HEADER_BG()),
-                wrapRow(UI.buildTwoColRow(left_cell, right_cell, layout, false, { join_above = true })),
-                layout, { pad_row = false, gap_above_row = true, split_header = true })
+            table.insert(cards, { body = body, tap = openAchievements })
         end
+
+        -- Both cards as tall as the taller one.
+        local body_h = 0
+        for _idx, c in ipairs(cards) do body_h = math.max(body_h, c.body:getSize().h) end
+        local row = HorizontalGroup:new{ align = "top" }
+        for idx, c in ipairs(cards) do
+            local frame = UI.buildCard(UI.fixedCol(c.body, inner_w, body_h), card_w)
+            local cell = InputContainer:new{
+                dimen = Geom:new{ x = 0, y = 0, w = card_w, h = frame:getSize().h },
+                frame,
+            }
+            cell.ges_events = { Tap = { GestureRange:new{ ges = "tap", range = cell.dimen } } }
+            cell.onTap = function() c.tap(); return true end
+            if c.hold then
+                table.insert(popup_self._goal_hold_targets, { w = cell, fn = c.hold })
+            end
+            if c.year then cell = trackYearSwipe(cell) end
+            if idx > 1 then
+                table.insert(row, HorizontalSpan:new{ width = layout.content_width - 2 * card_w })
+            end
+            table.insert(row, cell)
+        end
+        newBlock()
+        UI.addCard(sections, row, layout)
     end -- if show_goal or show_ach
 
     do

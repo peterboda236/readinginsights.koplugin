@@ -1,6 +1,6 @@
 # Reading insights page redesign — handoff
 
-Started 2026-11-04, branch `update-insights-ui`. Nothing committed yet (all changes are uncommitted in the working tree, plus new folders `icons/` and `redesign/`).
+Started 2026-11-04, branch `update-insights-ui`. Steps 1-3 committed in e2688a7; steps 4-5 (2026-11-05) uncommitted.
 This folder (`redesign/`) is temporary: delete it when the redesign is finished.
 Line numbers below are from 2026-11-05 and drift — grep before citing them.
 
@@ -10,6 +10,7 @@ Line numbers below are from 2026-11-05 and drift — grep before citing them.
 - The user got upset twice when I deviated from the mockup ("neden artifact'daki gibi yapmadin", "you dont follow artifact version again"). Follow it exactly; if something can't be done, say so and ask before deviating.
 
 ## Rules the user set
+- Cards is optional (author's request): default look = Classic, and Classic must not change at all vs. main.
 - All data currently on the page must stay visible — only the look changes. User language: Turkish/English mix; answer short.
 - No new color settings: reuse lib/colors.lua keys (activeBar/inactiveBar/separator/value/label/section…), defaults are gray.
 - Performance matters (e-ink): cache-free but cheap widgets; Donut computes its pixel runs only on first paint.
@@ -32,11 +33,18 @@ Sections in views/insights_view.lua (buildInsightsSections):
 3. Streaks (~676-767): one card; flame icon + "Streaks" + "›"; columns "Current" / "Best": "4 days · 7 weeks" (two lines if too wide); under Current 7 dots (last 7 days read, today right), under Best only the line "N days to beat your record" (N = best - current + 1). The current/best progress bar was removed on request (user found it unclear). RoundBar (lib/uikit.lua) is kept for step 5 (reading goal / achievements bars). Tap card = Streak.show. New strings "Streaks", "Current", "Best", "%1 day(s) to beat your record" (7 locales). Bottom padding added.
 Pagination: sections mark their start with newBlock() (sections._breaks); _paginate 2804, _buildPageFooter 2859, _dropHiddenTargets 2894 (removes hold/swipe targets of the hidden page — they'd have 0,0 positions), _goToPage 2924; onSwipe north/south. _buildUI: fit loop min = AUTO_MIN_SCROLL (lib/insights_settings.lua:160, =60 points) for the open popup (2075); paginate when still too tall (2177); scroll + narrow layout only as a fallback when a single section is taller than the screen; ScrollableContainer ignore_events hold* and passes east/west + south-at-top swipes to the popup (2205).
 
+4. Year card (views/insights_view.lua "One card: year header"): buildYearHeader (views/insights_headers.lua) now = chart icon + year + "›" in the centre (tap = year shelf), no header background, built for the card's inner layout; buildYearlyRow returns stacked stat cells (tap = books of the year); caption = UI.buildChip (lib/uikit.lua) "… per month ▾" (tap = mode picker, no ▾ when readonly); chart built with the card's inner layout; monthly_extra_px span inside the card. The whole card is one _year_swipe_targets entry (goal row still tracked separately). icons/chart.svg added.
+
+5. Reading goal + Achievements (views/insights_view.lua "Reading goal and Achievements: two cards"): side by side (full width if only one is on), equal height. Goal: book icon + pen, "5 / 12 books finished", RoundBar, pace as UI.buildPill (existing strings: "▲ 2 books ahead of pace", "Goal reached", "On track", "N% of yearly goal"); tap = finished books, hold = finished-books menu; goal card is a _year_swipe_targets entry. Achievements: trophy + "›", "19 / 81 earned" + "★ new" pill (new string "new", 7 locales), RoundBar, "Latest: ☾ …" (existing "Latest: "); tap = achievements list. Own newBlock (before: goal row was in the year block). icons/book.svg, trophy.svg. Now unused: buildGoalYearLabel, msgid "Latest" -> step 7.
+
 ## Left to do (in this order, each like the mockup)
-4. Year section (year header "‹ 2025 · 2026 · 2027 ›" with chart icon, stats as stacked cells with "›", chart caption as a chip "Reading time per month ▾" (tap = mode picker), monthly bars). Year swipe zone (_year_swipe_targets) must still cover header/row/chart/goal row.
-5. Reading goal + Achievements: two cards side by side; book icon + "Reading goal" + pen, "24 / 30 books finished", round progress bar, pace as filled pill ("▲ 2 ahead of pace"); trophy icon + "Achievements" + "›", "18 / 42 earned", "★ new" pill, round bar, "Latest: ☾ Night owl". Keep tap/hold actions (openFinished / showFinishedBooksMenu / editReadingGoal / openAchievementsList). Both are optional sections (VS.Opt.readShowReadingGoal / readShowAchievements).
+5. (done above) Reading goal + Achievements: two cards side by side; book icon + "Reading goal" + pen, "24 / 30 books finished", round progress bar, pace as filled pill ("▲ 2 ahead of pace"); trophy icon + "Achievements" + "›", "18 / 42 earned", "★ new" pill, round bar, "Latest: ☾ Night owl". Keep tap/hold actions (openFinished / showFinishedBooksMenu / editReadingGoal / openAchievementsList). Both are optional sections (VS.Opt.readShowReadingGoal / readShowAchievements).
 6. All time: card, clock icon + "All time" + "›" (tap = heatmap), "reading time" | "pages read", tap values = all books.
 7. Then: pen-as-button decision, remove now-unused helpers/strings if any, README (gestures, pages), commit when the user asks.
+8. Look setting "Classic / Cards" (plugin author's request, 2026-11-05): menu option in Settings > Reading insights popup (lib/insights_settings.lua + lib/menu.lua), DEFAULT = Classic.
+   Classic must be EXACTLY main's behaviour, nothing changed: old section builders, old year header, old chart captions/pickers, old scrolling (no pages, no footer), old fit loop, old strings/settings ("goal bar" name etc.). Take the old code from `git show main:<file>` and branch per section on the setting; Cards = everything from steps 1-6.
+   Watch shared code changed by the redesign that Classic also goes through (buildYearHeader, buildTwoColRow line_w, weekly chart hatch, ScrollableContainer changes, _buildUI fit/paginate, menu rename) - each must behave like main when Classic.
+9. One PR from update-insights-ui (or into a branch the author creates). PR description gets a short (~5 min) test checklist for both looks. Delete redesign/ before the PR.
 
 ## How to test
 - KOReader emulator on this Mac: /Users/nijat/Documents/Projects/Others/koreader/koreader-emulator-arm64-apple-darwin25.6.0-debug/koreader (540x720). Plugin is a symlink to this repo; the user runs `make run`; KOReader must be fully restarted to load changes. The user sends screenshots.

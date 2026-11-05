@@ -1633,6 +1633,9 @@ msgstr "%1 没有阅读记录"
 msgid "of yearly goal"
 msgstr "年度目标"
 
+msgid "new"
+msgstr "新"
+
 msgid "Latest"
 msgstr "最新"
 

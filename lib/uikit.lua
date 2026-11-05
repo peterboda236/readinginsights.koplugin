@@ -524,6 +524,41 @@ function M.buildSegmented(labels, active, face)
     }
 end
 
+-- An outlined pill around a short text ("Reading time per month ▾").
+function M.buildChip(text, face)
+    local fg = grayColor(Colors.value())
+    local tw = TextWidget:new{ text = text, face = face, fgcolor = fg }
+    local h  = tw:getSize().h
+    return FrameContainer:new{
+        background    = Blitbuffer.COLOR_WHITE,
+        bordersize    = Size.border.default,
+        color         = fg,
+        radius        = math.floor(h / 2) + Size.padding.tiny + Size.border.default,
+        padding       = Size.padding.tiny,
+        padding_left  = Size.padding.default,
+        padding_right = Size.padding.default,
+        tw,
+    }
+end
+
+-- A filled pill with white text ("▲ 2 books ahead of pace", "★ new").
+function M.buildPill(text, face, max_width)
+    local pad = Size.padding.default
+    local tw = TextWidget:new{
+        text = text, face = face, fgcolor = Blitbuffer.COLOR_WHITE,
+        max_width = max_width and math.max(1, max_width - 2 * pad) or nil,
+    }
+    return FrameContainer:new{
+        background    = grayColor(Colors.value()),
+        bordersize    = 0,
+        radius        = math.floor(tw:getSize().h / 2),
+        padding       = 0,
+        padding_left  = pad,
+        padding_right = pad,
+        tw,
+    }
+end
+
 -- One of the plugin's own icons (icons/<name>.svg), `size` pixels square.
 function M.icon(name, size)
     return IconWidget:new{

@@ -1955,6 +1955,9 @@ msgstr "За %1 читання немає"
 msgid "of yearly goal"
 msgstr "від річної мети"
 
+msgid "new"
+msgstr "нове"
+
 msgid "Latest"
 msgstr "Останнє"
 

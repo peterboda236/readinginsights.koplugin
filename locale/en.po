@@ -1903,6 +1903,9 @@ msgstr "No reading on %1"
 msgid "of yearly goal"
 msgstr "of yearly goal"
 
+msgid "new"
+msgstr "new"
+
 msgid "Latest"
 msgstr "Latest"
 

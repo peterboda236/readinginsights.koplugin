@@ -1906,6 +1906,9 @@ msgstr "Am %1 wurde nicht gelesen"
 msgid "of yearly goal"
 msgstr "vom Jahresziel"
 
+msgid "new"
+msgstr "neu"
+
 msgid "Latest"
 msgstr "Zuletzt"
 
