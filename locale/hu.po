@@ -2069,6 +2069,21 @@ msgstr "old. vs előző 7 n."
 msgid "daily avg pg"
 msgstr "napi átl. old."
 
+msgid "Daily / weekly goal bar"
+msgstr "Napi / heti cél sáv"
+
+msgid "Show a thin progress bar under the daily and weekly goal values."
+msgstr "Vékony folyamatsáv megjelenítése a napi és heti cél értékei alatt."
+
+msgid "Look"
+msgstr "Megjelenés"
+
+msgid "Cards"
+msgstr "Kártyák"
+
+msgid "Classic: the original layout. Cards: each section in a card with an icon; when the page doesn't fit the screen it is split into pages (swipe up / down)."
+msgstr "Klasszikus: az eredeti elrendezés. Kártyák: minden rész egy ikonos kártyán; ha az oldal nem fér ki a képernyőn, oldalakra oszlik (felfelé / lefelé húzás)."
+
 msgid "Daily / weekly goal ring"
 msgstr "Napi / heti cél gyűrű"
 

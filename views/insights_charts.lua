@@ -549,7 +549,8 @@ end
 -- carry future (drawn empty). Which end of the row the newest day is drawn
 -- at follows the "Bar order" setting (rightmost by default, so time runs
 -- left to right); the data index stays the same either way.
-local function buildWeeklyChart(popup_self, daily_data, layout, fonts, mode)
+-- `hatch_today` (Cards look): today's bar is drawn hatched.
+local function buildWeeklyChart(popup_self, daily_data, layout, fonts, mode, hatch_today)
     if not daily_data or #daily_data == 0 then return nil end
     mode = VS.normalizeWeeklyChartMode(mode)
     local show_pages = (mode == VS.WEEKLY_CHART_MODE_PAGES)
@@ -720,7 +721,7 @@ local function buildWeeklyChart(popup_self, daily_data, layout, fonts, mode)
         local bar_column = VerticalGroup:new{ align = "center" }
         table.insert(bar_column, centered_label)
         if bar_h > 0 then
-            local hatched = WEEKLY_CHART_HIGHLIGHT_TODAY and is_today_bar and bar_h > 2 * Size.border.default
+            local hatched = hatch_today and WEEKLY_CHART_HIGHLIGHT_TODAY and is_today_bar and bar_h > 2 * Size.border.default
             table.insert(bar_column, hatched and Colors.newHatchBar(bar_width, bar_h, bar_color)
                                              or  Colors.newBar(bar_width, bar_h, bar_color))
         end

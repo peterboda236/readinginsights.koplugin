@@ -2105,6 +2105,21 @@ msgstr "с. vs попер. 7 дн."
 msgid "daily avg pg"
 msgstr "сер. с./д"
 
+msgid "Daily / weekly goal bar"
+msgstr "Смуга денної / тижневої мети"
+
+msgid "Show a thin progress bar under the daily and weekly goal values."
+msgstr "Показувати тонку смугу прогресу під значеннями денної та тижневої мети."
+
+msgid "Look"
+msgstr "Вигляд"
+
+msgid "Cards"
+msgstr "Картки"
+
+msgid "Classic: the original layout. Cards: each section in a card with an icon; when the page doesn't fit the screen it is split into pages (swipe up / down)."
+msgstr "Класичний: початковий вигляд. Картки: кожен розділ у картці з іконкою; якщо сторінка не вміщується на екрані, її поділено на сторінки (проведіть угору / вниз)."
+
 msgid "Daily / weekly goal ring"
 msgstr "Кільце денної / тижневої мети"
 

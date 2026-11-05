@@ -599,8 +599,15 @@ function M.build(self, deps)
             end,
         }
         I.goal_bar = {
-            text = _("Daily / weekly goal ring"),
-            help_text = _("Show a progress ring next to the daily and weekly goal values."),
+            text_func = function()
+                return deps.ViewSettings.readLookIsCards()
+                    and _("Daily / weekly goal ring") or _("Daily / weekly goal bar")
+            end,
+            help_text_func = function()
+                return deps.ViewSettings.readLookIsCards()
+                    and _("Show a progress ring next to the daily and weekly goal values.")
+                    or  _("Show a thin progress bar under the daily and weekly goal values.")
+            end,
             keep_menu_open = true,
             enabled_func = function() return deps.ViewSettings.readShowTimeGoals() end,
             checked_func = function() return deps.ViewSettings.readShowTimeGoalBar() end,
@@ -620,6 +627,32 @@ function M.build(self, deps)
             separator = true,
             checked_func = function() return Opt.readShowAchievements() end,
             callback = function() Opt.saveShowAchievements(not Opt.readShowAchievements()) end,
+        }
+    end
+
+    -- Look of the popup: Classic (default) or Cards.
+    do
+        local VSet = deps.ViewSettings
+        local function lookEntry(value, text)
+            return {
+                text = text,
+                keep_menu_open = true,
+                radio = true,
+                checked_func = function() return VSet.readLookSetting() == value end,
+                callback = function() VSet.saveLookSetting(value) end,
+            }
+        end
+        I.look = {
+            text_func = function()
+                local v = VSet.readLookIsCards() and _("Cards") or _("Classic")
+                return _("Look") .. ": " .. v
+            end,
+            help_text = _("Classic: the original layout. Cards: each section in a card with an icon; when the page doesn't fit the screen it is split into pages (swipe up / down)."),
+            keep_menu_open = true,
+            sub_item_table = {
+                lookEntry(VSet.LOOK_CLASSIC, _("Classic")),
+                lookEntry(VSet.LOOK_CARDS,   _("Cards")),
+            },
         }
     end
 
@@ -1534,6 +1567,8 @@ function M.build(self, deps)
     -- Bar chart heights sit with the view they belong to: Reading insights
     -- popup > Bar chart height, Book progress popup > Bar chart height.
     local insights_popup_sub_item_table = layout({
+        I.look,
+        "-",
         I.hamburger,
         "-",
         I.goal, I.goal_bar, I.reading_goal, I.achievements, I.ach_refresh,

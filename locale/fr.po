@@ -2056,6 +2056,21 @@ msgstr "p. vs 7 j préc."
 msgid "daily avg pg"
 msgstr "p. moy/j"
 
+msgid "Daily / weekly goal bar"
+msgstr "Barre d'objectif quotidien / hebdomadaire"
+
+msgid "Show a thin progress bar under the daily and weekly goal values."
+msgstr "Afficher une fine barre de progression sous les objectifs quotidien et hebdomadaire."
+
+msgid "Look"
+msgstr "Apparence"
+
+msgid "Cards"
+msgstr "Cartes"
+
+msgid "Classic: the original layout. Cards: each section in a card with an icon; when the page doesn't fit the screen it is split into pages (swipe up / down)."
+msgstr "Classique : la mise en page d'origine. Cartes : chaque section dans une carte avec une icône ; si la page ne tient pas sur l'écran, elle est divisée en pages (balayer vers le haut / le bas)."
+
 msgid "Daily / weekly goal ring"
 msgstr "Anneau d'objectif quotidien / hebdomadaire"
 

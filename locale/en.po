@@ -2059,6 +2059,21 @@ msgstr "pg vs prev. 7d"
 msgid "daily avg pg"
 msgstr "daily avg pg"
 
+msgid "Daily / weekly goal bar"
+msgstr "Daily / weekly goal bar"
+
+msgid "Show a thin progress bar under the daily and weekly goal values."
+msgstr "Show a thin progress bar under the daily and weekly goal values."
+
+msgid "Look"
+msgstr "Look"
+
+msgid "Cards"
+msgstr "Cards"
+
+msgid "Classic: the original layout. Cards: each section in a card with an icon; when the page doesn't fit the screen it is split into pages (swipe up / down)."
+msgstr "Classic: the original layout. Cards: each section in a card with an icon; when the page doesn't fit the screen it is split into pages (swipe up / down)."
+
 msgid "Daily / weekly goal ring"
 msgstr "Daily / weekly goal ring"
 

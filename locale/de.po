@@ -2056,6 +2056,21 @@ msgstr "S. vs vorh. 7 T."
 msgid "daily avg pg"
 msgstr "Ø S./T."
 
+msgid "Daily / weekly goal bar"
+msgstr "Tages-/Wochenzielbalken"
+
+msgid "Show a thin progress bar under the daily and weekly goal values."
+msgstr "Einen dünnen Fortschrittsbalken unter den Tages- und Wochenzielwerten anzeigen."
+
+msgid "Look"
+msgstr "Aussehen"
+
+msgid "Cards"
+msgstr "Karten"
+
+msgid "Classic: the original layout. Cards: each section in a card with an icon; when the page doesn't fit the screen it is split into pages (swipe up / down)."
+msgstr "Klassisch: das ursprüngliche Layout. Karten: jeder Abschnitt in einer Karte mit Symbol; passt die Seite nicht auf den Bildschirm, wird sie in Seiten geteilt (nach oben / unten wischen)."
+
 msgid "Daily / weekly goal ring"
 msgstr "Tages-/Wochenzielring"
 

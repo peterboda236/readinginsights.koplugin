@@ -23,7 +23,6 @@ Gestures:
   - Tap monthly chart header           cycle hours/days/books
   - Tap a streak                       that streak's dates and totals
   - Tap a Last 7 days value              8-week trend popup
-  - Tap Time | Pages (Last 7 days)       switch the week between time and pages
   - Tap a day's bar (Last 7 days / Current week)  books read that day
   - Long press today's bar               Today Timeline
   - Long press current month           CalendarView
@@ -39,10 +38,8 @@ it is on. The trend and streak popups repaint only their own box, so they
 don't flash the whole screen.
 
 Bar chart heights: by default both charts size themselves while the page is
-built so it fits one screen; if it can't without the bars getting shorter
-than VS.Opt.AUTO_MIN_SCROLL, the sections are put on pages (swipe up / down
-or the arrows at the bottom; the sleep screen shrinks instead) - see
-_buildUI's fit loop and _paginate, and Settings > Reading insights popup > "Bar chart height" to turn it off.
+built so it fits one screen without a scroll bar - see _buildUI's fit loop,
+and Settings > Reading insights popup > "Bar chart height" to turn it off.
 ]]--
 
 local Blitbuffer = require("ffi/blitbuffer")
@@ -82,7 +79,10 @@ local Locale, Colors, Fonts, PopupUtil, VS, Cache, UI, Trend, Heatmap, BookList,
 
 -- The charts and header rows this view lays out (views/insights_charts.lua,
 -- views/insights_headers.lua - split out of this file).
-local Charts, Headers, Donut = deps.Charts, deps.Headers, deps.Donut
+local Charts, Headers = deps.Charts, deps.Headers
+-- The "Cards" look (Settings > Reading insights popup > Look) and its pages
+-- (views/cards_look/sections.lua, views/cards_look/pages.lua).
+local Cards, Pages = deps.Cards, deps.Pages
 local buildMonthlyChart, buildWeeklyChart = Charts.buildMonthlyChart, Charts.buildWeeklyChart
 local buildAlignedSectionHeader, buildYearHeader, buildWeekNavHeader =
     Headers.buildAlignedSectionHeader, Headers.buildYearHeader, Headers.buildWeekNavHeader
@@ -279,15 +279,47 @@ local function buildYearlyRow(popup_self, yearly_stats, fonts, layout)
         right_unit  = _("of days read")
     end
 
-    -- Stacked value cells (tap: the books of that year), `layout` is the
-    -- inside of the year card.
+    local left_line = buildValueLine(
+        fonts.value, fonts.label, layout.col_width, left_value, left_unit)
+    local pages_val = buildValueLine(
+        fonts.value, fonts.label, layout.col_width, right_value, right_unit)
+
     local selected_year_for_tap = popup_self.selected_year
-    local function cell(value, unit)
-        local c = UI.buildStatCell(fonts, layout.col_width, value, unit, { chevron = not popup_self.readonly })
-        return tappableCell(c, layout.col_width, function() popup_self:showBooksForYear(selected_year_for_tap) end)
+
+    local left_cell = InputContainer:new{
+        dimen = Geom:new{ x = 0, y = 0, w = layout.col_width, h = left_line:getSize().h },
+        left_line,
+    }
+    left_cell.ges_events = {
+        Tap = { GestureRange:new{ ges = "tap", range = left_cell.dimen } },
+    }
+    function left_cell:onTap()
+        popup_self:showBooksForYear(selected_year_for_tap)
+        return true
     end
-    return UI.buildTwoColRow(cell(left_value, left_unit), cell(right_value, right_unit),
-        layout, false, nil, Size.line.thin)
+
+    local right_cell = InputContainer:new{
+        dimen = Geom:new{ x = 0, y = 0, w = layout.col_width, h = pages_val:getSize().h },
+        pages_val,
+    }
+    right_cell.ges_events = {
+        Tap = { GestureRange:new{ ges = "tap", range = right_cell.dimen } },
+    }
+    function right_cell:onTap()
+        popup_self:showBooksForYear(selected_year_for_tap)
+        return true
+    end
+
+    local yearly_row = UI.buildTwoColRow(left_cell, right_cell, layout)
+
+    return VerticalGroup:new{
+        align = "left",
+        FrameContainer:new{
+            bordersize = 0,
+            padding    = 0,
+            UI.padded(layout.padding_h, yearly_row),
+        },
+    }
 end
 
 -- Any tap / swipe / key dismisses; onShow/onCloseWidget mark the popup box
@@ -311,11 +343,6 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
     popup_self._chart_hold_targets = {}
     popup_self._today_bar_widget = nil   -- set again by the weekly chart
     local sections = VerticalGroup:new{ align = "left" }
-    -- Where each section starts in `sections`: a page break may only fall
-    -- there (see _buildUI's pages).
-    local breaks = {}
-    sections._breaks = breaks
-    local function newBlock() table.insert(breaks, #sections + 1) end
 
     -- "Daily goal | Weekly goal": time read today / this calendar week against
     -- a goal in minutes. Long press on the section edits the goals. Today's
@@ -354,85 +381,111 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
             return txt
         end
 
-        local function showDailyStreak()  popup_self:showTimeGoalStreak("daily")  end
-        local function showWeeklyStreak() popup_self:showTimeGoalStreak("weekly") end
+        local daily_header_w  = UI.buildSectionHeader(fonts.section, _("Daily goal"),  layout.col_width, 0, HEADER_BG())
+        local weekly_header_w = UI.buildSectionHeader(fonts.section, _("Weekly goal"), layout.col_width, 0, HEADER_BG())
+        local header_h = daily_header_w:getSize().h
 
-        -- Two cards side by side (see goalCard). Tap a card for the goal
-        -- streak, hold to edit the goal.
-        local show_ring = VS.readShowTimeGoalBar() and Donut ~= nil
-        local card_gap  = layout.column_gap
-        local card_w    = math.floor((layout.content_width - card_gap) / 2)
-        local pad_h     = Size.padding.default
-        local inner_w   = UI.cardInnerWidth(card_w)
-
-        local ring_d = 0
-        if show_ring then
-            local probe_v = TextWidget:new{ text = "0", face = fonts.value }
-            local probe_l = TextWidget:new{ text = "0", face = fonts.label }
-            ring_d = probe_v:getSize().h + probe_l:getSize().h
-            probe_v:free()
-            probe_l:free()
-        end
-        local text_w = show_ring and (inner_w - ring_d - pad_h) or inner_w
-
-        -- With the ring: title on top, then the ring (percent inside, a check
-        -- once the goal is met) beside the time read and "of <goal>".
-        -- Without it: title over the "done / goal" line.
-        local function goalCard(title, done, goal, edit_fn, tap_fn)
-            local header_w = UI.cardHeader("target", title, fonts.section, inner_w, not popup_self.readonly)
-            local ratio = (goal > 0) and math.min(1, done / goal) or 0
-            local ring = show_ring and Donut.build{
-                ratio        = ratio,
-                diameter     = ring_d,
-                thickness    = math.floor(ring_d * 0.11 + 0.5),
-                text         = (goal > 0 and done >= goal) and "\u{2713}" or (math.floor(ratio * 100) .. "%"),
-                face         = fonts.small,
-                text_color   = Colors.value(),
-                read_color   = Colors.activeBar(),
-                unread_color = Colors.inactiveBar(),
-            } or nil
-            local content
-            if ring then
-                content = VerticalGroup:new{
-                    align = "left",
-                    header_w,
-                    HorizontalGroup:new{
-                        align = "center",
-                        ring,
-                        HorizontalSpan:new{ width = pad_h },
-                        VerticalGroup:new{
-                            align = "left",
-                            TextWidget:new{ text = Locale.formatDuration(done, true), face = fonts.value, fgcolor = Colors.value(), max_width = text_w },
-                            TextWidget:new{ text = T(_("of %1"), Locale.formatDuration(goal, true)), face = fonts.label, fgcolor = Colors.label(), max_width = text_w },
-                        },
-                    },
-                }
-            else
-                content = VerticalGroup:new{
-                    align = "left",
-                    header_w,
-                    TextWidget:new{ text = goalText(done, goal), face = fonts.value, fgcolor = Colors.value(), max_width = inner_w },
-                }
-            end
-            local frame = UI.buildCard(content, card_w)
+        -- Hold edits the goal, tap shows how long the goal has been met in a row.
+        local function holdCell(widget, w, fn, on_tap)
             local cell = InputContainer:new{
-                dimen = Geom:new{ x = 0, y = 0, w = card_w, h = frame:getSize().h },
-                frame,
+                dimen = Geom:new{ x = 0, y = 0, w = w, h = widget:getSize().h },
+                widget,
             }
-            cell.ges_events = { Tap = { GestureRange:new{ ges = "tap", range = cell.dimen } } }
-            cell.onTap = function() tap_fn(); return true end
-            addTimeGoalHold(cell, edit_fn)
+            if on_tap then
+                cell.ges_events = { Tap = { GestureRange:new{ ges = "tap", range = cell.dimen } } }
+                cell.onTap = function() on_tap(); return true end
+            end
+            addTimeGoalHold(cell, fn)
             return cell
         end
 
-        local goal_row = HorizontalGroup:new{
-            align = "top",
-            goalCard(_("Daily goal"),  today_secs, daily_goal_secs,  editDaily,  showDailyStreak),
-            HorizontalSpan:new{ width = layout.content_width - 2 * card_w },
-            goalCard(_("Weekly goal"), week_secs,  weekly_goal_secs, editWeekly, showWeeklyStreak),
-        }
-        newBlock()
-        UI.addCard(sections, goal_row, layout)
+        local function showDailyStreak()  popup_self:showTimeGoalStreak("daily")  end
+        local function showWeeklyStreak() popup_self:showTimeGoalStreak("weekly") end
+
+        local daily_header_cell  = holdCell(daily_header_w,  layout.col_width, editDaily,  showDailyStreak)
+        local weekly_header_cell = holdCell(weekly_header_w, layout.col_width, editWeekly, showWeeklyStreak)
+
+        local goal_header = UI.padded(layout.padding_h, FrameContainer:new{
+            background = HEADER_BG(),
+            bordersize = 0,
+            padding    = 0,
+            HorizontalGroup:new{
+                align = "center",
+                UI.fixedCol(daily_header_cell, layout.col_width),
+                UI.buildColumnSeparator(layout.column_gap, header_h, false, true),
+                UI.fixedCol(weekly_header_cell, layout.col_width),
+            },
+        })
+
+        -- Thin (5 px) progress bar under a goal value, drawn with the chart's
+        -- active (done) / inactive (remaining) bar colors. Can be switched
+        -- off in Settings > Reading insights popup > "Daily / weekly goal bar".
+        local show_goal_bar = VS.readShowTimeGoalBar()
+        local GOAL_BAR_HEIGHT = 5
+        local function buildGoalBar(done, goal, width)
+            local ratio = 0
+            if goal > 0 then ratio = math.min(1, math.max(0, done / goal)) end
+            local done_w = math.floor(width * ratio + 0.5)
+            if ratio > 0 and done_w == 0 then done_w = 1 end
+            if ratio < 1 and done_w >= width then done_w = width - 1 end
+            if done_w < 0 then done_w = 0 end
+            local rest_w = width - done_w
+            local bar = HorizontalGroup:new{ align = "top" }
+            if done_w > 0 then
+                table.insert(bar, Colors.newBar(done_w, GOAL_BAR_HEIGHT, Colors.activeBar()))
+            end
+            if rest_w > 0 then
+                table.insert(bar, Colors.newBar(rest_w, GOAL_BAR_HEIGHT, Colors.inactiveBar()))
+            end
+            bar.dimen = Geom:new{ w = width, h = GOAL_BAR_HEIGHT }
+            return bar
+        end
+
+        local function valueCell(text, fn, on_tap, done, goal)
+            local tw = TextWidget:new{
+                text    = text,
+                face    = fonts.value,
+                fgcolor = Colors.value(),
+                max_width = layout.col_width,
+            }
+            local content = tw
+            if show_goal_bar then
+                -- Gap around the bar = the empty space under the day labels of
+                -- the weekly bar chart (small-font label height minus its
+                -- baseline; the section's own padding.large + bottom line
+                -- follow after it, same as under the chart). Below the bar
+                -- that is the whole gap; above it, the value text already
+                -- has its own descent, so only the remainder is added.
+                -- NB: here VerticalSpan only honors `width` (it is the
+                -- vertical size); `height` is ignored.
+                local function descentOf(widget)
+                    local ok_d, d = pcall(function()
+                        return widget:getSize().h - widget:getBaseline()
+                    end)
+                    return (ok_d and d and d > 0) and d or 0
+                end
+                local ref = TextWidget:new{ text = "0", face = fonts.small }
+                local gap = descentOf(ref)
+                ref:free()
+                if gap <= 0 then gap = Size.padding.default end
+                local gap_above = math.max(0, gap - descentOf(tw))
+                content = VerticalGroup:new{
+                    align = "left",
+                    tw,
+                    VerticalSpan:new{ width = gap_above },
+                    buildGoalBar(done, goal, layout.col_width),
+                    VerticalSpan:new{ width = gap },
+                }
+            end
+            return holdCell(content, layout.col_width, fn, on_tap)
+        end
+
+        local goal_row = UI.buildTwoColRow(
+            valueCell(goalText(today_secs, daily_goal_secs),  editDaily,  showDailyStreak, today_secs, daily_goal_secs),
+            valueCell(goalText(week_secs,  weekly_goal_secs), editWeekly, showWeeklyStreak, week_secs, weekly_goal_secs),
+            layout, false, { join_above = true })
+
+        UI.addSectionWithRow(sections, goal_header, goal_row, layout, { gap_above_row = true, split_header = true })
     end
 
     do
@@ -487,141 +540,210 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
             local pages_cells = { total_pages_val, total_pages_unit, "pages_total",
                                   week_pages_val, week_pages_unit, "pages_avg" }
 
-            -- The section is a card; everything in it is built against the
-            -- inside of the card.
-            local ilayout = UI.cardLayout(layout)
-
-            -- Optional change against the week before, under the values of
-            -- the first row ("▲ 1:05 vs prev. 7d").
-            local deltas
-            if VS.readWeeklyVsPrev() then
-                local vs_label = cal_mode and _("vs prev. week") or _("vs prev. 7d")
-                local function deltaText(d, decimals)
-                    local val, unit, zero
-                    if pages_mode then
-                        local a = math.abs(d)
-                        a = decimals and (math.floor(a * 10 + 0.5) / 10) or math.floor(a + 0.5)
-                        zero = (a == 0)
-                        val = decimals and formatNumber(a, 1) or formatCount(a)
-                        unit = vs_label
-                    else
-                        local a = math.floor(math.abs(d) / 60 + 0.5) * 60
-                        zero = (a == 0)
-                        val, unit = splitDurationValueUnit(a, vs_label)
-                    end
-                    local arrow = zero and "" or (d < 0 and "\u{25BC} " or "\u{25B2} ")
-                    return { arrow .. val, unit }
-                end
-                local diff_total
-                if pages_mode then
-                    diff_total = total_pages_raw - math.floor((lw.prev_pages or 0) + 0.5)
-                else
-                    diff_total = math.floor(total_secs + 0.5) - math.floor((lw.prev_seconds or 0) + 0.5)
-                end
-                deltas = { deltaText(diff_total), deltaText(diff_total / days_n, true) }
-            end
-
-            -- One value cell (tap: 8-week trend), with its delta under it.
-            local function weekCell(value, unit, metric, delta)
-                local cell = UI.buildStatCell(fonts, ilayout.col_width, value, unit, {
-                    chevron     = not popup_self.readonly,
-                    delta_value = delta and delta[1],
-                    delta_label = delta and delta[2],
-                })
-                return tappableCell(cell, ilayout.col_width, function() popup_self:showWeeklyTrendPopup(metric) end)
-            end
-
             -- One 2-column row: total on the left, daily average on the right.
-            local function weekRow(c, row_opts, d)
+            local function weekRow(c, row_opts)
                 return UI.buildTwoColRow(
-                    weekCell(c[1], c[2], c[3], d and d[1]),
-                    weekCell(c[4], c[5], c[6], d and d[2]),
-                    ilayout, false, row_opts, Size.line.thin)
+                    tappableCell(
+                        buildValueLine(fonts.value, fonts.label, layout.col_width, c[1], c[2]),
+                        layout.col_width, function() popup_self:showWeeklyTrendPopup(c[3]) end),
+                    tappableCell(
+                        buildValueLine(fonts.value, fonts.label, layout.col_width, c[4], c[5]),
+                        layout.col_width, function() popup_self:showWeeklyTrendPopup(c[6]) end),
+                    layout, false, row_opts)
             end
 
-            -- First row: the metric the chart shows (switched with the
-            -- Time | Pages switch). With the optional second row (the other
-            -- metric) the vertical divider runs unbroken between the rows.
+            -- Compact row (always shown), driven by the chart mode (tap the
+            -- "Last 7 days" header to switch): time view = total time +
+            -- daily avg time, pages view = total pages + daily avg pages.
+            -- With the optional second row (the other metric) the vertical
+            -- divider runs unbroken through the gap between the two rows.
             local two_rows = VS.readWeeklyExtraRow()
             local last_week_rows = { weekRow(pages_mode and pages_cells or time_cells,
-                two_rows and { join_below = Size.padding.small } or nil, deltas) }
+                two_rows and { join_below = Size.padding.small } or nil) }
             if two_rows then
                 table.insert(last_week_rows, weekRow(pages_mode and time_cells or pages_cells,
                     { join_above = true }))
             end
 
-            -- Time | Pages switch: a tap flips the chart and the rows above it.
-            local switch = UI.buildSegmented({ _("Time"), _("Pages") }, pages_mode and 2 or 1, fonts.small)
-            local switch_cell = InputContainer:new{
-                dimen = Geom:new{ x = 0, y = 0, w = switch:getSize().w, h = switch:getSize().h },
-                switch,
-            }
-            if not popup_self.readonly then
-                switch_cell.ges_events = { Tap = { GestureRange:new{ ges = "tap", range = switch_cell.dimen } } }
-                switch_cell.onTap = function() popup_self:toggleWeeklyChartMode(); return true end
+            local weekly_chart = buildWeeklyChart(popup_self, week_daily, layout, fonts, weekly_chart_mode)
+            local last_week_content = VerticalGroup:new{ align = "left" }
+            for idx, row in ipairs(last_week_rows) do
+                if idx > 1 and UI.classicLines() then
+                    table.insert(last_week_content, VerticalSpan:new{ width = Size.padding.small })
+                end
+                table.insert(last_week_content, UI.padded(layout.padding_h, row))
             end
-            local switch_w = switch:getSize().w
+            -- Optional "compared to previous 7 days" row, above the chart
+            -- (like the yearly figures above the monthly chart), after a thin divider: change of the total and of the daily
+            -- average against the 7 days before the last 7 days.
+            if VS.readWeeklyVsPrev() then
+                local cur_total, prev_total, fmt_delta
+                if pages_mode then
+                    cur_total  = total_pages_raw
+                    prev_total = math.floor((lw.prev_pages or 0) + 0.5)
+                    fmt_delta = function(d, decimals)
+                        local a = math.abs(d)
+                        local txt = decimals and formatNumber(math.floor(a * 10 + 0.5) / 10, 1)
+                                              or formatCount(math.floor(a + 0.5))
+                        return (d < 0 and "-" or "+") .. txt
+                    end
+                else
+                    cur_total  = math.floor(total_secs + 0.5)
+                    prev_total = math.floor((lw.prev_seconds or 0) + 0.5)
+                    -- Honours KOReader's "duration_format" (classic / modern /
+                    -- letters) and the "long durations as days" option via
+                    -- splitDurationValueUnit(), same as the rest of the popup.
+                    -- Returns the signed value plus the label with an optional
+                    -- "day" word merged in front of it.
+                    fmt_delta = function(d, base_label)
+                        local a = math.floor(math.abs(d) / 60 + 0.5) * 60
+                        local val, unit = splitDurationValueUnit(a, base_label)
+                        return ((d < 0 and a > 0) and "-" or "+") .. val, unit
+                    end
+                end
+                local diff_total = cur_total - prev_total
+                local diff_avg   = diff_total / days_n
+                local d_total_val, d_total_unit, d_avg_val, d_avg_unit
+                if pages_mode then
+                    d_total_val  = fmt_delta(diff_total)
+                    d_avg_val    = fmt_delta(diff_avg, true)
+                    d_total_unit = cal_mode
+                        and N_("page vs prev. week", "pages vs prev. week", math.abs(diff_total))
+                        or  N_("page vs prev. 7d", "pages vs prev. 7d", math.abs(diff_total))
+                    d_avg_unit   = _("daily avg pages")
+                    -- Same idea as in the time view: when a long value leaves
+                    -- too little room for either full label (it would wrap),
+                    -- switch both to their shorter forms so the two cells stay
+                    -- consistent.
+                    local function cellFits(val, unit)
+                        local value_probe = TextWidget:new{ text = val,  face = fonts.value }
+                        local label_probe = TextWidget:new{ text = unit, face = fonts.label }
+                        local ok = value_probe:getSize().w + Size.padding.large
+                                   + label_probe:getSize().w <= layout.col_width
+                        value_probe:free()
+                        label_probe:free()
+                        return ok
+                    end
+                    if not (cellFits(d_total_val, d_total_unit) and cellFits(d_avg_val, d_avg_unit)) then
+                        d_total_unit = cal_mode and _("pg vs prev. wk") or _("pg vs prev. 7d")
+                        d_avg_unit   = _("daily avg pg")
+                    end
+                else
+                    d_total_val, d_total_unit = fmt_delta(diff_total,
+                        cal_mode and _("time vs prev. week") or _("time vs prev. 7d"))
+                    -- A long value ("-6h 18m") can leave too little room for
+                    -- the full label, which would then wrap onto two lines.
+                    -- In that case fall back to the shorter "vs prev. 7d".
+                    local value_probe = TextWidget:new{ text = d_total_val,  face = fonts.value }
+                    local label_probe = TextWidget:new{ text = d_total_unit, face = fonts.label }
+                    local fits = value_probe:getSize().w + Size.padding.large
+                                 + label_probe:getSize().w <= layout.col_width
+                    value_probe:free()
+                    label_probe:free()
+                    if not fits then
+                        d_total_val, d_total_unit = fmt_delta(diff_total,
+                            cal_mode and _("vs prev. week") or _("vs prev. 7d"))
+                    end
+                    d_avg_val,   d_avg_unit   = fmt_delta(diff_avg,   _("daily avg time"))
+                end
+                local vs_row = UI.buildTwoColRow(
+                    buildValueLine(fonts.value, fonts.label, layout.col_width, d_total_val, d_total_unit),
+                    buildValueLine(fonts.value, fonts.label, layout.col_width, d_avg_val,   d_avg_unit),
+                    layout)
+                table.insert(last_week_content, VerticalSpan:new{ width = Size.padding.small })
+                table.insert(last_week_content, UI.padded(layout.padding_h,
+                    Colors.hLine(layout.content_width, Size.line.thin)))
+                table.insert(last_week_content, VerticalSpan:new{ width = Size.padding.small })
+                table.insert(last_week_content, UI.padded(layout.padding_h, vs_row))
+            end
 
-            local header
-            if cal_mode then
-                -- Paging header: previous week | shown week | next week.
-                header = buildWeekNavHeader(popup_self, fonts.section, fonts.label, ilayout)
-            else
-                local header_row = UI.cardHeader("calendar", _("Last 7 days"), fonts.section,
-                    ilayout.content_width, not popup_self.readonly, switch_cell)
-                header = InputContainer:new{
-                    dimen = Geom:new{ x = 0, y = 0, w = ilayout.content_width, h = header_row:getSize().h },
-                    header_row,
+            -- All the figures sit above the chart, as in the yearly section:
+            -- thin divider, then a caption for the chart that - like the
+            -- monthly chart's caption - switches the figures above and the
+            -- chart together (here between reading time and pages per day),
+            -- then the chart.
+            -- (No thin line above the weekly chart, unless "Classic divider
+            -- lines" is on.)
+            table.insert(last_week_content, VerticalSpan:new{ width = Size.padding.small })
+            if UI.classicLines() then
+                table.insert(last_week_content, UI.padded(layout.padding_h,
+                    Colors.hLine(layout.content_width, Size.line.thin)))
+            end
+            if weekly_chart then
+                local caption_text = pages_mode and _("Pages per day") or _("Reading time per day")
+                local caption_widget = TextWidget:new{
+                    text = caption_text, face = fonts.label, fgcolor = Colors.label(),
                 }
-                -- A long press lists the two week views (last 7 days /
-                -- current week) to choose from.
+                local caption_frame = FrameContainer:new{
+                    background     = Blitbuffer.COLOR_WHITE,
+                    bordersize     = 0,
+                    padding_top    = Size.padding.small,
+                    padding_bottom = Size.padding.small,
+                    padding_left   = Size.padding.large,
+                    padding_right  = 0,
+                    caption_widget,
+                }
+                local tappable_caption = InputContainer:new{
+                    dimen = Geom:new{ x = 0, y = 0, w = caption_frame:getSize().w, h = caption_frame:getSize().h },
+                    caption_frame,
+                }
+                tappable_caption.ges_events = {
+                    Tap = { GestureRange:new{ ges = "tap", range = tappable_caption.dimen } },
+                }
+                -- A tap opens the list of the two views.
+                function tappable_caption:onTap()
+                    if not popup_self.readonly then popup_self:showWeeklyChartModePicker() end
+                    return true
+                end
+                table.insert(last_week_content, tappable_caption)
+                table.insert(last_week_content, VerticalSpan:new{ width = Size.padding.small })
+                table.insert(last_week_content, UI.padded(layout.padding_h, weekly_chart))
+            end
+
+            -- Tapping the header toggles the chart above between reading
+            -- time and pages read per day (see toggleWeeklyChartMode()).
+            local tappable_last_week_header
+            if cal_mode then
+                -- Paging header (its middle toggles time/pages itself).
+                tappable_last_week_header = UI.padded(layout.padding_h,
+                    buildWeekNavHeader(popup_self, fonts.section, fonts.label, layout))
+            else
+                local last_week_header = buildAlignedSectionHeader(fonts.section, _("Last 7 days"), layout, HEADER_BG())
+                tappable_last_week_header = InputContainer:new{
+                    dimen = Geom:new{ x = 0, y = 0, w = last_week_header:getSize().w, h = last_week_header:getSize().h },
+                    last_week_header,
+                }
+                -- A plain tap does nothing here; a long press lists the two
+                -- week views (last 7 days / current week) to choose from.
                 if not popup_self.readonly then
                     table.insert(popup_self._week_hold_targets, {
-                        w  = header,
+                        w  = tappable_last_week_header,
                         fn = function() popup_self:showWeeklyViewPicker() end,
                     })
                 end
             end
 
-            local body = VerticalGroup:new{ align = "left", header, VerticalSpan:new{ width = Size.padding.small } }
-            for idx, row in ipairs(last_week_rows) do
-                if idx > 1 and UI.classicLines() then
-                    table.insert(body, VerticalSpan:new{ width = Size.padding.small })
-                end
-                table.insert(body, row)
-            end
-            -- The paging header has no room for the switch: it gets its own
-            -- line, right-aligned, above the chart.
-            if cal_mode then
-                table.insert(body, VerticalSpan:new{ width = Size.padding.small })
-                table.insert(body, HorizontalGroup:new{
-                    HorizontalSpan:new{ width = math.max(0, ilayout.content_width - switch_w) },
-                    switch_cell,
-                })
-            end
-            local weekly_chart = buildWeeklyChart(popup_self, week_daily, ilayout, fonts, weekly_chart_mode)
-            if weekly_chart then
-                table.insert(body, VerticalSpan:new{ width = Size.padding.small })
-                table.insert(body, weekly_chart)
-            end
-
-            local card = UI.buildCard(body, layout.content_width)
-
-            -- Calendar view: a horizontal swipe over this card pages the week
-            -- (see onSwipe); the year is paged only from the monthly chart.
-            -- The wrapper only keeps track of where the card is on screen
-            -- (its dimen follows the paint).
+            -- Calendar view: a horizontal swipe over this section pages the
+            -- week (see onSwipe); the year is paged only from the monthly
+            -- chart. The two wrappers only keep track of where the header
+            -- and the content are on screen (their dimen follows the paint).
             if cal_mode and not popup_self.readonly then
-                local sz = card:getSize()
-                card = InputContainer:new{
-                    dimen = Geom:new{ x = 0, y = 0, w = sz.w, h = sz.h },
-                    card,
-                }
-                table.insert(popup_self._week_swipe_targets, card)
+                local function track(w)
+                    local sz = w:getSize()
+                    local box = InputContainer:new{
+                        dimen = Geom:new{ x = 0, y = 0, w = sz.w, h = sz.h },
+                        w,
+                    }
+                    table.insert(popup_self._week_swipe_targets, box)
+                    return box
+                end
+                tappable_last_week_header = track(tappable_last_week_header)
+                last_week_content = track(last_week_content)
             end
 
-            newBlock()
-            UI.addCard(sections, card, layout)
+            UI.addSectionWithRow(sections,
+                tappable_last_week_header,
+                last_week_content, layout, { pad_row = false, gap_above_row = true })
         end
     end
 
@@ -641,113 +763,120 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
     local bw_val, bw_unit = streakDisplay(streaks.best_weeks,
         function(n) return N_("week", "weeks", n) end, _("No streak"))
 
-    -- One card: current and best streak side by side, each as days and
-    -- weeks. Under the current streak a dot per day of the last 7 days
-    -- (filled = read), under the best one the days left to beat it.
-    -- A tap anywhere on the card opens the streak calendar.
-    do
-        local ilayout = UI.cardLayout(layout)
-        local col_w   = ilayout.col_width
+    -- Single data row: each Current/Best column is split into a days sub-cell
+    -- and a weeks sub-cell (tappable, each shows its own date range), giving
+    -- a 2x2 grid overall: [Current | Best] header, [days|weeks  days|weeks] data.
+    local inner_gap        = layout.column_gap
+    local half_col_width   = math.floor((layout.col_width - (2 * inner_gap + Size.line.medium)) / 2)
 
-        -- "5 days · 3 weeks" on one line, or the two on separate lines
-        -- when that does not fit the column.
-        local function streakLine(d_val, d_unit, w_val, w_unit)
-            if d_val == "" and w_val == "" then
-                return buildValueLine(fonts.value, fonts.label, col_w, d_val, d_unit)
-            end
-            local function width(v, u)
-                local tv = TextWidget:new{ text = v, face = fonts.value }
-                local tu = TextWidget:new{ text = u, face = fonts.label }
-                local w = tu:getSize().w + 1
-                if v ~= "" then w = w + tv:getSize().w + Size.padding.large end
-                tv:free()
-                tu:free()
-                return w
-            end
-            local d_w, w_w = width(d_val, d_unit), width(w_val, w_unit)
-            local dot = TextWidget:new{ text = "\u{00B7}", face = fonts.label, fgcolor = Colors.label() }
-            local gap = Size.padding.default
-            if d_w + w_w + dot:getSize().w + 2 * gap <= col_w then
-                return HorizontalGroup:new{
-                    align = "center",
-                    buildValueLine(fonts.value, fonts.label, d_w, d_val, d_unit),
-                    HorizontalSpan:new{ width = gap },
-                    dot,
-                    HorizontalSpan:new{ width = gap },
-                    buildValueLine(fonts.value, fonts.label, w_w, w_val, w_unit),
-                }
-            end
-            dot:free()
-            return VerticalGroup:new{
-                align = "left",
-                buildValueLine(fonts.value, fonts.label, col_w, d_val, d_unit),
-                buildValueLine(fonts.value, fonts.label, col_w, w_val, w_unit),
-            }
-        end
+    local cd_line = buildValueLine(fonts.value, fonts.label, half_col_width, cd_val, cd_unit)
+    local cw_line = buildValueLine(fonts.value, fonts.label, half_col_width, cw_val, cw_unit)
+    local bd_line = buildValueLine(fonts.value, fonts.label, half_col_width, bd_val, bd_unit)
+    local bw_line = buildValueLine(fonts.value, fonts.label, half_col_width, bw_val, bw_unit)
 
-        local probe = TextWidget:new{ text = "0", face = fonts.small }
-        local dot_size = math.floor(probe:getSize().h * 0.55)
-        probe:free()
+    local tap_cd = InputContainer:new{
+        dimen = Geom:new{ x=0, y=0, w=half_col_width, h=cd_line:getSize().h }, cd_line,
+    }
+    tap_cd.ges_events = { Tap = { GestureRange:new{ ges="tap", range=tap_cd.dimen } } }
+    function tap_cd:onTap() Streak.show(streaks) return true end
 
-        -- Last 7 days, oldest on the left (last_week_daily[1] is today).
-        local read_flags = {}
-        for i = 7, 1, -1 do
-            local d = last_week_daily and last_week_daily[i]
-            table.insert(read_flags, (d and (tonumber(d.seconds) or 0) > 0) and true or false)
-        end
-        -- Under the best streak: days still to read in a row to beat it.
-        local record_w
-        if streaks.best_days >= 2 then
-            local to_go = streaks.best_days - streaks.current_days + 1
-            record_w = TextWidget:new{
-                text = T(N_("%1 day to beat your record", "%1 days to beat your record", to_go), formatCount(to_go)),
-                face = fonts.small, fgcolor = Colors.label(), max_width = col_w,
-            }
-        end
-        -- The dots and the record line share one row height, so both
-        -- columns line up.
-        local extra_h = math.max(dot_size, record_w and record_w:getSize().h or 0)
+    local tap_cw = InputContainer:new{
+        dimen = Geom:new{ x=0, y=0, w=half_col_width, h=cw_line:getSize().h }, cw_line,
+    }
+    tap_cw.ges_events = { Tap = { GestureRange:new{ ges="tap", range=tap_cw.dimen } } }
+    function tap_cw:onTap() Streak.show(streaks) return true end
 
-        local function column(title, line, extra)
-            return VerticalGroup:new{
-                align = "left",
-                TextWidget:new{ text = title, face = fonts.label, bold = true, fgcolor = Colors.section(), max_width = col_w },
-                line,
-                VerticalSpan:new{ width = Size.padding.small },
-                UI.fixedCol(extra, col_w, extra_h),
-            }
-        end
-        local current_col = column(_("Current"), streakLine(cd_val, cd_unit, cw_val, cw_unit),
-            UI.buildDots(read_flags, dot_size))
-        local best_col = column(_("Best"), streakLine(bd_val, bd_unit, bw_val, bw_unit),
-            record_w or VerticalSpan:new{ width = 0 })
+    local tap_bd = InputContainer:new{
+        dimen = Geom:new{ x=0, y=0, w=half_col_width, h=bd_line:getSize().h }, bd_line,
+    }
+    tap_bd.ges_events = { Tap = { GestureRange:new{ ges="tap", range=tap_bd.dimen } } }
+    function tap_bd:onTap() Streak.show(streaks) return true end
 
-        local chevron = TextWidget:new{ text = "\u{203A}", face = fonts.value, fgcolor = Colors.label() }
-        local body = VerticalGroup:new{
-            align = "left",
-            UI.cardHeader("flame", _("Streaks"), fonts.section, ilayout.content_width, false,
-                (not popup_self.readonly) and chevron or nil),
-            VerticalSpan:new{ width = Size.padding.small },
-            UI.buildTwoColRow(current_col, best_col, ilayout, false, nil, Size.line.thin),
-            VerticalSpan:new{ width = Size.padding.default },
-        }
-        local card = UI.buildCard(body, layout.content_width)
-        local tap_card = InputContainer:new{
-            dimen = Geom:new{ x = 0, y = 0, w = card:getSize().w, h = card:getSize().h },
-            card,
-        }
-        tap_card.ges_events = { Tap = { GestureRange:new{ ges = "tap", range = tap_card.dimen } } }
-        function tap_card:onTap() Streak.show(streaks) return true end
+    local tap_bw = InputContainer:new{
+        dimen = Geom:new{ x=0, y=0, w=half_col_width, h=bw_line:getSize().h }, bw_line,
+    }
+    tap_bw.ges_events = { Tap = { GestureRange:new{ ges="tap", range=tap_bw.dimen } } }
+    function tap_bw:onTap() Streak.show(streaks) return true end
 
-        newBlock()
-        UI.addCard(sections, tap_card, layout)
+    local current_cell = HorizontalGroup:new{
+        align = "center",
+        UI.fixedCol(tap_cd, half_col_width),
+        UI.buildColumnSeparator(inner_gap, tap_cd:getSize().h),
+        UI.fixedCol(tap_cw, half_col_width),
+    }
+    local best_cell = HorizontalGroup:new{
+        align = "center",
+        UI.fixedCol(tap_bd, half_col_width),
+        UI.buildColumnSeparator(inner_gap, tap_bd:getSize().h),
+        UI.fixedCol(tap_bw, half_col_width),
+    }
+
+    local streak_data_row = UI.buildTwoColRow(current_cell, best_cell, layout, false, { join_above = true })
+
+    -- Two-column streak header (tappable: shows date range for that streak).
+    local streak_header_left  = UI.buildSectionHeader(fonts.section, _("Current streak"), layout.col_width, 0, HEADER_BG())
+    local streak_header_right = UI.buildSectionHeader(fonts.section, _("Best streak"),    layout.col_width, 0, HEADER_BG())
+    local sep_h = streak_header_left:getSize().h
+
+    local tap_current_header = InputContainer:new{
+        dimen = Geom:new{ x=0, y=0, w=layout.col_width, h=streak_header_left:getSize().h },
+        streak_header_left,
+    }
+    tap_current_header.ges_events = { Tap = { GestureRange:new{ ges="tap", range=tap_current_header.dimen } } }
+    function tap_current_header:onTap()
+        Streak.show(streaks)
+        return true
     end
+
+    local tap_best_header = InputContainer:new{
+        dimen = Geom:new{ x=0, y=0, w=layout.col_width, h=streak_header_right:getSize().h },
+        streak_header_right,
+    }
+    tap_best_header.ges_events = { Tap = { GestureRange:new{ ges="tap", range=tap_best_header.dimen } } }
+    function tap_best_header:onTap()
+        Streak.show(streaks)
+        return true
+    end
+
+    -- The HorizontalSpan that used to sit inside this FrameContainer (as
+    -- the left inset) is now the outer UI.padded wrap below instead, so the
+    -- gray background itself is inset to match the section's divider
+    -- lines, rather than bleeding out to the screen edge the way a plain
+    -- white background could get away with unnoticed.
+    local streak_combined_header = UI.padded(layout.padding_h, FrameContainer:new{
+        background = HEADER_BG(),
+        bordersize = 0,
+        padding    = 0,
+        HorizontalGroup:new{
+            align = "center",
+            UI.fixedCol(tap_current_header, layout.col_width),
+            UI.buildColumnSeparator(layout.column_gap, sep_h, false, true),
+            UI.fixedCol(tap_best_header,    layout.col_width),
+        },
+    })
+
+    local streak_rows = VerticalGroup:new{
+        align = "left",
+        FrameContainer:new{
+            bordersize = 0,
+            padding    = 0,
+            UI.padded(layout.padding_h, streak_data_row),
+        },
+    }
+
+    UI.addSectionWithRow(sections,
+        streak_combined_header,
+        streak_rows, layout, { pad_row = false, gap_above_row = true, split_header = true })
+
+    local year_header = UI.padded(layout.padding_h,
+        buildYearHeader(popup_self, fonts.section, fonts.label, layout, year_range, popup_self.selected_year))
+    local yearly_row  = buildYearlyRow(popup_self, yearly_stats, fonts, layout)
 
     popup_self._year_swipe_targets = {}
     -- A horizontal swipe over any widget wrapped with this pages the year
-    -- (see onSwipe): the year card and the reading goal row. The wrapper
-    -- only keeps track of where the widget is on screen (its dimen follows
-    -- the paint).
+    -- (see onSwipe): the year header, its stats row (reading time, average
+    -- time...), the monthly chart and the reading goal row. The wrapper only keeps track of where the widget is on screen
+    -- (its dimen follows the paint).
     local function trackYearSwipe(w)
         local sz = w:getSize()
         local box = InputContainer:new{
@@ -757,50 +886,80 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
         table.insert(popup_self._year_swipe_targets, box)
         return box
     end
-
-    -- One card: year header (‹ prev · selected › · next ›), the year's
-    -- stats, the chart caption as a chip (tap: the four views) and the
-    -- monthly chart.
-    do
-        local ilayout = UI.cardLayout(layout)
-        local body = VerticalGroup:new{
-            align = "left",
-            buildYearHeader(popup_self, fonts.section, fonts.label, fonts.value, ilayout, year_range, popup_self.selected_year),
-            VerticalSpan:new{ width = Size.padding.small },
-            buildYearlyRow(popup_self, yearly_stats, fonts, ilayout),
-        }
-
-        local chart = buildMonthlyChart(popup_self, monthly_data, ilayout, fonts)
-        if chart then
-            local caption = (popup_self.mode == VS.INSIGHTS_MODE_HOURS and _("Reading time per month"))
-                or (popup_self.mode == VS.INSIGHTS_MODE_PAGES and _("Pages per month"))
-                or (popup_self.mode == VS.INSIGHTS_MODE_BOOKS and _("Books per month"))
-                or _("Days read per month")
-            if not popup_self.readonly then caption = caption .. " \u{25BE}" end
-            local chip = UI.buildPill(caption, fonts.small, true)
-            local chip_cell = InputContainer:new{
-                dimen = Geom:new{ x = 0, y = 0, w = chip:getSize().w, h = chip:getSize().h },
-                chip,
+    local chart = buildMonthlyChart(popup_self, monthly_data, layout, fonts)
+    -- The few pixels the auto-fit could not hand out as whole bar points
+    -- (see _buildUI's fit) go here, under the monthly chart, so the page
+    -- ends exactly at the bottom of the screen. The bars themselves stay
+    -- the same height as the weekly chart's.
+    if chart and VS.Opt.readBarHeightAuto() then
+        local extra_px = VS.Opt.monthly_extra_px or 0
+        if extra_px > 0 then
+            chart = VerticalGroup:new{
+                align = "left",
+                chart,
+                VerticalSpan:new{ width = extra_px },
             }
-            if not popup_self.readonly then
-                chip_cell.ges_events = { Tap = { GestureRange:new{ ges = "tap", range = chip_cell.dimen } } }
-                chip_cell.onTap = function() popup_self:showInsightsModePicker(); return true end
-            end
-            table.insert(body, VerticalSpan:new{ width = Size.padding.default })
-            table.insert(body, chip_cell)
-            table.insert(body, VerticalSpan:new{ width = Size.padding.small })
-            table.insert(body, chart)
-            -- The few pixels the auto-fit could not hand out as whole bar
-            -- points (see _buildUI's fit) go under the chart, so the page
-            -- ends exactly at the bottom of the screen.
-            local extra_px = VS.Opt.readBarHeightAuto() and (VS.Opt.monthly_extra_px or 0) or 0
-            if extra_px > 0 then
-                table.insert(body, VerticalSpan:new{ width = extra_px })
-            end
         end
+    end
 
-        newBlock()
-        UI.addCard(sections, trackYearSwipe(UI.buildCard(body, layout.content_width)), layout)
+    year_header = trackYearSwipe(year_header)
+    yearly_row  = trackYearSwipe(yearly_row)
+    UI.addSectionWithRow(sections, year_header, yearly_row, layout, { pad_row = false, no_bottom_line = not (chart and UI.classicLines()), bottom_line_thin = true, gap_above_row = true })
+
+    if chart then
+        local chart_header_text = (popup_self.mode == VS.INSIGHTS_MODE_HOURS
+            and _("Reading time per month"))
+            or (popup_self.mode == VS.INSIGHTS_MODE_PAGES
+            and _("Pages per month"))
+            or (popup_self.mode == VS.INSIGHTS_MODE_BOOKS
+            and _("Books per month"))
+            or _("Days read per month")
+        chart_header_text = chart_header_text
+        --.. " \xe2\x80\xba"
+        -- Styled like the label captions under a value (e.g. "pages read",
+        -- "reading time" - fonts.label/Colors.label()) rather than a bold
+        -- section title, and with no divider under it (no_top_line below),
+        -- so it reads as a lightweight caption for the chart rather than a
+        -- heavyweight section header.
+        local chart_header_text_widget = TextWidget:new{
+            text = chart_header_text, face = fonts.label, fgcolor = Colors.label(),
+        }
+        local chart_header = FrameContainer:new{
+            background     = Blitbuffer.COLOR_WHITE,
+            bordersize     = 0,
+            padding_top    = Size.padding.small,
+            padding_bottom = Size.padding.small,
+            padding_left   = Size.padding.large,
+            padding_right  = 0,
+            chart_header_text_widget,
+        }
+        local tappable_chart_header = InputContainer:new{
+            dimen = Geom:new{ x = 0, y = 0, w = chart_header:getSize().w, h = chart_header:getSize().h },
+            chart_header,
+        }
+        tappable_chart_header.ges_events = {
+            Tap  = { GestureRange:new{ ges = "tap",  range = tappable_chart_header.dimen } },
+        }
+        -- A tap opens the list of the four views.
+        function tappable_chart_header:onTap()
+            if not popup_self.readonly then popup_self:showInsightsModePicker() end
+            return true
+        end
+        -- The divider below the chart depends on what follows it:
+        --   - reading goal on: its row follows with no header of its own,
+        --     so a thin line keeps it visually tied to the chart section.
+        --   - otherwise (achievements header, or "All time" when both
+        --     sections are off): the regular thick line.
+        -- no_top_line: no divider directly under the chart header - it now
+        -- reads as a plain caption for the chart rather than a section
+        -- title with its own separator line.
+        tappable_chart_header = trackYearSwipe(tappable_chart_header)
+        chart = trackYearSwipe(chart)
+        UI.addSectionWithRow(sections, tappable_chart_header, chart, layout,
+            { add_divider = true, no_top_line = true,
+              -- no thin line under the chart; the thick section line stays
+              no_bottom_line = VS.Opt.readShowReadingGoal() and not UI.classicLines(),
+              bottom_line_thin = VS.Opt.readShowReadingGoal() })
     end
 
     -- Long-press targets for the reading-goal section (its headers and
@@ -809,9 +968,10 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
     -- { w = widget, fn = function }.
     popup_self._goal_hold_targets = {}
 
-    -- Reading goal and Achievements: two cards side by side (each one
-    -- full width when the other is switched off in Settings > Reading
-    -- insights popup).
+    -- The reading-goal and achievements sections are switched on/off
+    -- independently (Settings > Reading insights popup). With the goal on it
+    -- comes first (a headerless row); the achievements section follows below
+    -- it, with a header of its own. With both off nothing is drawn.
     local show_goal = VS.Opt.readShowReadingGoal()
     local show_ach  = VS.Opt.readShowAchievements() and Achievements ~= nil
 
@@ -820,54 +980,137 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
         local finished_count = goal_finished_count or 0
         local goal_value     = VS.readReadingGoal(goal_year)
 
+        local function addHold(widget, fn)
+            table.insert(popup_self._goal_hold_targets, { w = widget, fn = fn })
+        end
+
+        -- Actions shared by the cells and their header labels, so a tap/hold
+        -- on the "Reading goal"/"Achievements" title behaves like the cell
+        -- under it.
         local function openFinished()     popup_self:showFinishedBooksForYear(goal_year) end
         local function openFinishedMenu() popup_self:showFinishedBooksMenu(goal_year) end
+        local function editGoal()         popup_self:editReadingGoal(goal_year) end
         -- Shared with the hamburger menu - see
         -- ReadingInsightsPopup:openAchievementsList() above.
         local function openAchievements() popup_self:openAchievementsList() end
 
-        local both    = show_goal and show_ach
-        local card_w  = both and math.floor((layout.content_width - layout.column_gap) / 2) or layout.content_width
-        local inner_w = UI.cardInnerWidth(card_w)
-        local bar_h   = Screen:scaleBySize(6)
-        local gap     = Size.padding.small
-
-        -- Bold value, then the label after it on the same line, then an
-        -- optional pill when it still fits.
-        local function valueLine(value, label, pill)
-            local v = TextWidget:new{ text = value, face = fonts.value, fgcolor = Colors.value() }
-            local rest = inner_w - v:getSize().w - gap
-            local pill_w = pill and (pill:getSize().w + gap) or 0
-            if pill and rest - pill_w < inner_w / 4 then pill, pill_w = nil, 0 end
-            local row = HorizontalGroup:new{
-                align = "center",
-                v,
-                HorizontalSpan:new{ width = gap },
-                TextWidget:new{ text = label, face = fonts.label, fgcolor = Colors.label(), max_width = math.max(1, rest - pill_w) },
+        -- A value/label data cell (col_width wide) with a tap action.
+        local function dataCell(line, on_tap)
+            local cell = InputContainer:new{
+                dimen = Geom:new{ x = 0, y = 0, w = layout.col_width, h = line:getSize().h },
+                line,
             }
-            if pill then
-                table.insert(row, HorizontalSpan:new{ width = gap })
-                table.insert(row, pill)
-            end
-            return row
+            cell.ges_events = { Tap = { GestureRange:new{ ges = "tap", range = cell.dimen } } }
+            cell.onTap = function() on_tap(); return true end
+            return cell
         end
 
-        local cards = {}
+        -- An interactive section-title cell, so the header label is tappable
+        -- like the cell below it. `width` defaults to one column.
+        local function headerCell(text, on_tap, width)
+            local tw = TextWidget:new{ text = text, face = fonts.section, fgcolor = Colors.section() }
+            local cell = InputContainer:new{
+                dimen = Geom:new{ x = 0, y = 0, w = width or layout.col_width, h = tw:getSize().h },
+                tw,
+            }
+            if on_tap then
+                cell.ges_events = { Tap = { GestureRange:new{ ges = "tap", range = cell.dimen } } }
+                cell.onTap = function() on_tap(); return true end
+            end
+            return cell
+        end
+
+        -- Same small top/bottom padding buildSectionHeader wraps its title
+        -- in, but baked into each column individually (instead of once for
+        -- the whole row), so one column can get its own background (used to
+        -- gray out only "Achievements", not "Reading goal" next to it -
+        -- see HEADER_BG above) while staying the same height as the other.
+        -- `extra_left_gap`, when given, adds that much blank space *inside*
+        -- the (possibly colored) frame before the widget - used to let a
+        -- colored column's background absorb the gap before it, so it
+        -- reaches right up to the column divider instead of stopping short
+        -- with a visible white sliver in between.
+        local function headerCol(widget, background, extra_left_gap)
+            local content = widget
+            if extra_left_gap then
+                content = HorizontalGroup:new{
+                    align = "center",
+                    HorizontalSpan:new{ width = extra_left_gap },
+                    widget,
+                }
+            end
+            return FrameContainer:new{
+                background     = background or Blitbuffer.COLOR_WHITE,
+                bordersize     = 0,
+                padding_top    = Size.padding.small,
+                padding_bottom = Size.padding.small,
+                padding_left   = 0,
+                padding_right  = 0,
+                content,
+            }
+        end
+
+        -- Two-column title row (goal_title | ach_title). Built by hand
+        -- rather than via UI.buildTwoColRow so the right column's
+        -- background - when given - can start right after the divider
+        -- line (covering what would otherwise be a plain gap), reaching
+        -- all the way to the line instead of floating short of it.
+        local function paddedTwoColHeader(left_widget, right_widget, right_bg)
+            local left_col  = UI.fixedCol(headerCol(left_widget), layout.col_width)
+            local row_h     = left_col:getSize().h
+            local separator = HorizontalGroup:new{
+                align = "center",
+                HorizontalSpan:new{ width = layout.column_gap },
+                Colors.vLine(Size.line.medium, row_h),
+            }
+            local right_col = UI.fixedCol(
+                headerCol(right_widget, right_bg, layout.column_gap),
+                layout.col_width + layout.column_gap, row_h)
+
+            return FrameContainer:new{
+                background = Blitbuffer.COLOR_WHITE,
+                bordersize = 0,
+                padding    = 0,
+                UI.padded(layout.padding_h,
+                    HorizontalGroup:new{ align = "center", left_col, separator, right_col }),
+            }
+        end
+
+        local function wrapRow(row)
+            return VerticalGroup:new{
+                align = "left",
+                FrameContainer:new{ bordersize = 0, padding = 0, UI.padded(layout.padding_h, row) },
+            }
+        end
 
         if show_goal then
-            -- "5 / 12 books finished", the progress bar, and the pace in a
-            -- pill:
+            -- No header of its own: "24 / 30 books finished" | "80% of
+            -- yearly goal". Tapping either cell opens the finished books,
+            -- long press opens the finished-books menu.
+            local percent = 0
+            if goal_value > 0 then
+                percent = math.floor(finished_count / goal_value * 100 + 0.5)
+            end
+            local left_value = formatCount(finished_count) .. " / " .. formatCount(goal_value)
+            local left_line  = buildValueLine(fonts.value, fonts.label, layout.col_width,
+                left_value, N_("book finished", "books finished", finished_count))
+            local right_line = buildValueLine(fonts.value, fonts.label, layout.col_width,
+                formatCount(percent) .. "%", _("of yearly goal"))
+
+            -- With a goal set, the percentage is replaced by:
             --   closed year  -> "Goal reached" / "Goal not reached"
-            --   current year -> "▲ 3 books ahead of pace" / "▼ 1 book behind
-            --                   pace" / "On track" / "Goal reached"
-            --   otherwise    -> "40% of yearly goal"
+            --   current year -> the pace: "3 books ahead of pace" /
+            --                   "1 book behind pace" / "On track" / "Goal reached"
             -- Pace uses the day of the year and whole books only (floor), so
-            -- "On track" covers less than a book either way.
-            local ratio = (goal_value > 0) and math.min(1, finished_count / goal_value) or 0
-            local pace = formatCount(math.floor(ratio * 100 + 0.5)) .. "% " .. _("of yearly goal")
+            -- "On track" covers less than a book either way. Text without a
+            -- number is plain label-font text; only numbers are bold.
             local this_year = tonumber(os.date("%Y"))
+            local function plainText(txt)
+                return buildValueLine(fonts.value, fonts.label, layout.col_width, "", txt)
+            end
             if goal_value > 0 and goal_year < this_year then
-                pace = finished_count >= goal_value and _("Goal reached") or _("Goal not reached")
+                right_line = plainText(finished_count >= goal_value
+                    and _("Goal reached") or _("Goal not reached"))
             elseif goal_value > 0 and goal_year == this_year then
                 local y = goal_year
                 local leap = (y % 4 == 0 and y % 100 ~= 0) or (y % 400 == 0)
@@ -875,83 +1118,65 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
                 local diff = finished_count - expected
                 local n = math.floor(math.abs(diff))
                 if finished_count >= goal_value then
-                    pace = _("Goal reached")
+                    right_line = plainText(_("Goal reached"))
                 elseif n == 0 then
-                    pace = _("On track")
+                    right_line = plainText(_("On track"))
                 elseif diff > 0 then
-                    pace = "\u{25B2} " .. formatCount(n) .. " " .. N_("book ahead of pace", "books ahead of pace", n)
+                    right_line = buildValueLine(fonts.value, fonts.label, layout.col_width,
+                        formatCount(n), N_("book ahead of pace", "books ahead of pace", n))
                 else
-                    pace = "\u{25BC} " .. formatCount(n) .. " " .. N_("book behind pace", "books behind pace", n)
+                    right_line = buildValueLine(fonts.value, fonts.label, layout.col_width,
+                        formatCount(n), N_("book behind pace", "books behind pace", n))
                 end
             end
 
-            local body = VerticalGroup:new{
-                align = "left",
-                UI.cardHeader("book", _("Reading goal"), fonts.section, inner_w, not popup_self.readonly),
-                VerticalSpan:new{ width = gap },
-                valueLine(formatCount(finished_count),
-                    "/ " .. formatCount(goal_value) .. " " .. N_("book finished", "books finished", finished_count)),
-                VerticalSpan:new{ width = gap },
-                UI.buildRoundBar(ratio, inner_w, bar_h),
-                VerticalSpan:new{ width = gap },
-                UI.buildPill(pace, fonts.small, false, inner_w),
-            }
-            -- Tap: the books finished that year; hold: the finished-books
-            -- menu (correct the list, set the goal). Swiping it pages the
-            -- year, like the year card.
-            table.insert(cards, { body = body, tap = openFinished, hold = openFinishedMenu, year = true })
+            local left_cell  = dataCell(left_line, openFinished)
+            addHold(left_cell, openFinishedMenu)
+            local right_cell = dataCell(right_line, openFinished)
+            addHold(right_cell, openFinishedMenu)
+
+            table.insert(sections, VerticalSpan:new{ width = Size.padding.small })
+            table.insert(sections, trackYearSwipe(wrapRow(UI.buildTwoColRow(left_cell, right_cell, layout))))
+            table.insert(sections, VerticalSpan:new{ width = Size.padding.small })
+            table.insert(sections, UI.padded(layout.padding_h,
+                Colors.hLine(layout.content_width, Size.line.thick)))
         end
 
         if show_ach then
+            -- Header "Achievements | Latest", then: "earned/total earned" |
+            -- name of the most recently earned achievement.
             local earned_count = Achievements.earnedCount()
             local ach_total    = Achievements.totalCount()
-            -- "★ new" = achievements earned since the list was last opened
-            -- (see Achievements.newCount); opening the list clears it.
-            local new_pill = (Achievements.newCount() > 0)
-                and UI.buildPill("\u{2605} " .. _("new"), fonts.small) or nil
+            -- Trailing star = achievements earned since the list was last
+            -- opened (see Achievements.newCount); tapping opens & clears it.
+            local has_new      = Achievements.newCount() > 0
+            local left_value   = formatCount(earned_count) .. "/" .. formatCount(ach_total)
+                                 .. (has_new and " ★" or "")
+            local left_line    = buildValueLine(fonts.value, fonts.label, layout.col_width,
+                left_value, _("earned"))
+
+            -- The latest achievement's icon + name, in the regular (non-bold)
+            -- explanatory-text face used for the unit labels.
             local latest = Achievements.latest()
-            local chevron = (not popup_self.readonly)
-                and TextWidget:new{ text = "\u{203A}", face = fonts.value, fgcolor = Colors.label() } or nil
-
-            local body = VerticalGroup:new{
-                align = "left",
-                UI.cardHeader("trophy", _("Achievements"), fonts.section, inner_w, false, chevron),
-                VerticalSpan:new{ width = gap },
-                valueLine(formatCount(earned_count), "/ " .. formatCount(ach_total) .. " " .. _("earned"), new_pill),
-                VerticalSpan:new{ width = gap },
-                UI.buildRoundBar(ach_total > 0 and earned_count / ach_total or 0, inner_w, bar_h),
-                VerticalSpan:new{ width = gap },
-                TextWidget:new{
-                    text = _("Latest: ") .. (latest and (latest.icon .. " " .. latest.title) or "\u{2013}"),
-                    face = fonts.small, fgcolor = Colors.label(), max_width = inner_w,
-                },
+            local right_line = TextBoxWidget:new{
+                text      = latest and (latest.icon .. "  " .. latest.title) or "–",
+                face      = fonts.label,
+                fgcolor   = Colors.label(),
+                width     = layout.col_width,
+                alignment = "left",
             }
-            table.insert(cards, { body = body, tap = openAchievements })
-        end
 
-        -- Both cards as tall as the taller one.
-        local body_h = 0
-        for _idx, c in ipairs(cards) do body_h = math.max(body_h, c.body:getSize().h) end
-        local row = HorizontalGroup:new{ align = "top" }
-        for idx, c in ipairs(cards) do
-            local frame = UI.buildCard(UI.fixedCol(c.body, inner_w, body_h), card_w)
-            local cell = InputContainer:new{
-                dimen = Geom:new{ x = 0, y = 0, w = card_w, h = frame:getSize().h },
-                frame,
-            }
-            cell.ges_events = { Tap = { GestureRange:new{ ges = "tap", range = cell.dimen } } }
-            cell.onTap = function() c.tap(); return true end
-            if c.hold then
-                table.insert(popup_self._goal_hold_targets, { w = cell, fn = c.hold })
-            end
-            if c.year then cell = trackYearSwipe(cell) end
-            if idx > 1 then
-                table.insert(row, HorizontalSpan:new{ width = layout.content_width - 2 * card_w })
-            end
-            table.insert(row, cell)
+            local left_cell  = dataCell(left_line, openAchievements)
+            local right_cell = dataCell(right_line, openAchievements)
+
+            local ach_title    = headerCell(_("Achievements"), openAchievements)
+            local latest_title = headerCell(_("Latest"), openAchievements)
+
+            UI.addSectionWithRow(sections,
+                paddedTwoColHeader(ach_title, latest_title, HEADER_BG()),
+                wrapRow(UI.buildTwoColRow(left_cell, right_cell, layout, false, { join_above = true })),
+                layout, { pad_row = false, gap_above_row = true, split_header = true })
         end
-        newBlock()
-        UI.addCard(sections, row, layout)
     end -- if show_goal or show_ach
 
     do
@@ -1010,7 +1235,6 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
             return true
         end
 
-        newBlock()
         UI.addSectionWithRow(sections,
             tappable_total_read_header,
             all_time_row, layout, { no_bottom_line = true, gap_above_row = true })
@@ -1760,7 +1984,7 @@ function ReadingInsightsPopup:_buildUI()
     if self._initial_loading then
         local title_bar_inner = TitleBar:new{
             fullscreen     = true,
-            width          = screen_w,
+            width          = content_w,
             align          = "left",
             title          = self:_titleBarText(),
             -- Hamburger menu, top left: quick access to the streak/heatmap/
@@ -1816,19 +2040,20 @@ function ReadingInsightsPopup:_buildUI()
     -- Extra pixels in force during the latest buildContent() (see the fit).
     local built_extra = 0
 
-    -- Width the page is laid out for: the screen, or less the scroll bar
-    -- once the page turns out taller than the screen (see below).
+    local cards = VS.readLookIsCards()
+    -- Cards only: width the page is laid out for - the screen, or less the
+    -- scroll bar once the page turns out taller than the screen (see below).
     local content_w = screen_w
 
-    -- `paginate`: show only the current page of the sections (see
-    -- _paginate) instead of all of them.
+    -- `paginate` (Cards only): show only the current page of the sections
+    -- (see views/cards_look/pages.lua) instead of all of them.
     local function buildContent(paginate)
         VS.Opt.built_weekly  = false
         VS.Opt.built_monthly = false
         if not auto_fit then VS.Opt.monthly_extra_px = 0 end
         built_extra = VS.Opt.monthly_extra_px or 0
 
-        local sections = buildInsightsSections(
+        local sections = (cards and Cards.buildSections or buildInsightsSections)(
             self,
             self._streaks    or { current_days=0, best_days=0, current_weeks=0, best_weeks=0 },
             self._yearly     or { days=0, pages=0, duration=0 },
@@ -1842,7 +2067,7 @@ function ReadingInsightsPopup:_buildUI()
 
         local title_bar_inner = TitleBar:new{
             fullscreen     = true,
-            width          = content_w,
+            width          = screen_w,
             align          = "left",
             title          = self:_titleBarText(),
             -- Same scale as the rest of the text (nil = TitleBar's own
@@ -1874,7 +2099,7 @@ function ReadingInsightsPopup:_buildUI()
             local group = VerticalGroup:new{
                 align = "left",
                 title_bar_inner,
-                self:_paginate(sections, screen_h - title_bar_h, fonts, content_w),
+                Pages.paginate(self, sections, screen_h - title_bar_h, fonts, content_w),
             }
             return group, group:getSize().h
         end
@@ -1943,10 +2168,10 @@ function ReadingInsightsPopup:_buildUI()
             if delta_points == 0 then break end
 
             local current = VS.Opt.auto_height or VS.DEFAULT_MONTHLY_BAR_HEIGHT
-            -- The open popup goes on pages rather than flatten the charts;
-            -- the sleep screen has one screen only, so it may shrink them
-            -- all the way.
-            local min_height = self.readonly and VS.Opt.AUTO_MIN or VS.Opt.AUTO_MIN_SCROLL
+            -- Cards: the open popup goes on pages rather than flatten the
+            -- charts; the sleep screen has one screen only, so it may shrink
+            -- them all the way.
+            local min_height = (cards and not self.readonly) and VS.Opt.AUTO_MIN_SCROLL or VS.Opt.AUTO_MIN
             local new_height = math.max(min_height,
                 math.min(VS.Opt.AUTO_MAX, current + delta_points))
 
@@ -2008,8 +2233,10 @@ function ReadingInsightsPopup:_buildUI()
         VS.Opt.settings_sig = sig
     end
 
-    -- Only the sleep screen shrinks its text: the open popup goes on pages.
-    if content_h > screen_h and self.readonly then
+    -- Cards: only the sleep screen shrinks its text, the open popup goes on
+    -- pages instead.
+    local shrink_text = not (cards and not self.readonly)
+    if content_h > screen_h and shrink_text then
         local FONT_SCALE_MIN = 0.5
         local remembered     = VS.Opt.font_scale
         local scale          = 1
@@ -2039,14 +2266,14 @@ function ReadingInsightsPopup:_buildUI()
             if scale <= FONT_SCALE_MIN then break end
         end
         VS.Opt.font_scale = best  -- nil when it never fitted: don't pin a bad guess
-    elseif self.readonly then
+    elseif shrink_text then
         VS.Opt.font_scale = nil
     end
 
-    -- Still taller than the screen: the open popup shows the sections on
-    -- pages (see _paginate); the sleep screen has shrunk its text instead.
+    -- Cards: still taller than the screen, the open popup shows the
+    -- sections on pages (see views/cards_look/pages.lua).
     self._page_count = 1
-    if content_h > screen_h and not self.readonly then
+    if cards and content_h > screen_h and not self.readonly then
         local discarded = content
         content, content_h = buildContent(true)
         pcall(function() if discarded.free then discarded:free() end end)
@@ -2055,12 +2282,12 @@ function ReadingInsightsPopup:_buildUI()
 
     local ScrollableContainer = require("ui/widget/container/scrollablecontainer")
 
-    -- A page taller than the screen (a single section taller than the
-    -- screen, or the sleep screen at its smallest text) gets a scroll bar on
-    -- the right, which takes width from the page: lay it out again that much
-    -- narrower, or its right edge would be cut off. Making it narrower can
-    -- only make it taller, so it still scrolls afterwards.
-    if content_h > screen_h then
+    -- Cards: a page taller than the screen (a single section taller than
+    -- the screen, or the sleep screen at its smallest text) gets a scroll
+    -- bar on the right, which takes width from the page: lay it out again
+    -- that much narrower, or its right edge would be cut off. Making it
+    -- narrower can only make it taller, so it still scrolls afterwards.
+    if cards and content_h > screen_h then
         content_w = screen_w - ScrollableContainer:getScrollbarWidth()
         layout = UI.buildLayout(content_w, Size.padding.large, Size.padding.large)
         local discarded = content
@@ -2068,23 +2295,25 @@ function ReadingInsightsPopup:_buildUI()
         pcall(function() if discarded.free then discarded:free() end end)
     end
 
-    -- A scrolling page would otherwise keep the popup's own gestures: long
-    -- press (the container scrolls with press-and-drag; it still scrolls
-    -- with a drag or an up/down swipe), sideways swipes (year / week) and a
-    -- swipe down at the top of the page (close).
     self.scroll_container = ScrollableContainer:new{
         dimen               = Geom:new{ w = screen_w, h = screen_h },
         show_parent         = self,
         scroll_bar_position = "right",
-        ignore_events       = { "hold", "hold_pan", "hold_release" },
+        -- Cards: a scrolling page would otherwise keep the popup's own
+        -- gestures: long press (the container scrolls with press-and-drag;
+        -- it still scrolls with a drag or an up/down swipe), sideways swipes
+        -- (year / week) and a swipe down at the top of the page (close).
+        ignore_events       = cards and { "hold", "hold_pan", "hold_release" } or nil,
         content,
     }
-    local onScrollableSwipe = self.scroll_container.onScrollableSwipe
-    self.scroll_container.onScrollableSwipe = function(sc, arg, ges)
-        local dir = ges and ges.direction
-        if dir == "east" or dir == "west" then return false end
-        if dir == "south" and (sc._scroll_offset_y or 0) <= 0 then return false end
-        return onScrollableSwipe(sc, arg, ges)
+    if cards then
+        local onScrollableSwipe = self.scroll_container.onScrollableSwipe
+        self.scroll_container.onScrollableSwipe = function(sc, arg, ges)
+            local dir = ges and ges.direction
+            if dir == "east" or dir == "west" then return false end
+            if dir == "south" and (sc._scroll_offset_y or 0) <= 0 then return false end
+            return onScrollableSwipe(sc, arg, ges)
+        end
     end
 
     self.popup_frame = FrameContainer:new{
@@ -2619,31 +2848,60 @@ function ReadingInsightsPopup:onSwipe(arg, ges_ev)
         end
         return false
     end
+    -- The year zone is one continuous full-width band: from the top of the
+    -- first year widget (year header) to the bottom of the last one (monthly
+    -- chart / reading goal row), including the gaps and divider lines between
+    -- them and the short caption rows that don't span the whole width.
+    local function inYearZone()
+        local pos = ges_ev.pos
+        if not pos then return false end
+        local top, bottom
+        for _idx, w in ipairs(self._year_swipe_targets or {}) do
+            local d = w.dimen
+            if d and d.h and d.h > 0 then
+                if not top or d.y < top then top = d.y end
+                if not bottom or d.y + d.h > bottom then bottom = d.y + d.h end
+            end
+        end
+        return top ~= nil and pos.y >= top and pos.y <= bottom
+    end
     -- Sideways swipes only act where they start:
-    --   - on the weekly card (calendar-week view)    -> page the week
-    --   - on the year card or the reading goal card  -> page the year
-    -- A sideways swipe anywhere else is ignored.
+    --   - on the weekly section (calendar-week view) -> page the week
+    --   - on the year header, its stats row, the monthly chart or the
+    --     reading goal row
+    --                                                -> page the year
+    -- A sideways swipe anywhere else is ignored. Cards: only inside the year
+    -- card or the reading goal card (the Achievements card next to the goal
+    -- card is in the band, so the band is not used there).
     if west or east then
         if VS.readWeeklyViewIsCalendar() and inside(self._week_swipe_targets) then
             if west then return self:onGoToNextWeek() end
             return self:onGoToPrevWeek()
         end
-        if inside(self._year_swipe_targets) then
+        local in_year
+        if VS.readLookIsCards() then
+            in_year = inside(self._year_swipe_targets)
+        else
+            in_year = inYearZone()
+        end
+        if in_year then
             if west then return self:onGoToNextYear() end
             return self:onGoToPrevYear()
         end
         return true
     end
-    -- Up / down: next / previous page; down on the first page closes.
-    if dir == "north" or dir == "up" then
-        if (self._page or 1) < (self._page_count or 1) then
+    -- Cards on more than one page: up / down turns the page, down on the
+    -- first page still closes.
+    local pages = self._page_count or 1
+    if pages > 1 and (dir == "north" or dir == "up") then
+        if (self._page or 1) < pages then
             return self:_goToPage((self._page or 1) + 1)
         end
         return true
     end
     if dir == "south" or dir == "down" then
         if self.readonly then return true end
-        if (self._page or 1) > 1 then
+        if pages > 1 and (self._page or 1) > 1 then
             return self:_goToPage(self._page - 1)
         end
         UIManager:close(self)
@@ -2652,130 +2910,7 @@ function ReadingInsightsPopup:onSwipe(arg, ges_ev)
     return false
 end
 
--- Splits `sections` into pages at the section starts it recorded
--- (sections._breaks), filling each page with as many whole sections as fit
--- above the page footer, and returns the current page (self._page) with the
--- footer at the bottom of `avail_h`. Sets self._page / self._page_count.
-function ReadingInsightsPopup:_paginate(sections, avail_h, fonts, width)
-    local probe = TextWidget:new{ text = "0", face = fonts.label }
-    local footer_h = probe:getSize().h + 2 * Size.padding.small
-    probe:free()
-    local room = avail_h - footer_h
-    local top_gap = Size.padding.small  -- above the first section of pages 2+
-
-    local n = #sections
-    local starts, prev = { 1 }, 1
-    for _idx, b in ipairs(sections._breaks or {}) do
-        if b > prev and b <= n then
-            table.insert(starts, b)
-            prev = b
-        end
-    end
-
-    local pages, cur, cur_h = {}, nil, 0
-    for k, first in ipairs(starts) do
-        local last = (starts[k + 1] or (n + 1)) - 1
-        local h = 0
-        for i = first, last do h = h + sections[i]:getSize().h end
-        if cur and cur_h + h > room then
-            table.insert(pages, cur)
-            cur = nil
-        end
-        if cur then
-            cur.last = last
-            cur_h = cur_h + h
-        else
-            cur = { first = first, last = last }
-            cur_h = h + ((#pages > 0) and top_gap or 0)
-        end
-    end
-    if cur then table.insert(pages, cur) end
-
-    local count = #pages
-    local page = math.max(1, math.min(self._page or 1, count))
-    self._page, self._page_count = page, count
-
-    local group = VerticalGroup:new{ align = "left" }
-    if page > 1 then table.insert(group, VerticalSpan:new{ width = top_gap }) end
-    for i = pages[page].first, pages[page].last do
-        table.insert(group, sections[i])
-    end
-    self:_dropHiddenTargets(group)
-
-    return VerticalGroup:new{
-        align = "left",
-        group,
-        VerticalSpan:new{ width = math.max(0, room - group:getSize().h) },
-        self:_buildPageFooter(fonts, width, footer_h, page, count),
-    }
-end
-
--- "‹  1 / 2  ›" under the page; the arrows turn the page.
-function ReadingInsightsPopup:_buildPageFooter(fonts, width, height, page, count)
-    local IconWidget = require("ui/widget/iconwidget")
-    local label = TextWidget:new{ text = page .. " / " .. count, face = fonts.label, fgcolor = Colors.label() }
-    local icon_sz = label:getSize().h
-    local tap_w = 3 * icon_sz
-    local popup_self = self
-    local function arrow(icon, target)
-        if target < 1 or target > count then
-            return HorizontalSpan:new{ width = tap_w }
-        end
-        local cell = InputContainer:new{
-            dimen = Geom:new{ x = 0, y = 0, w = tap_w, h = height },
-            CenterContainer:new{
-                dimen = Geom:new{ w = tap_w, h = height },
-                IconWidget:new{ icon = icon, width = icon_sz, height = icon_sz },
-            },
-        }
-        cell.ges_events = { Tap = { GestureRange:new{ ges = "tap", range = cell.dimen } } }
-        cell.onTap = function() popup_self:_goToPage(target); return true end
-        return cell
-    end
-    return CenterContainer:new{
-        dimen = Geom:new{ w = width, h = height },
-        HorizontalGroup:new{
-            align = "center",
-            arrow("chevron.left", page - 1),
-            label,
-            arrow("chevron.right", page + 1),
-        },
-    }
-end
-
--- Forgets the hold / swipe targets that are not on the shown page: they are
--- never painted, so their positions would still be the zeros they were
--- built with and would catch gestures at the top left of the screen.
-function ReadingInsightsPopup:_dropHiddenTargets(page_group)
-    local shown = {}
-    local function walk(w)
-        shown[w] = true
-        for _idx, child in ipairs(w) do
-            if type(child) == "table" then walk(child) end
-        end
-    end
-    walk(page_group)
-    local function keepShown(list, key)
-        if not list then return end
-        for i = #list, 1, -1 do
-            local w = key and list[i][key] or list[i]
-            if not shown[w] then table.remove(list, i) end
-        end
-    end
-    keepShown(self._chart_hold_targets, "w")
-    keepShown(self._timegoal_hold_targets, "w")
-    keepShown(self._week_hold_targets, "w")
-    keepShown(self._goal_hold_targets, "w")
-    keepShown(self._week_swipe_targets)
-    keepShown(self._year_swipe_targets)
-    if self._today_bar_widget and not shown[self._today_bar_widget] then
-        self._today_bar_widget = nil
-    end
-    if self._current_month_bar_widget and not shown[self._current_month_bar_widget] then
-        self._current_month_bar_widget = nil
-    end
-end
-
+-- Cards: shows page `page` of the sections (see views/cards_look/pages.lua).
 function ReadingInsightsPopup:_goToPage(page)
     self._page = page
     self:_buildUI()
@@ -3154,6 +3289,20 @@ function ReadingInsightsPopup:showInsightsModePicker()
         { value = VS.INSIGHTS_MODE_DAYS,  text = _("Days read per month") },
         { value = VS.INSIGHTS_MODE_BOOKS, text = _("Books per month") },
     }, self.mode, function(mode) popup_self:setInsightsMode(mode) end)
+    return true
+end
+
+-- Long press on the weekly chart caption: choose time or pages per day.
+function ReadingInsightsPopup:showWeeklyChartModePicker()
+    local popup_self = self
+    self:_showChoiceDialog({
+        { value = VS.WEEKLY_CHART_MODE_TIME,  text = _("Reading time per day") },
+        { value = VS.WEEKLY_CHART_MODE_PAGES, text = _("Pages per day") },
+    }, VS.normalizeWeeklyChartMode(self.weekly_chart_mode), function(mode)
+        if VS.normalizeWeeklyChartMode(popup_self.weekly_chart_mode) ~= mode then
+            popup_self:toggleWeeklyChartMode()
+        end
+    end)
     return true
 end
 

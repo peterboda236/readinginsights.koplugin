@@ -352,8 +352,17 @@ local InsightsCharts = loadModule("views/insights_charts.lua", {
     Trend = Trend, DateUtil = DateUtil,
 })
 
+-- The "Cards" look of the insights popup and its pages.
+local InsightsCards = loadModule("views/cards_look/sections.lua", {
+    Locale = Locale, Colors = Colors, VS = ViewSettings, UI = UI, Data = InsightsData,
+    Achievements = Achievements, Streak = StreakCalendar, YearShelf = YearShelf,
+    Charts = InsightsCharts, Headers = InsightsHeaders, Donut = Donut,
+})
+local InsightsPages = loadModule("views/cards_look/pages.lua", { Colors = Colors })
+
 local Insights = loadModule("views/insights_view.lua", {
-    Headers = InsightsHeaders, Charts = InsightsCharts, Donut = Donut,
+    Headers = InsightsHeaders, Charts = InsightsCharts,
+    Cards = InsightsCards, Pages = InsightsPages,
     Locale = Locale, Colors = Colors, Fonts = Fonts,
     PopupUtil = PopupUtil, VS = ViewSettings, Cache = InsightsCache, UI = UI,
     Trend = Trend, Heatmap = Heatmap, BookList = BookList, Data = InsightsData,
