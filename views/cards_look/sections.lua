@@ -31,8 +31,7 @@ local Locale, Colors, VS, UI, Data, Achievements, Streak, YearShelf, Charts, Hea
     deps.Streak, deps.YearShelf, deps.Charts, deps.Headers, deps.Donut
 
 local buildMonthlyChart, buildWeeklyChart = Charts.buildMonthlyChart, Charts.buildWeeklyChart
-local buildAlignedSectionHeader, buildWeekNavHeader =
-    Headers.buildAlignedSectionHeader, Headers.buildWeekNavHeader
+local buildWeekNavHeader = Headers.buildWeekNavHeader
 
 local _            = Locale._
 local N_           = Locale.N_
@@ -40,8 +39,6 @@ local formatNumber = Locale.formatNumber
 local formatCount  = Locale.formatCount
 local splitDurationValueUnit = Locale.splitDurationValueUnit
 local buildValueLine = UI.buildValueLine
-
-local function HEADER_BG() return Colors.headerBg() end
 
 local M = {}
 
@@ -104,7 +101,7 @@ local function buildYearHeader(popup_self, font_section, font_label, font_value,
     }
     local year_group_w = icon_sz + inner_pad + year_label:getSize().w
     if tappable_year then
-        local chevron = TextWidget:new{ text = "\u{203A}", face = font_value, fgcolor = Colors.label() }
+        local chevron = UI.chevron(font_section)
         table.insert(year_group, HorizontalSpan:new{ width = inner_pad })
         table.insert(year_group, chevron)
         year_group_w = year_group_w + inner_pad + chevron:getSize().w
@@ -687,7 +684,7 @@ function M.buildSections(popup_self, streaks, yearly_stats, year_range, monthly_
         local best_col = column(_("Best"), streakLine(bd_val, bd_unit, bw_val, bw_unit),
             record_w or VerticalSpan:new{ width = 0 })
 
-        local chevron = TextWidget:new{ text = "\u{203A}", face = fonts.value, fgcolor = Colors.label() }
+        local chevron = UI.chevron(fonts.section)
         local body = VerticalGroup:new{
             align = "left",
             UI.cardHeader("flame", _("Streaks"), fonts.section, ilayout.content_width, false,
@@ -858,8 +855,9 @@ function M.buildSections(popup_self, streaks, yearly_stats, year_range, monthly_
                     "/ " .. formatCount(goal_value) .. " " .. N_("book finished", "books finished", finished_count)),
                 VerticalSpan:new{ width = gap },
                 UI.buildRoundBar(ratio, inner_w, bar_h),
-                VerticalSpan:new{ width = gap },
+                VerticalSpan:new{ width = Size.padding.default },
                 UI.buildPill(pace, fonts.small, false, inner_w),
+                VerticalSpan:new{ width = Size.padding.default },
             }
             -- Tap: the books finished that year; hold: the finished-books
             -- menu (correct the list, set the goal). Swiping it pages the
@@ -876,7 +874,7 @@ function M.buildSections(popup_self, streaks, yearly_stats, year_range, monthly_
                 and UI.buildPill("\u{2605} " .. _("new"), fonts.small) or nil
             local latest = Achievements.latest()
             local chevron = (not popup_self.readonly)
-                and TextWidget:new{ text = "\u{203A}", face = fonts.value, fgcolor = Colors.label() } or nil
+                and UI.chevron(fonts.section) or nil
 
             local body = VerticalGroup:new{
                 align = "left",
@@ -928,57 +926,30 @@ function M.buildSections(popup_self, streaks, yearly_stats, year_range, monthly_
         local all_pages_val  = formatCount(all_pages)
         local all_pages_unit = N_("page read", "pages read", all_pages)
 
-        local left_line  = buildValueLine(fonts.value, fonts.label, layout.col_width, all_time_val,  all_time_unit)
-        local right_line = buildValueLine(fonts.value, fonts.label, layout.col_width, all_pages_val, all_pages_unit)
-
-        local left_cell = InputContainer:new{
-            dimen = Geom:new{ x = 0, y = 0, w = layout.col_width, h = left_line:getSize().h },
-            left_line,
-        }
-        left_cell.ges_events = {
-            Tap = { GestureRange:new{ ges = "tap", range = left_cell.dimen } },
-        }
-        function left_cell:onTap()
-            popup_self:showAllBooks()
-            return true
+        -- One card: header (tap: the reading heatmap, moved here from
+        -- tapping the year, see showReadingHeatmap / buildYearHeader) and
+        -- the two totals (tap: all books).
+        local ilayout = UI.cardLayout(layout)
+        local function cell(value, unit)
+            return tappableCell(UI.buildStatCell(fonts, ilayout.col_width, value, unit),
+                ilayout.col_width, function() popup_self:showAllBooks() end)
         end
+        local chevron = (not popup_self.readonly)
+            and UI.chevron(fonts.section) or nil
+        local header = tappableCell(
+            UI.cardHeader("clock", _("All time"), fonts.section, ilayout.content_width, false, chevron),
+            ilayout.content_width, function() popup_self:showReadingHeatmap() end)
 
-        local right_cell = InputContainer:new{
-            dimen = Geom:new{ x = 0, y = 0, w = layout.col_width, h = right_line:getSize().h },
-            right_line,
+        local body = VerticalGroup:new{
+            align = "left",
+            header,
+            VerticalSpan:new{ width = Size.padding.small },
+            UI.buildTwoColRow(cell(all_time_val, all_time_unit), cell(all_pages_val, all_pages_unit),
+                ilayout, false, nil, Size.line.thin),
+            VerticalSpan:new{ width = Size.padding.default },
         }
-        right_cell.ges_events = {
-            Tap = { GestureRange:new{ ges = "tap", range = right_cell.dimen } },
-        }
-        function right_cell:onTap()
-            popup_self:showAllBooks()
-            return true
-        end
-
-        local all_time_row = UI.buildTwoColRow(left_cell, right_cell, layout)
-
-        local all_book_count = all_time_stats and all_time_stats.book_count or 0
-        local header_text = _("All time")
-
-        -- Tapping the header opens the reading heatmap popup (moved here
-        -- from tapping the year, see showReadingHeatmap / buildYearHeader).
-        local total_read_header = buildAlignedSectionHeader(fonts.section, header_text, layout, HEADER_BG())
-        local tappable_total_read_header = InputContainer:new{
-            dimen = Geom:new{ x = 0, y = 0, w = total_read_header:getSize().w, h = total_read_header:getSize().h },
-            total_read_header,
-        }
-        tappable_total_read_header.ges_events = {
-            Tap = { GestureRange:new{ ges = "tap", range = tappable_total_read_header.dimen } },
-        }
-        function tappable_total_read_header:onTap()
-            popup_self:showReadingHeatmap()
-            return true
-        end
-
         newBlock()
-        UI.addSectionWithRow(sections,
-            tappable_total_read_header,
-            all_time_row, layout, { no_bottom_line = true, gap_above_row = true })
+        UI.addCard(sections, UI.buildCard(body, layout.content_width), layout)
     end
 
     return sections

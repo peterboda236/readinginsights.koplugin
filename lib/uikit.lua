@@ -558,6 +558,15 @@ function M.icon(name, size)
     }
 end
 
+-- "›" next to text in `face`. An icon, not the text glyph: the glyph sits
+-- low in its line box and would not line up with the text.
+function M.chevron(face)
+    local probe = TextWidget:new{ text = "A", face = face }
+    local h = probe:getSize().h
+    probe:free()
+    return M.icon("chevron", math.floor(h * 0.6))
+end
+
 -- A card's title row: icon, title, a pen when the card can be long-pressed
 -- (`hold_hint`), and an optional widget (e.g. a switch) on the right.
 function M.cardHeader(icon, title, face, width, hold_hint, right)
@@ -656,7 +665,7 @@ end
 -- ("▲ 1:05" in bold, then e.g. "vs prev. 7d").
 function M.buildStatCell(fonts, width, value, unit, opts)
     opts = opts or {}
-    local chevron = opts.chevron and TextWidget:new{ text = "\u{203A}", face = fonts.value, fgcolor = Colors.label() }
+    local chevron = opts.chevron and M.chevron(fonts.value)
     local chevron_w = chevron and (chevron:getSize().w + Size.padding.default) or 0
     local top = HorizontalGroup:new{
         align = "center",
