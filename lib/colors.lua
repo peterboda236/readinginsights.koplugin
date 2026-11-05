@@ -291,18 +291,20 @@ local M = {}
 
 -- Cards look: the mockup's black and light gray in place of the gray
 -- defaults. A color the user changed in Settings > Colors is used as set.
+-- Each name: the setting it follows and its Cards default.
 local CARDS_DEFAULTS = {
-    active_bar   = "#000000",
-    inactive_bar = "#CCCCCC",
-    separator    = "#000000",
+    active_bar   = { key = "active_bar",   hex = "#000000" },
+    inactive_bar = { key = "inactive_bar", hex = "#CCCCCC" },
+    border       = { key = "separator",    hex = "#000000" },
+    divider      = { key = "separator",    hex = "#CCCCCC" },
 }
 local _cards_cache = {}
 
-function M.cardsColor(key)
-    local hex = CARDS_DEFAULTS[key]
-    if not hex or readHex(key) ~= DEFAULTS[key] then return M.getColor(key) end
-    if not _cards_cache[key] then _cards_cache[key] = buildColor(hex) end
-    return _cards_cache[key]
+function M.cardsColor(name)
+    local d = CARDS_DEFAULTS[name]
+    if readHex(d.key) ~= DEFAULTS[d.key] then return M.getColor(d.key) end
+    if not _cards_cache[name] then _cards_cache[name] = buildColor(d.hex) end
+    return _cards_cache[name]
 end
 
 function M.getDefaultHex(key)
@@ -386,8 +388,9 @@ end
 
 -- Vertical divider line: hidden when the dividers are off, otherwise
 -- unchanged (the thickness setting only concerns the horizontal ones).
-function M.vLine(width, height)
-    local bar = ColorBar:new{ width = width, height = height, color = M.separator() }
+-- `color` (optional) replaces the separator color.
+function M.vLine(width, height, color)
+    local bar = ColorBar:new{ width = width, height = height, color = color or M.separator() }
     if M.separatorMode() == "off" then bar.color = nil end
     return bar
 end

@@ -57,7 +57,7 @@ local function tappableCell(widget, col_width, callback)
     return cell
 end
 
-local function buildYearHeader(popup_self, font_section, font_label, font_value, layout, year_range, selected_year)
+local function buildYearHeader(popup_self, font_section, font_label, layout, year_range, selected_year)
     local prev_available = selected_year > year_range.min_year
     local next_available = selected_year < year_range.max_year
 
@@ -265,7 +265,7 @@ local function buildYearlyRow(popup_self, yearly_stats, fonts, layout)
         return tappableCell(c, layout.col_width, function() popup_self:showBooksForYear(selected_year_for_tap) end)
     end
     return UI.buildTwoColRow(cell(left_value, left_unit), cell(right_value, right_unit),
-        layout, false, nil, Size.line.thin)
+        layout, false, nil, Size.line.thin, Colors.cardsColor("divider"))
 end
 
 function M.buildSections(popup_self, streaks, yearly_stats, year_range, monthly_data, all_time_stats, last_week_stats, last_week_daily, fonts, layout, goal_finished_count)
@@ -498,7 +498,7 @@ function M.buildSections(popup_self, streaks, yearly_stats, year_range, monthly_
                 return UI.buildTwoColRow(
                     weekCell(c[1], c[2], c[3], d and d[1]),
                     weekCell(c[4], c[5], c[6], d and d[2]),
-                    ilayout, false, row_opts, Size.line.thin)
+                    ilayout, false, row_opts, Size.line.thin, Colors.cardsColor("divider"))
             end
 
             -- First row: the metric the chart shows (switched with the
@@ -527,17 +527,21 @@ function M.buildSections(popup_self, streaks, yearly_stats, year_range, monthly_
             local header
             if cal_mode then
                 -- Paging header: previous week | shown week | next week.
+                -- Without the header fill, which the card does not use.
                 header = buildWeekNavHeader(popup_self, fonts.section, fonts.label, ilayout)
+                header.background = nil
             else
                 local header_row = UI.cardHeader("calendar", _("Last 7 days"), fonts.section,
-                    ilayout.content_width, not popup_self.readonly, switch_cell)
+                    ilayout.content_width, (not popup_self.readonly) and "menu" or false, switch_cell)
                 header = InputContainer:new{
                     dimen = Geom:new{ x = 0, y = 0, w = ilayout.content_width, h = header_row:getSize().h },
                     header_row,
                 }
-                -- A long press lists the two week views (last 7 days /
-                -- current week) to choose from.
+                -- A tap (the "▾") or a long press lists the two week views
+                -- (last 7 days / current week) to choose from.
                 if not popup_self.readonly then
+                    header.ges_events = { Tap = { GestureRange:new{ ges = "tap", range = header.dimen } } }
+                    header.onTap = function() popup_self:showWeeklyViewPicker(); return true end
                     table.insert(popup_self._week_hold_targets, {
                         w  = header,
                         fn = function() popup_self:showWeeklyViewPicker() end,
@@ -690,7 +694,7 @@ function M.buildSections(popup_self, streaks, yearly_stats, year_range, monthly_
             UI.cardHeader("flame", _("Streaks"), fonts.section, ilayout.content_width, false,
                 (not popup_self.readonly) and chevron or nil),
             VerticalSpan:new{ width = Size.padding.small },
-            UI.buildTwoColRow(current_col, best_col, ilayout, false, nil, Size.line.thin),
+            UI.buildTwoColRow(current_col, best_col, ilayout, false, nil, Size.line.thin, Colors.cardsColor("divider")),
             VerticalSpan:new{ width = Size.padding.default },
         }
         local card = UI.buildCard(body, layout.content_width)
@@ -727,7 +731,7 @@ function M.buildSections(popup_self, streaks, yearly_stats, year_range, monthly_
         local ilayout = UI.cardLayout(layout)
         local body = VerticalGroup:new{
             align = "left",
-            buildYearHeader(popup_self, fonts.section, fonts.label, fonts.value, ilayout, year_range, popup_self.selected_year),
+            buildYearHeader(popup_self, fonts.section, fonts.label, ilayout, year_range, popup_self.selected_year),
             VerticalSpan:new{ width = Size.padding.small },
             buildYearlyRow(popup_self, yearly_stats, fonts, ilayout),
         }
@@ -945,7 +949,7 @@ function M.buildSections(popup_self, streaks, yearly_stats, year_range, monthly_
             header,
             VerticalSpan:new{ width = Size.padding.small },
             UI.buildTwoColRow(cell(all_time_val, all_time_unit), cell(all_pages_val, all_pages_unit),
-                ilayout, false, nil, Size.line.thin),
+                ilayout, false, nil, Size.line.thin, Colors.cardsColor("divider")),
             VerticalSpan:new{ width = Size.padding.default },
         }
         newBlock()

@@ -132,7 +132,7 @@ end
 -- runs flush into the neighbouring row's line (see buildTwoColRow's
 -- `join_above` / `join_below`).
 -- `line_w` (optional) is the line's width, Size.line.medium by default.
-function M.buildColumnSeparator(column_gap, height, no_top_pad, no_bottom_pad, line_w)
+function M.buildColumnSeparator(column_gap, height, no_top_pad, no_bottom_pad, line_w, line_color)
     if M.classicLines() then no_top_pad, no_bottom_pad = false, false end
     local v_padding = Size.padding.default
     local top_pad    = no_top_pad    and 0 or v_padding
@@ -142,7 +142,7 @@ function M.buildColumnSeparator(column_gap, height, no_top_pad, no_bottom_pad, l
         VerticalGroup:new{
             align = "center",
             VerticalSpan:new{ width = top_pad },
-            Colors.vLine(line_w or Size.line.medium, height - top_pad - bottom_pad),
+            Colors.vLine(line_w or Size.line.medium, height - top_pad - bottom_pad, line_color),
             VerticalSpan:new{ width = bottom_pad },
         },
         HorizontalSpan:new{ width = column_gap },
@@ -270,7 +270,7 @@ end
 --                     header rows, with M.buildSplitGap carrying the line on
 --                     down to the value row under the header)
 -- `line_w` (optional): width of the vertical line.
-function M.buildTwoColRow(left_widget, right_widget, layout, hide_separator, opts, line_w)
+function M.buildTwoColRow(left_widget, right_widget, layout, hide_separator, opts, line_w, line_color)
     opts = (type(opts) == "table" and not M.classicLines()) and opts or {}
     local extra = opts.join_below or 0
     if extra > 0 then
@@ -281,7 +281,7 @@ function M.buildTwoColRow(left_widget, right_widget, layout, hide_separator, opt
     local separator = hide_separator
         and HorizontalSpan:new{ width = layout.separator_width }
         or  M.buildColumnSeparator(layout.column_gap, row_height,
-                opts.join_above and true or false, (extra > 0) or (opts.flush_bottom and true or false), line_w)
+                opts.join_above and true or false, (extra > 0) or (opts.flush_bottom and true or false), line_w, line_color)
     return HorizontalGroup:new{
         align = "center",
         M.fixedCol(left_widget,  layout.col_width, row_height),
@@ -472,7 +472,7 @@ function M.buildCard(content, width)
     return FrameContainer:new{
         background     = Blitbuffer.COLOR_WHITE,
         bordersize     = M.cardBorder(),
-        color          = grayColor(Colors.cardsColor("separator")),
+        color          = grayColor(Colors.cardsColor("border")),
         radius         = Size.radius.button,
         padding        = 0,
         padding_top    = Size.padding.small,
@@ -568,7 +568,8 @@ function M.chevron(face)
 end
 
 -- A card's title row: icon, title, a pen when the card can be long-pressed
--- (`hold_hint`), and an optional widget (e.g. a switch) on the right.
+-- (`hold_hint`; "menu" shows a "▾" instead: the card opens a list), and an
+-- optional widget (e.g. a switch) on the right.
 function M.cardHeader(icon, title, face, width, hold_hint, right)
     local probe = TextWidget:new{ text = title, face = face }
     local text_h = probe:getSize().h
@@ -593,7 +594,7 @@ function M.cardHeader(icon, title, face, width, hold_hint, right)
     table.insert(row, title_w)
     if hold_hint then
         table.insert(row, HorizontalSpan:new{ width = gap })
-        table.insert(row, M.icon("pen", pen_sz))
+        table.insert(row, M.icon(hold_hint == "menu" and "caret" or "pen", pen_sz))
     end
     if right then
         -- Measured from the parts, not row:getSize(): that would cache the
