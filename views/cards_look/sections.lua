@@ -1,6 +1,6 @@
 --[[
 Reading Insights - the "Cards" look of the insights popup (Settings >
-Reading insights popup > Look).
+Appearance > Look).
 
 Builds the same sections as insights_view.lua's buildInsightsSections (the
 Classic look), each one as a card with an icon in its header; _buildUI in

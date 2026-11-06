@@ -150,6 +150,9 @@ msgstr "Поточна серія"
 msgid "Best streak"
 msgstr "Найкраща серія"
 
+msgid "Chapter"
+msgstr "Розділ"
+
 msgid "Streaks"
 msgstr "Серії"
 

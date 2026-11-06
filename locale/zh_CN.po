@@ -97,6 +97,9 @@ msgstr "当前连续阅读"
 msgid "Best streak"
 msgstr "最长连续阅读"
 
+msgid "Chapter"
+msgstr "章节"
+
 msgid "Streaks"
 msgstr "连续阅读"
 

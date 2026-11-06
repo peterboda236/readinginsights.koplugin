@@ -135,6 +135,9 @@ msgstr "Série actuelle"
 msgid "Best streak"
 msgstr "Meilleure série"
 
+msgid "Chapter"
+msgstr "Chapitre"
+
 msgid "Streaks"
 msgstr "Séries"
 

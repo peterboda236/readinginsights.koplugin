@@ -64,10 +64,10 @@ local Screen = Device.screen
 -- header comment above).
 -- Shared modules, passed in as one named table by main.lua (see there).
 local deps = ...
-local Locale, Colors, Fonts, Prefs, BookProgress, BookCalendar, ChapterInfo, ChapterBar, SkimBar, UI, BookStatsData, VS, Donut =
+local Locale, Colors, Fonts, Prefs, BookProgress, BookCalendar, ChapterInfo, ChapterBar, SkimBar, UI, BookStatsData, VS, Donut, BookCards =
     deps.Locale, deps.Colors, deps.Fonts, deps.Prefs, deps.BookProgress,
     deps.BookCalendar, deps.ChapterInfo, deps.ChapterBar, deps.SkimBar, deps.UI,
-    deps.BookStatsData, deps.VS, deps.Donut
+    deps.BookStatsData, deps.VS, deps.Donut, deps.BookCards
 local _            = Locale._
 local N_           = Locale.N_
 local formatNumber = Locale.formatNumber
@@ -1021,12 +1021,20 @@ function ReadingStatsPopup:_buildUI()
         local frame_w  = centered and math.floor(screen_w * 0.94) or screen_w
         self._layout   = UI.buildLayout(frame_w - 2 * border_w, Size.padding.large, Size.padding.large)
         self._centered = centered
-        local sections = buildSections(self._stats, self._fonts, self._layout, self)
-
         -- Centered: keep a little white space above and below the content, at
         -- least as tall as the corner radius, so the header's / rows' square
         -- white backgrounds don't paint over the rounded corners of the border.
         local corner_pad = centered and (Size.radius.window + Size.padding.small) or 0
+        local sections
+        if BookCards and VS.readLookIsCards() then
+            sections = BookCards.buildSections(self._stats, self._fonts, self._layout, self, {
+                tappableWrap = tappableWrap, buildValueLine = buildValueLine,
+                splitHalfWidth = splitHalfWidth, buildSplitCellValue = buildSplitCellValue,
+                buildPagesSplitValue = buildPagesSplitValue, formatFraction = formatFraction,
+            }, screen_h - 2 * (border_w + corner_pad))
+        else
+            sections = buildSections(self._stats, self._fonts, self._layout, self)
+        end
         local frame = FrameContainer:new{
             background     = Blitbuffer.COLOR_WHITE,
             bordersize     = border_w,
@@ -1502,7 +1510,19 @@ end
 function ReadingStatsPopup:onSwipe(arg, ges_ev)
     if self.readonly then return true end
     local dir = ges_ev and ges_ev.direction
+    -- Cards on more than one page: up / down turns the page, down on the
+    -- first page still closes.
+    local pages = self._page_count or 1
+    if pages > 1 and (dir == "north" or dir == "up") then
+        if (self._page or 1) < pages then
+            return self:_goToPage((self._page or 1) + 1)
+        end
+        return true
+    end
     if dir == "south" or dir == "down" then
+        if pages > 1 and (self._page or 1) > 1 then
+            return self:_goToPage(self._page - 1)
+        end
         UIManager:close(self)
         return true
     end
@@ -1518,6 +1538,12 @@ function ReadingStatsPopup:onSwipe(arg, ges_ev)
         end
     end
     return false
+end
+
+function ReadingStatsPopup:_goToPage(page)
+    self._page = page
+    self:_rebuildUI()
+    return true
 end
 
 -- Standalone opener: shows the Book progress calendar directly from the

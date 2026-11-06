@@ -25,11 +25,12 @@ the rest of the book-progress settings in the view).
       the bar's height in "points" (Settings > Book progress popup > Bar
       chart height > "Chapters"), read on every build
   ChapterBar.build(chapter_info, full_width, padding_h, offset_override,
-                   on_prev, on_next)
+                   on_prev, on_next, cards)
       chapter_info    { current, total, page_counts, chapter_progress_ratio }
       offset_override  first chapter to show, for paging with the arrows
       on_prev/on_next  called with the new offset when an arrow is tapped;
                        nil when that direction has nothing more to show
+      cards            Cards look: the bars in Colors.cardsColor
 
   When chapter_info.total is less than or equal to the page-size setting,
   everything already fits in one row: the arrows are omitted entirely
@@ -149,7 +150,7 @@ function M.saveHeightSetting(value)
     end
 end
 
-function M.build(chapter_info, full_width, padding_h, offset_override, on_prev, on_next)
+function M.build(chapter_info, full_width, padding_h, offset_override, on_prev, on_next, cards)
     if not chapter_info or not chapter_info.total or chapter_info.total == 0 then
         return nil
     end
@@ -160,6 +161,8 @@ function M.build(chapter_info, full_width, padding_h, offset_override, on_prev, 
     local chapter_progress_ratio = chapter_info.chapter_progress_ratio or 0.0
 
     local col_h_max = Screen:scaleBySize(M.readHeightSetting())
+    local read_color   = cards and Colors.cardsColor("active_bar") or Colors.activeBar()
+    local unread_color = cards and Colors.cardsColor("inactive_bar") or Colors.inactiveBar()
 
     local max_pages = 0
     if page_counts then
@@ -242,16 +245,16 @@ function M.build(chapter_info, full_width, padding_h, offset_override, on_prev, 
                 table.insert(bar_row, VerticalGroup:new{
                     align = "left",
                     VerticalSpan:new{ width = math.max(0, col_h_max - bh) },
-                    unread_h > 0 and Colors.newBar(bar_w, unread_h, Colors.inactiveBar())
+                    unread_h > 0 and Colors.newBar(bar_w, unread_h, unread_color)
                         or VerticalSpan:new{ width = 0 },
-                    read_h > 0 and Colors.newBar(bar_w, read_h, Colors.activeBar())
+                    read_h > 0 and Colors.newBar(bar_w, read_h, read_color)
                         or VerticalSpan:new{ width = 0 },
                 })
             else
                 table.insert(bar_row, VerticalGroup:new{
                     align = "left",
                     VerticalSpan:new{ width = math.max(0, col_h_max - bh) },
-                    Colors.newBar(bar_w, bh, ch_idx < current and Colors.activeBar() or Colors.inactiveBar()),
+                    Colors.newBar(bar_w, bh, ch_idx < current and read_color or unread_color),
                 })
             end
         else

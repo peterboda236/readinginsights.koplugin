@@ -135,6 +135,9 @@ msgstr "Aktuális széria"
 msgid "Best streak"
 msgstr "Leghosszabb széria"
 
+msgid "Chapter"
+msgstr "Fejezet"
+
 msgid "Streaks"
 msgstr "Szériák"
 

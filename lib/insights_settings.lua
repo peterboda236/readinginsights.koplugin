@@ -724,7 +724,8 @@ function M.saveMonthlyStyleSetting(value)
     Prefs.save(M.SETTINGS_KEY_MONTHLY_STYLE, value)
 end
 
--- Look of the insights popup (Settings > Reading insights popup > Look):
+-- Look of the popups, one setting for the whole plugin
+-- (Settings > Appearance > Look):
 -- "classic" (default) or "cards" (views/cards_look/sections.lua).
 M.SETTINGS_KEY_LOOK = "reading_insights_look"
 M.LOOK_CLASSIC = "classic"

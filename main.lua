@@ -375,12 +375,17 @@ local BookCalendar = loadModule("views/book_calendar_view.lua", {
     BookProgress = BookProgress, UI = UI, CalendarData = BookCalendarData,
     DateUtil = DateUtil,
 })
+-- The "Cards" look of the Book progress popup.
+local BookProgressCards = loadModule("views/cards_look/book_progress.lua", {
+    Locale = Locale, Colors = Colors, Fonts = Fonts, VS = ViewSettings, UI = UI,
+    ChapterBar = ChapterBar, SkimBar = SkimBar, Donut = Donut, Pages = InsightsPages,
+})
 local StatsPopup = loadModule("views/book_stats_view.lua", {
     Locale = Locale, Colors = Colors, Fonts = Fonts, Prefs = Prefs,
     BookProgress = BookProgress, BookCalendar = BookCalendar,
     ChapterInfo = ChapterInfo, ChapterBar = ChapterBar,
     Donut = Donut, SkimBar = SkimBar, UI = UI,
-    BookStatsData = BookStatsData, VS = ViewSettings,
+    BookStatsData = BookStatsData, VS = ViewSettings, BookCards = BookProgressCards,
 })
 -- The last book read, kept when a book is closed so the sleep screen can
 -- draw the book popups from the file manager too (lib/lastbook.lua).

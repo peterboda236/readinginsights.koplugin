@@ -80,7 +80,7 @@ local Locale, Colors, Fonts, PopupUtil, VS, Cache, UI, Trend, Heatmap, BookList,
 -- The charts and header rows this view lays out (views/insights_charts.lua,
 -- views/insights_headers.lua - split out of this file).
 local Charts, Headers = deps.Charts, deps.Headers
--- The "Cards" look (Settings > Reading insights popup > Look) and its pages
+-- The "Cards" look (Settings > Appearance > Look) and its pages
 -- (views/cards_look/sections.lua, views/cards_look/pages.lua).
 local Cards, Pages = deps.Cards, deps.Pages
 local buildMonthlyChart, buildWeeklyChart = Charts.buildMonthlyChart, Charts.buildWeeklyChart

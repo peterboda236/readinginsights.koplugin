@@ -135,6 +135,9 @@ msgstr "Current streak"
 msgid "Best streak"
 msgstr "Best streak"
 
+msgid "Chapter"
+msgstr "Chapter"
+
 msgid "Streaks"
 msgstr "Streaks"
 

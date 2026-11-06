@@ -1,13 +1,14 @@
 --[[
-Reading Insights - pages for the "Cards" look of the insights popup.
+Reading Insights - pages for the "Cards" look of the insights popup and
+the Book progress popup.
 
 When the sections don't fit one screen, the Cards look shows them on pages
 instead of scrolling: swipe up / down or the arrows of the "‹ 1 / 2 ›"
-footer turn the page (see insights_view.lua's onSwipe and _goToPage). A
-page break only falls where a section starts (sections._breaks, recorded by
-views/cards_look/sections.lua).
+footer turn the page (see the popups' onSwipe and _goToPage). A page break
+only falls where a section starts (sections._breaks, recorded by
+views/cards_look/sections.lua and views/cards_look/book_progress.lua).
 
-Loaded once by main.lua and handed to the insights view as `deps.Pages`.
+Loaded once by main.lua and handed to both as `deps.Pages`.
 ]]--
 
 local CenterContainer = require("ui/widget/container/centercontainer")
@@ -63,7 +64,8 @@ end
 -- Forgets the hold / swipe targets that are not on the shown page: they are
 -- never painted, so their positions would still be the zeros they were
 -- built with and would catch gestures at the top left of the screen.
-local function dropHiddenTargets(self, page_group)
+-- `fields`: names of single tap targets on `self` to clear the same way.
+local function dropHiddenTargets(self, page_group, fields)
     local shown = {}
     local function walk(w)
         shown[w] = true
@@ -91,13 +93,17 @@ local function dropHiddenTargets(self, page_group)
     if self._current_month_bar_widget and not shown[self._current_month_bar_widget] then
         self._current_month_bar_widget = nil
     end
+    for _idx, name in ipairs(fields or {}) do
+        if self[name] and not shown[self[name]] then self[name] = nil end
+    end
 end
 
 -- Splits `sections` into pages at the section starts it recorded
 -- (sections._breaks), filling each page with as many whole sections as fit
 -- above the page footer, and returns the current page (self._page) with the
 -- footer at the bottom of `avail_h`. Sets self._page / self._page_count.
-function M.paginate(self, sections, avail_h, fonts, width)
+-- `fields`: see dropHiddenTargets.
+function M.paginate(self, sections, avail_h, fonts, width, fields)
     local probe = TextWidget:new{ text = "0", face = fonts.label }
     local footer_h = probe:getSize().h + 2 * Size.padding.small
     probe:free()
@@ -141,7 +147,7 @@ function M.paginate(self, sections, avail_h, fonts, width)
     for i = pages[page].first, pages[page].last do
         table.insert(group, sections[i])
     end
-    dropHiddenTargets(self, group)
+    dropHiddenTargets(self, group, fields)
 
     return VerticalGroup:new{
         align = "left",

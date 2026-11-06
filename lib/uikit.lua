@@ -569,8 +569,9 @@ end
 
 -- A card's title row: icon, title, a pen when the card can be long-pressed
 -- (`hold_hint`; "menu" shows a "▾" instead: the card opens a list), and an
--- optional widget (e.g. a switch) on the right.
-function M.cardHeader(icon, title, face, width, hold_hint, right)
+-- optional widget (e.g. a switch) on the right. `after_title` (optional) sits
+-- right after the title, e.g. a "›" when the right side holds a switch.
+function M.cardHeader(icon, title, face, width, hold_hint, right, after_title)
     local probe = TextWidget:new{ text = title, face = face }
     local text_h = probe:getSize().h
     probe:free()
@@ -581,6 +582,7 @@ function M.cardHeader(icon, title, face, width, hold_hint, right)
     if icon then fixed = fixed + icon_sz + gap end
     if hold_hint then fixed = fixed + gap + pen_sz end
     if right then fixed = fixed + gap + right:getSize().w end
+    if after_title then fixed = fixed + gap + after_title:getSize().w end
 
     local title_w = TextWidget:new{
         text = title, face = face, fgcolor = Colors.section(),
@@ -592,6 +594,10 @@ function M.cardHeader(icon, title, face, width, hold_hint, right)
         table.insert(row, HorizontalSpan:new{ width = gap })
     end
     table.insert(row, title_w)
+    if after_title then
+        table.insert(row, HorizontalSpan:new{ width = gap })
+        table.insert(row, after_title)
+    end
     if hold_hint then
         table.insert(row, HorizontalSpan:new{ width = gap })
         table.insert(row, M.icon(hold_hint == "menu" and "caret" or "pen", pen_sz))
