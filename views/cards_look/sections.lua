@@ -615,40 +615,8 @@ function M.buildSections(popup_self, streaks, yearly_stats, year_range, monthly_
         local ilayout = UI.cardLayout(layout)
         local col_w   = ilayout.col_width
 
-        -- "5 days · 3 weeks" on one line, or the two on separate lines
-        -- when that does not fit the column.
         local function streakLine(d_val, d_unit, w_val, w_unit)
-            if d_val == "" and w_val == "" then
-                return buildValueLine(fonts.value, fonts.label, col_w, d_val, d_unit)
-            end
-            local function width(v, u)
-                local tv = TextWidget:new{ text = v, face = fonts.value }
-                local tu = TextWidget:new{ text = u, face = fonts.label }
-                local w = tu:getSize().w + 1
-                if v ~= "" then w = w + tv:getSize().w + Size.padding.large end
-                tv:free()
-                tu:free()
-                return w
-            end
-            local d_w, w_w = width(d_val, d_unit), width(w_val, w_unit)
-            local dot = TextWidget:new{ text = "\u{00B7}", face = fonts.label, fgcolor = Colors.label() }
-            local gap = Size.padding.default
-            if d_w + w_w + dot:getSize().w + 2 * gap <= col_w then
-                return HorizontalGroup:new{
-                    align = "center",
-                    buildValueLine(fonts.value, fonts.label, d_w, d_val, d_unit),
-                    HorizontalSpan:new{ width = gap },
-                    dot,
-                    HorizontalSpan:new{ width = gap },
-                    buildValueLine(fonts.value, fonts.label, w_w, w_val, w_unit),
-                }
-            end
-            dot:free()
-            return VerticalGroup:new{
-                align = "left",
-                buildValueLine(fonts.value, fonts.label, col_w, d_val, d_unit),
-                buildValueLine(fonts.value, fonts.label, col_w, w_val, w_unit),
-            }
+            return UI.buildDaysWeeksLine(fonts, col_w, d_val, d_unit, w_val, w_unit)
         end
 
         local probe = TextWidget:new{ text = "0", face = fonts.small }

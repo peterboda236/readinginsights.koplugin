@@ -62,8 +62,8 @@ local InfoMessage = require("ui/widget/infomessage")
 -- Locale/Colors/Fonts/UI/Data/Prefs the insights view uses, so this popup
 -- reads the same colors, fonts and reading data.
 local deps = ...
-local Locale, Colors, Fonts, UI, Data, Prefs, VS, BookList =
-    deps.Locale, deps.Colors, deps.Fonts, deps.UI, deps.Data, deps.Prefs, deps.VS, deps.BookList
+local Locale, Colors, Fonts, UI, Data, Prefs, VS, BookList, Cards =
+    deps.Locale, deps.Colors, deps.Fonts, deps.UI, deps.Data, deps.Prefs, deps.VS, deps.BookList, deps.Cards
 -- Frame, rounded corners and shadow of the covers (Settings > Appearance >
 -- Covers), the same look as in the Book info popup.
 local CoverFrame, CoverThumbs = deps.CoverFrame, deps.CoverThumbs
@@ -379,8 +379,10 @@ end
 --     caller. Day cells sit flush horizontally - no gap between the
 --     consecutive days of a week - while a small `row_gap` separates the week
 --     rows.
+--   cards (optional, Cards look): { outline = function(w, h) }, drawn over
+--     today's cell.
 local function buildStreakMonthGrid(year, month, read_set, fonts, cell_w, cell_h, week_start_wd,
-        show_week, week_col_w, day_books, cover_for, show_bar)
+        show_week, week_col_w, day_books, cover_for, show_bar, cards)
     local today_str = os.date("%Y-%m-%d")
     -- The day number is smaller than the Book progress calendar's: it only
     -- labels the cell, the cover is the picture.
@@ -661,7 +663,7 @@ local function buildStreakMonthGrid(year, month, read_set, fonts, cell_w, cell_h
             end
 
             local kind = bar_color and barKindAt(cell_day) or nil
-            table.insert(row, DayCell:new{
+            local day_cell = DayCell:new{
                 cell_w = cell_w, cell_h = cell_h,
                 num_widget = TextWidget:new{
                     text = tostring(tonumber(day_str:sub(9, 10))),
@@ -682,7 +684,15 @@ local function buildStreakMonthGrid(year, month, read_set, fonts, cell_w, cell_h
                 round_r   = (bar_color and barKindAt(cell_day + 1) ~= kind) and (kind == "read" or barKindAt(cell_day + 1) == nil) and true or false,
                 under_l   = (kind == "read" and barKindAt(cell_day - 1) == "gap") and Colors.streakGap() or nil,
                 under_r   = (kind == "read" and barKindAt(cell_day + 1) == "gap") and Colors.streakGap() or nil,
-            })
+            }
+            if cards and day_str == today_str then
+                day_cell = OverlapGroup:new{
+                    dimen = Geom:new{ w = cell_w, h = cell_h },
+                    day_cell,
+                    cards.outline(cell_w, cell_h),
+                }
+            end
+            table.insert(row, day_cell)
         end
         table.insert(grid, row)
     end
@@ -1027,6 +1037,7 @@ function StreakHistoryPopup:_fixedHeight()
         + self._caption_h + 2 * group + (Size.line.thick - Size.line.thin)
         + self._info_row_h
         + Screen:scaleBySize(24)
+        + (self._cards and 2 * (2 * UI.cardBorder() + 2 * Size.padding.small + Size.padding.default) or 0)
 end
 
 -- Rows per page: the usual page size, but never more than the screen can hold
@@ -1105,7 +1116,12 @@ function StreakHistoryPopup:_buildRow(item, stats, max_value, fonts)
     local value_widget = TextWidget:new{ text = value_str,  face = fonts.small, fgcolor = Colors.value() }
 
     local ratio = (max_value > 0) and (value / max_value) or 0
-    local bar = buildDayBar(ratio, self._bar_w) or HorizontalSpan:new{ width = self._bar_w }
+    local bar
+    if self._cards then
+        bar = UI.buildRoundBar(ratio, self._bar_w, math.floor(STREAK_HISTORY_BAR_HEIGHT * 0.7))
+    else
+        bar = buildDayBar(ratio, self._bar_w) or HorizontalSpan:new{ width = self._bar_w }
+    end
 
     local row_h = math.max(date_widget:getSize().h, value_widget:getSize().h, bar:getSize().h)
 
@@ -1219,13 +1235,15 @@ end
 
 function StreakHistoryPopup:_rebuild()
     local fonts = self.fonts
+    self._cards = Cards and VS.readLookIsCards() and true or false
     if not self._cols then self:_measure(fonts) end
     local cont_w = self.content_width
 
-    -- Columns of the unit being shown.
+    -- Columns of the unit being shown (Cards look: the rows sit inside a card).
     local cols = self._cols[self.unit]
     self._date_col_w, self._value_col_w = cols.date_w, cols.value_w
-    self._bar_w = self._rows_w - self._date_col_w - self._value_col_w - 2 * self._col_gap
+    local rows_w = self._cards and UI.cardInnerWidth(self._rows_w) or self._rows_w
+    self._bar_w = rows_w - self._date_col_w - self._value_col_w - 2 * self._col_gap
     if self._bar_w < Screen:scaleBySize(20) then self._bar_w = Screen:scaleBySize(20) end
 
     local items = self:_items()
@@ -1258,64 +1276,75 @@ function StreakHistoryPopup:_rebuild()
     local page_items = {}
     for i = start_i, end_i do page_items[#page_items + 1] = items[i] end
 
-    local content = VerticalGroup:new{ align = "left" }
-    -- thick: the heavier line the insights page draws above its section
-    -- headers (used above the streak caption).
-    local function divider(thick)
-        table.insert(content, VerticalSpan:new{ width = Size.padding.small })
-        table.insert(content, Colors.hLine(cont_w, thick and Size.line.thick or Size.line.thin))
-        table.insert(content, VerticalSpan:new{ width = Size.padding.small })
-    end
-
-    -- Title: the date range this page covers, with the ‹ / › paging arrows.
-    -- The list is newest-first, so the range reads oldest (the page's last
-    -- entry) to newest (its first). Tapping the title jumps back to page 1.
-    local range_str = "\xE2\x80\x93"
-    if #page_items > 0 then
-        range_str = self:_rangeText(page_items, self.unit, 1, #page_items)
-    end
-    local prev_available = self.page_index > 1
-    local next_available = self.page_index < self._total_pages
-    local range_header, range_left_w, range_right_w, range_header_h = buildStreakCalHeader(
-        range_str, cont_w, fonts.section, prev_available, next_available)
-    table.insert(content, range_header)
-    -- Both arrow tap zones (below) stay registered at their reserved slot
-    -- width, whether or not an arrow is drawn there right now: a fast second
-    -- tap landing just as the last page removes that arrow is then routed to
-    -- _goToPage (which no-ops) instead of falling through to close the popup.
-    self._range_header_h = range_header_h
-    self._range_left_w, self._range_right_w = range_left_w, range_right_w
-
-    -- The caption naming the view (a tap lists the four views).
-    table.insert(content, self:_buildViewCaption(cont_w, fonts))
-
-    -- The rows.
-    local rows = VerticalGroup:new{}
-    for _, item in ipairs(page_items) do
-        local row = self:_buildRow(item, self:_statsOf(item), max_value, fonts)
-        table.insert(rows, row)
-    end
-    table.insert(content, rows)
-
-    divider(true)
-
-    -- Caption (which streak, in which view) above the line of the summary row.
-    local caption = TextWidget:new{
-        text = self:_caption(), face = fonts.section, fgcolor = Colors.section(),
-        max_width = cont_w,
-    }
-    table.insert(content, caption)   -- left-aligned
-
-    -- No line under the caption (lines go above headings only); the same
-    -- spacing is kept.
-    if UI.classicLines() then
-        divider()
+    local content
+    self._list_dy, self._list_h = nil, nil
+    if self._cards then
+        local range_str = "\xE2\x80\x93"
+        if #page_items > 0 then
+            range_str = self:_rangeText(page_items, self.unit, 1, #page_items)
+        end
+        content = Cards.buildHistoryContent(self, fonts, cont_w, page_items, max_value, range_str,
+            self.page_index > 1, self.page_index < self._total_pages, viewLabel(self.unit, self.metric))
     else
-        table.insert(content, VerticalSpan:new{ width = 2 * Size.padding.small + Size.line.thin })
-    end
+        content = VerticalGroup:new{ align = "left" }
+        -- thick: the heavier line the insights page draws above its section
+        -- headers (used above the streak caption).
+        local function divider(thick)
+            table.insert(content, VerticalSpan:new{ width = Size.padding.small })
+            table.insert(content, Colors.hLine(cont_w, thick and Size.line.thick or Size.line.thin))
+            table.insert(content, VerticalSpan:new{ width = Size.padding.small })
+        end
 
-    local info = self:_buildInfo(cont_w, fonts)
-    if info then table.insert(content, info) end
+        -- Title: the date range this page covers, with the ‹ / › paging arrows.
+        -- The list is newest-first, so the range reads oldest (the page's last
+        -- entry) to newest (its first). Tapping the title jumps back to page 1.
+        local range_str = "\xE2\x80\x93"
+        if #page_items > 0 then
+            range_str = self:_rangeText(page_items, self.unit, 1, #page_items)
+        end
+        local prev_available = self.page_index > 1
+        local next_available = self.page_index < self._total_pages
+        local range_header, range_left_w, range_right_w, range_header_h = buildStreakCalHeader(
+            range_str, cont_w, fonts.section, prev_available, next_available)
+        table.insert(content, range_header)
+        -- Both arrow tap zones (below) stay registered at their reserved slot
+        -- width, whether or not an arrow is drawn there right now: a fast second
+        -- tap landing just as the last page removes that arrow is then routed to
+        -- _goToPage (which no-ops) instead of falling through to close the popup.
+        self._range_header_h = range_header_h
+        self._range_left_w, self._range_right_w = range_left_w, range_right_w
+
+        -- The caption naming the view (a tap lists the four views).
+        table.insert(content, self:_buildViewCaption(cont_w, fonts))
+
+        -- The rows.
+        local rows = VerticalGroup:new{}
+        for _, item in ipairs(page_items) do
+            local row = self:_buildRow(item, self:_statsOf(item), max_value, fonts)
+            table.insert(rows, row)
+        end
+        table.insert(content, rows)
+
+        divider(true)
+
+        -- Caption (which streak, in which view) above the line of the summary row.
+        local caption = TextWidget:new{
+            text = self:_caption(), face = fonts.section, fgcolor = Colors.section(),
+            max_width = cont_w,
+        }
+        table.insert(content, caption)   -- left-aligned
+
+        -- No line under the caption (lines go above headings only); the same
+        -- spacing is kept.
+        if UI.classicLines() then
+            divider()
+        else
+            table.insert(content, VerticalSpan:new{ width = 2 * Size.padding.small + Size.line.thin })
+        end
+
+        local info = self:_buildInfo(cont_w, fonts)
+        if info then table.insert(content, info) end
+    end
 
     self.box_content = FrameContainer:new{
         background     = Blitbuffer.COLOR_WHITE,
@@ -1352,10 +1381,11 @@ function StreakHistoryPopup:_rebuild()
         delta = 1,
     })
 
-    local list_y = header_y + self._range_header_h
-    -- The caption's tap zone spans the whole row.
+    local list_y = header_y + (self._list_dy or self._range_header_h)
+    -- The caption's tap zone spans the whole row (Cards look: the title row
+    -- of the rows card).
     self._list_zones = {
-        { dimen = Geom:new{ x = header_x, y = list_y, w = cont_w, h = self._list_row_h } },
+        { dimen = Geom:new{ x = header_x, y = list_y, w = cont_w, h = self._list_h or self._list_row_h } },
     }
 end
 
@@ -1839,60 +1869,70 @@ function StreakDatePopup:_rebuild()
     -- and the calendar's day cells can take all the rest of the screen:
     --   the most recent reading day (left-aligned), the divider line, then the
     --   current / best streak section.
+    local cards = Cards and VS.readLookIsCards()
     local tail = {}
-    -- (The "Last read: <date>" line used to sit here; it is gone so the
-    -- calendar above gets its height - larger covers.)
-    table.insert(tail, Colors.newBar(cont_w, Size.padding.large, Blitbuffer.COLOR_WHITE))
-    table.insert(tail, Colors.hLine(cont_w, Size.line.thick))
-    -- (No separate gap here: the standard section header below carries its
-    -- own small padding above and below its text, like in every other view.)
-
-    -- Current and best streak side by side.
-    --   [ Current streak | Best streak ]   section headers
-    --   ---------------------------------   thin divider
-    --   [ days | weeks   | days | weeks ]
-    -- The days|weeks value line (fonts.value) sets the height (row_h) of the
-    -- value row, so both streaks' cells are the same height.
-    local inner_gap = layout.column_gap
-    local half_col  = math.floor((col_w - (2 * inner_gap + Size.line.medium)) / 2)
-    local row_h = buildValueLine(fonts.value, fonts.label, half_col, "0", N_("day", "days", 0)):getSize().h
-
-    -- The shared section header (UI.buildSectionHeader), exactly as on the
-    -- Reading insights page and the Book progress popup.
-    local cur_hdr  = UI.buildSectionHeader(fonts.section, _("Current streak"), col_w, 0, Colors.headerBg())
-    local best_hdr = UI.buildSectionHeader(fonts.section, _("Best streak"),    col_w, 0, Colors.headerBg())
-    -- Everything from here through the days|weeks row is the tappable
-    -- "Current streak" / "Best streak" section (see the streak_zones block
-    -- below): remembering where it starts lets that block measure its
-    -- on-screen height without hardcoding every row/spacer size twice.
-    local tail_streak_start = #tail + 1
-    -- No line under the headers; the vertical divider runs on unbroken from
-    -- the header row, through the gap, into the value row.
-    table.insert(tail, UI.buildTwoColRow(cur_hdr, best_hdr, layout, false, { flush_bottom = true }))
-    if UI.classicLines() then
-        table.insert(tail, VerticalSpan:new{ width = Size.padding.small })
-        table.insert(tail, Colors.hLine(cont_w, Size.line.thin))
-        table.insert(tail, VerticalSpan:new{ width = Size.padding.small })
+    local tail_streak_start, tail_streak_end
+    if cards then
+        -- Cards look: one Streaks card (tap a column: its history).
+        table.insert(tail, Colors.newBar(cont_w, Size.padding.large, Blitbuffer.COLOR_WHITE))
+        table.insert(tail, Cards.buildStreaksCard(fonts, layout, cont_w, self.cur_days, self.cur_weeks,
+            self.best_days, self.best_weeks, self.readonly))
+        tail_streak_start, tail_streak_end = #tail, #tail
     else
-        table.insert(tail, UI.buildSplitGap(layout, 2 * Size.padding.small, false))
-    end
+        -- (The "Last read: <date>" line used to sit here; it is gone so the
+        -- calendar above gets its height - larger covers.)
+        table.insert(tail, Colors.newBar(cont_w, Size.padding.large, Blitbuffer.COLOR_WHITE))
+        table.insert(tail, Colors.hLine(cont_w, Size.line.thick))
+        -- (No separate gap here: the standard section header below carries its
+        -- own small padding above and below its text, like in every other view.)
 
-    -- Stats row: each streak's column split into days | weeks, at row_h.
-    local function daysWeeksCell(days, weeks)
-        local dline = buildValueLine(fonts.value, fonts.label, half_col, formatCount(days),  N_("day",  "days",  days))
-        local wline = buildValueLine(fonts.value, fonts.label, half_col, formatCount(weeks), N_("week", "weeks", weeks))
-        return HorizontalGroup:new{
-            align = "center",
-            UI.fixedCol(dline, half_col, row_h),
-            UI.buildColumnSeparator(inner_gap, row_h),
-            UI.fixedCol(wline, half_col, row_h),
-        }
+        -- Current and best streak side by side.
+        --   [ Current streak | Best streak ]   section headers
+        --   ---------------------------------   thin divider
+        --   [ days | weeks   | days | weeks ]
+        -- The days|weeks value line (fonts.value) sets the height (row_h) of the
+        -- value row, so both streaks' cells are the same height.
+        local inner_gap = layout.column_gap
+        local half_col  = math.floor((col_w - (2 * inner_gap + Size.line.medium)) / 2)
+        local row_h = buildValueLine(fonts.value, fonts.label, half_col, "0", N_("day", "days", 0)):getSize().h
+
+        -- The shared section header (UI.buildSectionHeader), exactly as on the
+        -- Reading insights page and the Book progress popup.
+        local cur_hdr  = UI.buildSectionHeader(fonts.section, _("Current streak"), col_w, 0, Colors.headerBg())
+        local best_hdr = UI.buildSectionHeader(fonts.section, _("Best streak"),    col_w, 0, Colors.headerBg())
+        -- Everything from here through the days|weeks row is the tappable
+        -- "Current streak" / "Best streak" section (see the streak_zones block
+        -- below): remembering where it starts lets that block measure its
+        -- on-screen height without hardcoding every row/spacer size twice.
+        tail_streak_start = #tail + 1
+        -- No line under the headers; the vertical divider runs on unbroken from
+        -- the header row, through the gap, into the value row.
+        table.insert(tail, UI.buildTwoColRow(cur_hdr, best_hdr, layout, false, { flush_bottom = true }))
+        if UI.classicLines() then
+            table.insert(tail, VerticalSpan:new{ width = Size.padding.small })
+            table.insert(tail, Colors.hLine(cont_w, Size.line.thin))
+            table.insert(tail, VerticalSpan:new{ width = Size.padding.small })
+        else
+            table.insert(tail, UI.buildSplitGap(layout, 2 * Size.padding.small, false))
+        end
+
+        -- Stats row: each streak's column split into days | weeks, at row_h.
+        local function daysWeeksCell(days, weeks)
+            local dline = buildValueLine(fonts.value, fonts.label, half_col, formatCount(days),  N_("day",  "days",  days))
+            local wline = buildValueLine(fonts.value, fonts.label, half_col, formatCount(weeks), N_("week", "weeks", weeks))
+            return HorizontalGroup:new{
+                align = "center",
+                UI.fixedCol(dline, half_col, row_h),
+                UI.buildColumnSeparator(inner_gap, row_h),
+                UI.fixedCol(wline, half_col, row_h),
+            }
+        end
+        table.insert(tail, UI.buildTwoColRow(
+            daysWeeksCell(self.cur_days,  self.cur_weeks),
+            daysWeeksCell(self.best_days, self.best_weeks),
+            layout, false, { join_above = true }))
+        tail_streak_end = #tail
     end
-    table.insert(tail, UI.buildTwoColRow(
-        daysWeeksCell(self.cur_days,  self.cur_weeks),
-        daysWeeksCell(self.best_days, self.best_weeks),
-        layout, false, { join_above = true }))
-    local tail_streak_end = #tail
     local tail_h = 0
     for _i, w in ipairs(tail) do tail_h = tail_h + w:getSize().h end
 
@@ -1918,8 +1958,15 @@ function StreakDatePopup:_rebuild()
         -- 32-bit os.time() can handle.
         local next_available = self.month_index < #self.months
             or mo.year < LAST_CALENDAR_YEAR or mo.month < 12
-        local header, left_w, right_w, header_h =
-            buildStreakCalHeader(title_str, cont_w, fonts.section, prev_available, next_available)
+        local header, left_w, right_w, header_h
+        if cards then
+            local _lf, _rf
+            header, _lf, _rf, left_w, right_w, header_h =
+                UI.buildNavHeader(title_str, cont_w, fonts.section, prev_available, next_available)
+        else
+            header, left_w, right_w, header_h =
+                buildStreakCalHeader(title_str, cont_w, fonts.section, prev_available, next_available)
+        end
 
         -- The day cells take the screen height that is left: all of it minus
         -- the paddings, the month header, the weekday row, the gaps between
@@ -1937,7 +1984,7 @@ function StreakDatePopup:_rebuild()
         local grid, grid_meta = buildStreakMonthGrid(mo.year, mo.month, self.read_set,
             fonts, cell_w, cell_h, self.week_start_wd, show_week, week_col_w,
             self.day_books, function(book, w, h) return self:_coverFor(book, w, h, self.lazy_covers) end,
-            showStreakBar())
+            showStreakBar(), cards and { outline = UI.buildOutline } or nil)
         grid_meta.header_h = header_h
         grid_meta.drawn_w  = grid:getSize().w
         self._grid_meta = grid_meta

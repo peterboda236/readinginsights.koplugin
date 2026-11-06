@@ -306,11 +306,15 @@ local BookInfoData = loadModule("lib/bookinfo_data.lua",
 -- drawn by widgets/coverframe.lua (the Book card plugin's widget) for the Book
 -- info popup, the Reading calendar's days and the Reading shelf alike.
 local CoverFrame   = loadModule("widgets/coverframe.lua", { Colors = Colors })
+-- The "Cards" look of the Reading calendar (streak) popup.
+local StreakCalendarCards = loadModule("views/cards_look/streak_calendar.lua",
+    { Locale = Locale, Colors = Colors, UI = UI })
 local StreakCalendar = loadModule("views/streak_calendar_view.lua", {
     Locale = Locale, Colors = Colors, Fonts = Fonts, UI = UI,
     Data = InsightsData, Prefs = Prefs, VS = ViewSettings,
     BookList = BookList, BookInfoData = BookInfoData, Ratings = Ratings,
     CoverFrame = CoverFrame, CoverThumbs = CoverThumbs, DateUtil = DateUtil,
+    Cards = StreakCalendarCards,
 })
 
 -- Records: the queries and their cache (lib/records_data.lua, loaded above

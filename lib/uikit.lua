@@ -671,6 +671,42 @@ function M.buildOutline(width, height)
     return Outline:new{ width = width, height = height }
 end
 
+-- "5 days · 3 weeks" on one line, or the two on separate lines when that
+-- does not fit `width` (Cards Streaks cards). fonts: value / label.
+function M.buildDaysWeeksLine(fonts, width, d_val, d_unit, w_val, w_unit)
+    if d_val == "" and w_val == "" then
+        return M.buildValueLine(fonts.value, fonts.label, width, d_val, d_unit)
+    end
+    local function partWidth(v, u)
+        local tv = TextWidget:new{ text = v, face = fonts.value }
+        local tu = TextWidget:new{ text = u, face = fonts.label }
+        local w = tu:getSize().w + 1
+        if v ~= "" then w = w + tv:getSize().w + Size.padding.large end
+        tv:free()
+        tu:free()
+        return w
+    end
+    local d_w, w_w = partWidth(d_val, d_unit), partWidth(w_val, w_unit)
+    local dot = TextWidget:new{ text = "\u{00B7}", face = fonts.label, fgcolor = Colors.label() }
+    local gap = Size.padding.default
+    if d_w + w_w + dot:getSize().w + 2 * gap <= width then
+        return HorizontalGroup:new{
+            align = "center",
+            M.buildValueLine(fonts.value, fonts.label, d_w, d_val, d_unit),
+            HorizontalSpan:new{ width = gap },
+            dot,
+            HorizontalSpan:new{ width = gap },
+            M.buildValueLine(fonts.value, fonts.label, w_w, w_val, w_unit),
+        }
+    end
+    dot:free()
+    return VerticalGroup:new{
+        align = "left",
+        M.buildValueLine(fonts.value, fonts.label, width, d_val, d_unit),
+        M.buildValueLine(fonts.value, fonts.label, width, w_val, w_unit),
+    }
+end
+
 -- A round dot `size` pixels wide: filled, or just its outline.
 local Dot = Widget:extend{
     size   = 0,
