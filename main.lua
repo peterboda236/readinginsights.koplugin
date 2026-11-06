@@ -260,9 +260,13 @@ local InsightsData = loadModule("lib/insights_data.lua",
 -- way round, through BookList.bind() (see booklist_view.lua).
 local Trend = loadModule("views/trend_view.lua",
     { Colors = Colors, Locale = Locale, VS = ViewSettings })
+-- The "Cards" look of the Reading habits (heatmap) popup.
+local HeatmapCards = loadModule("views/cards_look/heatmap.lua", {
+    Colors = Colors, Locale = Locale, VS = ViewSettings, UI = UI, Data = InsightsData,
+})
 local Heatmap = loadModule("views/heatmap_view.lua", {
     Colors = Colors, Fonts = Fonts, Locale = Locale, VS = ViewSettings, UI = UI,
-    Data = InsightsData, Cache = InsightsCache,
+    Data = InsightsData, Cache = InsightsCache, Cards = HeatmapCards,
 })
 local BookList = loadModule("views/booklist_view.lua", {
     Colors = Colors, Locale = Locale, VS = ViewSettings, UI = UI,
