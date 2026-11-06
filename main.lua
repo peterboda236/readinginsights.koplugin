@@ -374,10 +374,12 @@ local Insights = loadModule("views/insights_view.lua", {
     Prefs = Prefs, Streak = StreakCalendar, Records = Records,
     YearShelf = YearShelf,
 })
+-- The "Cards" look of the Book progress calendar.
+local BookCalendarCards = loadModule("views/cards_look/book_calendar.lua", { Colors = Colors, UI = UI })
 local BookCalendar = loadModule("views/book_calendar_view.lua", {
     Locale = Locale, Colors = Colors, Fonts = Fonts, Prefs = Prefs, VS = ViewSettings,
     BookProgress = BookProgress, UI = UI, CalendarData = BookCalendarData,
-    DateUtil = DateUtil,
+    DateUtil = DateUtil, Cards = BookCalendarCards,
 })
 -- The "Cards" look of the Book progress popup.
 local BookProgressCards = loadModule("views/cards_look/book_progress.lua", {

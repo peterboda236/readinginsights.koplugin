@@ -612,6 +612,65 @@ function M.cardHeader(icon, title, face, width, hold_hint, right, after_title)
     return row
 end
 
+-- A period / month header for the Cards look: the title centered between
+-- chevron icons; a hidden arrow keeps its slot, so the title doesn't move
+-- while paging. Returns the header, the left / right arrow frames (nil when
+-- hidden), the two slot widths and the header height - what the popups place
+-- their tap zones with.
+function M.buildNavHeader(title_str, width, face, prev_available, next_available)
+    local title_w = TextWidget:new{ text = title_str, face = face, fgcolor = Colors.section() }
+    local icon_sz = math.floor(title_w:getSize().h * 0.7)
+    local pad = Size.padding.default
+    local slot_w = icon_sz + 2 * pad
+
+    local function arrow(icon, visible)
+        if not visible then return HorizontalSpan:new{ width = slot_w }, nil end
+        local frame = FrameContainer:new{
+            bordersize = 0, margin = 0, padding = 0,
+            padding_left = pad, padding_right = pad,
+            IconWidget:new{ icon = icon, width = icon_sz, height = icon_sz },
+        }
+        return frame, frame
+    end
+    local left, left_frame   = arrow("chevron.left", prev_available)
+    local right, right_frame = arrow("chevron.right", next_available)
+
+    local rest = math.max(0, width - 2 * slot_w - title_w:getSize().w)
+    local header = FrameContainer:new{
+        bordersize = 0, margin = 0, padding = 0,
+        padding_top = Size.padding.small, padding_bottom = Size.padding.small,
+        HorizontalGroup:new{
+            align = "center",
+            left,
+            HorizontalSpan:new{ width = math.floor(rest / 2) },
+            title_w,
+            HorizontalSpan:new{ width = rest - math.floor(rest / 2) },
+            right,
+        },
+    }
+    return header, left_frame, right_frame, slot_w, slot_w, header:getSize().h
+end
+
+-- A thin rounded outline in the card border color, `width` x `height`; drawn
+-- over a cell to mark it (today in the Cards calendars).
+local Outline = Widget:extend{
+    width  = 0,
+    height = 0,
+}
+
+function Outline:getSize()
+    return Geom:new{ w = self.width, h = self.height }
+end
+
+function Outline:paintTo(bb, x, y)
+    bb:paintBorder(x, y, self.width, self.height, Size.border.default,
+        grayColor(Colors.cardsColor("border")), Size.radius.button)
+end
+
+function M.buildOutline(width, height)
+    return Outline:new{ width = width, height = height }
+end
+
 -- A round dot `size` pixels wide: filled, or just its outline.
 local Dot = Widget:extend{
     size   = 0,

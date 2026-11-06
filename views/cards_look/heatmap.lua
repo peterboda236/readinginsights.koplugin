@@ -15,13 +15,9 @@ local Blitbuffer = require("ffi/blitbuffer")
 local Device = require("device")
 local FrameContainer = require("ui/widget/container/framecontainer")
 local Geom = require("ui/geometry")
-local HorizontalGroup = require("ui/widget/horizontalgroup")
-local HorizontalSpan = require("ui/widget/horizontalspan")
-local IconWidget = require("ui/widget/iconwidget")
 local LeftContainer = require("ui/widget/container/leftcontainer")
 local RightContainer = require("ui/widget/container/rightcontainer")
 local Size = require("ui/size")
-local TextWidget = require("ui/widget/textwidget")
 local VerticalGroup = require("ui/widget/verticalgroup")
 local VerticalSpan = require("ui/widget/verticalspan")
 local Screen = Device.screen
@@ -34,43 +30,6 @@ local Colors, Locale, VS, UI, Data = deps.Colors, deps.Locale, deps.VS, deps.UI,
 local _ = Locale._
 
 local M = {}
-
--- Period title with chevron icons at the edges; an arrow's slot is kept
--- when it is hidden, so the title doesn't move while paging. Returns the
--- same values as Heatmap.buildHeatmapSectionHeader.
-local function buildPeriodHeader(title_str, width, face, prev_available, next_available)
-    local title_w = TextWidget:new{ text = title_str, face = face, fgcolor = Colors.section() }
-    local icon_sz = math.floor(title_w:getSize().h * 0.7)
-    local pad = Size.padding.default
-    local slot_w = icon_sz + 2 * pad
-
-    local function arrow(icon, visible)
-        if not visible then return HorizontalSpan:new{ width = slot_w }, nil end
-        local frame = FrameContainer:new{
-            bordersize = 0, margin = 0, padding = 0,
-            padding_left = pad, padding_right = pad,
-            IconWidget:new{ icon = icon, width = icon_sz, height = icon_sz },
-        }
-        return frame, frame
-    end
-    local left, left_frame   = arrow("chevron.left", prev_available)
-    local right, right_frame = arrow("chevron.right", next_available)
-
-    local rest = math.max(0, width - 2 * slot_w - title_w:getSize().w)
-    local header = FrameContainer:new{
-        bordersize = 0, margin = 0, padding = 0,
-        padding_top = Size.padding.small, padding_bottom = Size.padding.small,
-        HorizontalGroup:new{
-            align = "center",
-            left,
-            HorizontalSpan:new{ width = math.floor(rest / 2) },
-            title_w,
-            HorizontalSpan:new{ width = rest - math.floor(rest / 2) },
-            right,
-        },
-    }
-    return header, left_frame, right_frame, slot_w, slot_w, header:getSize().h
-end
 
 local function rightAlign(widget, width)
     return RightContainer:new{ dimen = Geom:new{ w = width, h = widget:getSize().h }, widget }
@@ -104,7 +63,7 @@ function M.buildBox(H, popup_self, periods_back, force_fresh, width_override, da
     local older_available = periods_back < Heatmap.heatmapMaxPeriodsBack(year_range.min_year, year_range.min_month)
     local newer_available = periods_back > 0
 
-    local header, left_frame, right_frame, left_w, right_w, header_h = buildPeriodHeader(
+    local header, left_frame, right_frame, left_w, right_w, header_h = UI.buildNavHeader(
         H.periodTitle(start_t, end_t), content_width, fonts.section, older_available, newer_available)
 
     local function card(card_header, rows)
