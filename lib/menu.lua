@@ -630,7 +630,8 @@ function M.build(self, deps)
         }
     end
 
-    -- Look of the popup: Classic (default) or Cards.
+    -- Look of the popups (Settings > Appearance > Look): Classic (default)
+    -- or Cards. One setting for the whole plugin.
     do
         local VSet = deps.ViewSettings
         local function lookEntry(value, text)
@@ -647,7 +648,7 @@ function M.build(self, deps)
                 local v = VSet.readLookIsCards() and _("Cards") or _("Classic")
                 return _("Look") .. ": " .. v
             end,
-            help_text = _("Classic: the original layout. Cards: each section in a card with an icon; when the page doesn't fit the screen it is split into pages (swipe up / down)."),
+            help_text = _("Two looks for the popups: Classic, the original layout, or Cards, with the sections in cards."),
             keep_menu_open = true,
             sub_item_table = {
                 lookEntry(VSet.LOOK_CLASSIC, _("Classic")),
@@ -1554,7 +1555,8 @@ function M.build(self, deps)
     -- Settings menu layout, top to bottom:
     --
     --   Date & time                how dates, times and weeks are shown
-    --   Appearance                 colors, fonts and the look of covers
+    --   Appearance                 Classic / Cards look, colors, fonts and
+    --                              the look of covers
     --   -------------------------
     --   one group per view         Reading insights popup, Heatmap & time of
     --                              day, Book progress popup, Book progress
@@ -1567,8 +1569,6 @@ function M.build(self, deps)
     -- Bar chart heights sit with the view they belong to: Reading insights
     -- popup > Bar chart height, Book progress popup > Bar chart height.
     local insights_popup_sub_item_table = layout({
-        I.look,
-        "-",
         I.hamburger,
         "-",
         I.goal, I.goal_bar, I.reading_goal, I.achievements, I.ach_refresh,
@@ -1600,7 +1600,7 @@ function M.build(self, deps)
         I.sleep_screen,
         "-",
         I.date_time,
-        group(_("Appearance"), { I.colors, I.fonts, I.covers, I.divider_lines }),
+        group(_("Appearance"), { I.look, I.colors, I.fonts, I.covers, I.divider_lines }),
         "-",
         {
             text = _("Reading insights popup"),

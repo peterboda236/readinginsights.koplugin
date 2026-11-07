@@ -200,6 +200,32 @@ settings → Sleep screen*:
 
 Everything is queried and drawn before the device actually goes to sleep.
 
+## 🃏 Cards look
+
+*Settings ▸ Appearance ▸ Look* switches the popups between two looks:
+**Classic** (the default, as in the screenshots at the top) and **Cards**, with the
+sections in cards. Both show the same data; only the look changes. Cards
+covers Reading insights, Book progress, Reading habits, the Reading calendar
+and its streaks, the Book progress calendar, Achievements and the 8-week
+trend; the other popups look the same in both.
+
+- **Pages** — in Cards, when Reading insights or Book progress doesn't fit the
+  screen it is split into pages instead of scrolling: swipe up for the next
+  page, swipe down for the previous one (on the first page it closes the
+  popup), or tap the arrows of the *‹ 1 / 2 ›* footer.
+
+<img width="192" alt="Reading insights, Cards look, page 1" src="https://github.com/user-attachments/assets/d0654a83-e0ac-4bcc-9dae-71983fa023f7" />
+<img width="192" alt="Reading insights, Cards look, page 2" src="https://github.com/user-attachments/assets/ff31d316-89ab-4b87-b7e3-3540b28f0482" />
+<img width="192" alt="Book progress, Cards look" src="https://github.com/user-attachments/assets/db43db9a-5594-4bce-8621-89aa9420ed4b" />
+<img width="192" alt="Reading habits, Cards look" src="https://github.com/user-attachments/assets/c68119f0-cc92-489b-bd7c-5bbe258d0245" />
+
+More Cards screenshots
+
+<img width="192" alt="Reading calendar, Cards look" src="https://github.com/user-attachments/assets/4d9e38b5-ab04-4a41-b7d3-67fed5d148a7" />
+<img width="192" alt="Book progress calendar, Cards look" src="https://github.com/user-attachments/assets/a20dfb0d-a0f0-4ab7-b8f1-5371a8842dc4" />
+<img width="192" alt="Achievements, Cards look" src="https://github.com/user-attachments/assets/25b510e6-677a-4d2e-aeff-b5848b4847bf" />
+<img width="192" alt="8-week trend, Cards look" src="https://github.com/user-attachments/assets/cd840001-b4b7-4dfe-9cb1-94ddd99f6c3c" />
+
 ## 🔄 Updates
 
 *Tools → Reading insights → Updates* checks GitHub for new releases and installs
@@ -247,9 +273,10 @@ moved here automatically):
 
 - **Date & time** — 12/24-hour clock, first day of the week, week numbers and
   the date format.
-- **Appearance** — **Colors** (a hex colour, or a touch colour wheel, for every
-  bar, line and label the popups draw) and **Fonts** (your own font and size
-  for each text role).
+- **Appearance** — **Look** (*Classic* or *Cards*, see
+  [Cards look](#-cards-look)), **Colors** (a hex colour, or a touch colour
+  wheel, for every bar, line and label the popups draw) and **Fonts** (your own
+  font and size for each text role).
 - **Reading insights popup** — which sections it shows (goals, achievements,
   hamburger menu), the *Last 7 days* and *Months* chart styles, and the bar
   chart heights.

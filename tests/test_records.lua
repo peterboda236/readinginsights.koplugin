@@ -12,6 +12,12 @@ Run from the plugin root: lua5.1 tests/test_records.lua
 
 local files = {}
 package.preload["datastorage"] = function() return { getSettingsDir = function() return "/tmp/rec" end } end
+-- lib/paths.lua registers itself as this module when main.lua loads it; the
+-- records cache is <settings>/readinginsights/cache/records.lua.
+local CACHE = "/tmp/rec/readinginsights/cache/records.lua"
+package.preload["readinginsights_paths"] = function()
+    return { cacheFile = function(name) return "/tmp/rec/readinginsights/cache/" .. name end }
+end
 package.preload["luasettings"] = function()
     local LS = {}; LS.__index = LS
     function LS:open(p) files[p] = files[p] or {}; return setmetatable({ data = files[p] }, LS) end
@@ -111,8 +117,8 @@ check("streak end", d.streak.end_date, "2026-01-02")
 check("total seconds", d.total_secs, 12600)
 
 -- the cache is written, and a second call with an unchanged DB reuses it
-check("cache file written", files["/tmp/rec/readinginsights_records_cache.lua"] ~= nil, true)
-local stored = files["/tmp/rec/readinginsights_records_cache.lua"]
+check("cache file written", files[CACHE] ~= nil, true)
+local stored = files[CACHE]
 check("fingerprint stored: row count", stored.hw_row_count, 3)
 check("fingerprint stored: watermark", stored.hw_max_time, 1000)
 stored.longest_sec = 424242            -- tamper: proves the read came from cache
@@ -123,7 +129,7 @@ check("unchanged DB -> served from cache", d2.longest.duration_sec, 424242)
 table.remove(db.rows)
 local d3 = RecordsData.load()
 check("deleted rows force a recompute", d3.longest.duration_sec, 7200)
-check("recompute rewrote the row count", files["/tmp/rec/readinginsights_records_cache.lua"].hw_row_count, 2)
+check("recompute rewrote the row count", files[CACHE].hw_row_count, 2)
 
 -- an empty history must not blow up
 db.rows = {}; db.max_time = 0
@@ -134,7 +140,7 @@ check("empty history: no streak", d4.streak.days, 0)
 -- A failed read must never be cached as "nothing was ever read". It used to
 -- be, alongside a fingerprint that stayed valid, so the Records popup went
 -- to zeros and stayed there for good while the insights popup kept working.
-files["/tmp/rec/readinginsights_records_cache.lua"] = nil
+files[CACHE] = nil
 db.rows = {
     { date = "2026-03-01", seconds = 600, pages = 10 },
     { date = "2026-03-02", seconds = 900, pages = 20 },
@@ -147,7 +153,7 @@ check("failed read reports nothing", d5.total_secs, 0)
 -- soon as loadCache looks at it, so it is the stored fingerprint - the thing
 -- that would make the zeros stick - that has to be absent, not the table.
 check("...and is not cached",
-      (files["/tmp/rec/readinginsights_records_cache.lua"] or {}).hw_max_time, nil)
+      (files[CACHE] or {}).hw_max_time, nil)
 db.fail = false
 local d6 = RecordsData.load()
 check("next open recovers the real total", d6.total_secs, 1500)
@@ -155,19 +161,19 @@ check("...and the real streak", d6.streak.days, 2)
 
 -- A cache poisoned by an older version heals itself: zeros stored against a
 -- fingerprint that still matches a database which plainly has rows.
-local poisoned = files["/tmp/rec/readinginsights_records_cache.lua"]
+local poisoned = files[CACHE]
 poisoned.total_secs, poisoned.longest_sec = 0, 0
 poisoned.best_day_pages, poisoned.streak_days = 0, 0
 local d7 = RecordsData.load()
 check("poisoned cache is recomputed", d7.total_secs, 1500)
-check("...and overwritten on disk", files["/tmp/rec/readinginsights_records_cache.lua"].total_secs, 1500)
+check("...and overwritten on disk", files[CACHE].total_secs, 1500)
 
 -- A genuinely empty database with a matching all-zero cache stays cached:
 -- the heal above must key off the row count, not off the zeros alone.
-files["/tmp/rec/readinginsights_records_cache.lua"] = nil
+files[CACHE] = nil
 db.rows = {}; db.max_time = 0
 RecordsData.load()
-local empty_cache = files["/tmp/rec/readinginsights_records_cache.lua"]
+local empty_cache = files[CACHE]
 check("empty history is cached", empty_cache ~= nil, true)
 empty_cache.longest_sec = 424242       -- tamper: proves the read came from cache
 check("empty history stays cached", RecordsData.load().longest.duration_sec, 424242)
@@ -176,7 +182,7 @@ check("empty history stays cached", RecordsData.load().longest.duration_sec, 424
 -- is what actually emptied the popup in the field: the cache was read inside
 -- the database call, so a database that wouldn't open took the good cached
 -- records down with it and every row showed a dash.
-files["/tmp/rec/readinginsights_records_cache.lua"] = nil
+files[CACHE] = nil
 db.rows = {
     { date = "2026-05-01", seconds = 1200, pages = 30 },
     { date = "2026-05-02", seconds = 1800, pages = 40 },
@@ -192,7 +198,7 @@ check("...and the cached dates", d9.best_day.date, "2026-05-02")
 db.no_conn = false
 
 -- ...but with no cache at all there is still nothing to show, and no crash.
-files["/tmp/rec/readinginsights_records_cache.lua"] = nil
+files[CACHE] = nil
 db.no_conn = true
 local d10 = RecordsData.load()
 check("unreadable DB, no cache -> zeros", d10.total_secs, 0)
@@ -201,22 +207,22 @@ db.no_conn = false
 
 -- clearCache (the Records popup's "hold the title to reload") drops the
 -- stored fingerprint, so the next load recounts instead of trusting it.
-files["/tmp/rec/readinginsights_records_cache.lua"] = nil
+files[CACHE] = nil
 db.rows = { { date = "2026-06-01", seconds = 2400, pages = 50 } }
 db.max_time = 6000
 RecordsData.load()
-local kept = files["/tmp/rec/readinginsights_records_cache.lua"]
+local kept = files[CACHE]
 kept.longest_sec = 424242              -- tamper: a plain load would serve this
 check("tampered cache is served before clearing", RecordsData.load().longest.duration_sec, 424242)
 RecordsData.clearCache()
 check("clearCache drops the fingerprint",
-      files["/tmp/rec/readinginsights_records_cache.lua"].hw_max_time, nil)
+      files[CACHE].hw_max_time, nil)
 check("clearCache drops the values too",
-      files["/tmp/rec/readinginsights_records_cache.lua"].longest_sec, nil)
+      files[CACHE].longest_sec, nil)
 check("next load recounts from the DB", RecordsData.load().longest.duration_sec, 2400)
 
 -- An unparseable date can't take the whole popup down with it.
-files["/tmp/rec/readinginsights_records_cache.lua"] = nil
+files[CACHE] = nil
 db.rows = {
     { date = "2026-04-01", seconds = 300, pages = 5 },
     { date = "not-a-date", seconds = 300, pages = 5 },

@@ -43,9 +43,9 @@ local Screen          = Device.screen
 
 -- Shared modules, passed in as one named table by main.lua (see there).
 local deps = ...
-local Locale, Colors, Fonts, Prefs, BookProgress, UI, CalendarData, VS =
+local Locale, Colors, Fonts, Prefs, BookProgress, UI, CalendarData, VS, Cards =
     deps.Locale, deps.Colors, deps.Fonts, deps.Prefs, deps.BookProgress,
-    deps.UI, deps.CalendarData, deps.VS
+    deps.UI, deps.CalendarData, deps.VS, deps.BookCalendarCards
 local DateUtil = deps.DateUtil
 local _            = Locale._
 local N_           = Locale.N_
@@ -228,7 +228,11 @@ end
 -- otherwise take (right of the day number). When both would apply to the
 -- same cell, the checkmark wins and the finish_day flag is suppressed for
 -- that cell - see is_book_finished_day below.
-local function buildBookCalendarGrid(daily_map, year, month, day_font, small_font, content_width, total_pages, cumulative_ratios, finish_day, start_day, progress_deltas, adjacent)
+--
+-- cards (optional, Cards look): { bar = function(ratio, w, h), active,
+-- inactive (faded bar colors), outline = function(w, h) } - the day bar,
+-- and an outline drawn over today's cell.
+local function buildBookCalendarGrid(daily_map, year, month, day_font, small_font, content_width, total_pages, cumulative_ratios, finish_day, start_day, progress_deltas, adjacent, cards)
     local week_start_wd = Prefs.weekStartWday() -- 0=Sun, 1=Mon
     local gap    = Screen:scaleBySize(2)
     local cols   = 7
@@ -396,7 +400,8 @@ local function buildBookCalendarGrid(daily_map, year, month, day_font, small_fon
                         width = bar_w, height = bar_h,
                         thick = math.max(1, math.floor(bar_h / 2)),
                         fill_w = math.max(1, math.floor(bar_w * adj_ratio)),
-                        active = Colors.activeBar(), inactive = Colors.inactiveBar(),
+                        active = cards and cards.active or Colors.activeBar(),
+                        inactive = cards and cards.inactive or Colors.inactiveBar(),
                     }
                 else
                     adj_bar = spacer(bar_h)
@@ -450,7 +455,9 @@ local function buildBookCalendarGrid(daily_map, year, month, day_font, small_fon
                 -- shows under days with nothing read.
                 local ratio = cumulative_ratios and cumulative_ratios[cell_day]
                 local bar_row
-                if ratio and ratio > 0 then
+                if ratio and ratio > 0 and cards then
+                    bar_row = cards.bar(ratio, bar_w, bar_h)
+                elseif ratio and ratio > 0 then
                     local fill_w  = math.max(1, math.floor(bar_w * ratio))
                     local empty_w = bar_w - fill_w
                     bar_row = HorizontalGroup:new{
@@ -487,6 +494,9 @@ local function buildBookCalendarGrid(daily_map, year, month, day_font, small_fon
                     cell_inner[1],
                     cell_inner[2],
                 }
+                if cards and is_today then
+                    table.insert(cell_content, cards.outline(cell_w, cell_h))
+                end
                 if is_finish_day and not is_book_finished_day then
                     -- Flag glyph placed immediately to the right of the
                     -- centered day number. The day number is centered in
@@ -825,6 +835,15 @@ function BookCalendarPopup:_rebuild()
     -- pass (see the landscape handling further down) comes out taller than
     -- the screen.
     local function build(content_width)
+        if Cards and VS.readLookIsCards() then
+            return Cards.build({
+                buildGrid = buildBookCalendarGrid, cellModeCaption = cellModeCaption,
+                readCellMode = readCalendarCellModeSetting,
+            }, content_width, inner_padding, title_str, section_font, prev_available, next_available, {
+                daily_map, self.year, self.month, day_font, small_font, nil, self.total_pages,
+                cumulative_ratios, finish_day, start_day, progress_deltas, adjacent,
+            })
+        end
         local title_row, left_arrow_frame, right_arrow_frame, left_w, right_w, header_h = buildBookCalendarHeader(
             title_str, content_width, section_font, prev_available, next_available)
 

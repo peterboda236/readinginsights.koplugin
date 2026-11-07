@@ -150,6 +150,9 @@ msgstr "Поточна серія"
 msgid "Best streak"
 msgstr "Найкраща серія"
 
+msgid "Chapter"
+msgstr "Розділ"
+
 msgid "Streaks"
 msgstr "Серії"
 
@@ -2117,8 +2120,8 @@ msgstr "Вигляд"
 msgid "Cards"
 msgstr "Картки"
 
-msgid "Classic: the original layout. Cards: each section in a card with an icon; when the page doesn't fit the screen it is split into pages (swipe up / down)."
-msgstr "Класичний: початковий вигляд. Картки: кожен розділ у картці з іконкою; якщо сторінка не вміщується на екрані, її поділено на сторінки (проведіть угору / вниз)."
+msgid "Two looks for the popups: Classic, the original layout, or Cards, with the sections in cards."
+msgstr "Два вигляди вікон: Класичний, початковий вигляд, або Картки, з розділами в картках."
 
 msgid "Daily / weekly goal ring"
 msgstr "Кільце денної / тижневої мети"

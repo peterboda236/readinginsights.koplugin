@@ -135,6 +135,9 @@ msgstr "Sequência atual"
 msgid "Best streak"
 msgstr "Melhor sequência"
 
+msgid "Chapter"
+msgstr "Capítulo"
+
 msgid "Streaks"
 msgstr "Sequências"
 
@@ -2068,8 +2071,8 @@ msgstr "Aspeto"
 msgid "Cards"
 msgstr "Cartões"
 
-msgid "Classic: the original layout. Cards: each section in a card with an icon; when the page doesn't fit the screen it is split into pages (swipe up / down)."
-msgstr "Clássico: o esquema original. Cartões: cada secção num cartão com um ícone; quando a página não cabe no ecrã, é dividida em páginas (deslizar para cima / baixo)."
+msgid "Two looks for the popups: Classic, the original layout, or Cards, with the sections in cards."
+msgstr "Dois aspetos para as janelas: Clássico, o esquema original, ou Cartões, com as secções em cartões."
 
 msgid "Daily / weekly goal ring"
 msgstr "Anel da meta diária / semanal"

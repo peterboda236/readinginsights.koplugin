@@ -62,8 +62,8 @@ local Screen = Device.screen
 -- the view: the view opens M.Popup, so a require back into the view
 -- would be circular.
 local deps = ...
-local Colors, Fonts, Locale, VS, UI, Data, Cache =
-    deps.Colors, deps.Fonts, deps.Locale, deps.VS, deps.UI, deps.Data, deps.Cache
+local Colors, Fonts, Locale, VS, UI, Data, Cache, Cards =
+    deps.Colors, deps.Fonts, deps.Locale, deps.VS, deps.UI, deps.Data, deps.Cache, deps.HeatmapCards
 local _ = Locale._
 
 -- How long the popup waits, once it knows there is genuinely new reading
@@ -865,7 +865,8 @@ end
 -- name + hour-range label underneath. Same signature and return shape as
 -- M.buildDayPartHeatmapWidget (widget + left offset) so the caller and the
 -- shared legend can treat the two interchangeably.
-function M.buildDayPartChartWidget(weekday_hour_map, fonts, max_width, mode)
+-- `cards` (Cards look): all bars in Colors.cardsColor("active_bar").
+function M.buildDayPartChartWidget(weekday_hour_map, fonts, max_width, mode, cards)
     local gap        = Screen:scaleBySize(2)
     local num_bars   = #DAYPARTS
     local wd_label_w = getWeekdayLabelWidth(fonts)
@@ -929,6 +930,7 @@ function M.buildDayPartChartWidget(weekday_hour_map, fonts, max_width, mode)
         end
         local is_peak  = (secs == shown_max and shown_max > 0)
         local bar_color = is_peak and Colors.activeBar() or Colors.inactiveBar()
+        if cards then bar_color = Colors.cardsColor("active_bar") end
         local value_text = barValueText(mode, totals[i], total_secs, ptotals[i])
 
         -- Value label sitting directly on top of the bar. The pair is
@@ -984,7 +986,7 @@ end
 -- top, and the start hour of its span underneath. Same signature and
 -- return shape as M.buildDayPartChartWidget so the caller treats them
 -- interchangeably.
-function M.buildHourlyChartWidget(weekday_hour_map, fonts, max_width, mode)
+function M.buildHourlyChartWidget(weekday_hour_map, fonts, max_width, mode, cards)
     local gap        = Screen:scaleBySize(2)
     local wd_label_w = getWeekdayLabelWidth(fonts)
     local num_bars   = 12
@@ -1034,6 +1036,7 @@ function M.buildHourlyChartWidget(weekday_hour_map, fonts, max_width, mode)
         end
         local is_peak   = (secs == shown_max and shown_max > 0)
         local bar_color = is_peak and Colors.activeBar() or Colors.inactiveBar()
+        if cards then bar_color = Colors.cardsColor("active_bar") end
 
         -- An empty span reads 0:00 (or 0%), not a dash.
         local value_text = secs > 0 and barValueText(mode, totals[i], total_secs, ptotals[i])
@@ -1073,7 +1076,7 @@ end
 -- since it sits below that chart and the popup has to stay on screen.
 local WEEKDAY_KEYS = { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" } -- index = weekday_hour_map row
 
-function M.buildWeekdayChartWidget(weekday_hour_map, fonts, max_width, mode)
+function M.buildWeekdayChartWidget(weekday_hour_map, fonts, max_width, mode, cards)
     local order = weekdayRowOrder()
     local num_bars = #order
 
@@ -1122,6 +1125,7 @@ function M.buildWeekdayChartWidget(weekday_hour_map, fonts, max_width, mode)
         end
         local is_peak   = (secs == shown_max and shown_max > 0)
         local bar_color = is_peak and Colors.activeBar() or Colors.inactiveBar()
+        if cards then bar_color = Colors.cardsColor("active_bar") end
         local value_text = barValueText(mode, totals[i], total_secs, ptotals[i])
 
         table.insert(bars_row, BottomContainer:new{
@@ -1353,11 +1357,36 @@ local function getHeatmapData(popup_self, start_t, end_t, force_fresh)
     return daily_map, weekday_hour_map
 end
 
+-- Title of the period header: "May – Oct 2026", spelled out per year across
+-- a Dec/Jan boundary, "2026-05 – 2026-10" with the ISO date format.
+local function periodTitle(start_t, end_t)
+    local st, et = os.date("*t", start_t), os.date("*t", end_t)
+    local T = require("ffi/util").template
+    -- Month abbreviations are already lower-cased where the language
+    -- wants it (see MONTH_NAMES_SHORT above).
+    local m1, m2 = MONTH_NAMES_SHORT[st.month], MONTH_NAMES_SHORT[et.month]
+    if Locale.readDateFormatSetting() == "ymd_dash" then
+        -- ISO: "2026-04 – 2026-10", the year on both ends so a range that
+        -- crosses New Year reads the same way as one inside a year.
+        return Locale.formatYearShortMonth(st.year, st.month)
+            .. " \xE2\x80\x93 " .. Locale.formatYearShortMonth(et.year, et.month)
+    elseif st.year == et.year then
+        return T(_("%1 – %2 %3"), m1, m2, tostring(et.year))
+    end
+    return T(_("%1 %2 – %3 %4"), m1, tostring(st.year), m2, tostring(et.year))
+end
+
 -- width_override: optional box width in pixels instead of the usual 94% of
 -- the screen (see the landscape fit in M.buildHeatmapBoxContent below);
 -- data: the table this function returned last time, so a second pass reuses
 -- the loaded data instead of fetching it again.
 local function buildBox(popup_self, periods_back, force_fresh, width_override, data)
+    if Cards and VS.readLookIsCards() then
+        return Cards.buildBox({
+            Heatmap = M, getHeatmapData = getHeatmapData, getCachedFonts = getCachedFonts,
+            barCaption = barCaption, peakHourText = peakHourText, periodTitle = periodTitle,
+        }, popup_self, periods_back, force_fresh, width_override, data)
+    end
     M._bars_built = 0
     local start_t, end_t, daily_map, weekday_hour_map
     if data then
@@ -1493,23 +1522,7 @@ local function buildBox(popup_self, periods_back, force_fresh, width_override, d
     -- Range is "Mon – Mon YYYY", or spelled out per year across a Dec/Jan
     -- boundary. cal_left_frame/cal_right_frame are nil when an arrow is
     -- hidden; M.Popup uses their presence (not .dimen) to place tap zones.
-    local st, et = os.date("*t", start_t), os.date("*t", end_t)
-    local period_title
-    local T = require("ffi/util").template
-    -- Month abbreviations are already lower-cased where the language
-    -- wants it (see MONTH_NAMES_SHORT above).
-    local m1, m2 = MONTH_NAMES_SHORT[st.month], MONTH_NAMES_SHORT[et.month]
-    if Locale.readDateFormatSetting() == "ymd_dash" then
-        -- ISO: "2026-04 – 2026-10", the year on both ends so a range that
-        -- crosses New Year reads the same way as one inside a year.
-        period_title = Locale.formatYearShortMonth(st.year, st.month)
-            .. " \xE2\x80\x93 " .. Locale.formatYearShortMonth(et.year, et.month)
-    elseif st.year == et.year then
-        period_title = T(_("%1 – %2 %3"), m1, m2, tostring(et.year))
-    else
-        period_title = T(_("%1 %2 – %3 %4"),
-            m1, tostring(st.year), m2, tostring(et.year))
-    end
+    local period_title = periodTitle(start_t, end_t)
 
     local calendar_header, cal_left_frame, cal_right_frame, cal_left_w, cal_right_w, cal_header_h =
         M.buildHeatmapSectionHeader(period_title, content_width, fonts.section, older_available, newer_available)

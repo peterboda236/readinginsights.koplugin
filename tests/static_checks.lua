@@ -176,9 +176,18 @@ for name, path in main:gmatch("\n([%w_]+)%s*=%s*loadModule%(\"([^\"]+)\"") do
 end
 
 local deps_file = {}        -- deps key -> file
-for args in main:gmatch("loadModule%(\"[^\"]+\"%s*,%s*{(.-)}") do
+-- The same per consumer: the same key can name different modules for
+-- different files (Data is the insights queries for most views but the
+-- Book info data for the Book info popup), and the consumer's own mapping
+-- is the one that counts.
+local consumer_deps = {}    -- consumer file -> deps key -> file
+for consumer, args in main:gmatch("loadModule%(\"([^\"]+)\"%s*,%s*{(.-)}") do
+    consumer_deps[consumer] = consumer_deps[consumer] or {}
     for key, value in args:gmatch("([%w_]+)%s*=%s*([%w_]+)") do
-        if module_file[value] then deps_file[key] = module_file[value] end
+        if module_file[value] then
+            deps_file[key] = module_file[value]
+            consumer_deps[consumer][key] = module_file[value]
+        end
     end
 end
 
@@ -192,10 +201,16 @@ local function exportsOf(path)
         -- Modules name their table M, except updater.lua which calls it
         -- Updater; take whatever name the file returns at the end.
         local self_name = src:match("\nreturn ([%w_]+)%s*$") or "M"
-        for name in src:gmatch("\nfunction " .. self_name .. "%.([%w_]+)") do t[name] = true end
-        for name in src:gmatch("\n" .. self_name .. "%.([%w_]+)%s*=") do t[name] = true end
+        -- `.` and `:` both: a class's methods are called on the class too
+        -- (StatsPopup.gatherStats{ ui = ui }).
+        for name in src:gmatch("\nfunction " .. self_name .. "[.:]([%w_]+)") do t[name] = true end
         for name in src:gmatch("\nfunction M%.([%w_]+)") do t[name] = true end
-        for name in src:gmatch("\nM%.([%w_]+)%s*=") do t[name] = true end
+        -- plain and multiple assignments: `M.A = ...`, `M.A, M.B = ...`
+        for _, owner in ipairs({ self_name, "M" }) do
+            for lhs in src:gmatch("\n(" .. owner .. "%.[%w_]+[%w_.,%s]-)=[^=]") do
+                for name in lhs:gmatch(owner .. "%.([%w_]+)") do t[name] = true end
+            end
+        end
         -- fields of a `local M = { ... }` / `M.Opt = { ... }` table literal
         for block in src:gmatch("\nM?%.?[%w_]*%s*=%s*{(.-)\n}") do
             for key in block:gmatch("\n%s*([%w_]+)%s*=") do t[key] = true end
@@ -204,13 +219,21 @@ local function exportsOf(path)
         for block in src:gmatch("\nreturn {(.-)\n}") do
             for key in block:gmatch("\n%s*([%w_]+)%s*=") do t[key] = true end
         end
+        -- ... or the same on one line: `return { Popup = RecordsPopup }`
+        local one_line = src:match("\nreturn {([^\n]-)}%s*$")
+        if one_line then
+            for key in one_line:gmatch("([%w_]+)%s*=") do t[key] = true end
+        end
     end
     exports[path] = t
     return t
 end
 
 for _, f in ipairs(files) do
-    local src = read(f)
+    -- Block comments left out: a module's doc block may name calls of
+    -- another module's API.
+    local src = read(f):gsub("%-%-%[%[.-%]%]", "")
+    local own_deps = consumer_deps[f] or deps_file
     -- local alias -> deps key, from `local A, B = deps.X, deps.Y`
     local alias_file = {}
     for lhs, rhs in src:gmatch("\nlocal ([%w_,%s]+)=%s*\n?%s*(deps%.[%w_,%s.]+)") do
@@ -218,7 +241,7 @@ for _, f in ipairs(files) do
         for n in lhs:gmatch("[%w_]+") do names[#names + 1] = n end
         for k in rhs:gmatch("deps%.([%w_]+)") do keys[#keys + 1] = k end
         for i, n in ipairs(names) do
-            if keys[i] and deps_file[keys[i]] then alias_file[n] = deps_file[keys[i]] end
+            if keys[i] and own_deps[keys[i]] then alias_file[n] = own_deps[keys[i]] end
         end
     end
     local bad = {}

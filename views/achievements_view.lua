@@ -30,8 +30,8 @@ local AchievementInfo = InfoMessage:extend{}
 
 -- Shared modules, passed in as one named table by main.lua (see there).
 local deps = ...
-local Achievements, Locale, ListWidget =
-    deps.Achievements, deps.Locale, deps.ListWidget
+local Achievements, Locale, ListWidget, VS, Cards =
+    deps.Achievements, deps.Locale, deps.ListWidget, deps.VS, deps.AchievementsCards
 local _ = Locale._
 
 -- Remembered per-list, like the book lists' own sort keys.
@@ -46,6 +46,7 @@ local M = {}
 
 function M.show(on_close)
     local items = Achievements.list()
+    local cards = Cards and VS and VS.readLookIsCards()
 
     -- Builds the rows for the current filter. The progress figure in the
     -- header always reflects the full catalogue, not the filtered view.
@@ -68,7 +69,7 @@ function M.show(on_close)
                 -- can't be mistaken for the row's own icon, which is itself a
                 -- star for the book-count achievements.
                 local value = earned and Locale.formatDateFromTS(it.earned_ts) or ""
-                if it.is_new then value = "★ " .. value end
+                if it.is_new and not cards then value = "★ " .. value end
                 item_table[#item_table + 1] = {
                     -- Icon in its own fixed-width column (see BookListItem),
                     -- so the title starts at the same x on every row.
@@ -78,6 +79,7 @@ function M.show(on_close)
                     bold = earned,
                     dim  = not earned,
                     mandatory = value,
+                    is_new    = it.is_new,
                     -- Keeps earned (sort_time > 0, newest first) above locked
                     -- (sort_time 0) under the default order; ties -> title.
                     sort_title = title,
@@ -113,6 +115,18 @@ function M.show(on_close)
     local earned  = Achievements.earnedCount()
     local pct     = total > 0 and math.floor(earned / total * 100 + 0.5) or 0
     local title   = _("Achievements") .. "  " .. earned .. "/" .. total .. " (" .. pct .. "%)"
+    local card_row, cards_header
+    if cards then
+        title = _("Achievements")
+        local has_new = false
+        for _idx, it in ipairs(items) do
+            if it.is_new then has_new = true break end
+        end
+        card_row = Cards.row
+        cards_header = function(width)
+            return Cards.summary(width, earned, total, has_new)
+        end
+    end
 
     local widget
 
@@ -138,6 +152,8 @@ function M.show(on_close)
         sort_setting_key = SORT_KEY,
         sort_labels      = sort_labels,
         no_checkbox      = true,
+        card_row         = card_row,
+        cards_header     = cards_header,
         -- Extra rows under the sort orders in the title-bar menu: show all
         -- achievements, only earned, or only locked (still-to-do) ones.
         extra_menu_buttons = {

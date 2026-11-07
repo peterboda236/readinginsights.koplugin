@@ -135,6 +135,9 @@ msgstr "Aktuelle Serie"
 msgid "Best streak"
 msgstr "Beste Serie"
 
+msgid "Chapter"
+msgstr "Kapitel"
+
 msgid "Streaks"
 msgstr "Serien"
 
@@ -2068,8 +2071,8 @@ msgstr "Aussehen"
 msgid "Cards"
 msgstr "Karten"
 
-msgid "Classic: the original layout. Cards: each section in a card with an icon; when the page doesn't fit the screen it is split into pages (swipe up / down)."
-msgstr "Klassisch: das ursprüngliche Layout. Karten: jeder Abschnitt in einer Karte mit Symbol; passt die Seite nicht auf den Bildschirm, wird sie in Seiten geteilt (nach oben / unten wischen)."
+msgid "Two looks for the popups: Classic, the original layout, or Cards, with the sections in cards."
+msgstr "Zwei Ansichten für die Fenster: Klassisch, das ursprüngliche Layout, oder Karten, mit den Abschnitten in Karten."
 
 msgid "Daily / weekly goal ring"
 msgstr "Tages-/Wochenzielring"

@@ -37,6 +37,7 @@ run tests/static_checks.lua
 run tests/test_modules.lua
 run tests/test_chapterinfo.lua
 run tests/test_records.lua
+run tests/test_insights_values.lua
 
 # The day-bounds arithmetic is timezone-dependent, so it is run under a
 # timezone that actually observes DST rather than whatever the machine has.

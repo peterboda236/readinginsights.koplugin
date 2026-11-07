@@ -301,6 +301,7 @@ local BookListItem = InputContainer:extend{
     face        = nil,
     show_parent = nil,
     no_checkbox = nil,
+    card_row    = nil,
 }
 
 function BookListItem:init()
@@ -319,6 +320,17 @@ function BookListItem:init()
     local fgcolor = self.item.dim
         and (Blitbuffer.COLOR_DARK_GRAY or Blitbuffer.COLOR_GRAY)
         or nil
+
+    if self.card_row then
+        self[1] = FrameContainer:new{
+            padding           = 0,
+            bordersize        = 0,
+            focusable         = true,
+            focus_border_size = Size.border.thin,
+            self.card_row(self.item, self.width, self.height, face, fgcolor),
+        }
+        return
+    end
 
     -- Lists that never tick anything (the achievements list) pass
     -- no_checkbox so their rows aren't indented by a whole (blank) checkbox
@@ -513,6 +525,19 @@ function BookListWidget:init()
     self.sort_disabled = disabled
     M.fitTitle(self)
 
+    -- cards_header: a widget on top of every page (the Cards look of the
+    -- achievements list); fewer rows fit under it.
+    if self.cards_header then
+        local probe = self.cards_header(self.item_width)
+        local header_h = probe:getSize().h + self.item_margin
+        probe:free()
+        local line_h = self.item_height + self.item_margin
+        self.items_per_page = math.max(1, self.items_per_page - math.ceil(header_h / line_h))
+        self.pages = math.max(1, math.ceil(#self.item_table / self.items_per_page))
+        self.show_page = math.min(self.show_page, self.pages)
+        self:_populateItems()
+    end
+
     if not self.show_ok_cancel then
         -- Same-width spacers rather than removing the buttons: the page
         -- navigation in the middle stays put, and the button objects
@@ -660,6 +685,10 @@ function BookListWidget:_populateItems()
 
     local idx_offset = (self.show_page - 1) * self.items_per_page
     local page_last  = math.min(idx_offset + self.items_per_page, #self.item_table)
+    if self.cards_header then
+        table.insert(self.main_content, VerticalSpan:new{ width = self.item_margin })
+        table.insert(self.main_content, self.cards_header(self.item_width))
+    end
     for idx = idx_offset + 1, page_last do
         table.insert(self.main_content, VerticalSpan:new{ width = self.item_margin })
         local row = BookListItem:new{
@@ -669,6 +698,7 @@ function BookListWidget:_populateItems()
             index       = idx,
             show_parent = self,
             no_checkbox = self.no_checkbox,
+            card_row    = self.card_row,
         }
         table.insert(self.layout, #self.layout, { row })
         table.insert(self.main_content, row)

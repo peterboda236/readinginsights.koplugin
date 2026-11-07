@@ -39,9 +39,11 @@ local Blitbuffer = require("ffi/blitbuffer")
 local Device = require("device")
 local FrameContainer = require("ui/widget/container/framecontainer")
 local Geom = require("ui/geometry")
+local GestureRange = require("ui/gesturerange")
 local HorizontalGroup = require("ui/widget/horizontalgroup")
 local HorizontalSpan = require("ui/widget/horizontalspan")
 local IconWidget = require("ui/widget/iconwidget")
+local InputContainer = require("ui/widget/container/inputcontainer")
 local LeftContainer = require("ui/widget/container/leftcontainer")
 local Size = require("ui/size")
 local TextBoxWidget = require("ui/widget/textboxwidget")
@@ -132,7 +134,7 @@ end
 -- runs flush into the neighbouring row's line (see buildTwoColRow's
 -- `join_above` / `join_below`).
 -- `line_w` (optional) is the line's width, Size.line.medium by default.
-function M.buildColumnSeparator(column_gap, height, no_top_pad, no_bottom_pad, line_w)
+function M.buildColumnSeparator(column_gap, height, no_top_pad, no_bottom_pad, line_w, line_color)
     if M.classicLines() then no_top_pad, no_bottom_pad = false, false end
     local v_padding = Size.padding.default
     local top_pad    = no_top_pad    and 0 or v_padding
@@ -142,7 +144,7 @@ function M.buildColumnSeparator(column_gap, height, no_top_pad, no_bottom_pad, l
         VerticalGroup:new{
             align = "center",
             VerticalSpan:new{ width = top_pad },
-            Colors.vLine(line_w or Size.line.medium, height - top_pad - bottom_pad),
+            Colors.vLine(line_w or Size.line.medium, height - top_pad - bottom_pad, line_color),
             VerticalSpan:new{ width = bottom_pad },
         },
         HorizontalSpan:new{ width = column_gap },
@@ -270,7 +272,7 @@ end
 --                     header rows, with M.buildSplitGap carrying the line on
 --                     down to the value row under the header)
 -- `line_w` (optional): width of the vertical line.
-function M.buildTwoColRow(left_widget, right_widget, layout, hide_separator, opts, line_w)
+function M.buildTwoColRow(left_widget, right_widget, layout, hide_separator, opts, line_w, line_color)
     opts = (type(opts) == "table" and not M.classicLines()) and opts or {}
     local extra = opts.join_below or 0
     if extra > 0 then
@@ -281,7 +283,7 @@ function M.buildTwoColRow(left_widget, right_widget, layout, hide_separator, opt
     local separator = hide_separator
         and HorizontalSpan:new{ width = layout.separator_width }
         or  M.buildColumnSeparator(layout.column_gap, row_height,
-                opts.join_above and true or false, (extra > 0) or (opts.flush_bottom and true or false), line_w)
+                opts.join_above and true or false, (extra > 0) or (opts.flush_bottom and true or false), line_w, line_color)
     return HorizontalGroup:new{
         align = "center",
         M.fixedCol(left_widget,  layout.col_width, row_height),
@@ -397,6 +399,22 @@ function M.addSectionWithRow(sections, header_widget, row, layout, opts)
     end
 end
 
+-- `widget` in a `col_width` wide cell that runs `callback` on a tap.
+function M.tappableCell(widget, col_width, callback)
+    local cell = InputContainer:new{
+        dimen = Geom:new{ x = 0, y = 0, w = col_width, h = widget:getSize().h },
+        widget,
+    }
+    cell.ges_events = {
+        Tap = { GestureRange:new{ ges = "tap", range = cell.dimen } },
+    }
+    function cell:onTap()
+        callback()
+        return true
+    end
+    return cell
+end
+
 -- Is (x, y) inside this widget's laid-out area? Used by the popups' own tap
 -- dispatch, where one handler decides which of several regions was hit.
 function M.hitTest(widget, x, y)
@@ -472,7 +490,7 @@ function M.buildCard(content, width)
     return FrameContainer:new{
         background     = Blitbuffer.COLOR_WHITE,
         bordersize     = M.cardBorder(),
-        color          = grayColor(Colors.separator()),
+        color          = grayColor(Colors.cardsColor("border")),
         radius         = Size.radius.button,
         padding        = 0,
         padding_top    = Size.padding.small,
@@ -558,9 +576,20 @@ function M.icon(name, size)
     }
 end
 
+-- "›" next to text in `face`. An icon, not the text glyph: the glyph sits
+-- low in its line box and would not line up with the text.
+function M.chevron(face)
+    local probe = TextWidget:new{ text = "A", face = face }
+    local h = probe:getSize().h
+    probe:free()
+    return M.icon("chevron", math.floor(h * 0.6))
+end
+
 -- A card's title row: icon, title, a pen when the card can be long-pressed
--- (`hold_hint`), and an optional widget (e.g. a switch) on the right.
-function M.cardHeader(icon, title, face, width, hold_hint, right)
+-- (`hold_hint`; "menu" shows a "▾" instead: the card opens a list), and an
+-- optional widget (e.g. a switch) on the right. `after_title` (optional) sits
+-- right after the title, e.g. a "›" when the right side holds a switch.
+function M.cardHeader(icon, title, face, width, hold_hint, right, after_title)
     local probe = TextWidget:new{ text = title, face = face }
     local text_h = probe:getSize().h
     probe:free()
@@ -571,6 +600,7 @@ function M.cardHeader(icon, title, face, width, hold_hint, right)
     if icon then fixed = fixed + icon_sz + gap end
     if hold_hint then fixed = fixed + gap + pen_sz end
     if right then fixed = fixed + gap + right:getSize().w end
+    if after_title then fixed = fixed + gap + after_title:getSize().w end
 
     local title_w = TextWidget:new{
         text = title, face = face, fgcolor = Colors.section(),
@@ -582,9 +612,13 @@ function M.cardHeader(icon, title, face, width, hold_hint, right)
         table.insert(row, HorizontalSpan:new{ width = gap })
     end
     table.insert(row, title_w)
+    if after_title then
+        table.insert(row, HorizontalSpan:new{ width = gap })
+        table.insert(row, after_title)
+    end
     if hold_hint then
         table.insert(row, HorizontalSpan:new{ width = gap })
-        table.insert(row, M.icon("pen", pen_sz))
+        table.insert(row, M.icon(hold_hint == "menu" and "caret" or "pen", pen_sz))
     end
     if right then
         -- Measured from the parts, not row:getSize(): that would cache the
@@ -594,6 +628,101 @@ function M.cardHeader(icon, title, face, width, hold_hint, right)
         table.insert(row, right)
     end
     return row
+end
+
+-- A period / month header for the Cards look: the title centered between
+-- chevron icons; a hidden arrow keeps its slot, so the title doesn't move
+-- while paging. Returns the header, the left / right arrow frames (nil when
+-- hidden), the two slot widths and the header height - what the popups place
+-- their tap zones with.
+function M.buildNavHeader(title_str, width, face, prev_available, next_available)
+    local title_w = TextWidget:new{ text = title_str, face = face, fgcolor = Colors.section() }
+    local icon_sz = math.floor(title_w:getSize().h * 0.7)
+    local pad = Size.padding.default
+    local slot_w = icon_sz + 2 * pad
+
+    local function arrow(icon, visible)
+        if not visible then return HorizontalSpan:new{ width = slot_w }, nil end
+        local frame = FrameContainer:new{
+            bordersize = 0, margin = 0, padding = 0,
+            padding_left = pad, padding_right = pad,
+            IconWidget:new{ icon = icon, width = icon_sz, height = icon_sz },
+        }
+        return frame, frame
+    end
+    local left, left_frame   = arrow("chevron.left", prev_available)
+    local right, right_frame = arrow("chevron.right", next_available)
+
+    local rest = math.max(0, width - 2 * slot_w - title_w:getSize().w)
+    local header = FrameContainer:new{
+        bordersize = 0, margin = 0, padding = 0,
+        padding_top = Size.padding.small, padding_bottom = Size.padding.small,
+        HorizontalGroup:new{
+            align = "center",
+            left,
+            HorizontalSpan:new{ width = math.floor(rest / 2) },
+            title_w,
+            HorizontalSpan:new{ width = rest - math.floor(rest / 2) },
+            right,
+        },
+    }
+    return header, left_frame, right_frame, slot_w, slot_w, header:getSize().h
+end
+
+-- A thin rounded outline in the card border color, `width` x `height`; drawn
+-- over a cell to mark it (today in the Cards calendars).
+local Outline = Widget:extend{
+    width  = 0,
+    height = 0,
+}
+
+function Outline:getSize()
+    return Geom:new{ w = self.width, h = self.height }
+end
+
+function Outline:paintTo(bb, x, y)
+    bb:paintBorder(x, y, self.width, self.height, Size.border.default,
+        grayColor(Colors.cardsColor("border")), Size.radius.button)
+end
+
+function M.buildOutline(width, height)
+    return Outline:new{ width = width, height = height }
+end
+
+-- "5 days · 3 weeks" on one line, or the two on separate lines when that
+-- does not fit `width` (Cards Streaks cards). fonts: value / label.
+function M.buildDaysWeeksLine(fonts, width, d_val, d_unit, w_val, w_unit)
+    if d_val == "" and w_val == "" then
+        return M.buildValueLine(fonts.value, fonts.label, width, d_val, d_unit)
+    end
+    local function partWidth(v, u)
+        local tv = TextWidget:new{ text = v, face = fonts.value }
+        local tu = TextWidget:new{ text = u, face = fonts.label }
+        local w = tu:getSize().w + 1
+        if v ~= "" then w = w + tv:getSize().w + Size.padding.large end
+        tv:free()
+        tu:free()
+        return w
+    end
+    local d_w, w_w = partWidth(d_val, d_unit), partWidth(w_val, w_unit)
+    local dot = TextWidget:new{ text = "\u{00B7}", face = fonts.label, fgcolor = Colors.label() }
+    local gap = Size.padding.default
+    if d_w + w_w + dot:getSize().w + 2 * gap <= width then
+        return HorizontalGroup:new{
+            align = "center",
+            M.buildValueLine(fonts.value, fonts.label, d_w, d_val, d_unit),
+            HorizontalSpan:new{ width = gap },
+            dot,
+            HorizontalSpan:new{ width = gap },
+            M.buildValueLine(fonts.value, fonts.label, w_w, w_val, w_unit),
+        }
+    end
+    dot:free()
+    return VerticalGroup:new{
+        align = "left",
+        M.buildValueLine(fonts.value, fonts.label, width, d_val, d_unit),
+        M.buildValueLine(fonts.value, fonts.label, width, w_val, w_unit),
+    }
 end
 
 -- A round dot `size` pixels wide: filled, or just its outline.
@@ -629,10 +758,10 @@ function RoundBar:paintTo(bb, x, y)
     local w, h = self.width, self.height
     if w <= 0 or h <= 0 then return end
     local r = math.floor(h / 2)
-    bb:paintRoundedRect(x, y, w, h, grayColor(Colors.inactiveBar()), r)
+    bb:paintRoundedRect(x, y, w, h, grayColor(Colors.cardsColor("inactive_bar")), r)
     local done_w = math.floor(w * math.max(0, math.min(1, self.ratio)))
     if done_w > 0 then
-        bb:paintRoundedRect(x, y, done_w, h, grayColor(Colors.activeBar()), math.min(r, math.floor(done_w / 2)))
+        bb:paintRoundedRect(x, y, done_w, h, grayColor(Colors.cardsColor("active_bar")), math.min(r, math.floor(done_w / 2)))
     end
 end
 
@@ -656,7 +785,7 @@ end
 -- ("▲ 1:05" in bold, then e.g. "vs prev. 7d").
 function M.buildStatCell(fonts, width, value, unit, opts)
     opts = opts or {}
-    local chevron = opts.chevron and TextWidget:new{ text = "\u{203A}", face = fonts.value, fgcolor = Colors.label() }
+    local chevron = opts.chevron and M.chevron(fonts.value)
     local chevron_w = chevron and (chevron:getSize().w + Size.padding.default) or 0
     local top = HorizontalGroup:new{
         align = "center",
