@@ -288,8 +288,12 @@ local RecordsData = loadModule("lib/records_data.lua", { StatsDb = StatsDb })
 local Achievements = loadModule("lib/achievements.lua",
     { StatsDb = StatsDb, RecordsData = RecordsData, Data = InsightsData, Locale = Locale,
       DateUtil = DateUtil })
+-- The "Cards" look of the achievements list.
+local AchievementsCards = loadModule("views/cards_look/achievements.lua",
+    { Locale = Locale, Colors = Colors, Fonts = Fonts, UI = UI })
 local AchievementsView = loadModule("views/achievements_view.lua",
-    { Achievements = Achievements, Locale = Locale, ListWidget = ListWidget })
+    { Achievements = Achievements, Locale = Locale, ListWidget = ListWidget,
+      VS = ViewSettings, Cards = AchievementsCards })
 
 -- The combined current/best streak popup with its full-history calendar,
 -- opened both from the insights page's streak cells and straight from the
