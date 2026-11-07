@@ -66,7 +66,8 @@ end
 
 -- stats: ReadingStatsPopup:gatherStats(); H: helpers from book_stats_view.lua
 -- (tappableWrap, buildValueLine, splitHalfWidth, buildSplitCellValue,
--- buildPagesSplitValue, formatFraction). avail_h: the height the content may
+-- buildPagesSplitValue, resetTapTargets, chapterBarPaging,
+-- chapterCountValues, paceTodayValues, finishDaysValue). avail_h: the height the content may
 -- take; taller cards go on pages (views/cards_look/pages.lua).
 function M.buildSections(stats, fonts, layout, popup, H, avail_h)
     local Opt = VS.Opt
@@ -226,26 +227,10 @@ function M.buildSections(stats, fonts, layout, popup, H, avail_h)
         local rows = { chapter_bar }
         local ci = stats.chapter_info
         if ci and Opt.readShowChapterCountRow() then
-            local read_count = H.chaptersRead(ci, stats.at_book_end)
-            local left_cell
-            if popup and popup._chapter_read_mode == "left" and not stats.at_book_end then
-                left_cell = statCell({ value = formatCount(ci.total - read_count), unit = "" },
-                    N_("chapter left", "chapters left", ci.total - read_count))
-            else
-                left_cell = statCell({ value = H.formatFraction(read_count, ci.total), unit = "" },
-                    N_("chapter", "chapters", ci.total))
-            end
-            local read_cell = H.tappableWrap(left_cell, ilayout.col_width)
+            local left, left_label, right, right_label = H.chapterCountValues(ci, stats, popup)
+            local read_cell = H.tappableWrap(statCell(left, left_label), ilayout.col_width)
             if popup and not stats.at_book_end then popup._chapter_read_cell = read_cell end
-            local right_cell
-            if ((popup and popup._chapter_avg_mode) or "time") == "pages" then
-                local ap = stats.avg_chapter_pages
-                right_cell = statCell(ap and { value = formatCount(ap), unit = "" } or { value = "—", unit = "" },
-                    _("typical pages/chapter"))
-            else
-                right_cell = statCell(stats.avg_chapter_time_hhmm, _("typical length"))
-            end
-            local avg_cell = H.tappableWrap(right_cell, ilayout.col_width)
+            local avg_cell = H.tappableWrap(statCell(right, right_label), ilayout.col_width)
             if popup then popup._chapter_avg_cell = avg_cell end
             table.insert(rows, hDivider())
             table.insert(rows, VerticalSpan:new{ width = Size.padding.small })
@@ -350,19 +335,9 @@ function M.buildSections(stats, fonts, layout, popup, H, avail_h)
 
         local rows = {}
         if show_pace_today then
-            local today_cell, avg_cell
-            if pace_pages then
-                local pd = stats.today_pages
-                local count = (pd and pd.value ~= "") and (tonumber(pd.value) or 1) or 0
-                local value = (pd and pd.value ~= "") and pd.value or formatCount(0)
-                today_cell = statCell({ value = value, unit = "" }, N_("page read today", "pages read today", count))
-                avg_cell = statCell(stats.avg_pages_per_day or { value = "—", unit = "" }, _("daily avg pages"))
-            else
-                local td = stats.today_time_hhmm
-                if not td or td.value == "" then td = { value = "00:00", unit = "" } end
-                today_cell = statCell(td, _("read today"))
-                avg_cell = statCell(stats.avg_time_per_day_hhmm or { value = "—:—", unit = "" }, _("daily avg time"))
-            end
+            local today_val, today_label, avg_val, avg_label = H.paceTodayValues(stats, pace_pages)
+            local today_cell = statCell(today_val, today_label)
+            local avg_cell = statCell(avg_val, avg_label)
             local pace_row = H.tappableWrap(twoCol(today_cell, avg_cell), inner_w)
             if popup then popup._pace_row = pace_row end
             table.insert(rows, pace_row)
@@ -373,13 +348,9 @@ function M.buildSections(stats, fonts, layout, popup, H, avail_h)
                 table.insert(rows, hDivider())
                 table.insert(rows, VerticalSpan:new{ width = Size.padding.small })
             end
-            local function finishData()
-                return { value = "~" .. formatCount(stats.finish_days_left),
-                         unit  = N_("day of reading left", "days of reading left", stats.finish_days_left) }
-            end
             if stats.started_days_ago and stats.finish_days_left then
                 local started_tap = H.tappableWrap(statCell(stats.started_days_ago, ""), ilayout.col_width)
-                local finish_tap  = H.tappableWrap(statCell(finishData(), ""), ilayout.col_width)
+                local finish_tap  = H.tappableWrap(statCell(H.finishDaysValue(stats), ""), ilayout.col_width)
                 if popup then
                     popup._started_widget = started_tap
                     popup._finish_widget  = finish_tap
@@ -390,7 +361,7 @@ function M.buildSections(stats, fonts, layout, popup, H, avail_h)
                 if popup then popup._started_widget = started_tap end
                 table.insert(rows, started_tap)
             else
-                local finish_tap = H.tappableWrap(statCell(finishData(), "", inner_w), inner_w)
+                local finish_tap = H.tappableWrap(statCell(H.finishDaysValue(stats), "", inner_w), inner_w)
                 if popup then popup._finish_widget = finish_tap end
                 table.insert(rows, finish_tap)
             end

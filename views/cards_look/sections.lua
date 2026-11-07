@@ -235,13 +235,9 @@ function M.buildSections(popup_self, streaks, yearly_stats, year_range, monthly_
                     local arrow = zero and "" or (d < 0 and "\u{25BC} " or "\u{25B2} ")
                     return { arrow .. val, unit }
                 end
-                local diff_total
-                if pages_mode then
-                    diff_total = total_pages_raw - math.floor((lw.prev_pages or 0) + 0.5)
-                else
-                    diff_total = math.floor(total_secs + 0.5) - math.floor((lw.prev_seconds or 0) + 0.5)
-                end
-                deltas = { deltaText(diff_total), deltaText(diff_total / days_n, true) }
+                local diff_total, diff_avg =
+                    Values.weekDiff(lw, pages_mode, total_secs, total_pages_raw, days_n)
+                deltas = { deltaText(diff_total), deltaText(diff_avg, true) }
             end
 
             -- One value cell (tap: 8-week trend), with its delta under it.

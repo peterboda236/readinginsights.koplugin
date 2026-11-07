@@ -13,6 +13,8 @@ draws them. No widgets here, so it runs without KOReader's UI.
   Values.weekData(cal_mode, cal, last_week_stats, last_week_daily)
       -> lw, week_daily, has_week
   Values.weekValues(lw)  -> total_secs, total_pages_raw, time_cells, pages_cells
+  Values.weekDiff(lw, pages_mode, total_secs, total_pages_raw, days_n)
+      -> diff_total, diff_avg
   Values.timeGoalValues(last_week_daily, week_start_wd)
       -> today_secs, week_secs, daily_goal_secs, weekly_goal_secs
   Values.timeGoalText(done, goal)            "0:23 / 0:30"
@@ -153,6 +155,19 @@ function M.weekValues(lw)
     local pages_cells = { total_pages_val, total_pages_unit, "pages_total",
                           week_pages_val, week_pages_unit, "pages_avg" }
     return total_secs, total_pages_raw, time_cells, pages_cells
+end
+
+-- Change against the week before: diff_total (whole pages, or whole seconds
+-- of reading time) and diff_avg (per day of the shown week). `total_secs` /
+-- `total_pages_raw` are weekValues' totals, `days_n` the days of the week.
+function M.weekDiff(lw, pages_mode, total_secs, total_pages_raw, days_n)
+    local diff_total
+    if pages_mode then
+        diff_total = total_pages_raw - math.floor((lw.prev_pages or 0) + 0.5)
+    else
+        diff_total = math.floor(total_secs + 0.5) - math.floor((lw.prev_seconds or 0) + 0.5)
+    end
+    return diff_total, diff_total / days_n
 end
 
 -- Daily / weekly time goal: today_secs, week_secs (this calendar week so

@@ -441,8 +441,9 @@ local function resetTapTargets(popup)
 end
 
 -- Paging of the chapter bar drawn `width` wide with `padding_h` on each side:
--- the ‹ / › handlers (nil without a popup), each moving one page of chapters. The first build starts on the page that holds the current chapter;
--- pages are 1, 1+page_size, 1+2*page_size, …
+-- the ‹ / › handlers (nil without a popup), each moving one page of chapters.
+-- The first build starts on the page that holds the current chapter; pages
+-- are 1, 1+page_size, 1+2*page_size, …
 local function chapterBarPaging(popup, stats, width, padding_h)
     local page_size = stats.chapter_info
         and ChapterBar.pageSizeFor(stats.chapter_info.total, width, padding_h)
@@ -467,6 +468,57 @@ end
 local function chaptersRead(ci, at_book_end)
     if at_book_end then return ci.total end
     return math.max(0, math.min(ci.total, (ci.current or 1) - 1))
+end
+
+-- The two values of the chapter count row, each as { value, unit } + label:
+-- "23 / 46 chapters" (or "23 chapters left" after a tap) and "00:33 typical
+-- length" (or the typical pages per chapter after a tap).
+local function chapterCountValues(ci, stats, popup)
+    local read_count = chaptersRead(ci, stats.at_book_end)
+    local left, left_label
+    if popup and popup._chapter_read_mode == "left" and not stats.at_book_end then
+        left = { value = formatCount(ci.total - read_count), unit = "" }
+        left_label = N_("chapter left", "chapters left", ci.total - read_count)
+    else
+        left = { value = formatFraction(read_count, ci.total), unit = "" }
+        left_label = N_("chapter", "chapters", ci.total)
+    end
+    local right, right_label
+    if ((popup and popup._chapter_avg_mode) or "time") == "pages" then
+        local ap = stats.avg_chapter_pages
+        right = ap and { value = formatCount(ap), unit = "" } or { value = "—", unit = "" }
+        right_label = _("typical pages/chapter")
+    else
+        right = stats.avg_chapter_time_hhmm
+        right_label = _("typical length")
+    end
+    return left, left_label, right, right_label
+end
+
+-- The two values of the pace row, each as { value, unit } + label: read
+-- today | daily average, in time ("00:00" when nothing was read today) or, with
+-- `pages`, in pages ("0" when nothing was read today).
+local function paceTodayValues(stats, pages)
+    if pages then
+        local pd = stats.today_pages
+        local count = 0
+        if pd and pd.value ~= "" then
+            count = tonumber(pd.value) or 1
+        end
+        local value = (pd and pd.value ~= "") and pd.value or formatCount(0)
+        return { value = value, unit = "" }, N_("page read today", "pages read today", count),
+            stats.avg_pages_per_day or { value = "—", unit = "" }, _("daily avg pages")
+    end
+    local td = stats.today_time_hhmm
+    if not td or td.value == "" then td = { value = "00:00", unit = "" } end
+    return td, _("read today"),
+        stats.avg_time_per_day_hhmm or { value = "—:—", unit = "" }, _("daily avg time")
+end
+
+-- "~77 days of reading left" as { value, unit }.
+local function finishDaysValue(stats)
+    return { value = "~" .. formatCount(stats.finish_days_left),
+             unit  = N_("day of reading left", "days of reading left", stats.finish_days_left) }
 end
 
 local function buildSections(stats, fonts, layout, popup)
@@ -558,34 +610,9 @@ local function buildSections(stats, fonts, layout, popup)
     -- counts - toggled by tapping the pace row (see ReadingStatsPopup:onTapClose).
     -- popup._pace_view_mode is nil/"time" by default; "pages" once toggled.
     local pace_view_mode = (popup and popup._pace_view_mode) or "time"
-    local today_time_data_hhmm = stats.today_time_hhmm
-    local today_pages_data = stats.today_pages
-
-    local zero_hhmm = { value = "00:00", unit = "" }
-    local function nonEmpty(td)
-        if not td or td.value == "" then return zero_hhmm end
-        return td
-    end
-    local function nonEmptyPagesToday(pd)
-        local count = 0
-        if pd and pd.value ~= "" then
-            count = tonumber(pd.value) or 1
-        end
-        local value = (pd and pd.value ~= "") and pd.value or formatCount(0)
-        return { value = value, unit = "" }, N_("page read today", "pages read today", count)
-    end
-
-    local days_col2, pace_col2
-    if pace_view_mode == "pages" then
-        local today_pages_val, today_pages_label = nonEmptyPagesToday(today_pages_data)
-        local avg_pages_data = stats.avg_pages_per_day or { value = "—", unit = "" }
-        days_col2 = valueLine(today_pages_val, today_pages_label)
-        pace_col2 = valueLine(avg_pages_data, _("daily avg pages"))
-    else
-        local avg_day_data = stats.avg_time_per_day_hhmm or { value = "—:—", unit = "" }
-        days_col2 = valueLine(nonEmpty(today_time_data_hhmm), _("read today"))
-        pace_col2 = valueLine(avg_day_data, _("daily avg time"))
-    end
+    local today_val, today_label, avg_val, avg_label = paceTodayValues(stats, pace_view_mode == "pages")
+    local days_col2 = valueLine(today_val, today_label)
+    local pace_col2 = valueLine(avg_val, avg_label)
 
     -- Which parts of each section are shown. Every toggle lives under
     -- Settings > Book progress popup. A section whose
@@ -759,30 +786,12 @@ local function buildSections(stats, fonts, layout, popup)
         -- reading time and pages (see ReadingStatsPopup:onTapClose).
         local ci = stats.chapter_info
         if ci and Opt.readShowChapterCountRow() then
-            local avg_mode = (popup and popup._chapter_avg_mode) or "time"
-            local read_count = chaptersRead(ci, stats.at_book_end)
-            local left_cell
-            if popup and popup._chapter_read_mode == "left" and not stats.at_book_end then
-                left_cell = valueLine(
-                    { value = formatCount(ci.total - read_count), unit = "" },
-                    N_("chapter left", "chapters left", ci.total - read_count))
-            else
-                left_cell = valueLine(
-                    { value = formatFraction(read_count, ci.total), unit = "" },
-                    N_("chapter", "chapters", ci.total))
-            end
+            local left, left_label, right, right_label = chapterCountValues(ci, stats, popup)
+            local left_cell = valueLine(left, left_label)
             local read_cell = tappableWrap(left_cell, left_cell:getSize().w)
             -- On the last page the cell is fixed to "N / N read" and not tappable.
             if popup and not stats.at_book_end then popup._chapter_read_cell = read_cell end
-            local right_cell
-            if avg_mode == "pages" then
-                local ap = stats.avg_chapter_pages
-                right_cell = valueLine(
-                    ap and { value = formatCount(ap), unit = "" } or { value = "—", unit = "" },
-                    _("typical pages/chapter"))
-            else
-                right_cell = valueLine(stats.avg_chapter_time_hhmm, _("typical length"))
-            end
+            local right_cell = valueLine(right, right_label)
             local avg_cell = tappableWrap(right_cell, right_cell:getSize().w)
             if popup then popup._chapter_avg_cell = avg_cell end
             table.insert(sections, UI.padded(layout.padding_h,
@@ -919,11 +928,7 @@ local function buildSections(stats, fonts, layout, popup)
                 or nil
 
             if started_widget and stats.finish_days_left then
-                local finish_widget = valueLine(
-                    { value = "~" .. formatCount(stats.finish_days_left),
-                      unit  = N_("day of reading left", "days of reading left", stats.finish_days_left) },
-                    ""
-                )
+                local finish_widget = valueLine(finishDaysValue(stats), "")
                 local started_tap = tappableWrap(started_widget, layout.col_width)
                 local finish_tap  = tappableWrap(finish_widget, layout.col_width)
                 if popup then
@@ -945,9 +950,7 @@ local function buildSections(stats, fonts, layout, popup)
             elseif stats.finish_days_left then
                 local finish_widget = buildValueLine(
                     fonts.value, fonts.label, layout.full_width - 2 * layout.padding_h,
-                    { value = "~" .. formatCount(stats.finish_days_left),
-                      unit  = N_("day of reading left", "days of reading left", stats.finish_days_left) },
-                    ""
+                    finishDaysValue(stats), ""
                 )
                 local finish_tap = tappableWrap(finish_widget, layout.full_width - 2 * layout.padding_h)
                 if popup then popup._finish_widget = finish_tap end
@@ -1044,9 +1047,10 @@ function ReadingStatsPopup:_buildUI()
             sections = BookCards.buildSections(self._stats, self._fonts, self._layout, self, {
                 tappableWrap = tappableWrap, buildValueLine = buildValueLine,
                 splitHalfWidth = splitHalfWidth, buildSplitCellValue = buildSplitCellValue,
-                buildPagesSplitValue = buildPagesSplitValue, formatFraction = formatFraction,
+                buildPagesSplitValue = buildPagesSplitValue,
                 resetTapTargets = resetTapTargets, chapterBarPaging = chapterBarPaging,
-                chaptersRead = chaptersRead,
+                chapterCountValues = chapterCountValues, paceTodayValues = paceTodayValues,
+                finishDaysValue = finishDaysValue,
             }, screen_h - 2 * (border_w + corner_pad))
         else
             sections = buildSections(self._stats, self._fonts, self._layout, self)

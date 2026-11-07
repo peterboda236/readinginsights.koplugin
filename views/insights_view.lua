@@ -463,10 +463,8 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
             -- (like the yearly figures above the monthly chart), after a thin divider: change of the total and of the daily
             -- average against the 7 days before the last 7 days.
             if VS.readWeeklyVsPrev() then
-                local cur_total, prev_total, fmt_delta
+                local fmt_delta
                 if pages_mode then
-                    cur_total  = total_pages_raw
-                    prev_total = math.floor((lw.prev_pages or 0) + 0.5)
                     fmt_delta = function(d, decimals)
                         local a = math.abs(d)
                         local txt = decimals and formatNumber(math.floor(a * 10 + 0.5) / 10, 1)
@@ -474,8 +472,6 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
                         return (d < 0 and "-" or "+") .. txt
                     end
                 else
-                    cur_total  = math.floor(total_secs + 0.5)
-                    prev_total = math.floor((lw.prev_seconds or 0) + 0.5)
                     -- Honours KOReader's "duration_format" (classic / modern /
                     -- letters) and the "long durations as days" option via
                     -- splitDurationValueUnit(), same as the rest of the popup.
@@ -487,8 +483,8 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
                         return ((d < 0 and a > 0) and "-" or "+") .. val, unit
                     end
                 end
-                local diff_total = cur_total - prev_total
-                local diff_avg   = diff_total / days_n
+                local diff_total, diff_avg =
+                    Values.weekDiff(lw, pages_mode, total_secs, total_pages_raw, days_n)
                 local d_total_val, d_total_unit, d_avg_val, d_avg_unit
                 if pages_mode then
                     d_total_val  = fmt_delta(diff_total)
@@ -1840,7 +1836,7 @@ function ReadingInsightsPopup:_buildUI()
     if self._initial_loading then
         local title_bar_inner = TitleBar:new{
             fullscreen     = true,
-            width          = content_w,
+            width          = screen_w,
             align          = "left",
             title          = self:_titleBarText(),
             -- Hamburger menu, top left: quick access to the streak/heatmap/

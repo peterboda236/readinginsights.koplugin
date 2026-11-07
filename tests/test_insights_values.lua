@@ -93,6 +93,15 @@ check("pages cells", table.concat(w[4], "|"), "51|pages read|pages_total|7.3|dai
 w = pack(V.weekValues({ avg_seconds = 600, avg_pages = 12 }))
 check("no totals -> 7 x the average", w[1] .. " / " .. w[2], "4200 / 84")
 
+local d = pack(V.weekDiff({ prev_pages = 40.4 }, true, 0, 51, 7))
+check("week diff in pages", d[1], 11)
+check("...per day", string.format("%.3f", d[2]), "1.571")
+d = pack(V.weekDiff({ prev_seconds = 9000.6 }, false, 8400.4, 0, 5))
+check("week diff in seconds, rounded", d[1], -601)
+check("...per day of a 5-day week", d[2], -120.2)
+d = pack(V.weekDiff({}, true, 0, 3, 7))
+check("no previous week -> all of it", d[1], 3)
+
 -- Time goals --------------------------------------------------------------
 local days = {}
 for i = 1, 7 do days[i] = { seconds = 600 * i } end   -- today first

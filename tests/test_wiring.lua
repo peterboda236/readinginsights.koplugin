@@ -208,6 +208,7 @@ check("insights values expose what both looks call",
       and type(InsightsValues.yearlyValues) == "function"
       and type(InsightsValues.weekData) == "function"
       and type(InsightsValues.weekValues) == "function"
+      and type(InsightsValues.weekDiff) == "function"
       and type(InsightsValues.timeGoalValues) == "function"
       and type(InsightsValues.timeGoalText) == "function"
       and type(InsightsValues.goalPercent) == "function"
