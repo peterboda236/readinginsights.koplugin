@@ -168,8 +168,11 @@ function M.buildSections(stats, fonts, layout, popup, H, avail_h)
         end
         local row
         if show_cur and show_next then
-            row = twoCol(column(_("This chapter"), cur_val, ilayout.col_width),
-                column(next_title, next_val, ilayout.col_width))
+            local cur_col = column(_("This chapter"), cur_val, ilayout.col_width)
+            local next_col = column(next_title, next_val, ilayout.col_width)
+            local col_h = math.max(cur_col:getSize().h, next_col:getSize().h)
+            row = twoCol(UI.padBottom(cur_col, col_h - cur_col:getSize().h),
+                UI.padBottom(next_col, col_h - next_col:getSize().h))
         elseif show_cur then
             row = column(_("This chapter"), cur_val, inner_w)
         else
