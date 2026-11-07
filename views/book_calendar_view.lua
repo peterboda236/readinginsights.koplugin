@@ -417,8 +417,8 @@ local function buildBookCalendarGrid(daily_map, year, month, day_font, small_fon
                     OverlapGroup:new{
                         dimen = Geom:new{ w = cell_w, h = cell_h },
                         Colors.newBar(cell_w, cell_h, Blitbuffer.COLOR_WHITE),
-                        adj_inner[1],
                         adj_inner[2],
+                        adj_inner[1],
                     },
                 }
                 table.insert(day_cells, {
@@ -491,8 +491,11 @@ local function buildBookCalendarGrid(daily_map, year, month, day_font, small_fon
                 local cell_content = OverlapGroup:new{
                     dimen = Geom:new{ w = cell_w, h = cell_h },
                     Colors.newBar(cell_w, cell_h, Blitbuffer.COLOR_WHITE),
-                    cell_inner[1],
+                    -- middle layer first, day number last: the middle layer starts
+                    -- with a 1px-wide white spacer bar that would otherwise be
+                    -- painted over the day number as a white vertical line.
                     cell_inner[2],
+                    cell_inner[1],
                 }
                 if cards and is_today then
                     table.insert(cell_content, cards.outline(cell_w, cell_h))
