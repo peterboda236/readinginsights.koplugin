@@ -45,7 +45,7 @@ local UIManager = require("ui/uimanager")
 -- there): Colors and Locale for appearance and text, VS for the reader's
 -- "8-week chart order" setting.
 local deps = ...
-local Colors, Locale, VS = deps.Colors, deps.Locale, deps.VS
+local Colors, Locale, VS, Cards = deps.Colors, deps.Locale, deps.VS, deps.Cards
 local _            = Locale._
 local formatNumber = Locale.formatNumber
 local formatCount  = Locale.formatCount
@@ -171,10 +171,9 @@ local function buildValueLine(fonts, col_width, value, unit)
     }
 end
 
--- The row under the title: total of the 8 weeks on the left, daily average
--- over the same 8 weeks on the right ("07:00 reading time | 01:00 daily avg
--- time" or the pages equivalent).
-function M.buildSummaryRow(weeks, kind, width, fonts)
+-- Total of the 8 weeks and the daily average over them, each as value and
+-- unit: left_val, left_unit, right_val, right_unit.
+function M.summaryValues(weeks, kind)
     local total_secs, total_pages = 0, 0
     for _i, w in ipairs(weeks) do
         total_secs  = total_secs  + (w.seconds or 0)
@@ -195,6 +194,14 @@ function M.buildSummaryRow(weeks, kind, width, fonts)
         left_val,  left_unit  = splitDurationValueUnit(total_secs, _("reading time"))
         right_val, right_unit = splitDurationValueUnit(total_secs / days, _("daily avg time"))
     end
+    return left_val, left_unit, right_val, right_unit
+end
+
+-- The row under the title: total of the 8 weeks on the left, daily average
+-- over the same 8 weeks on the right ("07:00 reading time | 01:00 daily avg
+-- time" or the pages equivalent).
+function M.buildSummaryRow(weeks, kind, width, fonts)
+    local left_val, left_unit, right_val, right_unit = M.summaryValues(weeks, kind)
 
     local gap     = Size.padding.large * 2
     local col_w   = math.floor((width - gap - Size.line.thin) / 2)
@@ -322,7 +329,9 @@ end
 -- not to run through it (M.clearLabelTops). The dots are painted by the line widget itself, from
 -- the same coordinates as the line, so they sit exactly on it. The weeks'
 -- start dates are under the baseline.
-function M.buildTrendChart(weeks, kind, chart_width, fonts, show_avg)
+-- `cards` (Cards look): the line and this week's dot in
+-- Colors.cardsColor("active_bar"), earlier dots and the baseline in "inactive_bar".
+function M.buildTrendChart(weeks, kind, chart_width, fonts, show_avg, cards)
     if not weeks or #weeks == 0 then return nil end
 
     local total_metric = kind .. "_total"
@@ -340,6 +349,9 @@ function M.buildTrendChart(weeks, kind, chart_width, fonts, show_avg)
     -- The empty strip under the digits' baseline inside a value's box.
     local label_descent = math.max(0, label_height - sample_label:getBaseline())
     sample_label:free()
+
+    local active_color   = cards and Colors.cardsColor("active_bar") or Colors.activeBar()
+    local inactive_color = cards and Colors.cardsColor("inactive_bar") or Colors.inactiveBar()
 
     local total_vals, total_strs, avg_strs = {}, {}, {}
     local max_value = 0
@@ -424,7 +436,7 @@ function M.buildTrendChart(weeks, kind, chart_width, fonts, show_avg)
         -- The current week (the last one in time) has the active colour, the
         -- earlier weeks the inactive one.
         dots[col]   = { x = cx, y = cy, size = dot_size,
-                        color = (i == num_points) and Colors.activeBar() or Colors.inactiveBar() }
+                        color = (i == num_points) and active_color or inactive_color }
 
         -- Both values go to the same place: just above the dot, or higher
         -- if the line would run through them there.
@@ -440,7 +452,7 @@ function M.buildTrendChart(weeks, kind, chart_width, fonts, show_avg)
         })
     end
 
-    local baseline = Colors.newBar(area_w, baseline_h, Colors.inactiveBar())
+    local baseline = Colors.newBar(area_w, baseline_h, inactive_color)
     baseline.overlap_offset = { 0, total_h - baseline_h }
 
     local showing_avg = show_avg
@@ -451,7 +463,7 @@ function M.buildTrendChart(weeks, kind, chart_width, fonts, show_avg)
         LineChartWidget:new{
             width = area_w, height = total_h,
             points = points, dots = dots,
-            line_color = Colors.activeBar(), thickness = 2,
+            line_color = active_color, thickness = 2,
         },
         showing_avg and avg_layer or total_layer,
     }
@@ -488,6 +500,9 @@ end
 function M.buildContent(weeks, metric, width, fonts)
     local mode = M.modeOf(metric)
     local kind = M.kindOf(mode)
+    if Cards and VS and VS.readLookIsCards() then
+        return Cards.buildContent(M, weeks, mode, width, fonts)
+    end
 
     local title_w = TextWidget:new{ text = M.trendTitle(kind), face = fonts.section, fgcolor = Colors.section() }
     local title = LeftContainer:new{

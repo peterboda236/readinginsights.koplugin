@@ -258,8 +258,11 @@ local InsightsData = loadModule("lib/insights_data.lua",
 -- reading heatmaps, and the book lists. Loaded before the view because it
 -- receives them; the book lists get what they need from the view the other
 -- way round, through BookList.bind() (see booklist_view.lua).
+-- The "Cards" look of the 8-week trend popup.
+local TrendCards = loadModule("views/cards_look/trend.lua",
+    { Colors = Colors, UI = UI })
 local Trend = loadModule("views/trend_view.lua",
-    { Colors = Colors, Locale = Locale, VS = ViewSettings })
+    { Colors = Colors, Locale = Locale, VS = ViewSettings, Cards = TrendCards })
 -- The "Cards" look of the Reading habits (heatmap) popup.
 local HeatmapCards = loadModule("views/cards_look/heatmap.lua", {
     Colors = Colors, Locale = Locale, VS = ViewSettings, UI = UI, Data = InsightsData,
