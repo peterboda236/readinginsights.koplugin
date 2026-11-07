@@ -214,18 +214,18 @@ trend; the other popups look the same in both.
   page, swipe down for the previous one (on the first page it closes the
   popup), or tap the arrows of the *‹ 1 / 2 ›* footer.
 
-<!-- screenshot: Reading insights, Cards, page 1 (FileManager_2026-11-07_183352.png) -->
-<!-- screenshot: Reading insights, Cards, page 2 (FileManager_2026-11-07_183410.png) -->
-<!-- screenshot: Book progress, Cards (Reader_..._2026-11-07_183442.png) -->
-<!-- screenshot: Reading habits, Cards (FileManager_2026-11-07_183430.png) -->
+<img width="192" alt="Reading insights, Cards look, page 1" src="https://github.com/user-attachments/assets/d0654a83-e0ac-4bcc-9dae-71983fa023f7" />
+<img width="192" alt="Reading insights, Cards look, page 2" src="https://github.com/user-attachments/assets/ff31d316-89ab-4b87-b7e3-3540b28f0482" />
+<img width="192" alt="Book progress, Cards look" src="https://github.com/user-attachments/assets/db43db9a-5594-4bce-8621-89aa9420ed4b" />
+<img width="192" alt="Reading habits, Cards look" src="https://github.com/user-attachments/assets/c68119f0-cc92-489b-bd7c-5bbe258d0245" />
 
 <details>
 <summary>More Cards screenshots</summary>
 
-<!-- screenshot: Reading calendar, Cards (Reader_..._2026-11-07_183458.png) -->
-<!-- screenshot: Book progress calendar, Cards (Reader_..._2026-11-07_183516.png) -->
-<!-- screenshot: Achievements, Cards (FileManager_2026-11-07_184741.png) -->
-<!-- screenshot: 8-week trend, Cards (Reader_..._2026-11-07_183604.png) -->
+<img width="192" alt="Reading calendar, Cards look" src="https://github.com/user-attachments/assets/4d9e38b5-ab04-4a41-b7d3-67fed5d148a7" />
+<img width="192" alt="Book progress calendar, Cards look" src="https://github.com/user-attachments/assets/a20dfb0d-a0f0-4ab7-b8f1-5371a8842dc4" />
+<img width="192" alt="Achievements, Cards look" src="https://github.com/user-attachments/assets/3d1a25e4-4fe3-4032-b397-37190442b63c" />
+<img width="192" alt="8-week trend, Cards look" src="https://github.com/user-attachments/assets/cd840001-b4b7-4dfe-9cb1-94ddd99f6c3c" />
 
 </details>
 
