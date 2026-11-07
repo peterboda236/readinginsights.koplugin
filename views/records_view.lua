@@ -48,8 +48,8 @@ local Screen          = Device.screen
 -- and dismissable-popup helper (PopupUtil).
 -- Shared modules, passed in as one named table by main.lua (see there).
 local deps = ...
-local Locale, Colors, Fonts, PopupUtil, RecordsData, UI, VS, Cards =
-    deps.Locale, deps.Colors, deps.Fonts, deps.PopupUtil, deps.RecordsData, deps.UI, deps.VS, deps.Cards
+local Locale, Colors, Fonts, PopupUtil, RecordsData, UI =
+    deps.Locale, deps.Colors, deps.Fonts, deps.PopupUtil, deps.RecordsData, deps.UI
 
 local _ = Locale._
 local N_ = Locale.N_
@@ -249,12 +249,6 @@ function RecordsPopup:_buildUI()
     local last_ms_date     = d.last_ms_date
 
     local outer_padding = Size.padding.large
-    if Cards and VS and VS.readLookIsCards() then
-        local width = math.floor(math.min(screen_w, screen_h) * 0.94) - 2 * outer_padding
-        local content
-        content, self._title_row = Cards.build(fonts, width, d, tot_hours, last_ms, next_ms)
-        return self:_placeBox(content, outer_padding)
-    end
     local max_w = math.floor(screen_w * 0.94)
     local min_w = math.min(Screen:scaleBySize(280), max_w)
 
@@ -392,13 +386,6 @@ function RecordsPopup:_buildUI()
         rows,
     }
 
-    self:_placeBox(content, outer_padding)
-end
-
--- The window around `content`, centred on the screen.
-function RecordsPopup:_placeBox(content, outer_padding)
-    local screen_w = Screen:getWidth()
-    local screen_h = Screen:getHeight()
     local box = FrameContainer:new{
         background     = Blitbuffer.COLOR_WHITE,
         bordersize     = Size.border.window,

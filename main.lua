@@ -330,12 +330,9 @@ local StreakCalendar = loadModule("views/streak_calendar_view.lua", {
 -- Records popup class can be handed to Insights below - the insights
 -- popup's hamburger menu opens it directly, the same way it already opens
 -- Streak/Heatmap/AchievementsView.
--- The "Cards" look of the Records popup.
-local RecordsCards = loadModule("views/cards_look/records.lua",
-    { Locale = Locale, Colors = Colors, Fonts = Fonts, UI = UI })
 local Records = loadModule("views/records_view.lua", {
     Locale = Locale, Colors = Colors, Fonts = Fonts, PopupUtil = PopupUtil,
-    RecordsData = RecordsData, UI = UI, VS = ViewSettings, Cards = RecordsCards,
+    RecordsData = RecordsData, UI = UI,
 })
 
 -- The Book info popup: cover + title / author / series. Its data (authors
