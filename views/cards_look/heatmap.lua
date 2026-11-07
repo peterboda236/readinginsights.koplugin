@@ -7,7 +7,7 @@ period header with its ‹ / › arrows, then one card each for the day heatmap,
 the weekday chart and the time-of-day chart. It returns the same values as
 buildBox, so the popup's fit loop, tap zones and paging serve both looks.
 
-Loaded once by main.lua and handed to the heatmap view as `deps.Cards`. The
+Loaded once by main.lua and handed to the heatmap view as `deps.HeatmapCards`. The
 view passes its own helpers (`H`) on each build.
 ]]--
 
@@ -25,7 +25,7 @@ local T = require("ffi/util").template
 
 -- Shared modules, passed in as one named table by main.lua (see there).
 local deps = ...
-local Colors, Locale, VS, UI, Data = deps.Colors, deps.Locale, deps.VS, deps.UI, deps.Data
+local Locale, VS, UI, Data = deps.Locale, deps.VS, deps.UI, deps.Data
 
 local _ = Locale._
 

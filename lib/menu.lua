@@ -648,7 +648,7 @@ function M.build(self, deps)
                 local v = VSet.readLookIsCards() and _("Cards") or _("Classic")
                 return _("Look") .. ": " .. v
             end,
-            help_text = _("Classic: the original layout. Cards: each section in a card with an icon; when the page doesn't fit the screen it is split into pages (swipe up / down)."),
+            help_text = _("Two looks for the popups: Classic, the original layout, or Cards, with the sections in cards."),
             keep_menu_open = true,
             sub_item_table = {
                 lookEntry(VSet.LOOK_CLASSIC, _("Classic")),

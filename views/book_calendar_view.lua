@@ -45,7 +45,7 @@ local Screen          = Device.screen
 local deps = ...
 local Locale, Colors, Fonts, Prefs, BookProgress, UI, CalendarData, VS, Cards =
     deps.Locale, deps.Colors, deps.Fonts, deps.Prefs, deps.BookProgress,
-    deps.UI, deps.CalendarData, deps.VS, deps.Cards
+    deps.UI, deps.CalendarData, deps.VS, deps.BookCalendarCards
 local DateUtil = deps.DateUtil
 local _            = Locale._
 local N_           = Locale.N_

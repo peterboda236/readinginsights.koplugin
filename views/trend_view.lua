@@ -45,7 +45,7 @@ local UIManager = require("ui/uimanager")
 -- there): Colors and Locale for appearance and text, VS for the reader's
 -- "8-week chart order" setting.
 local deps = ...
-local Colors, Locale, VS, Cards = deps.Colors, deps.Locale, deps.VS, deps.Cards
+local Colors, Locale, VS, Cards = deps.Colors, deps.Locale, deps.VS, deps.TrendCards
 local _            = Locale._
 local formatNumber = Locale.formatNumber
 local formatCount  = Locale.formatCount

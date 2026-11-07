@@ -63,7 +63,7 @@ local InfoMessage = require("ui/widget/infomessage")
 -- reads the same colors, fonts and reading data.
 local deps = ...
 local Locale, Colors, Fonts, UI, Data, Prefs, VS, BookList, Cards =
-    deps.Locale, deps.Colors, deps.Fonts, deps.UI, deps.Data, deps.Prefs, deps.VS, deps.BookList, deps.Cards
+    deps.Locale, deps.Colors, deps.Fonts, deps.UI, deps.Data, deps.Prefs, deps.VS, deps.BookList, deps.StreakCalendarCards
 -- Frame, rounded corners and shadow of the covers (Settings > Appearance >
 -- Covers), the same look as in the Book info popup.
 local CoverFrame, CoverThumbs = deps.CoverFrame, deps.CoverThumbs

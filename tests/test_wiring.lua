@@ -133,9 +133,10 @@ local InsightsCharts = load("views/insights_charts.lua", {
     Locale = Locale, Colors = Colors, UI = UI, VS = ViewSettings,
     Trend = Trend, DateUtil = DateUtil,
 })
+local InsightsValues = load("lib/insights_values.lua", { Locale = Locale, VS = ViewSettings })
 local InsightsCards = load("views/cards_look/sections.lua", {
     Locale = Locale, Colors = Colors, VS = ViewSettings, UI = UI, Data = InsightsData,
-    Charts = InsightsCharts, Headers = InsightsHeaders,
+    Charts = InsightsCharts, Headers = InsightsHeaders, Values = InsightsValues,
 })
 local InsightsPages = load("views/cards_look/pages.lua", { Colors = Colors })
 
@@ -144,7 +145,7 @@ local InsightsPages = load("views/cards_look/pages.lua", { Colors = Colors })
 -- biggest files in the plugin.
 local Insights = load("views/insights_view.lua", {
     Headers = InsightsHeaders, Charts = InsightsCharts,
-    Cards = InsightsCards, Pages = InsightsPages,
+    InsightsCards = InsightsCards, Pages = InsightsPages, Values = InsightsValues,
     Locale = Locale, Colors = Colors, Fonts = Fonts,
     PopupUtil = PopupUtil, VS = ViewSettings, Cache = InsightsCache, UI = UI,
     Trend = Trend, Heatmap = Heatmap, BookList = BookList, Data = InsightsData,
@@ -197,9 +198,21 @@ check("chapter bar exposes build + settings",
 check("menu exposes build", type(Menu.build) == "function")
 check("insights headers + charts expose their builders",
       type(InsightsHeaders.buildYearHeader) == "function"
+      and type(InsightsHeaders.buildYearRow) == "function"
       and type(InsightsHeaders.buildWeekNavHeader) == "function"
       and type(InsightsCharts.buildMonthlyChart) == "function"
       and type(InsightsCharts.buildWeeklyChart) == "function")
+check("uikit exports tappableCell", type(UI.tappableCell) == "function")
+check("insights values expose what both looks call",
+      type(InsightsValues.streakValues) == "function"
+      and type(InsightsValues.yearlyValues) == "function"
+      and type(InsightsValues.weekData) == "function"
+      and type(InsightsValues.weekValues) == "function"
+      and type(InsightsValues.timeGoalValues) == "function"
+      and type(InsightsValues.timeGoalText) == "function"
+      and type(InsightsValues.goalPercent) == "function"
+      and type(InsightsValues.goalPace) == "function"
+      and type(InsightsValues.allTimeValues) == "function")
 check("cards look exposes buildSections + paginate",
       type(InsightsCards.buildSections) == "function"
       and type(InsightsPages.paginate) == "function")

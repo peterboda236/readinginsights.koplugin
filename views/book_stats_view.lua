@@ -425,6 +425,50 @@ local function buildDonutBookRow(stats, fonts, layout, show_pages, show_times)
 end
 
 -- Main section builder.
+-- Forget the tap targets of a previous build (rebuilds reuse the popup
+-- object): a hidden part must not stay tappable.
+local function resetTapTargets(popup)
+    if not popup then return end
+    popup._chapter_headers, popup._chapter_values = nil, nil
+    popup._chapter_avg_cell = nil
+    popup._chapter_read_cell = nil
+    popup._this_book_header, popup._pace_header, popup._pace_row = nil, nil, nil
+    popup._started_widget, popup._finish_widget = nil, nil
+    popup._chapter_bar = nil
+    popup._chapter_bar_prev_arrow, popup._chapter_bar_next_arrow = nil, nil
+    popup._chapter_bar_can_prev, popup._chapter_bar_can_next = nil, nil
+    popup._chapter_bar_on_prev, popup._chapter_bar_on_next = nil, nil
+end
+
+-- Paging of the chapter bar drawn `width` wide with `padding_h` on each side:
+-- the ‹ / › handlers (nil without a popup), each moving one page of chapters. The first build starts on the page that holds the current chapter;
+-- pages are 1, 1+page_size, 1+2*page_size, …
+local function chapterBarPaging(popup, stats, width, padding_h)
+    local page_size = stats.chapter_info
+        and ChapterBar.pageSizeFor(stats.chapter_info.total, width, padding_h)
+        or ChapterBar.DEFAULT_PAGE_SIZE
+    if popup and not popup.chapter_bar_offset and stats.chapter_info then
+        local page_start = math.floor((stats.chapter_info.current - 1) / page_size) * page_size + 1
+        popup.chapter_bar_offset = math.max(1, page_start)
+    end
+    local on_prev = popup and function()
+        popup.chapter_bar_offset = math.max(1, (popup.chapter_bar_offset or 1) - page_size)
+        popup:_rebuildUI()
+    end or nil
+    local on_next = popup and function()
+        popup.chapter_bar_offset = math.max(1, (popup.chapter_bar_offset or 1) + page_size)
+        popup:_rebuildUI()
+    end or nil
+    return on_prev, on_next
+end
+
+-- Chapters read: the ones before the current chapter (what the chapter bar
+-- draws as read), all of them once the book is at its end.
+local function chaptersRead(ci, at_book_end)
+    if at_book_end then return ci.total end
+    return math.max(0, math.min(ci.total, (ci.current or 1) - 1))
+end
+
 local function buildSections(stats, fonts, layout, popup)
     local function valueLine(time_data, label)
         return buildValueLine(fonts.value, fonts.label, layout.col_width, time_data, label)
@@ -549,19 +593,7 @@ local function buildSections(stats, fonts, layout, popup)
     -- header, dividers and all - instead of leaving an empty header behind.
     local Opt = VS.Opt
 
-    -- Forget tap targets of a previous build (rebuilds reuse this popup
-    -- object): a hidden part must not stay tappable.
-    if popup then
-        popup._chapter_headers, popup._chapter_values = nil, nil
-        popup._chapter_avg_cell = nil
-        popup._chapter_read_cell = nil
-        popup._this_book_header, popup._pace_header, popup._pace_row = nil, nil, nil
-        popup._started_widget, popup._finish_widget = nil, nil
-        popup._chapter_bar = nil
-        popup._chapter_bar_prev_arrow, popup._chapter_bar_next_arrow = nil, nil
-        popup._chapter_bar_can_prev, popup._chapter_bar_can_next = nil, nil
-        popup._chapter_bar_on_prev, popup._chapter_bar_on_next = nil, nil
-    end
+    resetTapTargets(popup)
 
     local sections = VerticalGroup:new{
         align = "left",
@@ -624,23 +656,8 @@ local function buildSections(stats, fonts, layout, popup)
             { no_bottom_line = true, gap_above_row = true, split_header = (show_cur and show_next) and true or false })
     end
 
-    local chapter_page_size = stats.chapter_info
-        and ChapterBar.pageSizeFor(stats.chapter_info.total, layout.full_width, layout.padding_h)
-        or ChapterBar.DEFAULT_PAGE_SIZE
-    if popup and not popup.chapter_bar_offset and stats.chapter_info then
-        -- Start on the page that contains the current chapter.
-        -- Pages are 1, 1+page_size, 1+2*page_size, …
-        local page_start = math.floor((stats.chapter_info.current - 1) / chapter_page_size) * chapter_page_size + 1
-        popup.chapter_bar_offset = math.max(1, page_start)
-    end
-    local chapter_on_prev = popup and function()
-        popup.chapter_bar_offset = math.max(1, (popup.chapter_bar_offset or 1) - chapter_page_size)
-        popup:_rebuildUI()
-    end or nil
-    local chapter_on_next = popup and function()
-        popup.chapter_bar_offset = math.max(1, (popup.chapter_bar_offset or 1) + chapter_page_size)
-        popup:_rebuildUI()
-    end or nil
+    local chapter_on_prev, chapter_on_next =
+        chapterBarPaging(popup, stats, layout.full_width, layout.padding_h)
 
     local chapter_bar, chapter_left_arrow, chapter_right_arrow, chapter_can_go_left, chapter_can_go_right =
         ChapterBar.build(
@@ -743,10 +760,7 @@ local function buildSections(stats, fonts, layout, popup)
         local ci = stats.chapter_info
         if ci and Opt.readShowChapterCountRow() then
             local avg_mode = (popup and popup._chapter_avg_mode) or "time"
-            -- Chapters before the current one are the ones the chapter bar
-            -- draws as read.
-            local read_count = math.max(0, math.min(ci.total, (ci.current or 1) - 1))
-            if stats.at_book_end then read_count = ci.total end
+            local read_count = chaptersRead(ci, stats.at_book_end)
             local left_cell
             if popup and popup._chapter_read_mode == "left" and not stats.at_book_end then
                 left_cell = valueLine(
@@ -1031,6 +1045,8 @@ function ReadingStatsPopup:_buildUI()
                 tappableWrap = tappableWrap, buildValueLine = buildValueLine,
                 splitHalfWidth = splitHalfWidth, buildSplitCellValue = buildSplitCellValue,
                 buildPagesSplitValue = buildPagesSplitValue, formatFraction = formatFraction,
+                resetTapTargets = resetTapTargets, chapterBarPaging = chapterBarPaging,
+                chaptersRead = chaptersRead,
             }, screen_h - 2 * (border_w + corner_pad))
         else
             sections = buildSections(self._stats, self._fonts, self._layout, self)

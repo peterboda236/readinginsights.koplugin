@@ -31,6 +31,14 @@ package.preload["luasettings"] = function()
 end
 package.preload["lua-ljsqlite3/init"] = function() return { open = function() return nil end } end
 package.preload["libs/libkoreader-lfs"] = function() return { attributes = function() return nil end } end
+-- lib/paths.lua registers itself as this module when main.lua loads it; here
+-- it only has to name the files, which the stubbed file layer never writes.
+package.preload["readinginsights_paths"] = function()
+    return {
+        dataFile  = function(name) return "/tmp/readinginsights/data/" .. name end,
+        cacheFile = function(name) return "/tmp/readinginsights/cache/" .. name end,
+    }
+end
 
 -- Stub of lib/settings.lua's surface used by insightssettings.lua
 local Settings = {

@@ -2071,8 +2071,8 @@ msgstr "Apparence"
 msgid "Cards"
 msgstr "Cartes"
 
-msgid "Classic: the original layout. Cards: each section in a card with an icon; when the page doesn't fit the screen it is split into pages (swipe up / down)."
-msgstr "Classique : la mise en page d'origine. Cartes : chaque section dans une carte avec une icône ; si la page ne tient pas sur l'écran, elle est divisée en pages (balayer vers le haut / le bas)."
+msgid "Two looks for the popups: Classic, the original layout, or Cards, with the sections in cards."
+msgstr "Deux apparences pour les fenêtres : Classique, la mise en page d'origine, ou Cartes, avec les sections dans des cartes."
 
 msgid "Daily / weekly goal ring"
 msgstr "Anneau d'objectif quotidien / hebdomadaire"

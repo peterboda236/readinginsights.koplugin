@@ -8,7 +8,7 @@ insights_view.lua picks one of the two. The sections are put on pages when
 they don't fit one screen (see views/cards_look/pages.lua), so each one records
 where it starts (sections._breaks).
 
-Loaded once by main.lua and handed to the insights view as `deps.Cards`.
+Loaded once by main.lua and handed to the insights view as `deps.InsightsCards`.
 ]]--
 
 local Device = require("device")
@@ -26,9 +26,10 @@ local T = require("ffi/util").template
 
 -- Shared modules, passed in as one named table by main.lua (see there).
 local deps = ...
-local Locale, Colors, VS, UI, Data, Achievements, Streak, YearShelf, Charts, Headers, Donut =
+local Locale, Colors, VS, UI, Data, Achievements, Streak, Charts, Headers, Donut =
     deps.Locale, deps.Colors, deps.VS, deps.UI, deps.Data, deps.Achievements,
-    deps.Streak, deps.YearShelf, deps.Charts, deps.Headers, deps.Donut
+    deps.Streak, deps.Charts, deps.Headers, deps.Donut
+local Values = deps.Values
 
 local buildMonthlyChart, buildWeeklyChart = Charts.buildMonthlyChart, Charts.buildWeeklyChart
 local buildWeekNavHeader = Headers.buildWeekNavHeader
@@ -38,224 +39,36 @@ local N_           = Locale.N_
 local formatNumber = Locale.formatNumber
 local formatCount  = Locale.formatCount
 local splitDurationValueUnit = Locale.splitDurationValueUnit
-local buildValueLine = UI.buildValueLine
 
 local M = {}
 
-local function tappableCell(widget, col_width, callback)
-    local cell = InputContainer:new{
-        dimen = Geom:new{ x = 0, y = 0, w = col_width, h = widget:getSize().h },
-        widget,
-    }
-    cell.ges_events = {
-        Tap = { GestureRange:new{ ges = "tap", range = cell.dimen } },
-    }
-    function cell:onTap()
-        callback()
-        return true
-    end
-    return cell
-end
+local tappableCell = UI.tappableCell
 
+-- The year row of the Reading insights page (views/insights_headers.lua),
+-- with the chart icon before the year and a "›" after it when a tap opens the
+-- year shelf; no background fill.
 local function buildYearHeader(popup_self, font_section, font_label, layout, year_range, selected_year)
-    local prev_available = selected_year > year_range.min_year
-    local next_available = selected_year < year_range.max_year
-
-    local inner_pad = Size.padding.default
-    local gap       = Size.padding.small
-
-    -- The previous/next year on either side use the plain "label" face
-    -- (like the "pages read" text below), so only the centre year - in the
-    -- bold "section" face - stands out as the selected one.
-    local sample_arrow = TextWidget:new{ text = "\xe2\x80\xb9", face = font_label }
-    local arrow_w = sample_arrow:getSize().w
-    sample_arrow:free()
-
-    local sample_yr = TextWidget:new{ text = tostring(selected_year - 1), face = font_label }
-    local yr_side_w = sample_yr:getSize().w
-    sample_yr:free()
-
-    local slot_w = arrow_w + gap + yr_side_w + inner_pad
-
-    local year_label = TextWidget:new{
-        text = tostring(selected_year),
-        face = font_section,
-        fgcolor = Colors.section(),
-    }
-    -- Year navigation is done via swipe on the whole popup (see
-    -- onSwipe/_goToYear) and by tapping the previous/next year slot on either
-    -- side of the centre year (the InputContainer wrappers below). The reading
-    -- heatmap opens from the "All time" header instead of from tapping the
-    -- year (see showReadingHeatmap and buildInsightsSections). Tapping the
-    -- centre year itself opens the year shelf: the covers of the books read
-    -- that year, month by month (see showYearShelf). Not on the sleep screen
-    -- (readonly), where a tap must not navigate anywhere.
-    local tappable_year = YearShelf and not popup_self.readonly
-    local year_h  = year_label:getSize().h
-    local icon_sz = math.floor(year_h * 0.7)
-    local year_group = HorizontalGroup:new{
-        align = "center",
-        UI.icon("chart", icon_sz),
-        HorizontalSpan:new{ width = inner_pad },
-        year_label,
-    }
-    local year_group_w = icon_sz + inner_pad + year_label:getSize().w
-    if tappable_year then
-        local chevron = UI.chevron(font_section)
-        table.insert(year_group, HorizontalSpan:new{ width = inner_pad })
-        table.insert(year_group, chevron)
-        year_group_w = year_group_w + inner_pad + chevron:getSize().w
-    end
-    local year_widget = year_group
-    local year_tap_pad = 0
-    if tappable_year then
-        year_tap_pad = Screen:scaleBySize(16)
-        local year_inner = HorizontalGroup:new{
-            align = "center",
-            HorizontalSpan:new{ width = year_tap_pad },
-            year_group,
-            HorizontalSpan:new{ width = year_tap_pad },
-        }
-        local year_tappable = InputContainer:new{
-            dimen = Geom:new{ x = 0, y = 0,
-                w = year_group_w + 2 * year_tap_pad, h = year_inner:getSize().h },
-            year_inner,
-        }
-        year_tappable.ges_events = {
-            Tap = { GestureRange:new{ ges = "tap", range = year_tappable.dimen } },
-        }
-        function year_tappable:onTap()
-            popup_self:showYearShelf()
-            return true
-        end
-        year_widget = year_tappable
-    end
-
-    local function makeSlot(yr, arrow_glyph, left, visible, on_tap)
-        if not visible then
-            return HorizontalSpan:new{ width = slot_w }, slot_w
-        end
-
-        local arrow_tw = TextWidget:new{
-            text    = arrow_glyph,
-            face    = font_label,
-            fgcolor = Colors.label(),
-        }
-        local yr_tw = TextWidget:new{
-            text    = tostring(yr),
-            face    = font_label,
-            fgcolor = Colors.label(),
-        }
-
-        local parts
-        if left then
-            parts = HorizontalGroup:new{
+    return Headers.buildYearRow(popup_self, font_section, font_label, layout, year_range, selected_year,
+        function(year_label, tappable)
+            local inner_pad = Size.padding.default
+            local icon_sz = math.floor(year_label:getSize().h * 0.7)
+            local group = HorizontalGroup:new{
                 align = "center",
-                arrow_tw,
-                HorizontalSpan:new{ width = gap },
-                yr_tw,
+                UI.icon("chart", icon_sz),
                 HorizontalSpan:new{ width = inner_pad },
+                year_label,
             }
-        else
-            parts = HorizontalGroup:new{
-                align = "center",
-                HorizontalSpan:new{ width = inner_pad },
-                yr_tw,
-                HorizontalSpan:new{ width = gap },
-                arrow_tw,
-            }
-        end
-
-        -- Tapping the slot navigates to that year, same as the swipe.
-        local tappable = InputContainer:new{
-            dimen = Geom:new{ x = 0, y = 0, w = parts:getSize().w, h = parts:getSize().h },
-            parts,
-        }
-        tappable.ges_events = {
-            Tap = { GestureRange:new{ ges = "tap", range = tappable.dimen } },
-        }
-        function tappable:onTap()
-            on_tap()
-            return true
-        end
-        return tappable, slot_w
-    end
-
-    local left_slot,  left_w  = makeSlot(selected_year - 1, "\xe2\x80\xb9", true,  prev_available,
-        function() popup_self:onGoToPrevYear() end)
-    local right_slot, right_w = makeSlot(selected_year + 1, "\xe2\x80\xba", false, next_available,
-        function() popup_self:onGoToNextYear() end)
-
-    local year_w    = year_group_w + 2 * year_tap_pad
-    local remaining = layout.content_width - left_w - right_w - year_w
-    if remaining < 0 then remaining = 0 end
-    local side_l = math.floor(remaining / 2)
-    local side_r = remaining - side_l
-
-    return HorizontalGroup:new{
-        align = "center",
-        left_slot,
-        HorizontalSpan:new{ width = side_l },
-        year_widget,
-        HorizontalSpan:new{ width = side_r },
-        right_slot,
-    }
+            if tappable then
+                table.insert(group, HorizontalSpan:new{ width = inner_pad })
+                table.insert(group, UI.chevron(font_section))
+            end
+            return group
+        end)
 end
 
 local function buildYearlyRow(popup_self, yearly_stats, fonts, layout)
-    -- Days of the shown year so far (the whole year once it is over): what the
-    -- daily averages and the "of days read" percentage divide by.
-    local selected_year = popup_self.selected_year or tonumber(os.date("%Y"))
-    local current_year  = tonumber(os.date("%Y"))
-    local days_in_year
-    if selected_year == current_year then
-        days_in_year = tonumber(os.date("%j"))
-    else
-        local is_leap = (selected_year % 4 == 0 and selected_year % 100 ~= 0)
-                     or (selected_year % 400 == 0)
-        days_in_year = is_leap and 366 or 365
-    end
-
-    local left_value = ""
-    local left_unit  = ""
-    local right_value, right_unit
-    local mode = popup_self.mode
-
-    if mode == VS.INSIGHTS_MODE_HOURS then
-        -- Reading time | daily average time.
-        local yr_secs = yearly_stats.duration or 0
-        left_value, left_unit = splitDurationValueUnit(yr_secs, _("reading time"))
-        local avg_secs = (days_in_year > 0) and (yr_secs / days_in_year) or 0
-        right_value, right_unit = splitDurationValueUnit(avg_secs, _("daily avg time"))
-    elseif mode == VS.INSIGHTS_MODE_PAGES then
-        -- Pages read | daily average pages.
-        local pg = yearly_stats.pages or 0
-        left_value = formatCount(pg)
-        left_unit  = N_("page read", "pages read", pg)
-        local avg_pg = (days_in_year > 0) and (pg / days_in_year) or 0
-        local avg_rounded
-        if avg_pg >= 10 then
-            avg_rounded = math.floor(avg_pg + 0.5)
-        else
-            avg_rounded = math.floor(avg_pg * 10 + 0.5) / 10
-        end
-        right_value = formatNumber(avg_rounded, avg_rounded ~= math.floor(avg_rounded) and 1 or 0)
-        right_unit  = N_("daily avg page", "daily avg pages", avg_rounded)
-    elseif mode == VS.INSIGHTS_MODE_BOOKS then
-        left_value = formatCount(yearly_stats.books_started)
-        left_unit  = N_("book", "books", yearly_stats.books_started)
-        local avg_days = yearly_stats.avg_days_per_book or 0
-        right_value = formatCount(avg_days)
-        right_unit  = N_("day/book avg", "days/book avg", avg_days)
-    else
-        left_value = formatCount(yearly_stats.days)
-        left_unit  = N_("day read", "days read", yearly_stats.days)
-        local pct = (days_in_year > 0)
-            and math.floor((yearly_stats.days / days_in_year) * 100 + 0.5)
-            or 0
-        right_value = pct .. "%"
-        right_unit  = _("of days read")
-    end
+    local left_value, left_unit, right_value, right_unit =
+        Values.yearlyValues(popup_self.selected_year, popup_self.mode, yearly_stats)
 
     -- Stacked value cells (tap: the books of that year), `layout` is the
     -- inside of the year card.
@@ -287,20 +100,8 @@ function M.buildSections(popup_self, streaks, yearly_stats, year_range, monthly_
     popup_self._timegoal_hold_targets = {}
     if VS.readShowTimeGoals() then
 
-        local daily_goal_secs  = VS.readDailyGoalMinutes()  * 60
-        local weekly_goal_secs = VS.readWeeklyGoalMinutes() * 60
-
-        local today_secs, week_secs = 0, 0
-        if last_week_daily then
-            local week_start_wd = Data.weekStartWday()
-            local wday = tonumber(os.date("%w"))
-            local days_into_week = (week_start_wd == 0) and wday or ((wday + 6) % 7)
-            for i = 1, math.min(days_into_week + 1, #last_week_daily) do
-                local secs = (last_week_daily[i] and last_week_daily[i].seconds) or 0
-                week_secs = week_secs + secs
-                if i == 1 then today_secs = secs end
-            end
-        end
+        local today_secs, week_secs, daily_goal_secs, weekly_goal_secs =
+            Values.timeGoalValues(last_week_daily, last_week_daily and Data.weekStartWday())
 
         local function addTimeGoalHold(widget, fn)
             table.insert(popup_self._timegoal_hold_targets, { w = widget, fn = fn })
@@ -308,13 +109,7 @@ function M.buildSections(popup_self, streaks, yearly_stats, year_range, monthly_
         local function editDaily()  popup_self:editTimeGoal("daily")  end
         local function editWeekly() popup_self:editTimeGoal("weekly") end
 
-        -- Same duration format as the rest of the plugin (follows KOReader's
-        -- "Duration format" setting): "0:23 / 0:30" classic, "23m / 30m" etc.
-        local function goalText(done, goal)
-            local txt = Locale.formatDuration(done, true) .. " / " .. Locale.formatDuration(goal, true)
-            if goal > 0 and done >= goal then txt = txt .. "  \u{2713}" end  -- goal met
-            return txt
-        end
+        local goalText = Values.timeGoalText
 
         local function showDailyStreak()  popup_self:showTimeGoalStreak("daily")  end
         local function showWeeklyStreak() popup_self:showTimeGoalStreak("weekly") end
@@ -406,48 +201,14 @@ function M.buildSections(popup_self, streaks, yearly_stats, year_range, monthly_
         popup_self._week_swipe_targets = {}
         -- Long-press targets that flip between the two week views.
         popup_self._week_hold_targets = {}
-        local cal = cal_mode and popup_self._cal_week or nil
-        local lw, week_daily
-        if cal_mode then
-            lw = (cal and cal.stats) or { avg_seconds = 0, avg_pages = 0, total_seconds = 0,
-                                          total_pages = 0, days = 7, prev_seconds = 0, prev_pages = 0 }
-            week_daily = cal and cal.daily or nil
-        else
-            lw = last_week_stats or { avg_seconds = 0, avg_pages = 0 }
-            week_daily = last_week_daily
-        end
-        -- The calendar view is always shown, even for a week without any
-        -- reading: its header is what pages to the other weeks.
-        local has_week = cal_mode or lw.avg_seconds > 0 or lw.avg_pages > 0
+        local lw, week_daily, has_week = Values.weekData(cal_mode,
+            cal_mode and popup_self._cal_week or nil, last_week_stats, last_week_daily)
         if has_week then
             local days_n = lw.days or 7
-
-            local avg_secs = lw.avg_seconds or 0
-            local week_time_val, week_time_unit_full = splitDurationValueUnit(avg_secs, _("daily avg time"))
-
-            local avg_pages_rounded
-            if lw.avg_pages >= 10 then
-                avg_pages_rounded = math.floor(lw.avg_pages + 0.5)
-            else
-                avg_pages_rounded = math.floor(lw.avg_pages * 10 + 0.5) / 10
-            end
-            local week_pages_val  = formatNumber(avg_pages_rounded, avg_pages_rounded ~= math.floor(avg_pages_rounded) and 1 or 0)
-            local week_pages_unit = N_("daily avg page", "daily avg pages", avg_pages_rounded)
-
-            local total_secs = lw.total_seconds or (lw.avg_seconds or 0) * 7
-            local total_time_val, total_time_unit = splitDurationValueUnit(total_secs, _("reading time"))
-
-            local total_pages_raw = math.floor((lw.total_pages or (lw.avg_pages or 0) * 7) + 0.5)
-            local total_pages_val = formatCount(total_pages_raw)
-            local total_pages_unit = N_("page read", "pages read", total_pages_raw)
+            local total_secs, total_pages_raw, time_cells, pages_cells = Values.weekValues(lw)
 
             local weekly_chart_mode = VS.normalizeWeeklyChartMode(popup_self.weekly_chart_mode)
             local pages_mode = (weekly_chart_mode == VS.WEEKLY_CHART_MODE_PAGES)
-
-            local time_cells  = { total_time_val, total_time_unit, "time_total",
-                                  week_time_val, week_time_unit_full, "time_avg" }
-            local pages_cells = { total_pages_val, total_pages_unit, "pages_total",
-                                  week_pages_val, week_pages_unit, "pages_avg" }
 
             -- The section is a card; everything in it is built against the
             -- inside of the card.
@@ -591,21 +352,8 @@ function M.buildSections(popup_self, streaks, yearly_stats, year_range, monthly_
         end
     end
 
-    local function streakDisplay(n, unit_label, empty_label)
-        if n < 2 then return "", empty_label end
-        return formatCount(n), unit_label(n)
-    end
-
-    -- Compact unit labels ("days"/"weeks" instead of "days in a row") so that
-    -- the days/weeks values fit side by side within a single Current/Best column.
-    local cd_val, cd_unit = streakDisplay(streaks.current_days,
-        function(n) return N_("day",  "days",  n) end, _("No streak"))
-    local cw_val, cw_unit = streakDisplay(streaks.current_weeks,
-        function(n) return N_("week", "weeks", n) end, _("No streak"))
-    local bd_val, bd_unit = streakDisplay(streaks.best_days,
-        function(n) return N_("day",  "days",  n) end, _("No streak"))
-    local bw_val, bw_unit = streakDisplay(streaks.best_weeks,
-        function(n) return N_("week", "weeks", n) end, _("No streak"))
+    local cd_val, cd_unit, cw_val, cw_unit, bd_val, bd_unit, bw_val, bw_unit =
+        Values.streakValues(streaks)
 
     -- One card: current and best streak side by side, each as days and
     -- weeks. Under the current streak a dot per day of the last 7 days
@@ -798,25 +546,20 @@ function M.buildSections(popup_self, streaks, yearly_stats, year_range, monthly_
             -- Pace uses the day of the year and whole books only (floor), so
             -- "On track" covers less than a book either way.
             local ratio = (goal_value > 0) and math.min(1, finished_count / goal_value) or 0
-            local pace = formatCount(math.floor(ratio * 100 + 0.5)) .. "% " .. _("of yearly goal")
-            local this_year = tonumber(os.date("%Y"))
-            if goal_value > 0 and goal_year < this_year then
-                pace = finished_count >= goal_value and _("Goal reached") or _("Goal not reached")
-            elseif goal_value > 0 and goal_year == this_year then
-                local y = goal_year
-                local leap = (y % 4 == 0 and y % 100 ~= 0) or (y % 400 == 0)
-                local expected = goal_value * tonumber(os.date("%j")) / (leap and 366 or 365)
-                local diff = finished_count - expected
-                local n = math.floor(math.abs(diff))
-                if finished_count >= goal_value then
-                    pace = _("Goal reached")
-                elseif n == 0 then
-                    pace = _("On track")
-                elseif diff > 0 then
-                    pace = "\u{25B2} " .. formatCount(n) .. " " .. N_("book ahead of pace", "books ahead of pace", n)
-                else
-                    pace = "\u{25BC} " .. formatCount(n) .. " " .. N_("book behind pace", "books behind pace", n)
-                end
+            local pace
+            local state, n = Values.goalPace(finished_count, goal_value, goal_year)
+            if state == "reached" then
+                pace = _("Goal reached")
+            elseif state == "not_reached" then
+                pace = _("Goal not reached")
+            elseif state == "on_track" then
+                pace = _("On track")
+            elseif state == "ahead" then
+                pace = "\u{25B2} " .. formatCount(n) .. " " .. N_("book ahead of pace", "books ahead of pace", n)
+            elseif state == "behind" then
+                pace = "\u{25BC} " .. formatCount(n) .. " " .. N_("book behind pace", "books behind pace", n)
+            else
+                pace = formatCount(Values.goalPercent(finished_count, goal_value)) .. "% " .. _("of yearly goal")
             end
 
             local body = VerticalGroup:new{
@@ -890,13 +633,7 @@ function M.buildSections(popup_self, streaks, yearly_stats, year_range, monthly_
     end -- if show_goal or show_ach
 
     do
-        local all_hours = all_time_stats and all_time_stats.hours or 0
-        local all_pages = all_time_stats and all_time_stats.pages or 0
-
-        local all_secs_approx = (all_time_stats and all_time_stats.duration) or (all_hours * 3600)
-        local all_time_val, all_time_unit = splitDurationValueUnit(all_secs_approx, _("reading time"))
-        local all_pages_val  = formatCount(all_pages)
-        local all_pages_unit = N_("page read", "pages read", all_pages)
+        local all_time_val, all_time_unit, all_pages_val, all_pages_unit = Values.allTimeValues(all_time_stats)
 
         -- One card: header (tap: the reading heatmap, moved here from
         -- tapping the year, see showReadingHeatmap / buildYearHeader) and

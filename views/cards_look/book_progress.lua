@@ -108,17 +108,7 @@ function M.buildSections(stats, fonts, layout, popup, H, avail_h)
         return UI.chevron(fonts.section)
     end
 
-    if popup then
-        popup._chapter_headers, popup._chapter_values = nil, nil
-        popup._chapter_avg_cell = nil
-        popup._chapter_read_cell = nil
-        popup._this_book_header, popup._pace_header, popup._pace_row = nil, nil, nil
-        popup._started_widget, popup._finish_widget = nil, nil
-        popup._chapter_bar = nil
-        popup._chapter_bar_prev_arrow, popup._chapter_bar_next_arrow = nil, nil
-        popup._chapter_bar_can_prev, popup._chapter_bar_can_next = nil, nil
-        popup._chapter_bar_on_prev, popup._chapter_bar_on_next = nil, nil
-    end
+    H.resetTapTargets(popup)
 
     local sections = VerticalGroup:new{ align = "left" }
     sections._breaks = {}
@@ -195,21 +185,7 @@ function M.buildSections(stats, fonts, layout, popup, H, avail_h)
     end
 
     -- ===== Chapter bar (or the skim bar) ================================
-    local chapter_page_size = stats.chapter_info
-        and ChapterBar.pageSizeFor(stats.chapter_info.total, inner_w, 0)
-        or ChapterBar.DEFAULT_PAGE_SIZE
-    if popup and not popup.chapter_bar_offset and stats.chapter_info then
-        local page_start = math.floor((stats.chapter_info.current - 1) / chapter_page_size) * chapter_page_size + 1
-        popup.chapter_bar_offset = math.max(1, page_start)
-    end
-    local chapter_on_prev = popup and function()
-        popup.chapter_bar_offset = math.max(1, (popup.chapter_bar_offset or 1) - chapter_page_size)
-        popup:_rebuildUI()
-    end or nil
-    local chapter_on_next = popup and function()
-        popup.chapter_bar_offset = math.max(1, (popup.chapter_bar_offset or 1) + chapter_page_size)
-        popup:_rebuildUI()
-    end or nil
+    local chapter_on_prev, chapter_on_next = H.chapterBarPaging(popup, stats, inner_w, 0)
     local chapter_bar, left_arrow, right_arrow, can_left, can_right = ChapterBar.build(
         stats.chapter_info, inner_w, 0, popup and popup.chapter_bar_offset or nil,
         chapter_on_prev, chapter_on_next, true)
@@ -250,8 +226,7 @@ function M.buildSections(stats, fonts, layout, popup, H, avail_h)
         local rows = { chapter_bar }
         local ci = stats.chapter_info
         if ci and Opt.readShowChapterCountRow() then
-            local read_count = math.max(0, math.min(ci.total, (ci.current or 1) - 1))
-            if stats.at_book_end then read_count = ci.total end
+            local read_count = H.chaptersRead(ci, stats.at_book_end)
             local left_cell
             if popup and popup._chapter_read_mode == "left" and not stats.at_book_end then
                 left_cell = statCell({ value = formatCount(ci.total - read_count), unit = "" },

@@ -262,14 +262,14 @@ local InsightsData = loadModule("lib/insights_data.lua",
 local TrendCards = loadModule("views/cards_look/trend.lua",
     { Colors = Colors, UI = UI })
 local Trend = loadModule("views/trend_view.lua",
-    { Colors = Colors, Locale = Locale, VS = ViewSettings, Cards = TrendCards })
+    { Colors = Colors, Locale = Locale, VS = ViewSettings, TrendCards = TrendCards })
 -- The "Cards" look of the Reading habits (heatmap) popup.
 local HeatmapCards = loadModule("views/cards_look/heatmap.lua", {
-    Colors = Colors, Locale = Locale, VS = ViewSettings, UI = UI, Data = InsightsData,
+    Locale = Locale, VS = ViewSettings, UI = UI, Data = InsightsData,
 })
 local Heatmap = loadModule("views/heatmap_view.lua", {
     Colors = Colors, Fonts = Fonts, Locale = Locale, VS = ViewSettings, UI = UI,
-    Data = InsightsData, Cache = InsightsCache, Cards = HeatmapCards,
+    Data = InsightsData, Cache = InsightsCache, HeatmapCards = HeatmapCards,
 })
 local BookList = loadModule("views/booklist_view.lua", {
     Colors = Colors, Locale = Locale, VS = ViewSettings, UI = UI,
@@ -296,7 +296,7 @@ local AchievementsCards = loadModule("views/cards_look/achievements.lua",
     { Locale = Locale, Colors = Colors, Fonts = Fonts, UI = UI })
 local AchievementsView = loadModule("views/achievements_view.lua",
     { Achievements = Achievements, Locale = Locale, ListWidget = ListWidget,
-      VS = ViewSettings, Cards = AchievementsCards })
+      VS = ViewSettings, AchievementsCards = AchievementsCards })
 
 -- The combined current/best streak popup with its full-history calendar,
 -- opened both from the insights page's streak cells and straight from the
@@ -321,7 +321,7 @@ local StreakCalendar = loadModule("views/streak_calendar_view.lua", {
     Data = InsightsData, Prefs = Prefs, VS = ViewSettings,
     BookList = BookList, BookInfoData = BookInfoData, Ratings = Ratings,
     CoverFrame = CoverFrame, CoverThumbs = CoverThumbs, DateUtil = DateUtil,
-    Cards = StreakCalendarCards,
+    StreakCalendarCards = StreakCalendarCards,
 })
 
 -- Records: the queries and their cache (lib/records_data.lua, loaded above
@@ -367,17 +367,20 @@ local InsightsCharts = loadModule("views/insights_charts.lua", {
     Trend = Trend, DateUtil = DateUtil,
 })
 
+-- The values the insights popup shows, shared by its two looks.
+local InsightsValues = loadModule("lib/insights_values.lua", { Locale = Locale, VS = ViewSettings })
+
 -- The "Cards" look of the insights popup and its pages.
 local InsightsCards = loadModule("views/cards_look/sections.lua", {
     Locale = Locale, Colors = Colors, VS = ViewSettings, UI = UI, Data = InsightsData,
-    Achievements = Achievements, Streak = StreakCalendar, YearShelf = YearShelf,
-    Charts = InsightsCharts, Headers = InsightsHeaders, Donut = Donut,
+    Achievements = Achievements, Streak = StreakCalendar,
+    Charts = InsightsCharts, Headers = InsightsHeaders, Donut = Donut, Values = InsightsValues,
 })
 local InsightsPages = loadModule("views/cards_look/pages.lua", { Colors = Colors })
 
 local Insights = loadModule("views/insights_view.lua", {
     Headers = InsightsHeaders, Charts = InsightsCharts,
-    Cards = InsightsCards, Pages = InsightsPages,
+    InsightsCards = InsightsCards, Pages = InsightsPages, Values = InsightsValues,
     Locale = Locale, Colors = Colors, Fonts = Fonts,
     PopupUtil = PopupUtil, VS = ViewSettings, Cache = InsightsCache, UI = UI,
     Trend = Trend, Heatmap = Heatmap, BookList = BookList, Data = InsightsData,
@@ -390,7 +393,7 @@ local BookCalendarCards = loadModule("views/cards_look/book_calendar.lua", { Col
 local BookCalendar = loadModule("views/book_calendar_view.lua", {
     Locale = Locale, Colors = Colors, Fonts = Fonts, Prefs = Prefs, VS = ViewSettings,
     BookProgress = BookProgress, UI = UI, CalendarData = BookCalendarData,
-    DateUtil = DateUtil, Cards = BookCalendarCards,
+    DateUtil = DateUtil, BookCalendarCards = BookCalendarCards,
 })
 -- The "Cards" look of the Book progress popup.
 local BookProgressCards = loadModule("views/cards_look/book_progress.lua", {

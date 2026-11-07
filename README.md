@@ -200,6 +200,35 @@ settings → Sleep screen*:
 
 Everything is queried and drawn before the device actually goes to sleep.
 
+## 🃏 Cards look
+
+*Settings ▸ Appearance ▸ Look* switches the popups between two looks:
+**Classic** (the default, as in the screenshots at the top) and **Cards**, with the
+sections in cards. Both show the same data; only the look changes. Cards
+covers Reading insights, Book progress, Reading habits, the Reading calendar
+and its streaks, the Book progress calendar, Achievements and the 8-week
+trend; the other popups look the same in both.
+
+- **Pages** — in Cards, when Reading insights or Book progress doesn't fit the
+  screen it is split into pages instead of scrolling: swipe up for the next
+  page, swipe down for the previous one (on the first page it closes the
+  popup), or tap the arrows of the *‹ 1 / 2 ›* footer.
+
+<!-- screenshot: Reading insights, Cards, page 1 (FileManager_2026-11-07_183352.png) -->
+<!-- screenshot: Reading insights, Cards, page 2 (FileManager_2026-11-07_183410.png) -->
+<!-- screenshot: Book progress, Cards (Reader_..._2026-11-07_183442.png) -->
+<!-- screenshot: Reading habits, Cards (FileManager_2026-11-07_183430.png) -->
+
+<details>
+<summary>More Cards screenshots</summary>
+
+<!-- screenshot: Reading calendar, Cards (Reader_..._2026-11-07_183458.png) -->
+<!-- screenshot: Book progress calendar, Cards (Reader_..._2026-11-07_183516.png) -->
+<!-- screenshot: Achievements, Cards (FileManager_2026-11-07_184741.png) -->
+<!-- screenshot: 8-week trend, Cards (Reader_..._2026-11-07_183604.png) -->
+
+</details>
+
 ## 🔄 Updates
 
 *Tools → Reading insights → Updates* checks GitHub for new releases and installs
@@ -247,9 +276,10 @@ moved here automatically):
 
 - **Date & time** — 12/24-hour clock, first day of the week, week numbers and
   the date format.
-- **Appearance** — **Colors** (a hex colour, or a touch colour wheel, for every
-  bar, line and label the popups draw) and **Fonts** (your own font and size
-  for each text role).
+- **Appearance** — **Look** (*Classic* or *Cards*, see
+  [Cards look](#-cards-look)), **Colors** (a hex colour, or a touch colour
+  wheel, for every bar, line and label the popups draw) and **Fonts** (your own
+  font and size for each text role).
 - **Reading insights popup** — which sections it shows (goals, achievements,
   hamburger menu), the *Last 7 days* and *Months* chart styles, and the bar
   chart heights.

@@ -2074,8 +2074,8 @@ msgstr "Look"
 msgid "Cards"
 msgstr "Cards"
 
-msgid "Classic: the original layout. Cards: each section in a card with an icon; when the page doesn't fit the screen it is split into pages (swipe up / down)."
-msgstr "Classic: the original layout. Cards: each section in a card with an icon; when the page doesn't fit the screen it is split into pages (swipe up / down)."
+msgid "Two looks for the popups: Classic, the original layout, or Cards, with the sections in cards."
+msgstr "Two looks for the popups: Classic, the original layout, or Cards, with the sections in cards."
 
 msgid "Daily / weekly goal ring"
 msgstr "Daily / weekly goal ring"

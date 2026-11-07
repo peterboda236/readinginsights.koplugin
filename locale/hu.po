@@ -2084,8 +2084,8 @@ msgstr "Megjelenés"
 msgid "Cards"
 msgstr "Kártyák"
 
-msgid "Classic: the original layout. Cards: each section in a card with an icon; when the page doesn't fit the screen it is split into pages (swipe up / down)."
-msgstr "Klasszikus: az eredeti elrendezés. Kártyák: minden rész egy ikonos kártyán; ha az oldal nem fér ki a képernyőn, oldalakra oszlik (felfelé / lefelé húzás)."
+msgid "Two looks for the popups: Classic, the original layout, or Cards, with the sections in cards."
+msgstr "Az ablakok két megjelenése: Klasszikus, az eredeti elrendezés, vagy Kártyák, a részek kártyákon."
 
 msgid "Daily / weekly goal ring"
 msgstr "Napi / heti cél gyűrű"

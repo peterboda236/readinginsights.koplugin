@@ -8,7 +8,7 @@ every page starts with a summary card ("37 / 81 earned", a bar, "★ new") and
 each achievement is a card of its own: black border when earned, light gray
 when still locked.
 
-Loaded once by main.lua and handed to the achievements view as `deps.Cards`.
+Loaded once by main.lua and handed to the achievements view as `deps.AchievementsCards`.
 ]]--
 
 local Blitbuffer      = require("ffi/blitbuffer")

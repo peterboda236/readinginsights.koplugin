@@ -22,10 +22,12 @@ local counts = {10, 20, 20}   -- 50-page book
 local r = ChapterInfo.computeChapterResult(toc_tables, true, 3, counts, 15)
 check("page 15 -> chapter 2", r.current, 2)
 check("chapter total", r.total, 3)
-check("progress ratio (4.5/20)", string.format("%.3f", r.chapter_progress_ratio), "0.225")
+-- Bookends' formula: pages since the chapter start / (chapter pages - 1)
+check("progress ratio (4/19)", string.format("%.3f", r.chapter_progress_ratio), "0.211")
 check("page 1 -> chapter 1", ChapterInfo.computeChapterResult(toc_tables,true,3,counts,1).current, 1)
 check("last page -> chapter 3", ChapterInfo.computeChapterResult(toc_tables,true,3,counts,50).current, 3)
-check("ratio capped at 0.95", ChapterInfo.computeChapterResult(toc_tables,true,3,counts,50).chapter_progress_ratio, 0.95)
+check("last page of a chapter -> 1", ChapterInfo.computeChapterResult(toc_tables,true,3,counts,50).chapter_progress_ratio, 1)
+check("first page of a chapter -> 0", ChapterInfo.computeChapterResult(toc_tables,true,3,counts,11).chapter_progress_ratio, 0)
 -- page before the first chapter start must not fall through to 0
 check("page 0 clamps to chapter 1", ChapterInfo.computeChapterResult(toc_tables,true,3,counts,0).current, 1)
 

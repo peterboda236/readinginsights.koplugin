@@ -16,6 +16,14 @@ Run from the plugin root, ideally under a DST-observing timezone:
 package.preload["optmath"] = function()
     return { round = function(x) return math.floor((x or 0) + 0.5) end }
 end
+-- lib/paths.lua registers itself as this module when main.lua loads it; here
+-- it only has to name the files, which the stubbed file layer never writes.
+package.preload["readinginsights_paths"] = function()
+    return {
+        dataFile  = function(name) return "/tmp/readinginsights/data/" .. name end,
+        cacheFile = function(name) return "/tmp/readinginsights/cache/" .. name end,
+    }
+end
 
 local StatsDb = { withDb = function(fb) return fb end, withShared = function(_, fb) return fb end,
                   withStatement = function() end }

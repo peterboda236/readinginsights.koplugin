@@ -9,7 +9,7 @@ Streaks card built here. The Current / Best streak dialog it opens gets its
 content from M.buildHistoryContent.
 
 Loaded once by main.lua and handed to the streak calendar view as
-`deps.Cards`.
+`deps.StreakCalendarCards`.
 ]]--
 
 local HorizontalGroup = require("ui/widget/horizontalgroup")

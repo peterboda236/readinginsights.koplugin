@@ -1798,8 +1798,8 @@ msgstr "外观"
 msgid "Cards"
 msgstr "卡片"
 
-msgid "Classic: the original layout. Cards: each section in a card with an icon; when the page doesn't fit the screen it is split into pages (swipe up / down)."
-msgstr "经典：原始布局。卡片：每个部分显示在带图标的卡片中；页面超出屏幕时分成多页（上下滑动翻页）。"
+msgid "Two looks for the popups: Classic, the original layout, or Cards, with the sections in cards."
+msgstr "弹窗有两种外观：经典（原始布局）或卡片（各部分显示在卡片中）。"
 
 msgid "Daily / weekly goal ring"
 msgstr "每日/每周目标进度环"

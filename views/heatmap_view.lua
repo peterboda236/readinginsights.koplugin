@@ -63,7 +63,7 @@ local Screen = Device.screen
 -- would be circular.
 local deps = ...
 local Colors, Fonts, Locale, VS, UI, Data, Cache, Cards =
-    deps.Colors, deps.Fonts, deps.Locale, deps.VS, deps.UI, deps.Data, deps.Cache, deps.Cards
+    deps.Colors, deps.Fonts, deps.Locale, deps.VS, deps.UI, deps.Data, deps.Cache, deps.HeatmapCards
 local _ = Locale._
 
 -- How long the popup waits, once it knows there is genuinely new reading

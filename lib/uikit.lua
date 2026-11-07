@@ -39,9 +39,11 @@ local Blitbuffer = require("ffi/blitbuffer")
 local Device = require("device")
 local FrameContainer = require("ui/widget/container/framecontainer")
 local Geom = require("ui/geometry")
+local GestureRange = require("ui/gesturerange")
 local HorizontalGroup = require("ui/widget/horizontalgroup")
 local HorizontalSpan = require("ui/widget/horizontalspan")
 local IconWidget = require("ui/widget/iconwidget")
+local InputContainer = require("ui/widget/container/inputcontainer")
 local LeftContainer = require("ui/widget/container/leftcontainer")
 local Size = require("ui/size")
 local TextBoxWidget = require("ui/widget/textboxwidget")
@@ -395,6 +397,22 @@ function M.addSectionWithRow(sections, header_widget, row, layout, opts)
         table.insert(sections, M.padded(layout.padding_h,
             Colors.hLine(layout.content_width, bottom_line_size)))
     end
+end
+
+-- `widget` in a `col_width` wide cell that runs `callback` on a tap.
+function M.tappableCell(widget, col_width, callback)
+    local cell = InputContainer:new{
+        dimen = Geom:new{ x = 0, y = 0, w = col_width, h = widget:getSize().h },
+        widget,
+    }
+    cell.ges_events = {
+        Tap = { GestureRange:new{ ges = "tap", range = cell.dimen } },
+    }
+    function cell:onTap()
+        callback()
+        return true
+    end
+    return cell
 end
 
 -- Is (x, y) inside this widget's laid-out area? Used by the popups' own tap

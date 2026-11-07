@@ -31,7 +31,7 @@ local AchievementInfo = InfoMessage:extend{}
 -- Shared modules, passed in as one named table by main.lua (see there).
 local deps = ...
 local Achievements, Locale, ListWidget, VS, Cards =
-    deps.Achievements, deps.Locale, deps.ListWidget, deps.VS, deps.Cards
+    deps.Achievements, deps.Locale, deps.ListWidget, deps.VS, deps.AchievementsCards
 local _ = Locale._
 
 -- Remembered per-list, like the book lists' own sort keys.

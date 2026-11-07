@@ -46,7 +46,11 @@ local function buildAlignedSectionHeader(font_section, text, layout, background)
         UI.buildSectionHeader(font_section, text, layout.content_width, 0, background))
 end
 
-local function buildYearHeader(popup_self, font_section, font_label, layout, year_range, selected_year)
+-- The year row without its background: previous year | selected year | next
+-- year. `buildCenter(year_label, tappable)` (optional) builds what stands in
+-- the middle around the year's text (the Cards look adds an icon and a "›");
+-- `tappable` = a tap on it opens the year shelf.
+local function buildYearRow(popup_self, font_section, font_label, layout, year_range, selected_year, buildCenter)
     local prev_available = selected_year > year_range.min_year
     local next_available = selected_year < year_range.max_year
 
@@ -79,15 +83,17 @@ local function buildYearHeader(popup_self, font_section, font_label, layout, yea
     -- centre year itself opens the year shelf: the covers of the books read
     -- that year, month by month (see showYearShelf). Not on the sleep screen
     -- (readonly), where a tap must not navigate anywhere.
-    local year_widget = year_label
+    local tappable_year = YearShelf and not popup_self.readonly
+    local center = buildCenter and buildCenter(year_label, tappable_year) or year_label
+    local year_widget = center
     local year_tap_pad = 0
-    if YearShelf and not popup_self.readonly then
+    if tappable_year then
         year_tap_pad = Screen:scaleBySize(16)
-        local year_size = year_label:getSize()
+        local year_size = center:getSize()
         local year_inner = HorizontalGroup:new{
             align = "center",
             HorizontalSpan:new{ width = year_tap_pad },
-            year_label,
+            center,
             HorizontalSpan:new{ width = year_tap_pad },
         }
         local year_tappable = InputContainer:new{
@@ -160,13 +166,13 @@ local function buildYearHeader(popup_self, font_section, font_label, layout, yea
     local right_slot, right_w = makeSlot(selected_year + 1, "\xe2\x80\xba", false, next_available,
         function() popup_self:onGoToNextYear() end)
 
-    local year_w    = year_label:getSize().w + 2 * year_tap_pad
+    local year_w    = center:getSize().w + 2 * year_tap_pad
     local remaining = layout.content_width - left_w - right_w - year_w
     if remaining < 0 then remaining = 0 end
     local side_l = math.floor(remaining / 2)
     local side_r = remaining - side_l
 
-    local header_content = HorizontalGroup:new{
+    return HorizontalGroup:new{
         align = "center",
         left_slot,
         HorizontalSpan:new{ width = side_l },
@@ -174,7 +180,9 @@ local function buildYearHeader(popup_self, font_section, font_label, layout, yea
         HorizontalSpan:new{ width = side_r },
         right_slot,
     }
+end
 
+local function buildYearHeader(popup_self, font_section, font_label, layout, year_range, selected_year)
     -- padding_left/right were layout.padding_h here (baked into the
     -- background-painted area, so the background bled out to the screen
     -- edge). Moved to an external UI.padded wrap at the call site instead,
@@ -187,7 +195,7 @@ local function buildYearHeader(popup_self, font_section, font_label, layout, yea
         padding_bottom = Size.padding.small,
         padding_left   = 0,
         padding_right  = 0,
-        header_content,
+        buildYearRow(popup_self, font_section, font_label, layout, year_range, selected_year),
     }
 end
 
@@ -453,5 +461,6 @@ end
 return {
     buildAlignedSectionHeader = buildAlignedSectionHeader,
     buildYearHeader           = buildYearHeader,
+    buildYearRow              = buildYearRow,
     buildWeekNavHeader        = buildWeekNavHeader,
 }

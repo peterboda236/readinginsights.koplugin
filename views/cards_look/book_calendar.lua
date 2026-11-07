@@ -9,7 +9,7 @@ grid. The grid is the Classic one, given round-ended day bars in the Cards
 colors and an outline around today. It returns the same table as build(), so
 the popup's landscape fit and tap handling serve both looks.
 
-Loaded once by main.lua and handed to the calendar view as `deps.Cards`. The
+Loaded once by main.lua and handed to the calendar view as `deps.BookCalendarCards`. The
 view passes its own helpers (`H`) on each build.
 ]]--
 

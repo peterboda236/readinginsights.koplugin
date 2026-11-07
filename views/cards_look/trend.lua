@@ -8,7 +8,7 @@ cards: "8-week reading trend" with the total | daily average of the 8 weeks,
 and the chart under a header with the view's name and "▾" (tap = the list
 of the four views).
 
-Loaded once by main.lua and handed to the trend view as `deps.Cards`.
+Loaded once by main.lua and handed to the trend view as `deps.TrendCards`.
 ]]--
 
 local FrameContainer  = require("ui/widget/container/framecontainer")
