@@ -219,15 +219,12 @@ trend; the other popups look the same in both.
 <img width="192" alt="Book progress, Cards look" src="https://github.com/user-attachments/assets/db43db9a-5594-4bce-8621-89aa9420ed4b" />
 <img width="192" alt="Reading habits, Cards look" src="https://github.com/user-attachments/assets/c68119f0-cc92-489b-bd7c-5bbe258d0245" />
 
-<details>
-<summary>More Cards screenshots</summary>
+More Cards screenshots
 
 <img width="192" alt="Reading calendar, Cards look" src="https://github.com/user-attachments/assets/4d9e38b5-ab04-4a41-b7d3-67fed5d148a7" />
 <img width="192" alt="Book progress calendar, Cards look" src="https://github.com/user-attachments/assets/a20dfb0d-a0f0-4ab7-b8f1-5371a8842dc4" />
-<img width="192" alt="Achievements, Cards look" src="https://github.com/user-attachments/assets/3d1a25e4-4fe3-4032-b397-37190442b63c" />
+<img width="192" alt="Achievements, Cards look" src="https://github.com/user-attachments/assets/25b510e6-677a-4d2e-aeff-b5848b4847bf" />
 <img width="192" alt="8-week trend, Cards look" src="https://github.com/user-attachments/assets/cd840001-b4b7-4dfe-9cb1-94ddd99f6c3c" />
-
-</details>
 
 ## 🔄 Updates
 
