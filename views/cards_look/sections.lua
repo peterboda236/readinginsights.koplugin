@@ -90,7 +90,16 @@ function M.buildSections(popup_self, streaks, yearly_stats, year_range, monthly_
     -- there (see _buildUI's pages).
     local breaks = {}
     sections._breaks = breaks
-    local function newBlock() table.insert(breaks, #sections + 1) end
+    -- Also kept for the section order (Settings > Reading insights popup >
+    -- Section order): the sections are built in a fixed order below and
+    -- rearranged at the end (VS.Order.reorderGroup). `lead`: the gap
+    -- UI.addCard puts above the very first card, which moves with the
+    -- section that is first.
+    local marks = {}
+    local function newBlock(id)
+        table.insert(breaks, #sections + 1)
+        table.insert(marks, { id = id, first = #sections + 1, lead = (#sections == 0) or nil })
+    end
 
     -- "Daily goal | Weekly goal": time read today / this calendar week against
     -- a goal in minutes. Long press on the section edits the goals. Today's
@@ -188,7 +197,7 @@ function M.buildSections(popup_self, streaks, yearly_stats, year_range, monthly_
             HorizontalSpan:new{ width = layout.content_width - 2 * card_w },
             goalCard(_("Weekly goal"), week_secs,  weekly_goal_secs, editWeekly, showWeeklyStreak),
         }
-        newBlock()
+        newBlock("time_goals")
         UI.addCard(sections, goal_row, layout)
     end
 
@@ -343,7 +352,7 @@ function M.buildSections(popup_self, streaks, yearly_stats, year_range, monthly_
                 table.insert(popup_self._week_swipe_targets, card)
             end
 
-            newBlock()
+            newBlock("week")
             UI.addCard(sections, card, layout)
         end
     end
@@ -417,7 +426,7 @@ function M.buildSections(popup_self, streaks, yearly_stats, year_range, monthly_
         tap_card.ges_events = { Tap = { GestureRange:new{ ges = "tap", range = tap_card.dimen } } }
         function tap_card:onTap() Streak.show(streaks) return true end
 
-        newBlock()
+        newBlock("streaks")
         UI.addCard(sections, tap_card, layout)
     end
 
@@ -477,7 +486,7 @@ function M.buildSections(popup_self, streaks, yearly_stats, year_range, monthly_
             end
         end
 
-        newBlock()
+        newBlock("year")
         UI.addCard(sections, trackYearSwipe(UI.buildCard(body, layout.content_width)), layout)
     end
 
@@ -624,7 +633,7 @@ function M.buildSections(popup_self, streaks, yearly_stats, year_range, monthly_
             end
             table.insert(row, cell)
         end
-        newBlock()
+        newBlock("goal_ach")
         UI.addCard(sections, row, layout)
     end -- if show_goal or show_ach
 
@@ -653,10 +662,13 @@ function M.buildSections(popup_self, streaks, yearly_stats, year_range, monthly_
                 ilayout, false, nil, Size.line.thin, Colors.cardsColor("divider")),
             VerticalSpan:new{ width = Size.padding.default },
         }
-        newBlock()
+        newBlock("all_time")
         UI.addCard(sections, UI.buildCard(body, layout.content_width), layout)
     end
 
+    VS.Order.reorderGroup(sections, marks, "insights", {
+        makeLead = function() return VerticalSpan:new{ width = Size.padding.small } end,
+    })
     return sections
 end
 

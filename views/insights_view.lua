@@ -282,6 +282,39 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
     popup_self._today_bar_widget = nil   -- set again by the weekly chart
     local sections = VerticalGroup:new{ align = "left" }
 
+    -- Section order (Settings > Reading insights popup > Section order). The
+    -- sections are always built in the same order below; newBlock() records
+    -- where each one starts and VS.Order.reorderGroup() rearranges them at
+    -- the end (nothing happens with the default order).
+    --
+    -- Which dividers a section draws depends on its neighbour: the original
+    -- last section (All time) has no closing line, and the yearly chart and
+    -- the reading goal run into each other. So the order, restricted to the
+    -- sections that are really on the page, is worked out first: isLast()
+    -- and nextId() let a section decide about its closing line.
+    local marks = {}
+    local function newBlock(id) table.insert(marks, { id = id, first = #sections + 1 }) end
+    local order_goal_shown = VS.Opt.readShowReadingGoal()
+    local order_ach_shown  = VS.Opt.readShowAchievements() and Achievements ~= nil
+    local order_cal_mode   = VS.readWeeklyViewIsCalendar()
+    local _wlw, _wdaily, order_has_week = Values.weekData(order_cal_mode,
+        order_cal_mode and popup_self._cal_week or nil, last_week_stats, last_week_daily)
+    local order = VS.Order.effective("insights", {
+        time_goals = VS.readShowTimeGoals() and true or false,
+        week       = order_has_week and true or false,
+        streaks    = true,
+        year       = true,
+        goal_ach   = (order_goal_shown or order_ach_shown) and true or false,
+        all_time   = true,
+    })
+    local function isLast(id) return order[#order] == id end
+    local function nextId(id)
+        for i, v in ipairs(order) do
+            if v == id then return order[i + 1] end
+        end
+    end
+    local custom_order = VS.Order.isCustom("insights")
+
     -- "Daily goal | Weekly goal": time read today / this calendar week against
     -- a goal in minutes. Long press on the section edits the goals. Today's
     -- and this week's seconds come from the last-7-days data already loaded
@@ -405,7 +438,9 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
             valueCell(goalText(week_secs,  weekly_goal_secs), editWeekly, showWeeklyStreak, week_secs, weekly_goal_secs),
             layout, false, { join_above = true })
 
-        UI.addSectionWithRow(sections, goal_header, goal_row, layout, { gap_above_row = true, split_header = true })
+        newBlock("time_goals")
+        UI.addSectionWithRow(sections, goal_header, goal_row, layout,
+            { gap_above_row = true, split_header = true, no_bottom_line = isLast("time_goals") })
     end
 
     do
@@ -623,9 +658,11 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
                 last_week_content = track(last_week_content)
             end
 
+            newBlock("week")
             UI.addSectionWithRow(sections,
                 tappable_last_week_header,
-                last_week_content, layout, { pad_row = false, gap_above_row = true })
+                last_week_content, layout,
+                { pad_row = false, gap_above_row = true, no_bottom_line = isLast("week") })
         end
     end
 
@@ -733,9 +770,11 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
         },
     }
 
+    newBlock("streaks")
     UI.addSectionWithRow(sections,
         streak_combined_header,
-        streak_rows, layout, { pad_row = false, gap_above_row = true, split_header = true })
+        streak_rows, layout,
+        { pad_row = false, gap_above_row = true, split_header = true, no_bottom_line = isLast("streaks") })
 
     local year_header = UI.padded(layout.padding_h,
         buildYearHeader(popup_self, fonts.section, fonts.label, layout, year_range, popup_self.selected_year))
@@ -773,6 +812,10 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
 
     year_header = trackYearSwipe(year_header)
     yearly_row  = trackYearSwipe(yearly_row)
+    -- The chart and the reading goal below it run into each other (a thin
+    -- line, or none) only while the goal row really follows the year.
+    local year_joined_to_goal = order_goal_shown and nextId("year") == "goal_ach"
+    newBlock("year")
     UI.addSectionWithRow(sections, year_header, yearly_row, layout, { pad_row = false, no_bottom_line = not (chart and UI.classicLines()), bottom_line_thin = true, gap_above_row = true })
 
     if chart then
@@ -827,8 +870,12 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
         UI.addSectionWithRow(sections, tappable_chart_header, chart, layout,
             { add_divider = true, no_top_line = true,
               -- no thin line under the chart; the thick section line stays
-              no_bottom_line = VS.Opt.readShowReadingGoal() and not UI.classicLines(),
-              bottom_line_thin = VS.Opt.readShowReadingGoal() })
+              no_bottom_line = year_joined_to_goal and not UI.classicLines(),
+              bottom_line_thin = year_joined_to_goal })
+    elseif custom_order and not year_joined_to_goal and not isLast("year") then
+        -- No chart, so nothing drew the line under the section.
+        table.insert(sections, UI.padded(layout.padding_h,
+            Colors.hLine(layout.content_width, Size.line.thick)))
     end
 
     -- Long-press targets for the reading-goal section (its headers and
@@ -845,6 +892,7 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
     local show_ach  = VS.Opt.readShowAchievements() and Achievements ~= nil
 
     if show_goal or show_ach then
+        newBlock("goal_ach")
         local goal_year      = popup_self.selected_year
         local finished_count = goal_finished_count or 0
         local goal_value     = VS.readReadingGoal(goal_year)
@@ -996,8 +1044,10 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
             table.insert(sections, VerticalSpan:new{ width = Size.padding.small })
             table.insert(sections, trackYearSwipe(wrapRow(UI.buildTwoColRow(left_cell, right_cell, layout))))
             table.insert(sections, VerticalSpan:new{ width = Size.padding.small })
-            table.insert(sections, UI.padded(layout.padding_h,
-                Colors.hLine(layout.content_width, Size.line.thick)))
+            if show_ach or not isLast("goal_ach") then
+                table.insert(sections, UI.padded(layout.padding_h,
+                    Colors.hLine(layout.content_width, Size.line.thick)))
+            end
         end
 
         if show_ach then
@@ -1033,7 +1083,8 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
             UI.addSectionWithRow(sections,
                 paddedTwoColHeader(ach_title, latest_title, HEADER_BG()),
                 wrapRow(UI.buildTwoColRow(left_cell, right_cell, layout, false, { join_above = true })),
-                layout, { pad_row = false, gap_above_row = true, split_header = true })
+                layout, { pad_row = false, gap_above_row = true, split_header = true,
+                          no_bottom_line = isLast("goal_ach") })
         end
     end -- if show_goal or show_ach
 
@@ -1087,11 +1138,13 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
             return true
         end
 
+        newBlock("all_time")
         UI.addSectionWithRow(sections,
             tappable_total_read_header,
-            all_time_row, layout, { no_bottom_line = true, gap_above_row = true })
+            all_time_row, layout, { no_bottom_line = isLast("all_time"), gap_above_row = true })
     end
 
+    VS.Order.reorderGroup(sections, marks, "insights")
     return sections
 end
 

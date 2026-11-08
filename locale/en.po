@@ -2421,3 +2421,21 @@ msgstr "Dark border in night mode"
 
 msgid "In night mode, draw the cover frame in near-black (as Bookshelf does) instead of white, so it stays subtle. Needs \"Cover border\" to be on."
 msgstr "In night mode, draw the cover frame in near-black (as Bookshelf does) instead of white, so it stays subtle. Needs \"Cover border\" to be on."
+
+msgid "Section order"
+msgstr "Section order"
+
+msgid "Arrange sections"
+msgstr "Arrange sections"
+
+msgid "Restore default order"
+msgstr "Restore default order"
+
+msgid "Yearly & monthly"
+msgstr "Yearly & monthly"
+
+msgid "Custom"
+msgstr "Custom"
+
+msgid "Choose in which order the sections of the popup are shown. Works in both the Classic and the Cards look."
+msgstr "Choose in which order the sections of the popup are shown. Works in both the Classic and the Cards look."

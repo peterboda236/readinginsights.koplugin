@@ -2419,3 +2419,21 @@ msgstr "Dunkler Rahmen im Nachtmodus"
 
 msgid "In night mode, draw the cover frame in near-black (as Bookshelf does) instead of white, so it stays subtle. Needs \"Cover border\" to be on."
 msgstr "Zeichnet den Cover-Rahmen im Nachtmodus fast schwarz (wie Bookshelf) statt weiß, damit er dezent bleibt. Benötigt „Cover-Rahmen“."
+
+msgid "Section order"
+msgstr "Reihenfolge der Abschnitte"
+
+msgid "Arrange sections"
+msgstr "Abschnitte anordnen"
+
+msgid "Restore default order"
+msgstr "Standardreihenfolge wiederherstellen"
+
+msgid "Yearly & monthly"
+msgstr "Jährlich & monatlich"
+
+msgid "Custom"
+msgstr "Benutzerdefiniert"
+
+msgid "Choose in which order the sections of the popup are shown. Works in both the Classic and the Cards look."
+msgstr "Legt fest, in welcher Reihenfolge die Abschnitte des Fensters angezeigt werden. Funktioniert in der klassischen Ansicht und in der Kartenansicht."

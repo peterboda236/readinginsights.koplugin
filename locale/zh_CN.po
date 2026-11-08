@@ -2146,3 +2146,21 @@ msgstr "夜间模式下使用深色边框"
 
 msgid "In night mode, draw the cover frame in near-black (as Bookshelf does) instead of white, so it stays subtle. Needs \"Cover border\" to be on."
 msgstr "夜间模式下，封面边框使用接近黑色（与 Bookshelf 相同）而非白色，更为低调。需要开启“封面边框”。"
+
+msgid "Section order"
+msgstr "分区顺序"
+
+msgid "Arrange sections"
+msgstr "排列分区"
+
+msgid "Restore default order"
+msgstr "恢复默认顺序"
+
+msgid "Yearly & monthly"
+msgstr "年度与月度"
+
+msgid "Custom"
+msgstr "自定义"
+
+msgid "Choose in which order the sections of the popup are shown. Works in both the Classic and the Cards look."
+msgstr "选择窗口中各分区的显示顺序。经典外观和卡片外观均适用。"

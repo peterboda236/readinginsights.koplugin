@@ -634,11 +634,23 @@ local function buildSections(stats, fonts, layout, popup)
     table.insert(sections, HorizontalSpan:new{ width = layout.full_width })
 
     -- Dividers go between two *visible* sections only.
+    --
+    -- Every section starts with a call of this function, which also records
+    -- where the section begins (`marks`; `sep` = it starts with the
+    -- divider). The sections are always built in the same order and
+    -- rearranged at the end into the saved one (Settings > Book progress
+    -- popup > Section order, see VS.Order.reorderGroup), which puts the
+    -- dividers back between the sections wherever they ended up.
     local any_section_shown = false
-    local function sectionSeparator()
+    local marks = {}
+    local function sectionDivider()
+        return UI.padded(layout.padding_h,
+            Colors.hLine(layout.full_width - 2 * layout.padding_h, Size.line.thick))
+    end
+    local function sectionSeparator(id)
+        table.insert(marks, { id = id, first = #sections + 1, sep = any_section_shown or nil })
         if any_section_shown then
-            table.insert(sections, UI.padded(layout.padding_h,
-                Colors.hLine(layout.full_width - 2 * layout.padding_h, Size.line.thick)))
+            table.insert(sections, sectionDivider())
         end
         any_section_shown = true
     end
@@ -678,7 +690,7 @@ local function buildSections(stats, fonts, layout, popup)
             popup._chapter_headers = chapter_headers
             popup._chapter_values  = chapter_values
         end
-        sectionSeparator()
+        sectionSeparator("chapter")
         UI.addSectionWithRow(sections, chapter_headers, chapter_values, layout,
             { no_bottom_line = true, gap_above_row = true, split_header = (show_cur and show_next) and true or false })
     end
@@ -767,7 +779,7 @@ local function buildSections(stats, fonts, layout, popup)
         popup._chapter_bar_on_next    = chapter_on_next
     end
     if show_chapter_bar and not skim_in_book then
-        sectionSeparator()
+        sectionSeparator("chapters")
         local chapters_header = UI.padded(layout.padding_h,
             UI.buildSectionHeader(fonts.section, _("Chapters"), layout.content_width, 0, Colors.headerBg()))
         table.insert(sections, chapters_header)
@@ -804,7 +816,7 @@ local function buildSections(stats, fonts, layout, popup)
     end
 
     if has_book_rows or skim_in_book then
-        sectionSeparator()
+        sectionSeparator("book")
 
         local this_book_title = _("This book")
         local this_book_header_content = UI.padded(layout.padding_h,
@@ -886,7 +898,7 @@ local function buildSections(stats, fonts, layout, popup)
     local show_dates_row  = (stats.started_days_ago or stats.finish_days_left) and Opt.readShowPaceDates()
 
     if show_pace_today or show_dates_row then
-        sectionSeparator()
+        sectionSeparator("pace")
 
         local pace_header_content = UI.padded(layout.padding_h,
             UI.buildSectionHeader(fonts.section, _("Pace"), layout.content_width, 0, Colors.headerBg()))
@@ -959,6 +971,8 @@ local function buildSections(stats, fonts, layout, popup)
             end
         end
     end
+
+    VS.Order.reorderGroup(sections, marks, "book", { makeSeparator = sectionDivider })
 
     -- The closing thick line only makes sense for the full-width sheet
     -- hanging from the top edge; the centered box already has its own border.

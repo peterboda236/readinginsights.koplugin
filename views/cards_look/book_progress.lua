@@ -113,8 +113,15 @@ function M.buildSections(stats, fonts, layout, popup, H, avail_h)
 
     local sections = VerticalGroup:new{ align = "left" }
     sections._breaks = {}
-    local function addCard(card)
+    -- Also kept for the section order (Settings > Book progress popup >
+    -- Section order): the cards are built in a fixed order below and
+    -- rearranged at the end (VS.Order.reorderGroup). `lead`: the gap
+    -- UI.addCard puts above the very first card, which moves with the card
+    -- that is first.
+    local marks = {}
+    local function addCard(card, id)
         table.insert(sections._breaks, #sections + 1)
+        table.insert(marks, { id = id, first = #sections + 1, lead = (#sections == 0) or nil })
         UI.addCard(sections, card, layout)
     end
 
@@ -185,7 +192,7 @@ function M.buildSections(stats, fonts, layout, popup, H, avail_h)
             { row }), layout.content_width)
         local wrap = H.tappableWrap(card, card:getSize().w)
         if popup then popup._chapter_headers = wrap end
-        addCard(wrap)
+        addCard(wrap, "chapter")
     end
 
     -- ===== Chapter bar (or the skim bar) ================================
@@ -241,7 +248,7 @@ function M.buildSections(stats, fonts, layout, popup, H, avail_h)
         end
         addCard(UI.buildCard(cardBody(
             UI.cardHeader("chapters", _("Chapters"), fonts.section, inner_w, false), rows),
-            layout.content_width))
+            layout.content_width), "chapters")
     end
 
     -- ===== This book ====================================================
@@ -310,7 +317,7 @@ function M.buildSections(stats, fonts, layout, popup, H, avail_h)
                     statCell(stats.book_time_spent_hhmm, _("read so far"))))
             end
         end
-        addCard(UI.buildCard(cardBody(header, rows), layout.content_width))
+        addCard(UI.buildCard(cardBody(header, rows), layout.content_width), "book")
     end
 
     -- ===== Pace =========================================================
@@ -369,8 +376,12 @@ function M.buildSections(stats, fonts, layout, popup, H, avail_h)
                 table.insert(rows, finish_tap)
             end
         end
-        addCard(UI.buildCard(cardBody(header, rows), layout.content_width))
+        addCard(UI.buildCard(cardBody(header, rows), layout.content_width), "pace")
     end
+
+    VS.Order.reorderGroup(sections, marks, "book", {
+        makeLead = function() return VerticalSpan:new{ width = Size.padding.small } end,
+    })
 
     -- The full-width sheet hanging from the top edge closes with a thick
     -- line, as in the Classic look; the centered box has its own border.

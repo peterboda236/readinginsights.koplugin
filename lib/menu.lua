@@ -630,6 +630,50 @@ function M.build(self, deps)
         }
     end
 
+    -- Section order of the two popups: "Arrange sections" opens the
+    -- sorter (lib/section_order.lua), "Restore default order" brings the
+    -- original order back. The order applies to both looks (Classic and
+    -- Cards); the default is not stored at all.
+    do
+        local SectionOrder = deps.SectionOrder
+        local VSet = deps.ViewSettings
+        local function orderEntry(view)
+            return {
+                text_func = function()
+                    return _("Section order") .. ": " .. SectionOrder.label(view)
+                end,
+                help_text = _("Choose in which order the sections of the popup are shown. Works in both the Classic and the Cards look."),
+                keep_menu_open = true,
+                sub_item_table = {
+                    {
+                        text = _("Arrange sections"),
+                        keep_menu_open = true,
+                        callback = function(touchmenu_instance)
+                            SectionOrder.open(view, function()
+                                if touchmenu_instance and touchmenu_instance.updateItems then
+                                    touchmenu_instance:updateItems()
+                                end
+                            end)
+                        end,
+                    },
+                    {
+                        text = _("Restore default order"),
+                        keep_menu_open = true,
+                        enabled_func = function() return VSet.Order.isCustom(view) end,
+                        callback = function(touchmenu_instance)
+                            VSet.Order.reset(view)
+                            if touchmenu_instance and touchmenu_instance.updateItems then
+                                touchmenu_instance:updateItems()
+                            end
+                        end,
+                    },
+                },
+            }
+        end
+        I.insights_order = orderEntry("insights")
+        I.bp_order       = orderEntry("book")
+    end
+
     -- Look of the popups (Settings > Appearance > Look): Classic (default)
     -- or Cards. One setting for the whole plugin.
     do
@@ -1573,6 +1617,8 @@ function M.build(self, deps)
         "-",
         I.goal, I.goal_bar, I.reading_goal, I.achievements, I.ach_refresh,
         "-",
+        I.insights_order,
+        "-",
         group(_("Week"), {
             I.weekly_view,
             I.weekly_style, I.today_side, I.weekly_extra_row, I.weekly_vs_prev,
@@ -1583,7 +1629,7 @@ function M.build(self, deps)
     })
 
     local book_progress_sub_item_table = layout({
-        I.bp_position, I.bp_style,
+        I.bp_position, I.bp_style, I.bp_order,
         "-",
         group(_("Chapters"), {
             I.this_chapter, I.next_chapter, I.next_count,

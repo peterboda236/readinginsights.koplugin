@@ -278,11 +278,11 @@ moved here automatically):
   wheel, for every bar, line and label the popups draw) and **Fonts** (your own
   font and size for each text role).
 - **Reading insights popup** — which sections it shows (goals, achievements,
-  hamburger menu), the *Last 7 days* and *Months* chart styles, and the bar
-  chart heights.
+  hamburger menu), the *Section order*, the *Last 7 days* and *Months* chart
+  styles, and the bar chart heights.
 - **Reading habits** — the calendar range and the time-of-day view.
-- **Book progress popup** — its position and "This book" style (classic rows
-  or a donut chart), then one group per section: *This book*, *Pace* and
+- **Book progress popup** — its position, "This book" style (classic rows
+  or a donut chart) and *Section order*, then one group per section: *This book*, *Pace* and
   *Chapters* (chapter columns, chapter bar, chapters per page), plus *Bar chart height*.
 - **Book info** — show or hide the cover, its rounded corners, shadow and
   border, and the author and series lines, and the **cover size**: *small* (the
@@ -294,6 +294,18 @@ moved here automatically):
 - **Advanced settings** — the sleep screen, full-screen refresh on
   open/close, long durations as days, and *Menu items* (which popups the Tools
   menu lists).
+
+**Section order** — *Reading insights popup ▸ Section order* and *Book progress
+popup ▸ Section order* decide in which order the sections are drawn, in both the
+Classic and the Cards look (and on the sleep screen). *Arrange sections* opens
+KOReader's own sorting screen: tap a row to pick it up, move it with the arrows
+at the bottom and save with the check mark. In Reading insights the order is:
+*Daily / weekly goal*, *Last 7 days* (or *Week*), *Streaks*, *Yearly & monthly*,
+*Reading goal / Achievements* (one entry - the two share a row in the Cards look)
+and *All time*; in Book progress: *This chapter / Next chapter*, *Chapters*,
+*This book* and *Pace*. That is also the default; *Restore default order* (in the
+menu, or in the ☰ menu of the sorting screen) brings it back. A section that is
+switched off or has nothing to show simply stays out, wherever it is in the list.
 
 The popups are also registered with `Dispatcher`, so you can assign them to
 gestures under *Settings → Taps and gestures*.

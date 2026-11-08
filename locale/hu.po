@@ -2433,3 +2433,21 @@ msgstr "Sötét keret éjszakai módban"
 
 msgid "In night mode, draw the cover frame in near-black (as Bookshelf does) instead of white, so it stays subtle. Needs \"Cover border\" to be on."
 msgstr "Éjszakai módban a borító keretét közel feketére festi (mint a Bookshelf) fehér helyett, így visszafogott marad. A „Borító kerete” bekapcsolását igényli."
+
+msgid "Section order"
+msgstr "Szekciók sorrendje"
+
+msgid "Arrange sections"
+msgstr "Szekciók rendezése"
+
+msgid "Restore default order"
+msgstr "Alapértelmezett sorrend visszaállítása"
+
+msgid "Yearly & monthly"
+msgstr "Éves és havi"
+
+msgid "Custom"
+msgstr "Egyéni"
+
+msgid "Choose in which order the sections of the popup are shown. Works in both the Classic and the Cards look."
+msgstr "Válaszd ki, milyen sorrendben jelenjenek meg az ablak szekciói. Klasszikus és kártya nézetben is működik."

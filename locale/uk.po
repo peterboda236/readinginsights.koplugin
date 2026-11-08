@@ -2474,3 +2474,21 @@ msgstr "Темна рамка в нічному режимі"
 
 msgid "In night mode, draw the cover frame in near-black (as Bookshelf does) instead of white, so it stays subtle. Needs \"Cover border\" to be on."
 msgstr "У нічному режимі малює рамку обкладинки майже чорною (як у Bookshelf) замість білої, щоб вона була непомітною. Потрібна увімкнена «Рамка обкладинки»."
+
+msgid "Section order"
+msgstr "Порядок розділів"
+
+msgid "Arrange sections"
+msgstr "Упорядкувати розділи"
+
+msgid "Restore default order"
+msgstr "Відновити типовий порядок"
+
+msgid "Yearly & monthly"
+msgstr "Річна та місячна"
+
+msgid "Custom"
+msgstr "Власний"
+
+msgid "Choose in which order the sections of the popup are shown. Works in both the Classic and the Cards look."
+msgstr "Виберіть, у якому порядку показувати розділи вікна. Працює і в класичному вигляді, і в картках."

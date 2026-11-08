@@ -1128,4 +1128,173 @@ function M.Opt.saveAchievementRefresh(value)
     Prefs.save(M.Opt.ACH_REFRESH_KEY, value)
 end
 
+-- ---------------------------------------------------------------------
+-- Section order (Settings > Reading insights popup > "Section order" and
+-- Settings > Book progress popup > "Section order").
+--
+-- Which order the sections of a popup are drawn in, for both looks (Classic
+-- and Cards). The default is the order the popups always had; it is not
+-- stored at all - only a changed order is saved, and restoring the default
+-- simply deletes the setting. A saved list is always repaired on reading:
+-- ids this version doesn't know are dropped and sections that are missing
+-- from it (a section added by a later version) go to the end, so an old
+-- or hand-edited setting can never hide a section.
+--
+-- The popups build their sections in a fixed order and record where each
+-- one starts (`marks`, see the builders); Order.reorderGroup then rearranges
+-- the finished widget list. With the default order it does nothing at all.
+--
+-- Ids (the two popups are separate lists):
+--   insights: time_goals (Daily / weekly goal), week (Last 7 days / Week),
+--             streaks, year (yearly stats + monthly chart), goal_ach (Reading
+--             goal and Achievements, which share one row in the Cards look),
+--             all_time
+--   book:     chapter (This / Next chapter), chapters (the chapter bar),
+--             book (This book), pace
+-- ---------------------------------------------------------------------
+M.Order = {
+    VIEWS = {
+        insights = {
+            key     = "reading_insights_section_order",
+            default = { "time_goals", "week", "streaks", "year", "goal_ach", "all_time" },
+        },
+        book = {
+            key     = "reading_insights_book_section_order",
+            default = { "chapter", "chapters", "book", "pace" },
+        },
+    },
+}
+
+-- The saved order of `view`, repaired (see above); always a complete list.
+function M.Order.read(view)
+    local v = M.Order.VIEWS[view]
+    if not v then return {} end
+    local saved = Prefs.read(v.key, nil)
+    local known, seen, out = {}, {}, {}
+    for _idx, id in ipairs(v.default) do known[id] = true end
+    if type(saved) == "table" then
+        for _idx, id in ipairs(saved) do
+            if known[id] and not seen[id] then
+                seen[id] = true
+                table.insert(out, id)
+            end
+        end
+    end
+    for _idx, id in ipairs(v.default) do
+        if not seen[id] then table.insert(out, id) end
+    end
+    return out
+end
+
+function M.Order.isCustom(view)
+    local v = M.Order.VIEWS[view]
+    if not v then return false end
+    local cur = M.Order.read(view)
+    for i, id in ipairs(v.default) do
+        if cur[i] ~= id then return true end
+    end
+    return false
+end
+
+-- Saves `list` (ids, repaired the same way as on reading). An order equal to
+-- the default is stored as "nothing saved".
+function M.Order.save(view, list)
+    local v = M.Order.VIEWS[view]
+    if not v then return end
+    Prefs.save(v.key, list)
+    if not M.Order.isCustom(view) then Prefs.save(v.key, nil) end
+end
+
+function M.Order.reset(view)
+    local v = M.Order.VIEWS[view]
+    if v then Prefs.save(v.key, nil) end
+end
+
+-- id -> position (1 = first) in the saved order.
+function M.Order.rank(view)
+    local rank = {}
+    for i, id in ipairs(M.Order.read(view)) do rank[id] = i end
+    return rank
+end
+
+-- The saved order restricted to the sections that are actually on the page
+-- (`present`: id -> true), e.g. {"week", "year", "all_time"}.
+function M.Order.effective(view, present)
+    local out = {}
+    for _idx, id in ipairs(M.Order.read(view)) do
+        if present[id] then table.insert(out, id) end
+    end
+    return out
+end
+
+-- Rearranges the widgets of `group` (a VerticalGroup that is still being
+-- built - nothing has measured it yet) into the saved order of `view`.
+--
+--   marks   { { id = ..., first = <index in group where the section's first
+--           widget is>, lead = true|nil, sep = true|nil }, ... } in the order
+--           the sections were built. A section runs up to the next mark.
+--           Widgets before the first mark (a width strut) stay where they are.
+--           lead: the section starts with the gap UI.addCard puts above the
+--                 first card of a page; it is taken off and re-added by
+--                 opts.makeLead() at the top of whichever section is first.
+--           sep:  the section starts with the divider line that goes
+--                 between sections; taken off and re-added between sections
+--                 by opts.makeSeparator().
+--   opts    { makeLead = fn, makeSeparator = fn }
+--
+-- Also rewrites group._breaks (the page-break positions of the Cards look)
+-- when the group has them. Does nothing when the sections are already in
+-- the saved order, so the default order reproduces the original page
+-- exactly.
+function M.Order.reorderGroup(group, marks, view, opts)
+    if not marks or #marks < 2 then return end
+    opts = opts or {}
+    local rank = M.Order.rank(view)
+    local function rk(id) return rank[id] or math.huge end
+
+    local sorted = true
+    for i = 2, #marks do
+        if rk(marks[i].id) < rk(marks[i - 1].id) then sorted = false break end
+    end
+    if sorted then return end
+
+    local n = #group
+    local head = {}
+    for i = 1, marks[1].first - 1 do head[#head + 1] = group[i] end
+
+    local blocks, had_lead = {}, false
+    for i, m in ipairs(marks) do
+        local last = marks[i + 1] and (marks[i + 1].first - 1) or n
+        local items = {}
+        for j = m.first, last do items[#items + 1] = group[j] end
+        if m.lead then table.remove(items, 1); had_lead = true end
+        if m.sep  then table.remove(items, 1) end
+        blocks[i] = { id = m.id, items = items, idx = i }
+    end
+    table.sort(blocks, function(a, b)
+        local ra, rb = rk(a.id), rk(b.id)
+        if ra ~= rb then return ra < rb end
+        return a.idx < b.idx
+    end)
+
+    -- Empty the group without freeing the widgets (VerticalGroup:clear()
+    -- would free them), then lay everything out again.
+    for i = n, 1, -1 do group[i] = nil end
+    if group.resetLayout then group:resetLayout() end
+
+    for _idx, w in ipairs(head) do table.insert(group, w) end
+    local breaks = group._breaks and {} or nil
+    for k, b in ipairs(blocks) do
+        if breaks then table.insert(breaks, #group + 1) end
+        if k == 1 and had_lead and opts.makeLead then
+            table.insert(group, opts.makeLead())
+        end
+        if k > 1 and opts.makeSeparator then
+            table.insert(group, opts.makeSeparator())
+        end
+        for _j, w in ipairs(b.items) do table.insert(group, w) end
+    end
+    if breaks then group._breaks = breaks end
+end
+
 return M

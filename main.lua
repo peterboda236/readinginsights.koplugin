@@ -414,6 +414,7 @@ local LastBook = loadModule("lib/lastbook.lua",
 local Updater = loadModule("lib/updater.lua", { Locale = Locale })
 local About   = loadModule("views/about.lua",
     { Locale = Locale, Updater = Updater, PopupUtil = PopupUtil })
+local SectionOrder = loadModule("lib/section_order.lua", { Locale = Locale, VS = ViewSettings })
 local Menu    = loadModule("lib/menu.lua", { Locale = Locale })
 
 -- What the device shows while it sleeps: which popup (Insights by default,
@@ -1420,6 +1421,7 @@ function ReadingInsights:_menuDeps()
         Fonts                       = Fonts,
         Locale                      = Locale,
         ViewSettings                = ViewSettings,
+        SectionOrder                = SectionOrder,
         ChapterBar                  = ChapterBar,
         SkimBar                     = SkimBar,
         SCREENSAVER_TYPE_VALUE      = SCREENSAVER_TYPE_VALUE,
