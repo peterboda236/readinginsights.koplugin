@@ -2988,13 +2988,27 @@ local function hookSpinWidgetModal(widget)
     hookAll(widget)
 end
 
+-- Simple UI (simpleui.koplugin) replaces SpinWidget / DoubleSpinWidget shown
+-- in the file manager with its own non-modal sheet, which UIManager stacks
+-- under this modal popup - it only shows up after the popup is closed. It
+-- skips subclasses, so the goal pickers use these.
+local GoalSpinWidget, GoalDoubleSpinWidget
+local function goalSpinWidget()
+    GoalSpinWidget = GoalSpinWidget or require("ui/widget/spinwidget"):extend{}
+    return GoalSpinWidget
+end
+local function goalDoubleSpinWidget()
+    GoalDoubleSpinWidget = GoalDoubleSpinWidget or require("ui/widget/doublespinwidget"):extend{}
+    return GoalDoubleSpinWidget
+end
+
 -- Opens a numeric picker (long press on the goal value in the reading-goal
 -- section) to set/change that year's target in books. Same look as the
 -- daily/weekly goal picker (editTimeGoal), just with one number. Saved
 -- immediately on OK; the popup is
 -- rebuilt in place so the new value shows without a full close/reopen.
 function ReadingInsightsPopup:editReadingGoal(year)
-    local SpinWidget = require("ui/widget/spinwidget")
+    local SpinWidget = goalSpinWidget()
     local popup_self = self
     local current = math.floor(VS.readReadingGoal(year))
     if current < 1 then current = 1 elseif current > 999 then current = 999 end
@@ -3056,7 +3070,7 @@ end
 -- goal (stored as total minutes). Marked modal so it opens above this popup,
 -- same reason as editReadingGoal's modal InputDialog.
 function ReadingInsightsPopup:editTimeGoal(kind)
-    local DoubleSpinWidget = require("ui/widget/doublespinwidget")
+    local DoubleSpinWidget = goalDoubleSpinWidget()
 
     -- Label for the "default" button, e.g. "Default: 30m" / "Default: 5h"
     -- (depends on KOReader's duration format setting), instead of KOReader's
