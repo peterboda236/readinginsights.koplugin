@@ -303,7 +303,8 @@ at the bottom and save with the check mark. In Reading insights the order is:
 *Daily / weekly goal*, *Last 7 days* (or *Week*), *Streaks*, *Yearly & monthly*,
 *Reading goal / Achievements* (one entry - the two share a row in the Cards look)
 and *All time*; in Book progress: *This chapter / Next chapter*, *Chapters*,
-*This book* and *Pace*. That is also the default; *Restore default order* (in the
+*This book* and *Pace*. That is also the default (the Cards look puts *Reading
+goal / Achievements* before *Yearly & monthly*); *Restore default order* (in the
 menu, or in the ☰ menu of the sorting screen) brings it back. A section that is
 switched off or has nothing to show simply stays out, wherever it is in the list.
 
