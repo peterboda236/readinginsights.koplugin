@@ -1133,7 +1133,8 @@ end
 -- Settings > Book progress popup > "Section order").
 --
 -- Which order the sections of a popup are drawn in, for both looks (Classic
--- and Cards). The default is the order the popups always had; it is not
+-- and Cards). The default is the order the popups always had (the Cards
+-- look of the insights popup has its own, see cards_default); it is not
 -- stored at all - only a changed order is saved, and restoring the default
 -- simply deletes the setting. A saved list is always repaired on reading:
 -- ids this version doesn't know are dropped and sections that are missing
@@ -1157,6 +1158,7 @@ M.Order = {
         insights = {
             key     = "reading_insights_section_order",
             default = { "time_goals", "week", "streaks", "year", "goal_ach", "all_time" },
+            cards_default = { "time_goals", "week", "streaks", "goal_ach", "year", "all_time" },
         },
         book = {
             key     = "reading_insights_book_section_order",
@@ -1164,6 +1166,10 @@ M.Order = {
         },
     },
 }
+
+local function defaultOrder(v)
+    return (v.cards_default and M.readLookIsCards()) and v.cards_default or v.default
+end
 
 -- The saved order of `view`, repaired (see above); always a complete list.
 function M.Order.read(view)
@@ -1180,7 +1186,7 @@ function M.Order.read(view)
             end
         end
     end
-    for _idx, id in ipairs(v.default) do
+    for _idx, id in ipairs(defaultOrder(v)) do
         if not seen[id] then table.insert(out, id) end
     end
     return out
@@ -1190,7 +1196,7 @@ function M.Order.isCustom(view)
     local v = M.Order.VIEWS[view]
     if not v then return false end
     local cur = M.Order.read(view)
-    for i, id in ipairs(v.default) do
+    for i, id in ipairs(defaultOrder(v)) do
         if cur[i] ~= id then return true end
     end
     return false
