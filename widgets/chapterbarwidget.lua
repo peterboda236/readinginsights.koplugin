@@ -163,6 +163,8 @@ function M.build(chapter_info, full_width, padding_h, offset_override, on_prev, 
     local col_h_max = Screen:scaleBySize(M.readHeightSetting())
     local read_color   = cards and Colors.cardsColor("active_bar") or Colors.activeBar()
     local unread_color = cards and Colors.cardsColor("inactive_bar") or Colors.inactiveBar()
+    -- The top segment of a column: rounded top corners in the Cards look.
+    local topBar = cards and Colors.newTopRoundBar or Colors.newBar
 
     local max_pages = 0
     if page_counts then
@@ -245,16 +247,16 @@ function M.build(chapter_info, full_width, padding_h, offset_override, on_prev, 
                 table.insert(bar_row, VerticalGroup:new{
                     align = "left",
                     VerticalSpan:new{ width = math.max(0, col_h_max - bh) },
-                    unread_h > 0 and Colors.newBar(bar_w, unread_h, unread_color)
+                    unread_h > 0 and topBar(bar_w, unread_h, unread_color)
                         or VerticalSpan:new{ width = 0 },
-                    read_h > 0 and Colors.newBar(bar_w, read_h, read_color)
+                    read_h > 0 and (unread_h > 0 and Colors.newBar or topBar)(bar_w, read_h, read_color)
                         or VerticalSpan:new{ width = 0 },
                 })
             else
                 table.insert(bar_row, VerticalGroup:new{
                     align = "left",
                     VerticalSpan:new{ width = math.max(0, col_h_max - bh) },
-                    Colors.newBar(bar_w, bh, ch_idx < current and read_color or unread_color),
+                    topBar(bar_w, bh, ch_idx < current and read_color or unread_color),
                 })
             end
         else

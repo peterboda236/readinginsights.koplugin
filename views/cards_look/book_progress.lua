@@ -79,7 +79,7 @@ function M.buildSections(stats, fonts, layout, popup, H, avail_h)
     local inner_w = ilayout.content_width
     local divider = Colors.cardsColor("divider")
 
-    local function statCell(data, label, width)
+    local function statCell(data, label, width, opts)
         width = width or ilayout.col_width
         if not data or data.value == "" then
             return TextBoxWidget:new{
@@ -87,7 +87,7 @@ function M.buildSections(stats, fonts, layout, popup, H, avail_h)
                 fgcolor = Colors.label(), width = width, alignment = "left",
             }
         end
-        return UI.buildStatCell(card_fonts, width, data.value, joinLabel(data.unit, label))
+        return UI.buildStatCell(card_fonts, width, data.value, joinLabel(data.unit, label), opts)
     end
     local function twoCol(left, right, opts)
         return UI.buildTwoColRow(left, right, ilayout, false, opts, Size.line.thin, divider)
@@ -238,9 +238,11 @@ function M.buildSections(stats, fonts, layout, popup, H, avail_h)
         local ci = stats.chapter_info
         if ci and Opt.readShowChapterCountRow() then
             local left, left_label, right, right_label = H.chapterCountValues(ci, stats, popup)
-            local read_cell = H.tappableWrap(statCell(left, left_label), ilayout.col_width)
+            local swap = (popup and not readonly) and { swap = true } or nil
+            local read_cell = H.tappableWrap(
+                statCell(left, left_label, nil, (not stats.at_book_end) and swap or nil), ilayout.col_width)
             if popup and not stats.at_book_end then popup._chapter_read_cell = read_cell end
-            local avg_cell = H.tappableWrap(statCell(right, right_label), ilayout.col_width)
+            local avg_cell = H.tappableWrap(statCell(right, right_label, nil, swap), ilayout.col_width)
             if popup then popup._chapter_avg_cell = avg_cell end
             table.insert(rows, hDivider())
             table.insert(rows, VerticalSpan:new{ width = Size.padding.small })
