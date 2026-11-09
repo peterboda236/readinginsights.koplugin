@@ -51,6 +51,7 @@ local InputDialog = require("ui/widget/inputdialog")
 local LineWidget  = require("ui/widget/linewidget")
 local UIManager    = require("ui/uimanager")
 local Widget      = require("ui/widget/widget")
+local Screen      = require("device").screen
 
 -- Shared modules passed in by main.lua: Locale (translations), PluginUtil
 -- (plugin dir + loader) and Prefs (G_reader_settings wrappers).
@@ -326,8 +327,56 @@ function M.getColor(key)
     return color
 end
 
--- A bar drawn as diagonal stripes inside an outline (today's bar in the
--- weekly chart). Both take the gray of `color`.
+-- Corner radius of a bar `w` x `h` with rounded top corners.
+local function topRadius(w, h)
+    return math.min(Screen:scaleBySize(2), math.floor(w / 2), h)
+end
+
+-- How far row `row` (0 = top) of a shape whose top corners have radius `r`
+-- starts in from each side.
+local function cornerInset(r, row)
+    if row >= r then return 0 end
+    local dy = r - row - 0.5
+    return r - math.floor(math.sqrt(r * r - dy * dy) + 0.5)
+end
+
+-- A bar with its two top corners rounded (Cards look). Drawn row by row:
+-- paintRoundedRect would round the bottom corners too, and the color may be
+-- RGB (paintRectRGB32), as in ColorBar.
+local TopRoundBar = Widget:extend{
+    width  = nil,
+    height = nil,
+    color  = nil,
+}
+
+function TopRoundBar:getSize()
+    return Geom:new{ w = self.width, h = self.height }
+end
+
+function TopRoundBar:paintTo(bb, x, y)
+    local c, w, h = self.color, self.width, self.height
+    if not c or w <= 0 or h <= 0 then return end
+    local function rect(rx, ry, rw, rh)
+        if rw <= 0 or rh <= 0 then return end
+        if Blitbuffer.isColor8(c) then
+            bb:paintRect(rx, ry, rw, rh, c)
+        else
+            bb:paintRectRGB32(rx, ry, rw, rh, c)
+        end
+    end
+    local r = topRadius(w, h)
+    for row = 0, r - 1 do
+        local inset = cornerInset(r, row)
+        rect(x + inset, y + row, w - 2 * inset, 1)
+    end
+    rect(x, y + r, w, h - r)
+end
+
+-- A bar drawn as diagonal stripes inside an outline, with its two top
+-- corners rounded (today's bar in the Cards look weekly chart). Both take
+-- the gray of `color`. Drawn row by row: the outline follows the corners,
+-- and the stripes keep hatchRect's pattern, (column + row) % (2 * stripe)
+-- counted from the bar's top-left corner.
 local HatchBar = Widget:extend{
     width  = nil,
     height = nil,
@@ -339,13 +388,38 @@ function HatchBar:getSize()
 end
 
 function HatchBar:paintTo(bb, x, y)
-    local c = self.color
-    if not c then return end
+    local c, w, h = self.color, self.width, self.height
+    if not c or w <= 0 or h <= 0 then return end
     if not Blitbuffer.isColor8(c) then c = c:getColor8() end
-    bb:hatchRect(x, y, self.width, self.height, Size.line.thick, c)
-    local bw = math.min(Size.border.default, math.floor(self.height / 2))
-    if bw > 0 then
-        bb:paintBorder(x, y, self.width, self.height, bw, c)
+    local function span(sx, py, len)
+        if len > 0 then bb:paintRect(sx, py, len, 1, c) end
+    end
+    local r   = topRadius(w, h)
+    local bw  = math.min(Size.border.default, math.floor(h / 2))
+    local ri  = math.max(0, r - bw)
+    local sw  = math.ceil(Size.line.thick)
+    local sw2 = 2 * sw
+    for row = 0, h - 1 do
+        local py = y + row
+        local o  = cornerInset(r, row)
+        if row < bw or row >= h - bw or w - 2 * bw <= 0 then
+            span(x + o, py, w - 2 * o)
+        else
+            local i = bw + cornerInset(ri, row - bw)
+            span(x + o, py, i - o)
+            span(x + w - i, py, i - o)
+            local px = i
+            while px < w - i do
+                local phase = (px + row) % sw2
+                if phase < sw then
+                    local run = math.min(sw - phase, w - i - px)
+                    span(x + px, py, run)
+                    px = px + run
+                else
+                    px = px + sw2 - phase
+                end
+            end
+        end
     end
 end
 
@@ -359,6 +433,11 @@ end
 -- activeBar()/inactiveBar().
 function M.newBar(width, height, color)
     return ColorBar:new{ width = width, height = height, color = color }
+end
+
+-- Like newBar, with the two top corners rounded (Cards look bar charts).
+function M.newTopRoundBar(width, height, color)
+    return TopRoundBar:new{ width = width, height = height, color = color }
 end
 
 -- Divider lines (Settings > Appearance > Divider lines, see Prefs.readDividerStyle):

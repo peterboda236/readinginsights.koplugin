@@ -576,13 +576,23 @@ function M.icon(name, size)
     }
 end
 
--- "›" next to text in `face`. An icon, not the text glyph: the glyph sits
+-- An icon next to text in `face`. An icon, not the text glyph: the glyph sits
 -- low in its line box and would not line up with the text.
-function M.chevron(face)
+local function textIcon(name, face, scale)
     local probe = TextWidget:new{ text = "A", face = face }
     local h = probe:getSize().h
     probe:free()
-    return M.icon("chevron", math.floor(h * 0.6))
+    return M.icon(name, math.floor(h * scale))
+end
+
+-- "›": tapping opens something.
+function M.chevron(face)
+    return textIcon("chevron", face, 0.6)
+end
+
+-- "⇄": tapping switches what the value shows.
+function M.swapIcon(face)
+    return textIcon("swap", face, 0.45)
 end
 
 -- A card's title row: icon, title, a pen when the card can be long-pressed
@@ -781,19 +791,19 @@ function M.buildDots(flags, size)
 end
 
 -- A stacked value cell: the value (with a "›" when tapping it opens
--- something), its label under it, and an optional change line
--- ("▲ 1:05" in bold, then e.g. "vs prev. 7d").
+-- something, a "⇄" with opts.swap when tapping switches it), its label under
+-- it, and an optional change line ("▲ 1:05" in bold, then e.g. "vs prev. 7d").
 function M.buildStatCell(fonts, width, value, unit, opts)
     opts = opts or {}
-    local chevron = opts.chevron and M.chevron(fonts.value)
-    local chevron_w = chevron and (chevron:getSize().w + Size.padding.default) or 0
+    local mark = (opts.chevron and M.chevron(fonts.value)) or (opts.swap and M.swapIcon(fonts.value)) or nil
+    local mark_w = mark and (mark:getSize().w + Size.padding.default) or 0
     local top = HorizontalGroup:new{
         align = "center",
-        TextWidget:new{ text = value, face = fonts.value, fgcolor = Colors.value(), max_width = math.max(1, width - chevron_w) },
+        TextWidget:new{ text = value, face = fonts.value, fgcolor = Colors.value(), max_width = math.max(1, width - mark_w) },
     }
-    if chevron then
+    if mark then
         table.insert(top, HorizontalSpan:new{ width = Size.padding.default })
-        table.insert(top, chevron)
+        table.insert(top, mark)
     end
     local cell = VerticalGroup:new{
         align = "left",

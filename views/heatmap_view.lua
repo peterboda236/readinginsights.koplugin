@@ -942,7 +942,7 @@ function M.buildDayPartChartWidget(weekday_hour_map, fonts, max_width, mode, car
         local bar_group = VerticalGroup:new{
             align = "center",
             TextWidget:new{ text = value_text, face = fonts.small, fgcolor = Colors.value() },
-            Colors.newBar(bar_w, bar_h, bar_color),
+            (cards and Colors.newTopRoundBar or Colors.newBar)(bar_w, bar_h, bar_color),
         }
         table.insert(bars_row, BottomContainer:new{
             dimen = Geom:new{ w = col_w, h = chart_h + val_h },
@@ -1047,7 +1047,7 @@ function M.buildHourlyChartWidget(weekday_hour_map, fonts, max_width, mode, card
             VerticalGroup:new{
                 align = "center",
                 TextWidget:new{ text = value_text, face = fonts.small, fgcolor = Colors.value() },
-                Colors.newBar(col_w, bar_h, bar_color),
+                (cards and Colors.newTopRoundBar or Colors.newBar)(col_w, bar_h, bar_color),
             },
         })
         table.insert(labels_row, CenterContainer:new{
@@ -1133,7 +1133,7 @@ function M.buildWeekdayChartWidget(weekday_hour_map, fonts, max_width, mode, car
             VerticalGroup:new{
                 align = "center",
                 TextWidget:new{ text = value_text, face = fonts.small, fgcolor = Colors.value() },
-                Colors.newBar(col_w, bar_h, bar_color),
+                (cards and Colors.newTopRoundBar or Colors.newBar)(col_w, bar_h, bar_color),
             },
         })
         table.insert(labels_row, CenterContainer:new{
