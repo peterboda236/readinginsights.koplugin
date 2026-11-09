@@ -2437,3 +2437,45 @@ msgstr "Benutzerdefiniert"
 
 msgid "Choose in which order the sections of the popup are shown. Works in both the Classic and the Cards look."
 msgstr "Legt fest, in welcher Reihenfolge die Abschnitte des Fensters angezeigt werden. Funktioniert in der klassischen Ansicht und in der Kartenansicht."
+
+msgid "Sections"
+msgstr "Abschnitte"
+
+msgid "Monthly chart"
+msgstr "Monatsdiagramm"
+
+msgid "Show the \"Last 7 days\" (or \"Week\") section with the weekly chart."
+msgstr "Zeigt den Abschnitt \"Letzte 7 Tage\" (oder \"Woche\") mit dem Wochendiagramm."
+
+msgid "Show the current and best daily and weekly streaks."
+msgstr "Zeigt die aktuelle und die beste Tages- und Wochenserie."
+
+msgid "Show the year header, the yearly figures and the monthly chart."
+msgstr "Zeigt die Jahresauswahl, die Jahreswerte und das Monatsdiagramm."
+
+msgid "Show the monthly chart under the yearly figures."
+msgstr "Zeigt das Monatsdiagramm unter den Jahreswerten."
+
+msgid "Show the all-time totals."
+msgstr "Zeigt die Gesamtwerte."
+
+msgid "Percentage read"
+msgstr "Gelesene Prozent"
+
+msgid "Reading time left"
+msgstr "Verbleibende Lesezeit"
+
+msgid "Time read so far"
+msgstr "Bisherige Lesezeit"
+
+msgid "Read today"
+msgstr "Heute gelesen"
+
+msgid "Average per day"
+msgstr "Durchschnitt pro Tag"
+
+msgid "Started"
+msgstr "Begonnen"
+
+msgid "Expected finish"
+msgstr "Voraussichtliches Ende"

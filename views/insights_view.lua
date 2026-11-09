@@ -296,16 +296,23 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
     local function newBlock(id) table.insert(marks, { id = id, first = #sections + 1 }) end
     local order_goal_shown = VS.Opt.readShowReadingGoal()
     local order_ach_shown  = VS.Opt.readShowAchievements() and Achievements ~= nil
+    -- Settings > Reading insights popup > Sections: each of these sections
+    -- can be switched off.
+    local show_week     = VS.Opt.readShowSection("week")
+    local show_streaks  = VS.Opt.readShowSection("streaks")
+    local show_year     = VS.Opt.readShowSection("year")
+    local show_monthly  = VS.Opt.readShowSection("monthly")
+    local show_all_time = VS.Opt.readShowSection("all_time")
     local order_cal_mode   = VS.readWeeklyViewIsCalendar()
     local _wlw, _wdaily, order_has_week = Values.weekData(order_cal_mode,
         order_cal_mode and popup_self._cal_week or nil, last_week_stats, last_week_daily)
     local order = VS.Order.effective("insights", {
         time_goals = VS.readShowTimeGoals() and true or false,
-        week       = order_has_week and true or false,
-        streaks    = true,
-        year       = true,
+        week       = (show_week and order_has_week) and true or false,
+        streaks    = show_streaks and true or false,
+        year       = show_year and true or false,
         goal_ach   = (order_goal_shown or order_ach_shown) and true or false,
-        all_time   = true,
+        all_time   = show_all_time and true or false,
     })
     local function isLast(id) return order[#order] == id end
     local function nextId(id)
@@ -454,7 +461,7 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
         popup_self._week_hold_targets = {}
         local lw, week_daily, has_week = Values.weekData(cal_mode,
             cal_mode and popup_self._cal_week or nil, last_week_stats, last_week_daily)
-        if has_week then
+        if has_week and show_week then
             local days_n = lw.days or 7
             local total_secs, total_pages_raw, time_cells, pages_cells = Values.weekValues(lw)
 
@@ -666,6 +673,7 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
         end
     end
 
+    if show_streaks then
     local cd_val, cd_unit, cw_val, cw_unit, bd_val, bd_unit, bw_val, bw_unit =
         Values.streakValues(streaks)
 
@@ -775,10 +783,7 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
         streak_combined_header,
         streak_rows, layout,
         { pad_row = false, gap_above_row = true, split_header = true, no_bottom_line = isLast("streaks") })
-
-    local year_header = UI.padded(layout.padding_h,
-        buildYearHeader(popup_self, fonts.section, fonts.label, layout, year_range, popup_self.selected_year))
-    local yearly_row  = buildYearlyRow(popup_self, yearly_stats, fonts, layout)
+    end -- if show_streaks
 
     popup_self._year_swipe_targets = {}
     -- A horizontal swipe over any widget wrapped with this pages the year
@@ -794,7 +799,14 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
         table.insert(popup_self._year_swipe_targets, box)
         return box
     end
-    local chart = buildMonthlyChart(popup_self, monthly_data, layout, fonts)
+    -- The chart and the reading goal below it run into each other (a thin
+    -- line, or none) only while the goal row really follows the year.
+    local year_joined_to_goal = show_year and order_goal_shown and nextId("year") == "goal_ach"
+    if show_year then
+    local year_header = UI.padded(layout.padding_h,
+        buildYearHeader(popup_self, fonts.section, fonts.label, layout, year_range, popup_self.selected_year))
+    local yearly_row  = buildYearlyRow(popup_self, yearly_stats, fonts, layout)
+    local chart = show_monthly and buildMonthlyChart(popup_self, monthly_data, layout, fonts) or nil
     -- The few pixels the auto-fit could not hand out as whole bar points
     -- (see _buildUI's fit) go here, under the monthly chart, so the page
     -- ends exactly at the bottom of the screen. The bars themselves stay
@@ -812,9 +824,6 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
 
     year_header = trackYearSwipe(year_header)
     yearly_row  = trackYearSwipe(yearly_row)
-    -- The chart and the reading goal below it run into each other (a thin
-    -- line, or none) only while the goal row really follows the year.
-    local year_joined_to_goal = order_goal_shown and nextId("year") == "goal_ach"
     newBlock("year")
     UI.addSectionWithRow(sections, year_header, yearly_row, layout, { pad_row = false, no_bottom_line = not (chart and UI.classicLines()), bottom_line_thin = true, gap_above_row = true })
 
@@ -877,6 +886,7 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
         table.insert(sections, UI.padded(layout.padding_h,
             Colors.hLine(layout.content_width, Size.line.thick)))
     end
+    end -- if show_year
 
     -- Long-press targets for the reading-goal section (its headers and
     -- cells). Reset every build so onHold never tests a hold against the
@@ -1088,7 +1098,7 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
         end
     end -- if show_goal or show_ach
 
-    do
+    if show_all_time then
         local all_time_val, all_time_unit, all_pages_val, all_pages_unit = Values.allTimeValues(all_time_stats)
 
         local left_line  = buildValueLine(fonts.value, fonts.label, layout.col_width, all_time_val,  all_time_unit)

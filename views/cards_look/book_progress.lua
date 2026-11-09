@@ -254,8 +254,20 @@ function M.buildSections(stats, fonts, layout, popup, H, avail_h)
     -- ===== This book ====================================================
     -- Header tap: Book info (onTapClose, _this_book_header).
     local donut_style = Donut ~= nil and Opt.readBookSectionStyle() == Opt.BOOK_SECTION_STYLE_DONUT
-    local show_read_row = donut_style or Opt.readShowBookReadRow()
-    local show_time_row = donut_style or Opt.readShowBookTimeRow()
+    -- Every value cell has its own switch (Settings > Book progress popup);
+    -- a row is drawn while at least one of its two cells is on.
+    local show_pct    = Opt.readBookCell("read_pct")
+    local show_pages  = Opt.readBookCell("read_pages")
+    local show_tleft  = Opt.readBookCell("time_left")
+    local show_tspent = Opt.readBookCell("time_spent")
+    local show_read_row = donut_style or show_pct or show_pages
+    local show_time_row = donut_style or show_tleft or show_tspent
+    -- Two cells side by side; with only one of them on it keeps the left
+    -- position (the other half stays blank, without a separator).
+    local function cellsRow(left, right)
+        if left and right then return twoCol(left, right) end
+        return UI.buildTwoColRow(left or right, VerticalSpan:new{ width = 0 }, ilayout, true)
+    end
     local has_book_rows = show_read_row or show_time_row
     if has_book_rows or skim_in_book then
         local header = H.tappableWrap(
@@ -300,10 +312,10 @@ function M.buildSections(stats, fonts, layout, popup, H, avail_h)
             })
         elseif has_book_rows then
             if show_read_row then
-                table.insert(rows, twoCol(
-                    statCell(stats.book_progress, stats.book_progress.value ~= "" and _("read") or ""),
-                    statCell(stats.book_pages_read, "")))
-                if Opt.readShowCellBars() then
+                table.insert(rows, cellsRow(
+                    show_pct and statCell(stats.book_progress, stats.book_progress.value ~= "" and _("read") or "") or nil,
+                    show_pages and statCell(stats.book_pages_read, "") or nil))
+                if Opt.readShowCellBars() and show_pct then
                     table.insert(rows, VerticalSpan:new{ width = Size.padding.default })
                     table.insert(rows, UI.buildRoundBar(stats.book_progress_ratio, inner_w, Screen:scaleBySize(6)))
                     table.insert(rows, VerticalSpan:new{ width = Size.padding.default })
@@ -312,9 +324,9 @@ function M.buildSections(stats, fonts, layout, popup, H, avail_h)
                 end
             end
             if show_time_row then
-                table.insert(rows, twoCol(
-                    statCell(stats.book_time_left_hhmm, _("reading time left")),
-                    statCell(stats.book_time_spent_hhmm, _("read so far"))))
+                table.insert(rows, cellsRow(
+                    show_tleft and statCell(stats.book_time_left_hhmm, _("reading time left")) or nil,
+                    show_tspent and statCell(stats.book_time_spent_hhmm, _("read so far")) or nil))
             end
         end
         addCard(UI.buildCard(cardBody(header, rows), layout.content_width), "book")
@@ -323,8 +335,12 @@ function M.buildSections(stats, fonts, layout, popup, H, avail_h)
     -- ===== Pace =========================================================
     -- Header tap: Book progress calendar; tap on the first row or the
     -- switch: time / pages (onTapClose, _pace_header / _pace_row).
-    local show_pace_today = Opt.readShowPaceToday()
-    local show_dates_row  = (stats.started_days_ago or stats.finish_days_left) and Opt.readShowPaceDates()
+    local show_today   = Opt.readBookCell("today")
+    local show_avg     = Opt.readBookCell("avg_day")
+    local show_pace_today = show_today or show_avg
+    local show_started = (stats.started_days_ago and Opt.readBookCell("started")) and true or false
+    local show_finish  = (stats.finish_days_left and Opt.readBookCell("finish")) and true or false
+    local show_dates_row  = show_started or show_finish
     if show_pace_today or show_dates_row then
         local pace_pages = ((popup and popup._pace_view_mode) or "time") == "pages"
         local switch
@@ -348,7 +364,8 @@ function M.buildSections(stats, fonts, layout, popup, H, avail_h)
             local today_val, today_label, avg_val, avg_label = H.paceTodayValues(stats, pace_pages)
             local today_cell = statCell(today_val, today_label)
             local avg_cell = statCell(avg_val, avg_label)
-            local pace_row = H.tappableWrap(twoCol(today_cell, avg_cell), inner_w)
+            local pace_row = H.tappableWrap(
+                cellsRow(show_today and today_cell or nil, show_avg and avg_cell or nil), inner_w)
             if popup then popup._pace_row = pace_row end
             table.insert(rows, pace_row)
         end
@@ -358,7 +375,7 @@ function M.buildSections(stats, fonts, layout, popup, H, avail_h)
                 table.insert(rows, hDivider())
                 table.insert(rows, VerticalSpan:new{ width = Size.padding.small })
             end
-            if stats.started_days_ago and stats.finish_days_left then
+            if show_started and show_finish then
                 local started_tap = H.tappableWrap(statCell(stats.started_days_ago, ""), ilayout.col_width)
                 local finish_tap  = H.tappableWrap(statCell(H.finishDaysValue(stats), ""), ilayout.col_width)
                 if popup then
@@ -366,7 +383,7 @@ function M.buildSections(stats, fonts, layout, popup, H, avail_h)
                     popup._finish_widget  = finish_tap
                 end
                 table.insert(rows, twoCol(started_tap, finish_tap))
-            elseif stats.started_days_ago then
+            elseif show_started then
                 local started_tap = H.tappableWrap(statCell(stats.started_days_ago, "", inner_w), inner_w)
                 if popup then popup._started_widget = started_tap end
                 table.insert(rows, started_tap)

@@ -48,6 +48,11 @@ A full-screen overview of your whole reading history.
   separately (Settings → Reading insights popup); both
   are on by default.
 
+  The other sections can be switched on or off too (*Settings ▸ Reading insights
+  popup ▸ Sections*): **Last 7 days / Week**, **Streaks**, **Yearly & monthly**
+  (with a separate switch for just the **Monthly chart**) and **All time**. All
+  are on by default; a hidden section also drops out of the *Section order*.
+
 **Controls:** swipe to change year, tap headers/bars to drill in, long-press
 the title bar to force a data reload.
 
@@ -146,6 +151,12 @@ A per-book overlay for the book you're currently reading:
 - **Today / averages** — time and pages read today and your daily average
 - **This / next chapter** — estimated reading time (or pages) left
 - **Chapter breakdown** — progress and time per chapter, when available
+
+Every value in the popup can be switched on or off on its own (*Settings ▸ Book
+progress popup*): percentage read, pages read, reading time left, time read so
+far, read today, average per day, started and expected finish. A row whose two
+cells are both off is not drawn, and a section with no rows left disappears with
+its header.
 
 Many rows toggle between time/pages or percent/page on tap. Tap the "Pace"
 title to open the **Book progress calendar** — a month grid coloured like a

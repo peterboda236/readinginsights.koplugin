@@ -716,8 +716,23 @@ local function buildSections(stats, fonts, layout, popup)
     -- apply to the "Classic" style.
     local donut_forced = Donut ~= nil
         and Opt.readBookSectionStyle() == Opt.BOOK_SECTION_STYLE_DONUT
-    local show_read_row = donut_forced or Opt.readShowBookReadRow()
-    local show_time_row = donut_forced or Opt.readShowBookTimeRow()
+    -- Every value cell has its own switch (Settings > Book progress popup);
+    -- a row is drawn while at least one of its two cells is on.
+    local show_pct    = Opt.readBookCell("read_pct")
+    local show_pages  = Opt.readBookCell("read_pages")
+    local show_tleft  = Opt.readBookCell("time_left")
+    local show_tspent = Opt.readBookCell("time_spent")
+    local show_read_row = donut_forced or show_pct or show_pages
+    local show_time_row = donut_forced or show_tleft or show_tspent
+    -- A row of two cells; with only one of them on it keeps the left
+    -- position and the right side stays blank, without a separator (same
+    -- as the chapter row with one column off).
+    local function cellsRow(left, right, row_opts)
+        if left and right then
+            return UI.buildTwoColRow(left, right, layout, false, row_opts)
+        end
+        return UI.buildTwoColRow(left or right, valueLine(UI.emptyValue(), ""), layout, true, row_opts)
+    end
 
     -- "Donut chart" section style: the donut row replaces the read / time
     -- rows (it shows the same progress as the bar under the percentage).
@@ -838,19 +853,20 @@ local function buildSections(stats, fonts, layout, popup)
         elseif has_book_rows then
             this_book_rows = VerticalGroup:new{ align = "left" }
             local function addReadRow()
-                local left_cell, right_cell = book_progress, book_pages_read
-                if show_cell_bars then
+                local left_cell  = show_pct and book_progress or nil
+                local right_cell = show_pages and book_pages_read or nil
+                if show_cell_bars and left_cell then
                     -- The bar sits inside the percentage cell (one column
                     -- wide), the neighbouring cell is padded to match.
                     local extra
                     left_cell, extra = UI.withCellBar(left_cell,
                         stats.book_progress_ratio, layout.col_width,
                         fonts.value, small_face)
-                    right_cell = UI.padBottom(right_cell, extra)
+                    if right_cell then right_cell = UI.padBottom(right_cell, extra) end
                 end
                 -- With both rows shown, the vertical divider continues
                 -- through the gap into the next row (unbroken 2x2 grid).
-                table.insert(this_book_rows, UI.buildTwoColRow(left_cell, right_cell, layout, false,
+                table.insert(this_book_rows, cellsRow(left_cell, right_cell,
                     show_time_row and { join_below = Size.padding.small } or nil))
             end
             -- Percentage row first with its progress bar under the
@@ -860,7 +876,8 @@ local function buildSections(stats, fonts, layout, popup)
                 table.insert(this_book_rows, VerticalSpan:new{ width = Size.padding.small })
             end
             if show_time_row then
-                table.insert(this_book_rows, UI.buildTwoColRow(book_col1, book_col2, layout, false,
+                table.insert(this_book_rows, cellsRow(
+                    show_tleft and book_col1 or nil, show_tspent and book_col2 or nil,
                     show_read_row and { join_above = true } or nil))
             end
         end
@@ -894,8 +911,12 @@ local function buildSections(stats, fonts, layout, popup)
     -- ===== Pace =========================================================
     -- Parts: the "read today / avg per day" row and the started / expected
     -- finish row.
-    local show_pace_today = Opt.readShowPaceToday()
-    local show_dates_row  = (stats.started_days_ago or stats.finish_days_left) and Opt.readShowPaceDates()
+    local show_today   = Opt.readBookCell("today")
+    local show_avg     = Opt.readBookCell("avg_day")
+    local show_pace_today = show_today or show_avg
+    local show_started = (stats.started_days_ago and Opt.readBookCell("started")) and true or false
+    local show_finish  = (stats.finish_days_left and Opt.readBookCell("finish")) and true or false
+    local show_dates_row  = show_started or show_finish
 
     if show_pace_today or show_dates_row then
         sectionSeparator("pace")
@@ -917,8 +938,9 @@ local function buildSections(stats, fonts, layout, popup)
         if show_pace_today then
             -- When the started / finish row follows as a second two-column
             -- row, the divider runs on through the gap between the rows.
-            local pace_joined = show_dates_row and stats.started_days_ago and stats.finish_days_left
-            local pace_row_content = UI.buildTwoColRow(days_col2, pace_col2, layout, false,
+            local pace_joined = show_started and show_finish
+            local pace_row_content = cellsRow(
+                show_today and days_col2 or nil, show_avg and pace_col2 or nil,
                 pace_joined and { join_below = Size.padding.small } or nil)
             local pace_row = tappableWrap(pace_row_content, pace_row_content:getSize().w)
             if popup then
@@ -934,12 +956,12 @@ local function buildSections(stats, fonts, layout, popup)
         -- The right cell (and the separator to its left) only appears once
         -- there's enough page_stat data to estimate a finish date; the left
         -- cell alone still appears as soon as the book has been opened at all.
-        if (stats.started_days_ago or stats.finish_days_left) and VS.Opt.readShowPaceDates() then
-            local started_widget = stats.started_days_ago
+        if show_dates_row then
+            local started_widget = show_started
                 and valueLine(stats.started_days_ago, "")
                 or nil
 
-            if started_widget and stats.finish_days_left then
+            if started_widget and show_finish then
                 local finish_widget = valueLine(finishDaysValue(stats), "")
                 local started_tap = tappableWrap(started_widget, layout.col_width)
                 local finish_tap  = tappableWrap(finish_widget, layout.col_width)
@@ -959,7 +981,7 @@ local function buildSections(stats, fonts, layout, popup)
                 if popup then popup._started_widget = started_tap end
                 table.insert(sections, UI.padded(layout.padding_h, started_tap))
                 table.insert(sections, VerticalSpan:new{ width = Size.padding.small })
-            elseif stats.finish_days_left then
+            elseif show_finish then
                 local finish_widget = buildValueLine(
                     fonts.value, fonts.label, layout.full_width - 2 * layout.padding_h,
                     finishDaysValue(stats), ""

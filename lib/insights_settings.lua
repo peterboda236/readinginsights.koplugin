@@ -864,6 +864,81 @@ function M.Opt.saveShowAchievements(value)
     Prefs.save(M.Opt.SHOW_ACH_ROW_KEY, value and true or false)
 end
 
+-- Reading insights popup: on/off switches for the sections that used to be
+-- always drawn (Settings > Reading insights popup > "Sections"). All on by
+-- default, so nothing changes for anyone who doesn't touch them. A section
+-- that is off is neither built nor does it take part in the section order.
+--   week      "Last 7 days" / "Week"
+--   streaks   current & best streak
+--   year      yearly stats row (and the year header) + monthly chart
+--   monthly   just the monthly chart under the yearly stats row
+--   all_time  all-time totals
+M.Opt.SECTION_KEYS = {
+    week     = "reading_insights_show_section_week",
+    streaks  = "reading_insights_show_section_streaks",
+    year     = "reading_insights_show_section_year",
+    monthly  = "reading_insights_show_section_monthly",
+    all_time = "reading_insights_show_section_all_time",
+}
+
+function M.Opt.readShowSection(name)
+    local key = M.Opt.SECTION_KEYS[name]
+    if not key then return true end
+    return M.readBoolSetting(key, true)
+end
+
+function M.Opt.saveShowSection(name, value)
+    local key = M.Opt.SECTION_KEYS[name]
+    if not key then return end
+    M.saveBoolSetting(key, value and true or false)
+end
+
+-- Book progress popup: every value cell of the two-column rows can be
+-- switched off on its own (Settings > Book progress popup). A cell that was
+-- never touched follows the old per-row switch (read row / reading time row /
+-- read today row / started-expected finish row), so an existing setup looks
+-- exactly the same; the first change of a cell stores its own value. A row
+-- whose cells are all off is not drawn, and a section whose rows are all off
+-- is hidden with its header, as before.
+--   read_pct    percentage read          read_pages  pages read
+--   time_left   reading time left        time_spent  time read so far
+--   today       read today               avg_day     average per day
+--   started     started N days ago       finish      expected finish
+M.Opt.BOOK_CELL_KEYS = {
+    read_pct   = "reading_insights_book_cell_read_pct",
+    read_pages = "reading_insights_book_cell_read_pages",
+    time_left  = "reading_insights_book_cell_time_left",
+    time_spent = "reading_insights_book_cell_time_spent",
+    today      = "reading_insights_book_cell_today",
+    avg_day    = "reading_insights_book_cell_avg_day",
+    started    = "reading_insights_book_cell_started",
+    finish     = "reading_insights_book_cell_finish",
+}
+
+-- cell name -> the row switch it falls back to
+local BOOK_CELL_ROW = {
+    read_pct = "readShowBookReadRow", read_pages = "readShowBookReadRow",
+    time_left = "readShowBookTimeRow", time_spent = "readShowBookTimeRow",
+    today = "readShowPaceToday", avg_day = "readShowPaceToday",
+    started = "readShowPaceDates", finish = "readShowPaceDates",
+}
+
+function M.Opt.readBookCell(name)
+    local key = M.Opt.BOOK_CELL_KEYS[name]
+    if not key then return true end
+    local v = Prefs.read(key, nil)
+    if v ~= nil then return v == true end
+    local row_fn = BOOK_CELL_ROW[name]
+    if row_fn and M.Opt[row_fn] then return M.Opt[row_fn]() end
+    return true
+end
+
+function M.Opt.saveBookCell(name, value)
+    local key = M.Opt.BOOK_CELL_KEYS[name]
+    if not key then return end
+    Prefs.save(key, value and true or false)
+end
+
 function M.Opt.readGoalDisplay()
     local v = Prefs.read(M.Opt.GOAL_DISPLAY_KEY, nil)
     if v == M.Opt.GOAL_DISPLAY_REMAINING then return M.Opt.GOAL_DISPLAY_REMAINING end

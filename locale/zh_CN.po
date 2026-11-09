@@ -2164,3 +2164,45 @@ msgstr "自定义"
 
 msgid "Choose in which order the sections of the popup are shown. Works in both the Classic and the Cards look."
 msgstr "选择窗口中各分区的显示顺序。经典外观和卡片外观均适用。"
+
+msgid "Sections"
+msgstr "分区"
+
+msgid "Monthly chart"
+msgstr "月度图表"
+
+msgid "Show the \"Last 7 days\" (or \"Week\") section with the weekly chart."
+msgstr "显示带有周图表的\"过去 7 天\"（或\"周\"）分区。"
+
+msgid "Show the current and best daily and weekly streaks."
+msgstr "显示当前和最佳的每日与每周连续阅读。"
+
+msgid "Show the year header, the yearly figures and the monthly chart."
+msgstr "显示年份选择、年度数据和月度图表。"
+
+msgid "Show the monthly chart under the yearly figures."
+msgstr "在年度数据下方显示月度图表。"
+
+msgid "Show the all-time totals."
+msgstr "显示累计总数据。"
+
+msgid "Percentage read"
+msgstr "已读百分比"
+
+msgid "Reading time left"
+msgstr "预估剩余阅读时长"
+
+msgid "Time read so far"
+msgstr "至今阅读时长"
+
+msgid "Read today"
+msgstr "今日已读"
+
+msgid "Average per day"
+msgstr "日均"
+
+msgid "Started"
+msgstr "开始于"
+
+msgid "Expected finish"
+msgstr "预计完成"

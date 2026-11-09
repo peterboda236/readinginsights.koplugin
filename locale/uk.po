@@ -2492,3 +2492,45 @@ msgstr "Власний"
 
 msgid "Choose in which order the sections of the popup are shown. Works in both the Classic and the Cards look."
 msgstr "Виберіть, у якому порядку показувати розділи вікна. Працює і в класичному вигляді, і в картках."
+
+msgid "Sections"
+msgstr "Розділи"
+
+msgid "Monthly chart"
+msgstr "Місячна діаграма"
+
+msgid "Show the \"Last 7 days\" (or \"Week\") section with the weekly chart."
+msgstr "Показує розділ \"Останні 7 днів\" (або \"Тиждень\") із тижневою діаграмою."
+
+msgid "Show the current and best daily and weekly streaks."
+msgstr "Показує поточну та найкращу денну й тижневу серії."
+
+msgid "Show the year header, the yearly figures and the monthly chart."
+msgstr "Показує вибір року, річні показники та місячну діаграму."
+
+msgid "Show the monthly chart under the yearly figures."
+msgstr "Показує місячну діаграму під річними показниками."
+
+msgid "Show the all-time totals."
+msgstr "Показує загальні підсумки за весь час."
+
+msgid "Percentage read"
+msgstr "Прочитано у відсотках"
+
+msgid "Reading time left"
+msgstr "Залишилось часу читання"
+
+msgid "Time read so far"
+msgstr "Час читання наразі"
+
+msgid "Read today"
+msgstr "Прочитано сьогодні"
+
+msgid "Average per day"
+msgstr "У середньому за день"
+
+msgid "Started"
+msgstr "Розпочато"
+
+msgid "Expected finish"
+msgstr "Очікуване завершення"

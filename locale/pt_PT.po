@@ -2440,3 +2440,45 @@ msgstr "Personalizada"
 
 msgid "Choose in which order the sections of the popup are shown. Works in both the Classic and the Cards look."
 msgstr "Escolha a ordem pela qual as secções da janela são mostradas. Funciona no aspeto Clássico e no aspeto Cartões."
+
+msgid "Sections"
+msgstr "Secções"
+
+msgid "Monthly chart"
+msgstr "Gráfico mensal"
+
+msgid "Show the \"Last 7 days\" (or \"Week\") section with the weekly chart."
+msgstr "Mostra a secção \"Últimos 7 dias\" (ou \"Semana\") com o gráfico semanal."
+
+msgid "Show the current and best daily and weekly streaks."
+msgstr "Mostra as sequências diárias e semanais atual e melhor."
+
+msgid "Show the year header, the yearly figures and the monthly chart."
+msgstr "Mostra o seletor de ano, os valores anuais e o gráfico mensal."
+
+msgid "Show the monthly chart under the yearly figures."
+msgstr "Mostra o gráfico mensal por baixo dos valores anuais."
+
+msgid "Show the all-time totals."
+msgstr "Mostra os totais de sempre."
+
+msgid "Percentage read"
+msgstr "Percentagem lida"
+
+msgid "Reading time left"
+msgstr "Tempo de leitura restante"
+
+msgid "Time read so far"
+msgstr "Tempo de leitura até agora"
+
+msgid "Read today"
+msgstr "Lido hoje"
+
+msgid "Average per day"
+msgstr "Média por dia"
+
+msgid "Started"
+msgstr "Iniciado"
+
+msgid "Expected finish"
+msgstr "Conclusão prevista"

@@ -212,7 +212,7 @@ function M.buildSections(popup_self, streaks, yearly_stats, year_range, monthly_
         popup_self._week_hold_targets = {}
         local lw, week_daily, has_week = Values.weekData(cal_mode,
             cal_mode and popup_self._cal_week or nil, last_week_stats, last_week_daily)
-        if has_week then
+        if has_week and VS.Opt.readShowSection("week") then
             local days_n = lw.days or 7
             local total_secs, total_pages_raw, time_cells, pages_cells = Values.weekValues(lw)
 
@@ -364,7 +364,8 @@ function M.buildSections(popup_self, streaks, yearly_stats, year_range, monthly_
     -- weeks. Under the current streak a dot per day of the last 7 days
     -- (filled = read), under the best one the days left to beat it.
     -- A tap anywhere on the card opens the streak calendar.
-    do
+    -- (Settings > Reading insights popup > Sections can switch it off.)
+    if VS.Opt.readShowSection("streaks") then
         local ilayout = UI.cardLayout(layout)
         local col_w   = ilayout.col_width
 
@@ -447,8 +448,9 @@ function M.buildSections(popup_self, streaks, yearly_stats, year_range, monthly_
 
     -- One card: year header (‹ prev · selected › · next ›), the year's
     -- stats, the chart caption as a chip (tap: the four views) and the
-    -- monthly chart.
-    do
+    -- monthly chart. (Sections > Yearly & monthly / Monthly chart can switch
+    -- the card, or just its chart, off.)
+    if VS.Opt.readShowSection("year") then
         local ilayout = UI.cardLayout(layout)
         local body = VerticalGroup:new{
             align = "left",
@@ -457,7 +459,8 @@ function M.buildSections(popup_self, streaks, yearly_stats, year_range, monthly_
             buildYearlyRow(popup_self, yearly_stats, fonts, ilayout),
         }
 
-        local chart = buildMonthlyChart(popup_self, monthly_data, ilayout, fonts, true)
+        local chart = VS.Opt.readShowSection("monthly")
+            and buildMonthlyChart(popup_self, monthly_data, ilayout, fonts, true) or nil
         if chart then
             local caption = (popup_self.mode == VS.INSIGHTS_MODE_HOURS and _("Reading time per month"))
                 or (popup_self.mode == VS.INSIGHTS_MODE_PAGES and _("Pages per month"))
@@ -637,7 +640,7 @@ function M.buildSections(popup_self, streaks, yearly_stats, year_range, monthly_
         UI.addCard(sections, row, layout)
     end -- if show_goal or show_ach
 
-    do
+    if VS.Opt.readShowSection("all_time") then
         local all_time_val, all_time_unit, all_pages_val, all_pages_unit = Values.allTimeValues(all_time_stats)
 
         -- One card: header (tap: the reading heatmap, moved here from

@@ -2439,3 +2439,45 @@ msgstr "Custom"
 
 msgid "Choose in which order the sections of the popup are shown. Works in both the Classic and the Cards look."
 msgstr "Choose in which order the sections of the popup are shown. Works in both the Classic and the Cards look."
+
+msgid "Sections"
+msgstr "Sections"
+
+msgid "Monthly chart"
+msgstr "Monthly chart"
+
+msgid "Show the \"Last 7 days\" (or \"Week\") section with the weekly chart."
+msgstr "Show the \"Last 7 days\" (or \"Week\") section with the weekly chart."
+
+msgid "Show the current and best daily and weekly streaks."
+msgstr "Show the current and best daily and weekly streaks."
+
+msgid "Show the year header, the yearly figures and the monthly chart."
+msgstr "Show the year header, the yearly figures and the monthly chart."
+
+msgid "Show the monthly chart under the yearly figures."
+msgstr "Show the monthly chart under the yearly figures."
+
+msgid "Show the all-time totals."
+msgstr "Show the all-time totals."
+
+msgid "Percentage read"
+msgstr "Percentage read"
+
+msgid "Reading time left"
+msgstr "Reading time left"
+
+msgid "Time read so far"
+msgstr "Time read so far"
+
+msgid "Read today"
+msgstr "Read today"
+
+msgid "Average per day"
+msgstr "Average per day"
+
+msgid "Started"
+msgstr "Started"
+
+msgid "Expected finish"
+msgstr "Expected finish"

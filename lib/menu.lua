@@ -628,6 +628,31 @@ function M.build(self, deps)
             checked_func = function() return Opt.readShowAchievements() end,
             callback = function() Opt.saveShowAchievements(not Opt.readShowAchievements()) end,
         }
+
+        -- The sections that used to be always drawn, each with its own
+        -- checkbox (Settings > Reading insights popup > Sections). Hiding
+        -- one also takes it out of the "Section order".
+        local function sectionToggle(name, text, help, enabled_func)
+            return {
+                text = text,
+                help_text = help,
+                keep_menu_open = true,
+                enabled_func = enabled_func,
+                checked_func = function() return Opt.readShowSection(name) end,
+                callback = function() Opt.saveShowSection(name, not Opt.readShowSection(name)) end,
+            }
+        end
+        I.sec_week = sectionToggle("week", _("Last 7 days"),
+            _("Show the \"Last 7 days\" (or \"Week\") section with the weekly chart."))
+        I.sec_streaks = sectionToggle("streaks", _("Streaks"),
+            _("Show the current and best daily and weekly streaks."))
+        I.sec_year = sectionToggle("year", _("Yearly & monthly"),
+            _("Show the year header, the yearly figures and the monthly chart."))
+        I.sec_monthly = sectionToggle("monthly", _("Monthly chart"),
+            _("Show the monthly chart under the yearly figures."),
+            function() return Opt.readShowSection("year") end)
+        I.sec_all_time = sectionToggle("all_time", _("All time"),
+            _("Show the all-time totals."))
     end
 
     -- Section order of the two popups: "Arrange sections" opens the
@@ -1440,6 +1465,32 @@ function M.build(self, deps)
         end,
     }
 
+    -- Every value cell of the rows above on its own. A row disappears when
+    -- both of its cells are off. In the donut style the pages and times are
+    -- always shown, so the read / time cells are greyed out there.
+    do
+        local Opt = deps.ViewSettings.Opt
+        local function cellToggle(name, text, donut_forced)
+            return {
+                text = text,
+                keep_menu_open = true,
+                enabled_func = donut_forced and function() return not isDonutStyle() end or nil,
+                checked_func = function()
+                    return (donut_forced and isDonutStyle()) or Opt.readBookCell(name)
+                end,
+                callback = function() Opt.saveBookCell(name, not Opt.readBookCell(name)) end,
+            }
+        end
+        I.cell_read_pct   = cellToggle("read_pct",   _("Percentage read"), true)
+        I.cell_read_pages = cellToggle("read_pages", _("Pages read"), true)
+        I.cell_time_left  = cellToggle("time_left",  _("Reading time left"), true)
+        I.cell_time_spent = cellToggle("time_spent", _("Time read so far"), true)
+        I.cell_today      = cellToggle("today",      _("Read today"))
+        I.cell_avg_day    = cellToggle("avg_day",    _("Average per day"))
+        I.cell_started    = cellToggle("started",    _("Started"))
+        I.cell_finish     = cellToggle("finish",     _("Expected finish"))
+    end
+
     -- "Book info" popup: which parts of the small cover + title / author /
     -- series popup are shown. The cover look (rounded corners, shadow, border)
     -- is shared with the Reading calendar and the Reading shelf and lives under
@@ -1615,13 +1666,23 @@ function M.build(self, deps)
     local insights_popup_sub_item_table = layout({
         I.hamburger,
         "-",
-        I.goal, I.goal_bar, I.reading_goal, I.achievements, I.ach_refresh,
+        -- Everything the popup shows can be switched here, in the order the
+        -- sections appear on the page.
+        group(_("Sections"), {
+            I.goal, I.goal_bar,
+            I.sec_week, I.weekly_extra_row, I.weekly_vs_prev,
+            I.sec_streaks,
+            I.sec_year, I.sec_monthly,
+            I.reading_goal, I.achievements,
+            I.sec_all_time,
+        }),
+        I.ach_refresh,
         "-",
         I.insights_order,
         "-",
         group(_("Week"), {
             I.weekly_view,
-            I.weekly_style, I.today_side, I.weekly_extra_row, I.weekly_vs_prev,
+            I.weekly_style, I.today_side,
             I.trend_order,
         }),
         group(_("Months"), { I.monthly_style, I.monthly_layout }),
@@ -1637,8 +1698,12 @@ function M.build(self, deps)
             I.chapter_bar, I.chapter_bar_style, I.chapters_per_page,
             I.chapter_count_row,
         }),
-        group(_("This book"), { I.read_row, I.time_row, I.progress_bar }),
-        group(_("Pace"), { I.read_today, I.pace_dates }),
+        group(_("This book"), {
+            I.cell_read_pct, I.cell_read_pages, I.cell_time_left, I.cell_time_spent,
+            "-",
+            I.progress_bar,
+        }),
+        group(_("Pace"), { I.cell_today, I.cell_avg_day, I.cell_started, I.cell_finish }),
         I.book_heights,
     })
 

@@ -2451,3 +2451,45 @@ msgstr "Egyéni"
 
 msgid "Choose in which order the sections of the popup are shown. Works in both the Classic and the Cards look."
 msgstr "Válaszd ki, milyen sorrendben jelenjenek meg az ablak szekciói. Klasszikus és kártya nézetben is működik."
+
+msgid "Sections"
+msgstr "Szekciók"
+
+msgid "Monthly chart"
+msgstr "Havi grafikon"
+
+msgid "Show the \"Last 7 days\" (or \"Week\") section with the weekly chart."
+msgstr "Megjeleníti a „Elmúlt 7 nap” (vagy „Hét”) szekciót a heti grafikonnal."
+
+msgid "Show the current and best daily and weekly streaks."
+msgstr "Megjeleníti az aktuális és a legjobb napi és heti szériát."
+
+msgid "Show the year header, the yearly figures and the monthly chart."
+msgstr "Megjeleníti az évválasztót, az éves számokat és a havi grafikont."
+
+msgid "Show the monthly chart under the yearly figures."
+msgstr "Megjeleníti a havi grafikont az éves számok alatt."
+
+msgid "Show the all-time totals."
+msgstr "Megjeleníti az „Összesen” szekciót."
+
+msgid "Percentage read"
+msgstr "Elolvasott százalék"
+
+msgid "Reading time left"
+msgstr "Hátralévő olvasási idő"
+
+msgid "Time read so far"
+msgstr "Eddigi olvasási idő"
+
+msgid "Read today"
+msgstr "Ma olvasott"
+
+msgid "Average per day"
+msgstr "Napi átlag"
+
+msgid "Started"
+msgstr "Elkezdve"
+
+msgid "Expected finish"
+msgstr "Várható befejezés"
