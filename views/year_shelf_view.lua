@@ -79,7 +79,6 @@ local UIManager = require("ui/uimanager")
 local VerticalGroup = require("ui/widget/verticalgroup")
 local VerticalSpan = require("ui/widget/verticalspan")
 local Widget = require("ui/widget/widget")
-local InfoMessage = require("ui/widget/infomessage")
 local Screen = Device.screen
 
 local deps = ...

@@ -2383,3 +2383,12 @@ msgstr "Moldura escura no modo noturno"
 
 msgid "In night mode, draw the cover frame in near-black (as Bookshelf does) instead of white, so it stays subtle. Needs \"Cover border\" to be on."
 msgstr "No modo noturno, desenha a moldura da capa quase preta (como o Bookshelf) em vez de branca, para ficar discreta. Requer «Moldura da capa»."
+
+msgid "%1 – %2 %3"
+msgstr "%1 – %2 %3"
+
+msgid "%1 %2 – %3 %4"
+msgstr "%1 %2 – %3 %4"
+
+msgid "range months lowercase"
+msgstr "no"

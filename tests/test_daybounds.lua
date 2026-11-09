@@ -16,6 +16,7 @@ Run from the plugin root, ideally under a DST-observing timezone:
 package.preload["optmath"] = function()
     return { round = function(x) return math.floor((x or 0) + 0.5) end }
 end
+package.preload["readinginsights_paths"] = function() return { cacheFile = function(name) return "/tmp/" .. name end } end
 
 local StatsDb = { withDb = function(fb) return fb end, withShared = function(_, fb) return fb end,
                   withStatement = function() end }

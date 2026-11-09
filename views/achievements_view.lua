@@ -21,17 +21,13 @@ The data and its persistence live in lib/achievements.lua; this module is
 only the widget that draws it.
 ]]--
 
-local InfoMessage = require("ui/widget/infomessage")
-local UIManager   = require("ui/uimanager")
-
--- SimpleUI swaps plain InfoMessages for its own non-modal toast, which then
--- lands under this modal list. It only swaps the exact class, not subclasses.
-local AchievementInfo = InfoMessage:extend{}
+local UIManager = require("ui/uimanager")
 
 -- Shared modules, passed in as one named table by main.lua (see there).
 local deps = ...
 local Achievements, Locale, ListWidget =
     deps.Achievements, deps.Locale, deps.ListWidget
+local InfoMessage = deps.NativeWidgets.InfoMessage
 local _ = Locale._
 
 -- Remembered per-list, like the book lists' own sort keys.
@@ -83,7 +79,7 @@ function M.show(on_close)
                     sort_title = title,
                     sort_time  = (earned and it.earned_ts) or 0,
                     callback = function()
-                        UIManager:show(AchievementInfo:new{
+                        UIManager:show(InfoMessage:new{
                             text = def.icon .. "  " .. title .. "\n\n" .. desc,
                         })
                     end,

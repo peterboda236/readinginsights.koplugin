@@ -60,6 +60,9 @@ for _, n in ipairs(names) do
                hasFrontlight = function() return false end, isAndroid = function() return false end }
     end
     if n == "optmath" then return { round = function(x) return math.floor((x or 0)+0.5) end } end
+    if n == "libs/libkoreader-lfs" then
+      return { attributes = function() return nil end, dir = function() return function() end end }
+    end
     if n == "ui/size" then
       return { padding = { small = 2, default = 4, large = 8 }, line = { thin = 1, medium = 2, thick = 3 },
                border = { default = 1 }, span = { horizontal_default = 4 } }
@@ -96,57 +99,123 @@ end
 local PluginUtil = assert(loadfile("pluginutil.lua"))()
 local function load(path, deps) return assert(loadfile(path))(deps) end
 
+-- Same order and deps as main.lua.
+load("lib/paths.lua")
 local Prefs        = load("lib/prefs.lua")
 local StatsDb      = load("lib/statsdb.lua")
 local PopupUtil    = load("lib/popuputil.lua")
+local NativeWidgets = load("lib/native_widgets.lua")
 local BookProgress = load("lib/bookprogress.lua")
 local ChapterInfo  = load("lib/chapterinfo.lua")
 local BookStatsData    = load("lib/book_stats_data.lua",    { StatsDb = StatsDb })
 local BookCalendarData = load("lib/book_calendar_data.lua", { StatsDb = StatsDb })
 local Locale = load("lib/locale.lua", { PluginUtil = PluginUtil })
+local DateUtil = load("lib/dateutil.lua")
 local Colors = load("lib/colors.lua", { Locale = Locale, PluginUtil = PluginUtil, Prefs = Prefs })
 local Fonts  = load("lib/fonts.lua",  { Locale = Locale, PluginUtil = PluginUtil, Prefs = Prefs })
 local UI     = load("lib/uikit.lua",  { Colors = Colors })
 local ViewSettings  = load("lib/insights_settings.lua", { Prefs = Prefs })
+UI.bindSettings(ViewSettings)
 local InsightsCache = load("lib/insights_cache.lua")
+local ManualBooks   = load("lib/manual_books.lua")
+local Ratings       = load("lib/ratings.lua")
+local RatingDialog = load("widgets/ratingdialog.lua", { Locale = Locale })
+local ListWidget = load("widgets/booklistwidget.lua", { Locale = Locale, Prefs = Prefs })
 local ChapterBar = load("widgets/chapterbarwidget.lua", { Colors = Colors, Fonts = Fonts, UI = UI })
+local Donut   = load("widgets/donutwidget.lua", { Colors = Colors })
+local SkimBar = load("widgets/skimbarwidget.lua", { Colors = Colors })
 local InsightsData = load("lib/insights_data.lua",
-    { Locale = Locale, StatsDb = StatsDb, Cache = InsightsCache, VS = ViewSettings, Prefs = Prefs })
-local Trend   = load("views/trend_view.lua",   { Colors = Colors, Locale = Locale, VS = ViewSettings })
-local Heatmap = load("views/heatmap_view.lua", { Colors = Colors, Fonts = Fonts,
-    Locale = Locale, VS = ViewSettings, UI = UI, Data = InsightsData })
-local BookList = load("views/booklist_view.lua",
-    { Colors = Colors, Locale = Locale, VS = ViewSettings, UI = UI, Data = InsightsData })
-local Menu    = load("lib/menu.lua", { Locale = Locale })
-
--- The three view files themselves. Loading these exercises the bind() calls
--- insights_view.lua makes at load time, and every top-level statement in the
--- biggest files in the plugin.
+    { Locale = Locale, StatsDb = StatsDb, Cache = InsightsCache, VS = ViewSettings,
+      Manual = ManualBooks, Prefs = Prefs })
+local Trend = load("views/trend_view.lua",
+    { Colors = Colors, Locale = Locale, VS = ViewSettings, NativeWidgets = NativeWidgets })
+local Heatmap = load("views/heatmap_view.lua", {
+    Colors = Colors, Fonts = Fonts, Locale = Locale, VS = ViewSettings, UI = UI,
+    Data = InsightsData, Cache = InsightsCache, NativeWidgets = NativeWidgets,
+})
+local BookList = load("views/booklist_view.lua", {
+    Colors = Colors, Locale = Locale, VS = ViewSettings, UI = UI,
+    Data = InsightsData, Cache = InsightsCache,
+    ListWidget = ListWidget, Manual = ManualBooks, Ratings = Ratings,
+    RatingDialog = RatingDialog, BookStatsData = BookStatsData,
+    NativeWidgets = NativeWidgets,
+})
+local RecordsData = load("lib/records_data.lua", { StatsDb = StatsDb })
+local Achievements = load("lib/achievements.lua",
+    { StatsDb = StatsDb, RecordsData = RecordsData, Data = InsightsData, Locale = Locale,
+      DateUtil = DateUtil })
+local AchievementsView = load("views/achievements_view.lua",
+    { Achievements = Achievements, Locale = Locale, ListWidget = ListWidget,
+      NativeWidgets = NativeWidgets })
+local CoverThumbs  = load("lib/coverthumbs.lua")
+local BookInfoData = load("lib/bookinfo_data.lua",
+    { Locale = Locale, BookStatsData = BookStatsData, CoverThumbs = CoverThumbs })
+local CoverFrame   = load("widgets/coverframe.lua", { Colors = Colors })
+local StreakCalendar = load("views/streak_calendar_view.lua", {
+    Locale = Locale, Colors = Colors, Fonts = Fonts, UI = UI,
+    Data = InsightsData, Prefs = Prefs, VS = ViewSettings,
+    BookList = BookList, BookInfoData = BookInfoData, Ratings = Ratings,
+    CoverFrame = CoverFrame, CoverThumbs = CoverThumbs, DateUtil = DateUtil,
+    NativeWidgets = NativeWidgets,
+})
+local Records = load("views/records_view.lua", {
+    Locale = Locale, Colors = Colors, Fonts = Fonts, PopupUtil = PopupUtil,
+    RecordsData = RecordsData, UI = UI, NativeWidgets = NativeWidgets,
+})
+local BookInfo = load("views/book_info_view.lua", {
+    Locale = Locale, Colors = Colors, Fonts = Fonts, VS = ViewSettings,
+    Data = BookInfoData, CoverFrame = CoverFrame,
+    Ratings = Ratings, RatingDialog = RatingDialog, NativeWidgets = NativeWidgets,
+})
+BookList.bindBookInfo(BookInfo)
+local YearShelf = load("views/year_shelf_view.lua", {
+    Locale = Locale, Colors = Colors, Fonts = Fonts, UI = UI,
+    BookList = BookList, BookInfoData = BookInfoData, Ratings = Ratings,
+    VS = ViewSettings, CoverFrame = CoverFrame, CoverThumbs = CoverThumbs,
+})
+local InsightsHeaders = load("views/insights_headers.lua", {
+    Locale = Locale, Colors = Colors, UI = UI, Data = InsightsData,
+    YearShelf = YearShelf,
+})
+local InsightsCharts = load("views/insights_charts.lua", {
+    Locale = Locale, Colors = Colors, UI = UI, VS = ViewSettings,
+    Trend = Trend, DateUtil = DateUtil,
+})
 local Insights = load("views/insights_view.lua", {
+    Headers = InsightsHeaders, Charts = InsightsCharts,
     Locale = Locale, Colors = Colors, Fonts = Fonts,
     PopupUtil = PopupUtil, VS = ViewSettings, Cache = InsightsCache, UI = UI,
     Trend = Trend, Heatmap = Heatmap, BookList = BookList, Data = InsightsData,
-    Prefs = Prefs,
+    Manual = ManualBooks, Achievements = Achievements, AchievementsView = AchievementsView,
+    Prefs = Prefs, Streak = StreakCalendar, Records = Records,
+    YearShelf = YearShelf, NativeWidgets = NativeWidgets,
 })
 local BookCalendar = load("views/book_calendar_view.lua", {
-    Locale = Locale, Colors = Colors, Fonts = Fonts, Prefs = Prefs,
+    Locale = Locale, Colors = Colors, Fonts = Fonts, Prefs = Prefs, VS = ViewSettings,
     BookProgress = BookProgress, UI = UI, CalendarData = BookCalendarData,
+    DateUtil = DateUtil,
 })
 local StatsPopup = load("views/book_stats_view.lua", {
     Locale = Locale, Colors = Colors, Fonts = Fonts, Prefs = Prefs,
     BookProgress = BookProgress, BookCalendar = BookCalendar,
-    ChapterInfo = ChapterInfo, ChapterBar = ChapterBar, UI = UI,
+    ChapterInfo = ChapterInfo, ChapterBar = ChapterBar,
+    Donut = Donut, SkimBar = SkimBar, UI = UI,
     BookStatsData = BookStatsData, VS = ViewSettings,
 })
-local RecordsData = load("lib/records_data.lua", { StatsDb = StatsDb })
-local Records = load("views/records_view.lua", {
-    Locale = Locale, Colors = Colors, Fonts = Fonts, PopupUtil = PopupUtil,
-    RecordsData = RecordsData,
-})
+local LastBook = load("lib/lastbook.lua", { StatsPopup = StatsPopup, BookInfoData = BookInfoData })
 -- updater.lua uses `goto continue`, which LuaJIT (KOReader) accepts but
 -- plain Lua 5.1 doesn't parse, so it is stubbed rather than loaded here.
 local Updater = { checkForUpdates = function() end }
 local About   = load("views/about.lua", { Locale = Locale, Updater = Updater, PopupUtil = PopupUtil })
+local Menu    = load("lib/menu.lua", { Locale = Locale })
+local SleepScreen = load("lib/sleepscreen.lua", {
+    Locale = Locale, Prefs = Prefs,
+    Insights = Insights, Records = Records, Heatmap = Heatmap,
+    Streak = StreakCalendar, BookCalendar = BookCalendar,
+    StatsPopup = StatsPopup, BookInfo = BookInfo, BookInfoData = BookInfoData,
+    InsightsData = InsightsData, LastBook = LastBook,
+})
+load("lib/imageexport.lua", { Locale = Locale, Prefs = Prefs, SleepScreen = SleepScreen })
 
 local function check(label, cond)
     print(string.format("%-52s %s", label, cond and "ok" or "FAILED"))
@@ -159,13 +228,13 @@ check("uikit exports the merged row helpers",
       type(UI.buildTwoColRow) == "function" and type(UI.addSectionWithRow) == "function")
 check("trend exposes Popup + chart builders",
       Trend.Popup ~= nil and type(Trend.buildLine8WeekChart) == "function"
-      and type(Trend.trendTitle) == "function" and type(Trend.totalForMetric) == "function")
+      and type(Trend.trendTitle) == "function" and type(Trend.buildContent) == "function")
 check("heatmap exposes Popup, builders and bind",
       Heatmap.Popup ~= nil and type(Heatmap.bind) == "function"
       and type(Heatmap.buildRangeHeatmapWidget) == "function"
       and type(Heatmap.getHeatmapPeriodRange) == "function")
 check("booklist exposes Checklist, lists and bind",
-      BookList.Checklist ~= nil and type(BookList.bind) == "function"
+      type(BookList.showFinishedChecklist) == "function" and type(BookList.bind) == "function"
       and type(BookList.showBooksForPeriod) == "function")
 check("chapter bar exposes build + settings",
       type(ChapterBar.build) == "function" and type(ChapterBar.readHeightSetting) == "function"
@@ -192,6 +261,12 @@ check("chapterinfo + bookprogress + statsdb load",
       type(ChapterInfo.getCachedChapterInfo) == "function" and BookProgress ~= nil
       and type(StatsDb.withShared) == "function")
 check("popuputil loads", PopupUtil ~= nil)
+check("native widgets are subclasses, not the stock classes",
+      NativeWidgets.ButtonDialog ~= require("ui/widget/buttondialog")
+      and NativeWidgets.ConfirmBox ~= require("ui/widget/confirmbox")
+      and NativeWidgets.DoubleSpinWidget ~= require("ui/widget/doublespinwidget")
+      and NativeWidgets.InfoMessage ~= require("ui/widget/infomessage")
+      and NativeWidgets.SpinWidget ~= require("ui/widget/spinwidget"))
 
 -- bind() wiring: the calls insights_view.lua makes at load time
 Heatmap.bind{ getCachedFonts = function() return {} end, parseDateYMD = function() return 2026, 1, 1 end }

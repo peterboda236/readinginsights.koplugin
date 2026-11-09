@@ -15,6 +15,7 @@ Run from the plugin root: lua5.1 tests/test_streaks.lua
 ]]--
 
 package.preload["optmath"] = function() return { round = function(x) return x end } end
+package.preload["readinginsights_paths"] = function() return { cacheFile = function(name) return "/tmp/" .. name end } end
 
 -- Loaded without Prefs on purpose: weekStartDate/isConsecutiveWeekDate are pure
 -- date math and take the week-start as an argument, so no setting is needed.

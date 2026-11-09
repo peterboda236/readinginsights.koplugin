@@ -46,6 +46,7 @@ local UIManager = require("ui/uimanager")
 -- "8-week chart order" setting.
 local deps = ...
 local Colors, Locale, VS = deps.Colors, deps.Locale, deps.VS
+local ButtonDialog = deps.NativeWidgets.ButtonDialog
 local _            = Locale._
 local formatNumber = Locale.formatNumber
 local formatCount  = Locale.formatCount
@@ -614,7 +615,6 @@ end
 
 -- The list of the four views to choose from; opened by a tap on the caption.
 function M.Popup:showModePicker()
-    local ButtonDialog = require("ui/widget/buttondialog")
     local dialog
     local buttons = {}
     for _i, mode in ipairs(M.MODES) do

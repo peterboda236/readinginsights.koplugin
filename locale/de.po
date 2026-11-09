@@ -2380,3 +2380,15 @@ msgstr "Dunkler Rahmen im Nachtmodus"
 
 msgid "In night mode, draw the cover frame in near-black (as Bookshelf does) instead of white, so it stays subtle. Needs \"Cover border\" to be on."
 msgstr "Zeichnet den Cover-Rahmen im Nachtmodus fast schwarz (wie Bookshelf) statt weiß, damit er dezent bleibt. Benötigt „Cover-Rahmen“."
+
+msgid "%1 – %2 %3"
+msgstr "%1 – %2 %3"
+
+msgid "%1 %2 – %3 %4"
+msgstr "%1 %2 – %3 %4"
+
+msgid "range months lowercase"
+msgstr "no"
+
+msgid "weekday lowercase"
+msgstr "no"

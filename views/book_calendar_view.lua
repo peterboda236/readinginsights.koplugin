@@ -59,7 +59,6 @@ local formatCount  = Locale.formatCount
 
 local WEEKDAY_SHORT = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" }
 
-
 -- ---------------------------------------------------------------------
 -- Book-calendar cell content setting (Settings > Book
 -- progress calendar > "Book progress calendar cell content"). Controls the

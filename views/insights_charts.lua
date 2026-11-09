@@ -36,7 +36,6 @@ local isLandscapeScreen = UI.isLandscapeScreen
 -- true: today's bar in the weekly chart is black. false: all bars gray.
 local WEEKLY_CHART_HIGHLIGHT_TODAY = true
 
-
 -- Yearly chart as a smooth curve with a dot on it for each month and the
 -- month's value above the dot (the default style; the "Months chart style"
 -- setting switches back to bars). Always one row of all months, since the
