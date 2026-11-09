@@ -2435,3 +2435,12 @@ msgstr "Темна рамка в нічному режимі"
 
 msgid "In night mode, draw the cover frame in near-black (as Bookshelf does) instead of white, so it stays subtle. Needs \"Cover border\" to be on."
 msgstr "У нічному режимі малює рамку обкладинки майже чорною (як у Bookshelf) замість білої, щоб вона була непомітною. Потрібна увімкнена «Рамка обкладинки»."
+
+msgid "%1 – %2 %3"
+msgstr "%1 – %2 %3"
+
+msgid "%1 %2 – %3 %4"
+msgstr "%1 %2 – %3 %4"
+
+msgid "range months lowercase"
+msgstr "no"

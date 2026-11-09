@@ -2107,3 +2107,15 @@ msgstr "夜间模式下使用深色边框"
 
 msgid "In night mode, draw the cover frame in near-black (as Bookshelf does) instead of white, so it stays subtle. Needs \"Cover border\" to be on."
 msgstr "夜间模式下，封面边框使用接近黑色（与 Bookshelf 相同）而非白色，更为低调。需要开启“封面边框”。"
+
+msgid "%1 – %2 %3"
+msgstr "%1 – %2 %3"
+
+msgid "%1 %2 – %3 %4"
+msgstr "%1 %2 – %3 %4"
+
+msgid "range months lowercase"
+msgstr "no"
+
+msgid "weekday lowercase"
+msgstr "no"

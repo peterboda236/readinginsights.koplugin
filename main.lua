@@ -73,6 +73,7 @@ local Cleanup      = loadModule("lib/cleanup.lua")
 local Prefs        = loadModule("lib/prefs.lua")
 local StatsDb      = loadModule("lib/statsdb.lua")
 local PopupUtil    = loadModule("lib/popuputil.lua")
+local NativeWidgets = loadModule("lib/native_widgets.lua")
 local BookProgress = loadModule("lib/bookprogress.lua")
 local ChapterInfo  = loadModule("lib/chapterinfo.lua")
 -- Queries behind the two book-specific popups, kept apart from the widgets
@@ -259,16 +260,17 @@ local InsightsData = loadModule("lib/insights_data.lua",
 -- receives them; the book lists get what they need from the view the other
 -- way round, through BookList.bind() (see booklist_view.lua).
 local Trend = loadModule("views/trend_view.lua",
-    { Colors = Colors, Locale = Locale, VS = ViewSettings })
+    { Colors = Colors, Locale = Locale, VS = ViewSettings, NativeWidgets = NativeWidgets })
 local Heatmap = loadModule("views/heatmap_view.lua", {
     Colors = Colors, Fonts = Fonts, Locale = Locale, VS = ViewSettings, UI = UI,
-    Data = InsightsData, Cache = InsightsCache,
+    Data = InsightsData, Cache = InsightsCache, NativeWidgets = NativeWidgets,
 })
 local BookList = loadModule("views/booklist_view.lua", {
     Colors = Colors, Locale = Locale, VS = ViewSettings, UI = UI,
     Data = InsightsData, Cache = InsightsCache,
     ListWidget = ListWidget, Manual = ManualBooks, Ratings = Ratings,
     RatingDialog = RatingDialog, BookStatsData = BookStatsData,
+    NativeWidgets = NativeWidgets,
 })
 
 -- Records data (the queries + their cache) is loaded before the insights
@@ -285,7 +287,8 @@ local Achievements = loadModule("lib/achievements.lua",
     { StatsDb = StatsDb, RecordsData = RecordsData, Data = InsightsData, Locale = Locale,
       DateUtil = DateUtil })
 local AchievementsView = loadModule("views/achievements_view.lua",
-    { Achievements = Achievements, Locale = Locale, ListWidget = ListWidget })
+    { Achievements = Achievements, Locale = Locale, ListWidget = ListWidget,
+      NativeWidgets = NativeWidgets })
 
 -- The combined current/best streak popup with its full-history calendar,
 -- opened both from the insights page's streak cells and straight from the
@@ -307,6 +310,7 @@ local StreakCalendar = loadModule("views/streak_calendar_view.lua", {
     Data = InsightsData, Prefs = Prefs, VS = ViewSettings,
     BookList = BookList, BookInfoData = BookInfoData, Ratings = Ratings,
     CoverFrame = CoverFrame, CoverThumbs = CoverThumbs, DateUtil = DateUtil,
+    NativeWidgets = NativeWidgets,
 })
 
 -- Records: the queries and their cache (lib/records_data.lua, loaded above
@@ -317,7 +321,7 @@ local StreakCalendar = loadModule("views/streak_calendar_view.lua", {
 -- Streak/Heatmap/AchievementsView.
 local Records = loadModule("views/records_view.lua", {
     Locale = Locale, Colors = Colors, Fonts = Fonts, PopupUtil = PopupUtil,
-    RecordsData = RecordsData, UI = UI,
+    RecordsData = RecordsData, UI = UI, NativeWidgets = NativeWidgets,
 })
 
 -- The Book info popup: cover + title / author / series. Its data (authors
@@ -327,7 +331,7 @@ local Records = loadModule("views/records_view.lua", {
 local BookInfo = loadModule("views/book_info_view.lua", {
     Locale = Locale, Colors = Colors, Fonts = Fonts, VS = ViewSettings,
     Data = BookInfoData, CoverFrame = CoverFrame,
-    Ratings = Ratings, RatingDialog = RatingDialog,
+    Ratings = Ratings, RatingDialog = RatingDialog, NativeWidgets = NativeWidgets,
 })
 -- A tap on a row of a book list opens this popup for that book (the lists
 -- are loaded before it, so they get it handed over here).
@@ -359,7 +363,7 @@ local Insights = loadModule("views/insights_view.lua", {
     Trend = Trend, Heatmap = Heatmap, BookList = BookList, Data = InsightsData,
     Manual = ManualBooks, Achievements = Achievements, AchievementsView = AchievementsView,
     Prefs = Prefs, Streak = StreakCalendar, Records = Records,
-    YearShelf = YearShelf,
+    YearShelf = YearShelf, NativeWidgets = NativeWidgets,
 })
 local BookCalendar = loadModule("views/book_calendar_view.lua", {
     Locale = Locale, Colors = Colors, Fonts = Fonts, Prefs = Prefs, VS = ViewSettings,

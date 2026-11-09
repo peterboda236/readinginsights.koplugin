@@ -31,6 +31,7 @@ package.preload["luasettings"] = function()
 end
 package.preload["lua-ljsqlite3/init"] = function() return { open = function() return nil end } end
 package.preload["libs/libkoreader-lfs"] = function() return { attributes = function() return nil end } end
+package.preload["readinginsights_paths"] = function() return { cacheFile = function(name) return "/tmp/" .. name end } end
 
 -- Stub of lib/settings.lua's surface used by insightssettings.lua
 local Settings = {

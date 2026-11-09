@@ -51,7 +51,6 @@ local Geom = require("ui/geometry")
 local GestureRange = require("ui/gesturerange")
 local HorizontalGroup = require("ui/widget/horizontalgroup")
 local HorizontalSpan = require("ui/widget/horizontalspan")
-local InfoMessage = require("ui/widget/infomessage")
 local InputContainer = require("ui/widget/container/inputcontainer")
 local logger = require("logger")
 local Size = require("ui/size")
@@ -76,6 +75,9 @@ local Locale, Colors, Fonts, PopupUtil, VS, Cache, UI, Trend, Heatmap, BookList,
     deps.VS, deps.Cache, deps.UI, deps.Trend, deps.Heatmap, deps.BookList,
     deps.Data, deps.Manual, deps.Achievements, deps.AchievementsView, deps.Prefs, deps.Streak,
     deps.Records, deps.YearShelf
+local ButtonDialog, InfoMessage, SpinWidget, DoubleSpinWidget =
+    deps.NativeWidgets.ButtonDialog, deps.NativeWidgets.InfoMessage,
+    deps.NativeWidgets.SpinWidget, deps.NativeWidgets.DoubleSpinWidget
 
 -- The charts and header rows this view lays out (views/insights_charts.lua,
 -- views/insights_headers.lua - split out of this file).
@@ -1381,7 +1383,6 @@ end
 -- widgets/booklistwidget.lua's onShowWidgetMenu / M.showSortMenu) - a
 -- ButtonDialog anchored under the title bar's left icon button.
 function ReadingInsightsPopup:onShowHamburgerMenu()
-    local ButtonDialog = require("ui/widget/buttondialog")
     local popup_self = self
     local dialog
     local title_bar = self.title_bar
@@ -1893,7 +1894,6 @@ end
 -- directly: the checklist for books the statistics DB does know about, and
 -- the hand-kept list for the ones it doesn't.
 function ReadingInsightsPopup:showFinishedBooksMenu(year)
-    local ButtonDialog = require("ui/widget/buttondialog")
     local dialog
     dialog = ButtonDialog:new{
         -- The insights popup itself is modal, and UIManager puts non-modal
@@ -2988,27 +2988,12 @@ local function hookSpinWidgetModal(widget)
     hookAll(widget)
 end
 
--- Simple UI (simpleui.koplugin) replaces SpinWidget / DoubleSpinWidget shown
--- in the file manager with its own non-modal sheet, which UIManager stacks
--- under this modal popup - it only shows up after the popup is closed. It
--- skips subclasses, so the goal pickers use these.
-local GoalSpinWidget, GoalDoubleSpinWidget
-local function goalSpinWidget()
-    GoalSpinWidget = GoalSpinWidget or require("ui/widget/spinwidget"):extend{}
-    return GoalSpinWidget
-end
-local function goalDoubleSpinWidget()
-    GoalDoubleSpinWidget = GoalDoubleSpinWidget or require("ui/widget/doublespinwidget"):extend{}
-    return GoalDoubleSpinWidget
-end
-
 -- Opens a numeric picker (long press on the goal value in the reading-goal
 -- section) to set/change that year's target in books. Same look as the
 -- daily/weekly goal picker (editTimeGoal), just with one number. Saved
 -- immediately on OK; the popup is
 -- rebuilt in place so the new value shows without a full close/reopen.
 function ReadingInsightsPopup:editReadingGoal(year)
-    local SpinWidget = goalSpinWidget()
     local popup_self = self
     local current = math.floor(VS.readReadingGoal(year))
     if current < 1 then current = 1 elseif current > 999 then current = 999 end
@@ -3070,8 +3055,6 @@ end
 -- goal (stored as total minutes). Marked modal so it opens above this popup,
 -- same reason as editReadingGoal's modal InputDialog.
 function ReadingInsightsPopup:editTimeGoal(kind)
-    local DoubleSpinWidget = goalDoubleSpinWidget()
-
     -- Label for the "default" button, e.g. "Default: 30m" / "Default: 5h"
     -- (depends on KOReader's duration format setting), instead of KOReader's
     -- raw "Default values: 0 : 30". Seconds are dropped.
@@ -3170,7 +3153,6 @@ end
 -- check mark (same look as the other pickers of the plugin).
 --   choices = { { value = ..., text = ... }, ... }
 function ReadingInsightsPopup:_showChoiceDialog(choices, current, on_pick)
-    local ButtonDialog = require("ui/widget/buttondialog")
     local dialog
     local buttons = {}
     for _idx, c in ipairs(choices) do
