@@ -112,7 +112,7 @@ function M.row(item, width, height, face, fgcolor)
         background    = Blitbuffer.COLOR_WHITE,
         bordersize    = border,
         color         = borderColor(item.dim and "divider" or "border"),
-        radius        = Size.radius.button,
+        radius        = UI.cardRadius(),
         padding       = 0,
         padding_left  = pad,
         padding_right = pad,

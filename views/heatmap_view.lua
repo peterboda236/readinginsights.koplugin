@@ -245,6 +245,18 @@ end
 local function buildHeatmapCell(cell_size, border, fill_color)
     local inner_size = cell_size - 2 * border
     if inner_size < 1 then inner_size = cell_size end
+    if VS.readLookIsCards() then
+        local r = math.min(Screen:scaleBySize(4), math.floor(cell_size / 2))
+        local inner_r = math.max(0, r - math.floor((cell_size - inner_size) / 2))
+        return OverlapGroup:new{
+            dimen = Geom:new{ w = cell_size, h = cell_size },
+            Colors.newRoundBar(cell_size, cell_size, Colors.separator(), r),
+            CenterContainer:new{
+                dimen = Geom:new{ w = cell_size, h = cell_size },
+                Colors.newRoundBar(inner_size, inner_size, fill_color, inner_r),
+            },
+        }
+    end
     return OverlapGroup:new{
         dimen = Geom:new{ w = cell_size, h = cell_size },
         Colors.newBar(cell_size, cell_size, Colors.separator()),

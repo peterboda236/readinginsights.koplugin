@@ -1502,7 +1502,7 @@ function ReadingInsightsPopup:showWeeklyTrendPopup(metric)
         local box = FrameContainer:new{
             background     = Blitbuffer.COLOR_WHITE,
             bordersize     = Size.border.window,
-            radius         = Size.radius.window,
+            radius         = VS.readLookIsCards() and UI.cardRadius() or Size.radius.window,
             padding_top    = inner_padding,
             padding_bottom = inner_padding,
             padding_left   = inner_padding,
