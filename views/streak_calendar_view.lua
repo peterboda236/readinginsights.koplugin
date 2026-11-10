@@ -1349,7 +1349,7 @@ function StreakHistoryPopup:_rebuild()
     self.box_content = FrameContainer:new{
         background     = Blitbuffer.COLOR_WHITE,
         bordersize     = Size.border.window,
-        radius         = Size.radius.window,
+        radius         = self._cards and UI.cardRadius() or Size.radius.window,
         padding        = self.inner_padding,
         content,
     }

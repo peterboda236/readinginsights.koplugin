@@ -329,7 +329,7 @@ end
 
 -- Corner radius of a bar `w` x `h` with rounded top corners.
 local function topRadius(w, h)
-    return math.min(Screen:scaleBySize(2), math.floor(w / 2), h)
+    return math.min(Screen:scaleBySize(4), math.floor(w / 2), h)
 end
 
 -- How far row `row` (0 = top) of a shape whose top corners have radius `r`
@@ -340,13 +340,15 @@ local function cornerInset(r, row)
     return r - math.floor(math.sqrt(r * r - dy * dy) + 0.5)
 end
 
--- A bar with its two top corners rounded (Cards look). Drawn row by row:
--- paintRoundedRect would round the bottom corners too, and the color may be
--- RGB (paintRectRGB32), as in ColorBar.
+-- A bar with its two top corners rounded (Cards look), or all four with
+-- `bottom`. Drawn row by row: paintRoundedRect would round the bottom
+-- corners too, and the color may be RGB (paintRectRGB32), as in ColorBar.
 local TopRoundBar = Widget:extend{
     width  = nil,
     height = nil,
     color  = nil,
+    bottom = false,
+    radius = nil,
 }
 
 function TopRoundBar:getSize()
@@ -364,12 +366,20 @@ function TopRoundBar:paintTo(bb, x, y)
             bb:paintRectRGB32(rx, ry, rw, rh, c)
         end
     end
-    local r = topRadius(w, h)
+    local r = math.min(self.radius or topRadius(w, h), math.floor(w / 2), h)
+    local rb = 0
+    if self.bottom then
+        r = math.min(r, math.floor(h / 2))
+        rb = r
+    end
     for row = 0, r - 1 do
         local inset = cornerInset(r, row)
         rect(x + inset, y + row, w - 2 * inset, 1)
+        if self.bottom then
+            rect(x + inset, y + h - 1 - row, w - 2 * inset, 1)
+        end
     end
-    rect(x, y + r, w, h - r)
+    rect(x, y + r, w, h - r - rb)
 end
 
 -- A bar drawn as diagonal stripes inside an outline, with its two top
@@ -438,6 +448,11 @@ end
 -- Like newBar, with the two top corners rounded (Cards look bar charts).
 function M.newTopRoundBar(width, height, color)
     return TopRoundBar:new{ width = width, height = height, color = color }
+end
+
+-- Like newBar, with all four corners rounded (Cards look heatmap cells).
+function M.newRoundBar(width, height, color, radius)
+    return TopRoundBar:new{ width = width, height = height, color = color, bottom = true, radius = radius }
 end
 
 -- Divider lines (Settings > Appearance > Divider lines, see Prefs.readDividerStyle):

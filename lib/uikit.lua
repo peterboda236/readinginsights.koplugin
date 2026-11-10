@@ -468,6 +468,10 @@ function M.cardBorder()
     return (Colors.separatorMode() == "off") and 0 or Size.border.default
 end
 
+function M.cardRadius()
+    return Screen:scaleBySize(8)
+end
+
 -- FrameContainer draws its border with paintBorder, which takes a gray
 -- color, so a custom RGB color is drawn in its gray.
 local function grayColor(color)
@@ -491,7 +495,7 @@ function M.buildCard(content, width)
         background     = Blitbuffer.COLOR_WHITE,
         bordersize     = M.cardBorder(),
         color          = grayColor(Colors.cardsColor("border")),
-        radius         = Size.radius.button,
+        radius         = M.cardRadius(),
         padding        = 0,
         padding_top    = Size.padding.small,
         padding_bottom = Size.padding.small,
@@ -692,7 +696,7 @@ end
 
 function Outline:paintTo(bb, x, y)
     bb:paintBorder(x, y, self.width, self.height, Size.border.default,
-        grayColor(Colors.cardsColor("border")), Size.radius.button)
+        grayColor(Colors.cardsColor("border")), M.cardRadius())
 end
 
 function M.buildOutline(width, height)

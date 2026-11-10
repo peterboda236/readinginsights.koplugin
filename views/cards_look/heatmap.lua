@@ -138,7 +138,7 @@ function M.buildBox(H, popup_self, periods_back, force_fresh, width_override, da
     local box = FrameContainer:new{
         background     = Blitbuffer.COLOR_WHITE,
         bordersize     = Size.border.window,
-        radius         = Size.radius.window,
+        radius         = UI.cardRadius(),
         padding_top    = inner_padding,
         padding_bottom = inner_padding,
         padding_left   = inner_padding,

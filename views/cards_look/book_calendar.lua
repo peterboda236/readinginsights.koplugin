@@ -61,7 +61,7 @@ function M.build(H, content_width, inner_padding, title_str, section_font, prev_
     local box_content = FrameContainer:new{
         background     = Blitbuffer.COLOR_WHITE,
         bordersize     = Size.border.window,
-        radius         = Size.radius.window,
+        radius         = UI.cardRadius(),
         padding_top    = inner_padding,
         padding_bottom = inner_padding,
         padding_left   = inner_padding,
