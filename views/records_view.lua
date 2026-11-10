@@ -30,10 +30,8 @@ local Geom            = require("ui/geometry")
 local GestureRange    = require("ui/gesturerange")
 local HorizontalGroup = require("ui/widget/horizontalgroup")
 local HorizontalSpan  = require("ui/widget/horizontalspan")
-local InfoMessage     = require("ui/widget/infomessage")
 local InputContainer  = require("ui/widget/container/inputcontainer")
 local LeftContainer   = require("ui/widget/container/leftcontainer")
-local LineWidget      = require("ui/widget/linewidget")
 local RightContainer  = require("ui/widget/container/rightcontainer")
 local Size            = require("ui/size")
 local TextBoxWidget   = require("ui/widget/textboxwidget")
@@ -50,6 +48,7 @@ local Screen          = Device.screen
 local deps = ...
 local Locale, Colors, Fonts, PopupUtil, RecordsData, UI =
     deps.Locale, deps.Colors, deps.Fonts, deps.PopupUtil, deps.RecordsData, deps.UI
+local InfoMessage = deps.NativeWidgets.InfoMessage
 
 local _ = Locale._
 local N_ = Locale.N_

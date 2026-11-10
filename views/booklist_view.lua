@@ -42,7 +42,6 @@ runtime condition, so nothing here guards against it.
   BookList.showManualBooks(popup, year)
 ]]--
 
-local InfoMessage = require("ui/widget/infomessage")
 local UIManager = require("ui/uimanager")
 local T = require("ffi/util").template
 
@@ -51,6 +50,8 @@ local Locale, VS, Data, Cache, ListWidget, Manual, Ratings, RatingDialog =
     deps.Locale, deps.VS, deps.Data, deps.Cache, deps.ListWidget, deps.Manual, deps.Ratings,
     deps.RatingDialog
 local BookStatsData = deps.BookStatsData
+local ButtonDialog, ConfirmBox, InfoMessage =
+    deps.NativeWidgets.ButtonDialog, deps.NativeWidgets.ConfirmBox, deps.NativeWidgets.InfoMessage
 local _  = Locale._
 
 local M = {}
@@ -959,7 +960,6 @@ function M.showManualBooks(insights_popup, year)
                 sort_rating = this_entry.rating or 0,
                 -- Long press: edit or delete the entry.
                 hold_callback = function()
-                    local ButtonDialog = require("ui/widget/buttondialog")
                     local dialog
                     dialog = ButtonDialog:new{
                         -- Modal, or it opens behind the list.
@@ -980,7 +980,6 @@ function M.showManualBooks(insights_popup, year)
                                 text = _("Delete"),
                                 callback = function()
                                     UIManager:close(dialog)
-                                    local ConfirmBox = require("ui/widget/confirmbox")
                                     UIManager:show(ConfirmBox:new{
                                         text = T(_("Delete \"%1\"?"), this_entry.title),
                                         ok_text = _("Delete"),

@@ -47,7 +47,6 @@ local InputContainer = require("ui/widget/container/inputcontainer")
 local LeftContainer = require("ui/widget/container/leftcontainer")
 local RightContainer = require("ui/widget/container/rightcontainer")
 local OverlapGroup = require("ui/widget/overlapgroup")
-local LineWidget = require("ui/widget/linewidget")
 local Size = require("ui/size")
 local TextWidget = require("ui/widget/textwidget")
 local VerticalGroup = require("ui/widget/verticalgroup")
@@ -64,6 +63,7 @@ local Screen = Device.screen
 local deps = ...
 local Colors, Fonts, Locale, VS, UI, Data, Cache, Cards =
     deps.Colors, deps.Fonts, deps.Locale, deps.VS, deps.UI, deps.Data, deps.Cache, deps.HeatmapCards
+local ButtonDialog = deps.NativeWidgets.ButtonDialog
 local _ = Locale._
 
 -- How long the popup waits, once it knows there is genuinely new reading
@@ -1957,7 +1957,6 @@ end
 -- A long press does nothing (no Hold gesture is registered in init).
 
 function M.Popup:_showBarModePicker(which)
-    local ButtonDialog = require("ui/widget/buttondialog")
     local popup = self
     local current = ((which == "when") and M._when_mode or M._week_mode) or "time"
     local dialog

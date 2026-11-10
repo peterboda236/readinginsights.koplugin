@@ -426,7 +426,6 @@ function M.build(self, deps)
         },
     }
 
-
     -- Affects every duration this plugin prints, in all the popups, so it
     -- lives under General rather than in one of the per-view groups.
     I.long_durations = {
@@ -1273,7 +1272,6 @@ function M.build(self, deps)
             },
         },
     }
-
 
     -- With the "Donut chart" Book section style the donut row always shows
     -- the pages and the times, so the two toggles below are greyed out and

@@ -162,9 +162,11 @@ print("\n5. Module surfaces")
 -- through: three calls to BookList.getBooksForPeriod() survived the query
 -- moving into lib/insights_data.lua, because BookList wasn't on the list.
 --
--- Two hops: main.lua maps a deps key to the module it passes
+-- Two hops: main.lua maps a deps key to the module it passes to that file
 -- (Data = InsightsData -> lib/insights_data.lua), and each consumer maps its
--- own local alias to that deps key (local Data = deps.Data).
+-- own local alias to that deps key (local Data = deps.Data). The same key
+-- can name different modules in different files (Data is BookInfoData for
+-- the Book info popup), so the map is kept per consumer.
 local main = read("main.lua")
 
 local module_file = {}      -- main.lua local -> file it was loaded from
@@ -175,20 +177,13 @@ for name, path in main:gmatch("\n([%w_]+)%s*=%s*loadModule%(\"([^\"]+)\"") do
     module_file[name] = path
 end
 
-local deps_file = {}        -- deps key -> file
--- The same per consumer: the same key can name different modules for
--- different files (Data is the insights queries for most views but the
--- Book info data for the Book info popup), and the consumer's own mapping
--- is the one that counts.
-local consumer_deps = {}    -- consumer file -> deps key -> file
+local consumer_deps = {}    -- consumer file -> { deps key -> file }
 for consumer, args in main:gmatch("loadModule%(\"([^\"]+)\"%s*,%s*{(.-)}") do
-    consumer_deps[consumer] = consumer_deps[consumer] or {}
+    local deps_file = {}
     for key, value in args:gmatch("([%w_]+)%s*=%s*([%w_]+)") do
-        if module_file[value] then
-            deps_file[key] = module_file[value]
-            consumer_deps[consumer][key] = module_file[value]
-        end
+        if module_file[value] then deps_file[key] = module_file[value] end
     end
+    consumer_deps[consumer] = deps_file
 end
 
 -- What each module file actually exposes.
@@ -201,15 +196,13 @@ local function exportsOf(path)
         -- Modules name their table M, except updater.lua which calls it
         -- Updater; take whatever name the file returns at the end.
         local self_name = src:match("\nreturn ([%w_]+)%s*$") or "M"
-        -- `.` and `:` both: a class's methods are called on the class too
-        -- (StatsPopup.gatherStats{ ui = ui }).
         for name in src:gmatch("\nfunction " .. self_name .. "[.:]([%w_]+)") do t[name] = true end
-        for name in src:gmatch("\nfunction M%.([%w_]+)") do t[name] = true end
-        -- plain and multiple assignments: `M.A = ...`, `M.A, M.B = ...`
-        for _, owner in ipairs({ self_name, "M" }) do
-            for lhs in src:gmatch("\n(" .. owner .. "%.[%w_]+[%w_.,%s]-)=[^=]") do
-                for name in lhs:gmatch(owner .. "%.([%w_]+)") do t[name] = true end
-            end
+        for name in src:gmatch("\n" .. self_name .. "%.([%w_]+)%s*=") do t[name] = true end
+        for name in src:gmatch("\nfunction M[.:]([%w_]+)") do t[name] = true end
+        for name in src:gmatch("\nM%.([%w_]+)%s*=") do t[name] = true end
+        -- `M.A, M.B = ...`
+        for lhs in src:gmatch("\n(M%.[%w_]+%s*,[^=\n]*)=") do
+            for name in lhs:gmatch("M%.([%w_]+)") do t[name] = true end
         end
         -- fields of a `local M = { ... }` / `M.Opt = { ... }` table literal
         for block in src:gmatch("\nM?%.?[%w_]*%s*=%s*{(.-)\n}") do
@@ -219,10 +212,9 @@ local function exportsOf(path)
         for block in src:gmatch("\nreturn {(.-)\n}") do
             for key in block:gmatch("\n%s*([%w_]+)%s*=") do t[key] = true end
         end
-        -- ... or the same on one line: `return { Popup = RecordsPopup }`
-        local one_line = src:match("\nreturn {([^\n]-)}%s*$")
-        if one_line then
-            for key in one_line:gmatch("([%w_]+)%s*=") do t[key] = true end
+        -- a one-line `return { name = ... }`
+        for block in src:gmatch("\nreturn {([^\n]-)}") do
+            for key in block:gmatch("([%w_]+)%s*=") do t[key] = true end
         end
     end
     exports[path] = t
@@ -230,10 +222,8 @@ local function exportsOf(path)
 end
 
 for _, f in ipairs(files) do
-    -- Block comments left out: a module's doc block may name calls of
-    -- another module's API.
-    local src = read(f):gsub("%-%-%[%[.-%]%]", "")
-    local own_deps = consumer_deps[f] or deps_file
+    local src = read(f):gsub("%-%-%[(=*)%[.-%]%1%]", "")
+    local deps_file = consumer_deps[f] or {}
     -- local alias -> deps key, from `local A, B = deps.X, deps.Y`
     local alias_file = {}
     for lhs, rhs in src:gmatch("\nlocal ([%w_,%s]+)=%s*\n?%s*(deps%.[%w_,%s.]+)") do
@@ -241,7 +231,7 @@ for _, f in ipairs(files) do
         for n in lhs:gmatch("[%w_]+") do names[#names + 1] = n end
         for k in rhs:gmatch("deps%.([%w_]+)") do keys[#keys + 1] = k end
         for i, n in ipairs(names) do
-            if keys[i] and own_deps[keys[i]] then alias_file[n] = own_deps[keys[i]] end
+            if keys[i] and deps_file[keys[i]] then alias_file[n] = deps_file[keys[i]] end
         end
     end
     local bad = {}
@@ -273,11 +263,17 @@ end
 --------------------------------------------------------------------------
 print("\n6. Translations")
 --------------------------------------------------------------------------
+-- "\xE2\x80\xA6" in the source is "…" in the .po files.
+local function unescape(s)
+    return (s:gsub("\\x(%x%x)", function(h) return string.char(tonumber(h, 16)) end))
+end
 local msgids = {}
 for _, f in ipairs(files) do
     local src = read(f)
-    for s in src:gmatch("[^%w_]_%(\"([^\"]*)\"%)") do msgids[s] = true end
-    for a, b in src:gmatch("[^%w_]N_%(\"([^\"]*)\",%s*\"([^\"]*)\"") do msgids[a] = true; msgids[b] = true end
+    for s in src:gmatch("[^%w_]_%(\"([^\"]*)\"%)") do msgids[unescape(s)] = true end
+    for a, b in src:gmatch("[^%w_]N_%(\"([^\"]*)\",%s*\"([^\"]*)\"") do
+        msgids[unescape(a)] = true; msgids[unescape(b)] = true
+    end
 end
 for po in sh("ls locale/*.po"):gmatch("[^\n]+") do
     local have = {}

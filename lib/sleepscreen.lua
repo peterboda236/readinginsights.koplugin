@@ -74,7 +74,6 @@ local _ = Locale._
 
 local Blitbuffer      = require("ffi/blitbuffer")
 local Device          = require("device")
-local FrameContainer  = require("ui/widget/container/framecontainer")
 local Geom            = require("ui/geometry")
 local Screen          = Device.screen
 local UIManager       = require("ui/uimanager")

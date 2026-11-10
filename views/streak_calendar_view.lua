@@ -56,7 +56,6 @@ local VerticalGroup = require("ui/widget/verticalgroup")
 local VerticalSpan = require("ui/widget/verticalspan")
 local Widget = require("ui/widget/widget")
 local Screen = Device.screen
-local InfoMessage = require("ui/widget/infomessage")
 
 -- Shared modules, passed in as one named table by main.lua (see there). Same
 -- Locale/Colors/Fonts/UI/Data/Prefs the insights view uses, so this popup
@@ -68,6 +67,7 @@ local Locale, Colors, Fonts, UI, Data, Prefs, VS, BookList, Cards =
 -- Covers), the same look as in the Book info popup.
 local CoverFrame, CoverThumbs = deps.CoverFrame, deps.CoverThumbs
 local DateUtil = deps.DateUtil
+local ButtonDialog, InfoMessage = deps.NativeWidgets.ButtonDialog, deps.NativeWidgets.InfoMessage
 -- Cover loading for the calendar's day cells: the file of a book (by its
 -- checksum / title) and the cover read from it - the same two the Book info
 -- popup uses for a row of a book list.
@@ -790,7 +790,6 @@ local function buildStreakCalHeader(title_str, content_width, section_font, prev
     return padded_header, left_widget:getSize().w, right_widget:getSize().w, padded_header:getSize().h
 end
 
-
 -- A single day's bar: filled from the left with Colors.activeBar() up to
 -- `ratio` (0..1) of `width`, the rest filled with Colors.inactiveBar() -
 -- same two-segment idea as the monthly/weekly bar charts elsewhere in this
@@ -1428,7 +1427,6 @@ end
 -- The list of the four views, the one in use marked with a check mark (same
 -- look as the pickers of the insights page).
 function StreakHistoryPopup:_showViewPicker()
-    local ButtonDialog = require("ui/widget/buttondialog")
     local popup_self = self
     local dialog
     local buttons = {}
@@ -2350,7 +2348,6 @@ local function showStreaksPopup(streaks, opts)
     UIManager:show(popup)
     return popup
 end
-
 
 -- Module export.
 --   show(streaks)          the combined current/best streak calendar popup,

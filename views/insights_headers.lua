@@ -33,7 +33,6 @@ local Locale, Colors, UI, Data, YearShelf =
 -- setting even if changed after this module was first loaded.
 local function HEADER_BG() return Colors.headerBg() end
 
-
 -- Same as UI.buildSectionHeader, but insets the returned widget (including
 -- its background) so its left/right edges land exactly where the section's
 -- divider lines do. buildSectionHeader on its own spans layout.full_width
