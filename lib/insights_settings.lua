@@ -207,7 +207,7 @@ M.Opt = {
     SHOW_GOAL_KEY     = "reading_insights_show_reading_goal",
     SHOW_GOAL_DEFAULT = true,
 
-    -- What the reading-goal section shows (Settings > 
+    -- What the reading-goal section shows (Settings >
     -- Reading insights popup > "Reading goal section"):
     --   "both"      (default) finished/target figure + achievements count
     --   "goal_only" the old two-cell view: finished count | yearly target
@@ -304,7 +304,7 @@ M.Opt = {
     -- Book progress popup: where it is placed on screen. "top" (default) is
     -- the original full-width sheet hanging from the top edge; "center" is a
     -- bordered box in the middle of the screen, as wide as the Book progress
-    -- calendar (94% of the screen width). Settings > 
+    -- calendar (94% of the screen width). Settings >
     -- Book progress popup > "Popup position".
     BOOK_POPUP_POSITION_KEY    = "reading_insights_book_popup_position",
     BOOK_POPUP_POSITION_TOP    = "top",

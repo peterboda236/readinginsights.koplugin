@@ -73,7 +73,6 @@ local GestureRange = require("ui/gesturerange")
 local HorizontalGroup = require("ui/widget/horizontalgroup")
 local HorizontalSpan = require("ui/widget/horizontalspan")
 local ImageWidget = require("ui/widget/imagewidget")
-local InfoMessage = require("ui/widget/infomessage")
 local InputContainer = require("ui/widget/container/inputcontainer")
 local MovableContainer = require("ui/widget/container/movablecontainer")
 local OverlapGroup = require("ui/widget/overlapgroup")
@@ -92,6 +91,7 @@ local deps = ...
 local Locale, Colors, Fonts, VS, Data, CoverFrame, Ratings, RatingDialog =
     deps.Locale, deps.Colors, deps.Fonts, deps.VS, deps.Data, deps.CoverFrame,
     deps.Ratings, deps.RatingDialog
+local InfoMessage = deps.NativeWidgets.InfoMessage
 local _ = Locale._
 
 local Opt = VS.Opt
