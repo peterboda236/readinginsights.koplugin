@@ -2534,3 +2534,12 @@ msgstr "Розпочато"
 
 msgid "Expected finish"
 msgstr "Очікуване завершення"
+
+msgid "%1 – %2 %3"
+msgstr "%1 – %2 %3"
+
+msgid "%1 %2 – %3 %4"
+msgstr "%1 %2 – %3 %4"
+
+msgid "range months lowercase"
+msgstr "no"

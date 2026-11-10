@@ -63,7 +63,6 @@ Exposes:
                          or reset, so the caller can refresh open popups
 ]]--
 
-local Screen          = require("device").screen
 local CheckButton     = require("ui/widget/checkbutton")
 local ConfirmBox      = require("ui/widget/confirmbox")
 local Font            = require("ui/font")
