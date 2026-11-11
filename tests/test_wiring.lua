@@ -276,6 +276,29 @@ check("insights headers + charts expose their builders",
       and type(InsightsCharts.buildMonthlyChart) == "function"
       and type(InsightsCharts.buildWeeklyChart) == "function")
 check("uikit exports tappableCell", type(UI.tappableCell) == "function")
+
+-- UI.alignOnText: the icon sits on the middle of the capital letters, in a
+-- box as tall as the text. Stubbed text: 40 px high, baseline at 30, face
+-- size 30 -> cap height 21.6, cap middle at 30 - 10.8 = 19.2.
+do
+    local saved_size = widget_stub.getSize
+    widget_stub.getSize = function(self) return { w = rawget(self, "width") or 40, h = rawget(self, "height") or 40 } end
+    rawset(widget_stub, "getBaseline", function() return 30 end)
+    local face = { size = 30 }
+
+    local small = UI.iconOnText("caret", 10, face)
+    check("alignOnText box is icon-wide and text-high",
+          small.dimen.w == 10 and small.dimen.h == 40)
+    check("alignOnText centres the icon on the cap middle",
+          small[1].overlap_offset[2] == math.floor(19.2 - 5 + 0.5))
+
+    local big = UI.alignOnText(widget_stub:new{ width = 40, height = 40 }, face)
+    check("alignOnText keeps a text-high icon inside the box",
+          big[1].overlap_offset[2] == 0)
+
+    widget_stub.getSize = saved_size
+    rawset(widget_stub, "getBaseline", nil)
+end
 check("insights values expose what both looks call",
       type(InsightsValues.streakValues) == "function"
       and type(InsightsValues.yearlyValues) == "function"
