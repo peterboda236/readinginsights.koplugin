@@ -313,7 +313,7 @@ end
 -- middle jumps back to the current week (the chart is still toggled
 -- between time and pages by tapping its caption or the values). Weeks are paged with these two slots or by swiping over the
 -- weekly section; the year is paged only by swiping over the monthly chart.
-local function buildWeekNavHeader(popup_self, font_section, font_label, layout)
+local function buildWeekNavHeader(popup_self, font_section, font_label, layout, opts)
     local offset   = popup_self.week_offset or 0
     local can_prev = popup_self:_weekInRange(offset - 1)
     local can_next = offset < 0
@@ -335,6 +335,16 @@ local function buildWeekNavHeader(popup_self, font_section, font_label, layout)
 
     local arrow_w = measure("\xe2\x80\xb9", font_label)
 
+    -- The "▾" after the shown week (Cards look), sized like the one in the
+    -- "Last 7 days" card header (UI.cardHeader); a tap on it lists the week views.
+    local caret_sz, caret_gap, caret_w = 0, Size.padding.default, 0
+    if opts and opts.menu_caret and not readonly then
+        local probe = TextWidget:new{ text = "0", face = font_section }
+        caret_sz = math.floor(probe:getSize().h * 0.5)
+        probe:free()
+        caret_w = caret_gap + caret_sz
+    end
+
     -- The centre (shown week) and the two neighbours get their own detail
     -- level, so a long centre label - worst case a week across New Year,
     -- "2025. dec. 29. - 2026. jan. 4." - keeps its full range with the year
@@ -348,7 +358,7 @@ local function buildWeekNavHeader(popup_self, font_section, font_label, layout)
         local next_text = formatWeekRange(next_s, next_e, side_tier)
         local side_w = math.max(measure(prev_text, font_label), measure(next_text, font_label))
         local slot_w = arrow_w + gap + side_w + inner_pad
-        local center_w = measure(center_text, font_section)
+        local center_w = measure(center_text, font_section) + caret_w
         return center_text, prev_text, next_text, slot_w, center_w
     end
 
@@ -412,10 +422,12 @@ local function buildWeekNavHeader(popup_self, font_section, font_label, layout)
     if not readonly then
         local tap_pad = Screen:scaleBySize(16)
         local sz = center_label:getSize()
+        -- With the caret, the right tap padding moves behind it.
+        local right_pad = (caret_w > 0) and 0 or tap_pad
         local inner = HorizontalGroup:new{ align = "center",
-            HorizontalSpan:new{ width = tap_pad }, center_label, HorizontalSpan:new{ width = tap_pad } }
+            HorizontalSpan:new{ width = tap_pad }, center_label, HorizontalSpan:new{ width = right_pad } }
         local tappable = InputContainer:new{
-            dimen = Geom:new{ x = 0, y = 0, w = sz.w + 2 * tap_pad, h = sz.h },
+            dimen = Geom:new{ x = 0, y = 0, w = sz.w + tap_pad + right_pad, h = sz.h },
             inner,
         }
         tappable.ges_events = {
@@ -432,6 +444,24 @@ local function buildWeekNavHeader(popup_self, font_section, font_label, layout)
             w  = tappable,
             fn = function() popup_self:showWeeklyViewPicker() end,
         })
+        if caret_w > 0 then
+            local caret_box = InputContainer:new{
+                dimen = Geom:new{ x = 0, y = 0, w = caret_w + tap_pad, h = sz.h },
+                HorizontalGroup:new{ align = "center",
+                    HorizontalSpan:new{ width = caret_gap },
+                    UI.iconOnText("caret", caret_sz, font_section),
+                    HorizontalSpan:new{ width = tap_pad } },
+            }
+            caret_box.ges_events = {
+                Tap = { GestureRange:new{ ges = "tap", range = caret_box.dimen } },
+            }
+            function caret_box:onTap()
+                popup_self:showWeeklyViewPicker()
+                return true
+            end
+            center_widget = HorizontalGroup:new{ align = "center", tappable, caret_box }
+            center_w = center_w + caret_w
+        end
     end
 
     local remaining = layout.content_width - 2 * slot_w - center_w

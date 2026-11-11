@@ -45,6 +45,7 @@ local HorizontalSpan = require("ui/widget/horizontalspan")
 local IconWidget = require("ui/widget/iconwidget")
 local InputContainer = require("ui/widget/container/inputcontainer")
 local LeftContainer = require("ui/widget/container/leftcontainer")
+local OverlapGroup = require("ui/widget/overlapgroup")
 local Size = require("ui/size")
 local TextBoxWidget = require("ui/widget/textboxwidget")
 local TextWidget = require("ui/widget/textwidget")
@@ -580,13 +581,34 @@ function M.icon(name, size)
     }
 end
 
+-- `widget` (an icon) in a box as tall as a line of text in `face`, centred on
+-- the middle of its capital letters, so in a HorizontalGroup{ align = "center" }
+-- it lines up with that text. Centring on the text's box instead would leave
+-- the icon high, as the box also holds the room below the baseline.
+function M.alignOnText(widget, face)
+    local probe = TextWidget:new{ text = "A", face = face }
+    local h, baseline = probe:getSize().h, probe:getBaseline()
+    probe:free()
+    local size = widget:getSize()
+    local face_px = tonumber(face and face.size)
+    local cap_h = face_px and (face_px * 0.72) or (h * 0.52)
+    local y = math.floor(baseline - cap_h / 2 - size.h / 2 + 0.5)
+    widget.overlap_offset = { 0, math.max(0, math.min(h - size.h, y)) }
+    return OverlapGroup:new{ dimen = Geom:new{ w = size.w, h = h }, widget }
+end
+
+-- One of the plugin's icons, `size` px square, lined up with text in `face`.
+function M.iconOnText(name, size, face)
+    return M.alignOnText(M.icon(name, size), face)
+end
+
 -- An icon next to text in `face`. An icon, not the text glyph: the glyph sits
 -- low in its line box and would not line up with the text.
 local function textIcon(name, face, scale)
     local probe = TextWidget:new{ text = "A", face = face }
     local h = probe:getSize().h
     probe:free()
-    return M.icon(name, math.floor(h * scale))
+    return M.iconOnText(name, math.floor(h * scale), face)
 end
 
 -- "›": tapping opens something.
@@ -622,7 +644,7 @@ function M.cardHeader(icon, title, face, width, hold_hint, right, after_title)
     }
     local row = HorizontalGroup:new{ align = "center" }
     if icon then
-        table.insert(row, M.icon(icon, icon_sz))
+        table.insert(row, M.iconOnText(icon, icon_sz, face))
         table.insert(row, HorizontalSpan:new{ width = gap })
     end
     table.insert(row, title_w)
@@ -632,7 +654,7 @@ function M.cardHeader(icon, title, face, width, hold_hint, right, after_title)
     end
     if hold_hint then
         table.insert(row, HorizontalSpan:new{ width = gap })
-        table.insert(row, M.icon(hold_hint == "menu" and "caret" or "pen", pen_sz))
+        table.insert(row, M.iconOnText(hold_hint == "menu" and "caret" or "pen", pen_sz, face))
     end
     if right then
         -- Measured from the parts, not row:getSize(): that would cache the
@@ -660,7 +682,7 @@ function M.buildNavHeader(title_str, width, face, prev_available, next_available
         local frame = FrameContainer:new{
             bordersize = 0, margin = 0, padding = 0,
             padding_left = pad, padding_right = pad,
-            IconWidget:new{ icon = icon, width = icon_sz, height = icon_sz },
+            M.alignOnText(IconWidget:new{ icon = icon, width = icon_sz, height = icon_sz }, face),
         }
         return frame, frame
     end

@@ -54,7 +54,7 @@ local function buildYearHeader(popup_self, font_section, font_label, layout, yea
             local icon_sz = math.floor(year_label:getSize().h * 0.7)
             local group = HorizontalGroup:new{
                 align = "center",
-                UI.icon("chart", icon_sz),
+                UI.iconOnText("chart", icon_sz, font_section),
                 HorizontalSpan:new{ width = inner_pad },
                 year_label,
             }
@@ -294,7 +294,7 @@ function M.buildSections(popup_self, streaks, yearly_stats, year_range, monthly_
             if cal_mode then
                 -- Paging header: previous week | shown week | next week.
                 -- Without the header fill, which the card does not use.
-                header = buildWeekNavHeader(popup_self, fonts.section, fonts.label, ilayout)
+                header = buildWeekNavHeader(popup_self, fonts.section, fonts.label, ilayout, { menu_caret = true })
                 header.background = nil
             else
                 local header_row = UI.cardHeader("calendar", _("Last 7 days"), fonts.section,
