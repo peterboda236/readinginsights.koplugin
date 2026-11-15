@@ -68,7 +68,7 @@ function M.buildContent(Trend, weeks, mode, width, fonts)
     return VerticalGroup:new{
         align = "left",
         totals,
-        VerticalSpan:new{ width = UI.cardGap() },
+        VerticalSpan:new{ width = UI.gap() },
         UI.buildCard(chart_body, width),
     }, handle
 end

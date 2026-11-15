@@ -108,7 +108,7 @@ function M.paginate(self, sections, avail_h, fonts, width, fields)
     local footer_h = probe:getSize().h + 2 * Size.padding.small
     probe:free()
     local room = avail_h - footer_h
-    local top_gap = UI.cardGap()  -- above the first section of pages 2+
+    local top_gap = UI.gap()  -- above the first section of pages 2+
 
     local n = #sections
     local starts, prev = { 1 }, 1

@@ -1072,7 +1072,7 @@ function ReadingStatsPopup:_buildUI()
     local function build(centered)
         local border_w = centered and Size.border.window or 0
         local frame_w  = centered and math.floor(screen_w * 0.94) or screen_w
-        self._layout   = UI.buildLayout(frame_w - 2 * border_w, Size.padding.large, Size.padding.large)
+        self._layout   = UI.buildLayout(frame_w - 2 * border_w, Size.padding.large, UI.gap())
         self._centered = centered
         -- Centered: keep a little white space above and below the content, at
         -- least as tall as the corner radius, so the header's / rows' square

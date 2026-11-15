@@ -544,9 +544,10 @@ function M.buildCard(content, width)
     }
 end
 
--- Space between stacked cards, the same as between two cards side by side
--- (layout.column_gap), and above the first card under the title line.
-function M.cardGap()
+-- The one gap of the popups: between two columns (layout.column_gap), two
+-- cards side by side or stacked, and above the first card under the title
+-- line.
+function M.gap()
     return Size.padding.large
 end
 
@@ -554,10 +555,10 @@ end
 -- first one on the page also gets a gap above it.
 function M.addCard(sections, card, layout)
     if #sections == 0 then
-        table.insert(sections, VerticalSpan:new{ width = M.cardGap() })
+        table.insert(sections, VerticalSpan:new{ width = M.gap() })
     end
     table.insert(sections, M.padded(layout.padding_h, card))
-    table.insert(sections, VerticalSpan:new{ width = M.cardGap() })
+    table.insert(sections, VerticalSpan:new{ width = M.gap() })
 end
 
 -- A pill-shaped two-part switch ("Time | Pages"); the `active` part (1 or

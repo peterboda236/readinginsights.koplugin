@@ -102,7 +102,7 @@ function M.buildHistoryContent(popup, fonts, width, page_items, max_value, range
 
     local r = popup.infos and popup.infos[popup.unit]
     if r then
-        local ilayout = UI.buildLayout(inner_w, 0, Size.padding.large)
+        local ilayout = UI.buildLayout(inner_w, 0, UI.gap())
         local streak_card = UI.buildCard(VerticalGroup:new{
             align = "left",
             UI.cardHeader("flame", popup:_caption(), fonts.section, inner_w, false),
@@ -113,7 +113,7 @@ function M.buildHistoryContent(popup, fonts, width, page_items, max_value, range
                 ilayout, false, nil, Size.line.thin, Colors.cardsColor("divider")),
             VerticalSpan:new{ width = Size.padding.default },
         }, width)
-        table.insert(content, VerticalSpan:new{ width = UI.cardGap() })
+        table.insert(content, VerticalSpan:new{ width = UI.gap() })
         table.insert(content, streak_card)
     end
     return content
