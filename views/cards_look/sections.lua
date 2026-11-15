@@ -670,7 +670,7 @@ function M.buildSections(popup_self, streaks, yearly_stats, year_range, monthly_
     end
 
     VS.Order.reorderGroup(sections, marks, "insights", {
-        makeLead = function() return VerticalSpan:new{ width = Size.padding.small } end,
+        makeLead = function() return VerticalSpan:new{ width = UI.cardGap() } end,
     })
     return sections
 end

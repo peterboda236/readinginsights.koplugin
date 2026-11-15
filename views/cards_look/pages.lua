@@ -25,7 +25,7 @@ local VerticalSpan = require("ui/widget/verticalspan")
 
 -- Shared modules, passed in as one named table by main.lua (see there).
 local deps = ...
-local Colors = deps.Colors
+local Colors, UI = deps.Colors, deps.UI
 
 local M = {}
 
@@ -108,7 +108,7 @@ function M.paginate(self, sections, avail_h, fonts, width, fields)
     local footer_h = probe:getSize().h + 2 * Size.padding.small
     probe:free()
     local room = avail_h - footer_h
-    local top_gap = Size.padding.small  -- above the first section of pages 2+
+    local top_gap = UI.cardGap()  -- above the first section of pages 2+
 
     local n = #sections
     local starts, prev = { 1 }, 1

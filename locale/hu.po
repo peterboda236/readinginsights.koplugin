@@ -537,6 +537,9 @@ msgstr "Trend diagram vonalának színe"
 msgid "Separator line color"
 msgstr "Elválasztó vonal színe"
 
+msgid "Card border color"
+msgstr "Kártyakeret színe"
+
 msgid "Label color"
 msgstr "Fejlécek színe"
 

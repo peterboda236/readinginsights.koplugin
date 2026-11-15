@@ -113,7 +113,7 @@ function M.buildHistoryContent(popup, fonts, width, page_items, max_value, range
                 ilayout, false, nil, Size.line.thin, Colors.cardsColor("divider")),
             VerticalSpan:new{ width = Size.padding.default },
         }, width)
-        table.insert(content, VerticalSpan:new{ width = Size.padding.default })
+        table.insert(content, VerticalSpan:new{ width = UI.cardGap() })
         table.insert(content, streak_card)
     end
     return content

@@ -429,9 +429,6 @@ local function buildMonthlyChart(popup_self, monthly_data, layout, fonts, cards)
 
             local is_current = (popup_self.selected_year == current_year) and (m.month == current_month)
             local bar_color  = is_current and Colors.activeBar() or Colors.inactiveBar()
-            if cards then
-                bar_color = Colors.cardsColor(is_current and "inactive_bar" or "active_bar")
-            end
 
             -- A month still to come, or from before the first reading data,
             -- has no value to show: no "00:00" above it and no tap (its bar
@@ -551,7 +548,7 @@ end
 -- carry future (drawn empty). Which end of the row the newest day is drawn
 -- at follows the "Bar order" setting (rightmost by default, so time runs
 -- left to right); the data index stays the same either way.
--- `cards` (Cards look): all bars black, today's hatched.
+-- `cards` (Cards look): all bars in the active bar color, today's hatched.
 local function buildWeeklyChart(popup_self, daily_data, layout, fonts, mode, cards)
     if not daily_data or #daily_data == 0 then return nil end
     mode = VS.normalizeWeeklyChartMode(mode)

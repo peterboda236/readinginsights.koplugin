@@ -522,6 +522,9 @@ msgstr "Linienfarbe des Trenddiagramms"
 msgid "Separator line color"
 msgstr "Farbe der Trennlinie"
 
+msgid "Card border color"
+msgstr "Farbe des Kartenrahmens"
+
 msgid "Label color"
 msgstr "Beschriftungsfarbe"
 

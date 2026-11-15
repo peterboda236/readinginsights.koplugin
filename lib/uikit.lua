@@ -480,6 +480,44 @@ local function grayColor(color)
     return color:getColor8()
 end
 
+local function isGray(color)
+    return Blitbuffer.isColor8(color) or (color.r == color.g and color.g == color.b)
+end
+
+-- A FrameContainer whose border may be any color: a gray one is drawn as
+-- before, a colored one with paintBorderRGB32 over a white border.
+local CardFrame = FrameContainer:extend{}
+
+function CardFrame:paintTo(bb, x, y)
+    FrameContainer.paintTo(self, bb, x, y)
+    if self._rgb_border and self.bordersize > 0 then
+        local size = self:getSize()
+        bb:paintBorderRGB32(x, y, self.width or size.w, self.height or size.h,
+            self.bordersize, self._rgb_border, self.radius)
+    end
+end
+
+-- FrameContainer:new(args), with args.color drawn in its own color.
+function M.cardFrame(args)
+    local color = args.color
+    if color and not isGray(color) then
+        args._rgb_border = color
+        args.color = Blitbuffer.COLOR_WHITE
+    elseif color then
+        args.color = grayColor(color)
+    end
+    return CardFrame:new(args)
+end
+
+-- Fills a rounded rect in `color`, gray or not.
+local function paintRoundedRect(bb, x, y, w, h, color, r)
+    if isGray(color) then
+        bb:paintRoundedRect(x, y, w, h, grayColor(color), r)
+    else
+        bb:paintRoundedRectRGB32(x, y, w, h, color, r)
+    end
+end
+
 -- Width left for the content of a card `width` pixels wide.
 function M.cardInnerWidth(width)
     return width - 2 * (M.cardBorder() + Size.padding.default)
@@ -492,10 +530,10 @@ function M.cardLayout(layout)
 end
 
 function M.buildCard(content, width)
-    return FrameContainer:new{
+    return M.cardFrame{
         background     = Blitbuffer.COLOR_WHITE,
         bordersize     = M.cardBorder(),
-        color          = grayColor(Colors.cardsColor("border")),
+        color          = Colors.cardsColor("card_border"),
         radius         = M.cardRadius(),
         padding        = 0,
         padding_top    = Size.padding.small,
@@ -506,14 +544,20 @@ function M.buildCard(content, width)
     }
 end
 
+-- Space between stacked cards, the same as between two cards side by side
+-- (layout.column_gap), and above the first card under the title line.
+function M.cardGap()
+    return Size.padding.large
+end
+
 -- Appends a full-width card (or a row of cards) and the gap under it; the
 -- first one on the page also gets a gap above it.
 function M.addCard(sections, card, layout)
     if #sections == 0 then
-        table.insert(sections, VerticalSpan:new{ width = Size.padding.small })
+        table.insert(sections, VerticalSpan:new{ width = M.cardGap() })
     end
     table.insert(sections, M.padded(layout.padding_h, card))
-    table.insert(sections, VerticalSpan:new{ width = Size.padding.default })
+    table.insert(sections, VerticalSpan:new{ width = M.cardGap() })
 end
 
 -- A pill-shaped two-part switch ("Time | Pages"); the `active` part (1 or
@@ -717,8 +761,12 @@ function Outline:getSize()
 end
 
 function Outline:paintTo(bb, x, y)
-    bb:paintBorder(x, y, self.width, self.height, Size.border.default,
-        grayColor(Colors.cardsColor("border")), M.cardRadius())
+    local color = Colors.cardsColor("card_border")
+    if isGray(color) then
+        bb:paintBorder(x, y, self.width, self.height, Size.border.default, grayColor(color), M.cardRadius())
+    else
+        bb:paintBorderRGB32(x, y, self.width, self.height, Size.border.default, color, M.cardRadius())
+    end
 end
 
 function M.buildOutline(width, height)
@@ -794,10 +842,10 @@ function RoundBar:paintTo(bb, x, y)
     local w, h = self.width, self.height
     if w <= 0 or h <= 0 then return end
     local r = math.floor(h / 2)
-    bb:paintRoundedRect(x, y, w, h, grayColor(Colors.cardsColor("inactive_bar")), r)
+    paintRoundedRect(bb, x, y, w, h, Colors.cardsColor("inactive_bar"), r)
     local done_w = math.floor(w * math.max(0, math.min(1, self.ratio)))
     if done_w > 0 then
-        bb:paintRoundedRect(x, y, done_w, h, grayColor(Colors.cardsColor("active_bar")), math.min(r, math.floor(done_w / 2)))
+        paintRoundedRect(bb, x, y, done_w, h, Colors.cardsColor("active_bar"), math.min(r, math.floor(done_w / 2)))
     end
 end
 

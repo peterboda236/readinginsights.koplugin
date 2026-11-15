@@ -516,6 +516,9 @@ msgstr "Trend chart line color"
 msgid "Separator line color"
 msgstr "Separator line color"
 
+msgid "Card border color"
+msgstr "Card border color"
+
 msgid "Label color"
 msgstr "Label color"
 

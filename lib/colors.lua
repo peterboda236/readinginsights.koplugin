@@ -145,7 +145,7 @@ end
 -- Order the "Colors" menu is built in (flat entries only - the 5 heatmap
 -- shades live in their own "Heatmap" submenu, see HEATMAP_KEY_ORDER below).
 local KEY_ORDER = {
-    "active_bar", "inactive_bar", "trend_line", "separator", "label", "value", "section", "small", "header_bg", "cover_shadow",
+    "active_bar", "inactive_bar", "trend_line", "separator", "card_border", "label", "value", "section", "small", "header_bg", "cover_shadow",
 }
 
 -- The year-heatmap shades, grouped together under one "Heatmap" submenu
@@ -189,6 +189,7 @@ local DEFAULTS = {
     inactive_bar = "#AAAAAA", -- Blitbuffer.COLOR_GRAY (KOReader status bar background)
     trend_line   = "#000000",
     separator    = "#888888", -- Blitbuffer.COLOR_DARK_GRAY
+    card_border  = "#888888",
     label        = "#000000",
     value        = "#000000",
     section      = "#000000",
@@ -290,19 +291,17 @@ end
 
 local M = {}
 
--- Cards look: the mockup's black and light gray in place of the gray
--- defaults. A color the user changed in Settings > Colors is used as set.
--- Each name: the setting it follows and its Cards default.
+-- Cards look: the color of setting `name`, except the thin dividers inside
+-- the cards, which are light gray until the user changes the separator
+-- color in Settings > Colors.
 local CARDS_DEFAULTS = {
-    active_bar   = { key = "active_bar",   hex = "#000000" },
-    inactive_bar = { key = "inactive_bar", hex = "#CCCCCC" },
-    border       = { key = "separator",    hex = "#000000" },
     divider      = { key = "separator",    hex = "#CCCCCC" },
 }
 local _cards_cache = {}
 
 function M.cardsColor(name)
     local d = CARDS_DEFAULTS[name]
+    if not d then return M.getColor(name) end
     if readHex(d.key) ~= DEFAULTS[d.key] then return M.getColor(d.key) end
     if not _cards_cache[name] then _cards_cache[name] = buildColor(d.hex) end
     return _cards_cache[name]
@@ -538,6 +537,7 @@ local function labelFor(key)
         inactive_bar = _("Inactive column color"),
         trend_line   = _("Trend chart line color"),
         separator    = _("Separator line color"),
+        card_border  = _("Card border color"),
         label        = _("Label color"),
         value        = _("Value color"),
         section      = _("Section color"),

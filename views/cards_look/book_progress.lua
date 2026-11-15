@@ -399,7 +399,7 @@ function M.buildSections(stats, fonts, layout, popup, H, avail_h)
     end
 
     VS.Order.reorderGroup(sections, marks, "book", {
-        makeLead = function() return VerticalSpan:new{ width = Size.padding.small } end,
+        makeLead = function() return VerticalSpan:new{ width = UI.cardGap() } end,
     })
 
     -- The full-width sheet hanging from the top edge closes with a thick
