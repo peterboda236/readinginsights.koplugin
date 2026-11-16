@@ -184,7 +184,7 @@ end
 local function getCachedLayout()
     local screen_w = Screen:getWidth()
     if not _cached_layout or _cached_layout.full_width ~= screen_w then
-        _cached_layout = UI.buildLayout(screen_w, Size.padding.large, Size.padding.large)
+        _cached_layout = UI.buildLayout(screen_w, Size.padding.large, UI.gap())
     end
     return _cached_layout
 end
@@ -2204,7 +2204,7 @@ function ReadingInsightsPopup:_buildUI()
     -- narrower can only make it taller, so it still scrolls afterwards.
     if cards and content_h > screen_h then
         content_w = screen_w - ScrollableContainer:getScrollbarWidth()
-        layout = UI.buildLayout(content_w, Size.padding.large, Size.padding.large)
+        layout = UI.buildLayout(content_w, Size.padding.large, UI.gap())
         local discarded = content
         content, content_h = buildContent(self._page_count > 1)
         pcall(function() if discarded.free then discarded:free() end end)

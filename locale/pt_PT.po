@@ -522,6 +522,9 @@ msgstr "Cor da linha de tendência"
 msgid "Separator line color"
 msgstr "Cor da linha separadora"
 
+msgid "Card border color"
+msgstr "Cor da borda dos cartões"
+
 msgid "Label color"
 msgstr "Cor do rótulo"
 

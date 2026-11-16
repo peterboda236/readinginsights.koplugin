@@ -537,6 +537,9 @@ msgstr "Колір лінії графіка тренду"
 msgid "Separator line color"
 msgstr "Колір лінії роздільника"
 
+msgid "Card border color"
+msgstr "Колір рамки карток"
+
 msgid "Label color"
 msgstr "Колір мітки"
 

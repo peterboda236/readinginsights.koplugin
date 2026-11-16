@@ -5,14 +5,13 @@ Reading Insights - the "Cards" look of the achievements list
 The list (views/achievements_view.lua, drawn by widgets/booklistwidget.lua)
 keeps its title bar, sort / filter menu, paging and taps; in the Cards look
 every page starts with a summary card ("37 / 81 earned", a bar, "★ new") and
-each achievement is a card of its own: black border when earned, light gray
-when still locked.
+each achievement is a card of its own: card border color when earned, light
+gray when still locked.
 
 Loaded once by main.lua and handed to the achievements view as `deps.AchievementsCards`.
 ]]--
 
 local Blitbuffer      = require("ffi/blitbuffer")
-local FrameContainer  = require("ui/widget/container/framecontainer")
 local Geom            = require("ui/geometry")
 local HorizontalGroup = require("ui/widget/horizontalgroup")
 local HorizontalSpan  = require("ui/widget/horizontalspan")
@@ -33,11 +32,6 @@ local formatCount = Locale.formatCount
 local STAR = "\u{2605}"
 
 local M = {}
-
-local function borderColor(name)
-    local c = Colors.cardsColor(name)
-    return Blitbuffer.isColor8(c) and c or c:getColor8()
-end
 
 -- The summary card, `width` wide.
 function M.summary(width, earned, total, has_new)
@@ -108,10 +102,10 @@ function M.row(item, width, height, face, fgcolor)
         table.insert(row, right)
     end
 
-    return FrameContainer:new{
+    return UI.cardFrame{
         background    = Blitbuffer.COLOR_WHITE,
         bordersize    = border,
-        color         = borderColor(item.dim and "divider" or "border"),
+        color         = Colors.cardsColor(item.dim and "divider" or "card_border"),
         radius        = UI.cardRadius(),
         padding       = 0,
         padding_left  = pad,

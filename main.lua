@@ -382,7 +382,7 @@ local InsightsCards = loadModule("views/cards_look/sections.lua", {
     Achievements = Achievements, Streak = StreakCalendar,
     Charts = InsightsCharts, Headers = InsightsHeaders, Donut = Donut, Values = InsightsValues,
 })
-local InsightsPages = loadModule("views/cards_look/pages.lua", { Colors = Colors })
+local InsightsPages = loadModule("views/cards_look/pages.lua", { Colors = Colors, UI = UI })
 
 local Insights = loadModule("views/insights_view.lua", {
     Headers = InsightsHeaders, Charts = InsightsCharts,

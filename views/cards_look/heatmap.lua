@@ -123,7 +123,7 @@ function M.buildBox(H, popup_self, periods_back, force_fresh, width_override, da
         fonts.section, card_w, is_chart and "menu" or false)
     local when_card = card(when_header, when_rows)
 
-    local gap = Size.padding.default
+    local gap = UI.gap()
     local content = VerticalGroup:new{
         align = "left",
         header,
