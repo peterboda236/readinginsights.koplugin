@@ -312,9 +312,11 @@ function M.buildSections(stats, fonts, layout, popup, H, avail_h, plain)
             return col
         end
 
-        -- Next chapter(s): how long they are. With the progress bars on,
-        -- each one is a value over a bar as long as the chapter, the typical
-        -- length dashed across it; otherwise the values side by side.
+        -- Next chapter(s): how long they are. With the progress bars on and
+        -- something to compare with (the typical length or a second
+        -- chapter), each one is a value over a bar as long as the chapter,
+        -- the typical length dashed across it; otherwise the values side by
+        -- side.
         local function nextChaptersColumn(width)
             local next_title = show_two_next and _("Next 2 chapters") or _("Next chapter")
             local col = VerticalGroup:new{ align = "left", columnTitle(next_title, width) }
@@ -322,7 +324,7 @@ function M.buildSections(stats, fonts, layout, popup, H, avail_h, plain)
             if show_two_next then
                 table.insert(chapters, { pages = stats.chapter_after_next_pages_count, time = stats.chapter_after_next_time_hhmm })
             end
-            if show_bars then
+            if show_bars and (typical_pages or show_two_next) then
                 -- The chapter times are pages * the average time per page,
                 -- so the page counts give the bar lengths in both views.
                 local longest = typical_pages or 0
