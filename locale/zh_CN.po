@@ -1552,8 +1552,8 @@ msgstr "经典"
 msgid "Donut chart"
 msgstr "环形图"
 
-msgid "How the \"This book\" section looks. \"Classic\" keeps the rows and the progress bar. \"Donut chart\" shows a large donut with the read percentage on the left and the pages, the time read and the reading time left stacked on the right (the progress bar is replaced by the donut)."
-msgstr "“本书”区域的显示样式。“经典”保留原有的行和进度条。“环形图”在左侧显示带有已读百分比的大号环形图，右侧自上而下依次显示页数、已读时间和剩余阅读时间（进度条由环形图取代）。"
+msgid "How the \"This book\" section looks. \"Classic\" keeps the rows and the progress bar. \"Donut chart\" shows a large donut with the read percentage on the left and the pages, the time read and the reading time left stacked on the right (the progress bar is replaced by the donut). In the Cards look the donut is the default, and \"This chapter\" gets one too."
+msgstr "“本书”区域的显示样式。“经典”保留原有的行和进度条。“环形图”在左侧显示带有已读百分比的大号环形图，右侧自上而下依次显示页数、已读时间和剩余阅读时间（进度条由环形图取代）。卡片外观下默认使用环形图，“本章”也会显示环形图。"
 
 msgid "Show Book info"
 msgstr "显示图书信息"
@@ -1816,8 +1816,8 @@ msgstr "目标 %1"
 msgid "Progress bar"
 msgstr "进度条"
 
-msgid "Show a thin progress bar under the book percentage."
-msgstr "在全书百分比下方显示一条细进度条。"
+msgid "Show a thin progress bar under the book percentage. In the Cards look also under \"This chapter\", plus bars for the length of the next chapters, today's reading against the daily average and the way from the start to the expected finish."
+msgstr "在全书百分比下方显示一条细进度条。卡片外观下，“本章”下方也会显示，另外还有下一章长度、今日阅读与日均对比以及从开始到预计读完的进度条。"
 
 msgid "Rating (0-5 stars)"
 msgstr "评分（0-5 星）"

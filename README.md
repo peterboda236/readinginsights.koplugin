@@ -161,8 +161,8 @@ its header.
 Many rows toggle between time/pages or percent/page on tap. Tap the "Pace"
 title to open the **Book progress calendar** — a month grid coloured like a
 heatmap, showing your progress each day plus the start and estimated finish
-dates. Tap the "This book" title to open the **Book info** popup. Book view
-only.
+dates. Tap the "This book" title (in the Cards look, anywhere on its card) to
+open the **Book info** popup. Book view only.
 
 ## 📕 Book info
 
@@ -179,8 +179,8 @@ had no stars in the file manager gets them), and above the description the
 off, or the book has none) the popup is only as wide as its longest line needs.
 
 Open it from *Tools → Reading insights → Book info*, from a gesture
-("Reading insights: book info"), or by tapping the "This book" title in the
-Book progress popup (closing it then brings the Book progress popup back).
+("Reading insights: book info"), or by tapping the "This book" title (in the
+Cards look, its card) in the Book progress popup (closing it then brings the Book progress popup back).
 Book view only. In the book lists (e.g. the books behind a month) a **tap** on a
 book opens its Book info popup, a **long press** opens its statistics.
 
@@ -224,6 +224,13 @@ trend; the other popups look the same in both.
   screen it is split into pages instead of scrolling: swipe up for the next
   page, swipe down for the previous one (on the first page it closes the
   popup), or tap the arrows of the *‹ 1 / 2 ›* footer.
+- **Book progress** — in Cards the "This book" style defaults to the donut
+  chart, and *This chapter* gets a donut with the part of the chapter read.
+  With *Progress bar* on, the next chapters show their length as bars (the
+  dashed line is the typical chapter length), *Pace* puts today's reading on a
+  bar with a mark at the daily average, and a line runs from the day you
+  started to the expected finish. On the sleep screen, when the cards don't
+  fit, they are shown without the donuts and bars.
 
 <img width="192" alt="Reading insights, Cards look, page 1" src="https://github.com/user-attachments/assets/d0654a83-e0ac-4bcc-9dae-71983fa023f7" />
 <img width="192" alt="Reading insights, Cards look, page 2" src="https://github.com/user-attachments/assets/ff31d316-89ab-4b87-b7e3-3540b28f0482" />
@@ -293,7 +300,7 @@ moved here automatically):
   styles, and the bar chart heights.
 - **Reading habits** — the calendar range and the time-of-day view.
 - **Book progress popup** — its position, "This book" style (classic rows
-  or a donut chart) and *Section order*, then one group per section: *This book*, *Pace* and
+  or a donut chart; the donut is the default in the Cards look) and *Section order*, then one group per section: *This book*, *Pace* and
   *Chapters* (chapter columns, chapter bar, chapters per page), plus *Bar chart height*.
 - **Book info** — show or hide the cover, its rounded corners, shadow and
   border, and the author and series lines, and the **cover size**: *small* (the

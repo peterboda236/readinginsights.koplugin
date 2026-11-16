@@ -1825,8 +1825,8 @@ msgstr "Classique"
 msgid "Donut chart"
 msgstr "Graphique en anneau"
 
-msgid "How the \"This book\" section looks. \"Classic\" keeps the rows and the progress bar. \"Donut chart\" shows a large donut with the read percentage on the left and the pages, the time read and the reading time left stacked on the right (the progress bar is replaced by the donut)."
-msgstr "Apparence de la section « Ce livre ». « Classique » conserve les lignes et la barre de progression. « Graphique en anneau » affiche à gauche un grand anneau avec le pourcentage lu et, à droite, les uns sous les autres, les pages, le temps de lecture écoulé et le temps de lecture restant (la barre de progression est remplacée par l'anneau)."
+msgid "How the \"This book\" section looks. \"Classic\" keeps the rows and the progress bar. \"Donut chart\" shows a large donut with the read percentage on the left and the pages, the time read and the reading time left stacked on the right (the progress bar is replaced by the donut). In the Cards look the donut is the default, and \"This chapter\" gets one too."
+msgstr "Apparence de la section « Ce livre ». « Classique » conserve les lignes et la barre de progression. « Graphique en anneau » affiche à gauche un grand anneau avec le pourcentage lu et, à droite, les uns sous les autres, les pages, le temps de lecture écoulé et le temps de lecture restant (la barre de progression est remplacée par l'anneau). Dans l'apparence Cartes, l'anneau est le choix par défaut et « Chapitre actuel » en reçoit un aussi."
 
 msgid "Show Book info"
 msgstr "Afficher les infos du livre"
@@ -2089,8 +2089,8 @@ msgstr "sur %1"
 msgid "Progress bar"
 msgstr "Barre de progression"
 
-msgid "Show a thin progress bar under the book percentage."
-msgstr "Afficher une fine barre de progression sous le pourcentage du livre."
+msgid "Show a thin progress bar under the book percentage. In the Cards look also under \"This chapter\", plus bars for the length of the next chapters, today's reading against the daily average and the way from the start to the expected finish."
+msgstr "Afficher une fine barre de progression sous le pourcentage du livre. Dans l'apparence Cartes, aussi sous « Chapitre actuel », ainsi que des barres pour la longueur des chapitres suivants, la lecture du jour comparée à la moyenne quotidienne et le chemin du début à la fin prévue."
 
 msgid "Rating (0-5 stars)"
 msgstr "Note (0 à 5 étoiles)"

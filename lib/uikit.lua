@@ -45,6 +45,7 @@ local HorizontalSpan = require("ui/widget/horizontalspan")
 local IconWidget = require("ui/widget/iconwidget")
 local InputContainer = require("ui/widget/container/inputcontainer")
 local LeftContainer = require("ui/widget/container/leftcontainer")
+local RightContainer = require("ui/widget/container/rightcontainer")
 local OverlapGroup = require("ui/widget/overlapgroup")
 local Size = require("ui/size")
 local TextBoxWidget = require("ui/widget/textboxwidget")
@@ -594,16 +595,22 @@ end
 
 -- A pill around a short text: filled with white text ("▲ 2 books ahead of
 -- pace", "★ new"), or with `outline` just its border ("Reading time per
--- month ▾"). `max_width` (optional) caps the whole pill.
-function M.buildPill(text, face, outline, max_width)
+-- month ▾"). `max_width` (optional) caps the whole pill; `after` (optional)
+-- is a widget after the text, e.g. a "⇄".
+function M.buildPill(text, face, outline, max_width, after)
     local fg  = grayColor(Colors.value())
     local pad = Size.padding.default
     local border = outline and Size.border.default or 0
     local inset  = outline and Size.padding.tiny or 0
+    local after_w = after and (Size.padding.small + after:getSize().w) or 0
     local tw = TextWidget:new{
         text = text, face = face, fgcolor = outline and fg or Blitbuffer.COLOR_WHITE,
-        max_width = max_width and math.max(1, max_width - 2 * (pad + border)) or nil,
+        max_width = max_width and math.max(1, max_width - 2 * (pad + border) - after_w) or nil,
     }
+    local content = tw
+    if after then
+        content = HorizontalGroup:new{ align = "center", tw, HorizontalSpan:new{ width = Size.padding.small }, after }
+    end
     return FrameContainer:new{
         background    = outline and Blitbuffer.COLOR_WHITE or fg,
         bordersize    = border,
@@ -612,7 +619,7 @@ function M.buildPill(text, face, outline, max_width)
         padding       = inset,
         padding_left  = pad,
         padding_right = pad,
-        tw,
+        content,
     }
 end
 
@@ -626,39 +633,64 @@ function M.icon(name, size)
     }
 end
 
--- `widget` (an icon) in a box as tall as a line of text in `face`, centred on
--- the middle of its capital letters, so in a HorizontalGroup{ align = "center" }
--- it lines up with that text. Centring on the text's box instead would leave
--- the icon high, as the box also holds the room below the baseline.
-function M.alignOnText(widget, face)
+-- A line of text in `face`: its height, its baseline (from the top) and the
+-- height of its capital letters (`lowercase`: of its lowercase letters).
+local function textMetrics(face, lowercase)
     local probe = TextWidget:new{ text = "A", face = face }
     local h, baseline = probe:getSize().h, probe:getBaseline()
     probe:free()
-    local size = widget:getSize()
     local face_px = tonumber(face and face.size)
-    local cap_h = face_px and (face_px * 0.72) or (h * 0.52)
-    local y = math.floor(baseline - cap_h / 2 - size.h / 2 + 0.5)
+    local letter_h
+    if lowercase then
+        letter_h = face_px and (face_px * 0.54) or (h * 0.39)
+    else
+        letter_h = face_px and (face_px * 0.72) or (h * 0.52)
+    end
+    return h, baseline, letter_h
+end
+
+-- The room a line of text in `face` has above its capital letters. A widget
+-- without that room (a ring) needs it above itself to start where the
+-- letters of the text next to or above it start.
+function M.capTopRoom(face)
+    local _h, baseline, cap_h = textMetrics(face)
+    return math.max(0, math.floor(baseline - cap_h + 0.5))
+end
+
+-- `widget` (an icon) in a box as tall as a line of text in `face`, centred on
+-- the middle of its capital letters, so in a HorizontalGroup{ align = "center" }
+-- it lines up with that text. Centring on the text's box instead would leave
+-- the icon high, as the box also holds the room below the baseline. With
+-- `lowercase` it is centred on the middle of the lowercase letters instead,
+-- where the "›" glyph sits: for a mark right after a word, next to which the
+-- cap middle looks high.
+function M.alignOnText(widget, face, lowercase)
+    local h, baseline, letter_h = textMetrics(face, lowercase)
+    local size = widget:getSize()
+    local y = math.floor(baseline - letter_h / 2 - size.h / 2 + 0.5)
     widget.overlap_offset = { 0, math.max(0, math.min(h - size.h, y)) }
     return OverlapGroup:new{ dimen = Geom:new{ w = size.w, h = h }, widget }
 end
 
--- One of the plugin's icons, `size` px square, lined up with text in `face`.
-function M.iconOnText(name, size, face)
-    return M.alignOnText(M.icon(name, size), face)
+-- One of the plugin's icons, `size` px square, lined up with text in `face`
+-- (`lowercase`: as in alignOnText).
+function M.iconOnText(name, size, face, lowercase)
+    return M.alignOnText(M.icon(name, size), face, lowercase)
 end
 
 -- An icon next to text in `face`. An icon, not the text glyph: the glyph sits
 -- low in its line box and would not line up with the text.
-local function textIcon(name, face, scale)
+local function textIcon(name, face, scale, lowercase)
     local probe = TextWidget:new{ text = "A", face = face }
     local h = probe:getSize().h
     probe:free()
-    return M.iconOnText(name, math.floor(h * scale), face)
+    return M.iconOnText(name, math.floor(h * scale), face, lowercase)
 end
 
--- "›": tapping opens something.
-function M.chevron(face)
-    return textIcon("chevron", face, 0.6)
+-- "›": tapping opens something. `after_word`: it follows a word (e.g. a card
+-- title) rather than a number, see alignOnText.
+function M.chevron(face, after_word)
+    return textIcon("chevron", face, 0.6, after_word)
 end
 
 -- "⇄": tapping switches what the value shows.
@@ -854,6 +886,119 @@ function M.buildRoundBar(ratio, width, height)
     return RoundBar:new{ ratio = tonumber(ratio) or 0, width = width, height = height }
 end
 
+local function clamp01(v)
+    return math.max(0, math.min(1, tonumber(v) or 0))
+end
+
+local function markWidth()
+    return math.max(2, Size.line.thick)
+end
+
+-- A vertical line `h` px tall at x, solid or in dashes.
+local function paintMark(bb, x, y, h, color, dashed)
+    local w = markWidth()
+    if not dashed then
+        paintRoundedRect(bb, x, y, w, h, color, 0)
+        return
+    end
+    local dash = math.max(2, math.floor(w * 1.5))
+    local top = y
+    while top < y + h do
+        paintRoundedRect(bb, x, top, w, math.min(dash, y + h - top), color, 0)
+        top = top + 2 * dash
+    end
+end
+
+-- A RoundBar with a mark at `marker` (0..1) that sticks out above and below
+-- the bar, solid or (`dashed`) in dashes. A white gap on both sides of the
+-- mark keeps it visible over the done part, which has the same color.
+local MarkerBar = Widget:extend{
+    ratio  = 0,
+    marker = 0,
+    width  = 0,
+    height = 0,
+    dashed = false,
+}
+
+function MarkerBar:init()
+    self._bar = RoundBar:new{ ratio = self.ratio, width = self.width, height = self.height }
+end
+
+function MarkerBar:getSize()
+    return Geom:new{ w = self.width, h = 3 * self.height }
+end
+
+function MarkerBar:paintTo(bb, x, y)
+    local w, h = self.width, self.height
+    if w <= 0 or h <= 0 then return end
+    self._bar:paintTo(bb, x, y + h)
+    if not self.marker then return end
+    local mark_w = markWidth()
+    local gap = math.max(1, Size.line.medium)
+    local mx = x + math.floor((w - mark_w) * clamp01(self.marker))
+    bb:paintRect(mx - gap, y + h, mark_w + 2 * gap, h, Blitbuffer.COLOR_WHITE)
+    paintMark(bb, mx, y, 3 * h, Colors.cardsColor("active_bar"), self.dashed)
+end
+
+-- `marker` nil: the bar alone, as tall as one with a mark.
+function M.buildMarkerBar(ratio, marker, width, height, dashed)
+    return MarkerBar:new{
+        ratio = clamp01(ratio), marker = marker and clamp01(marker) or nil,
+        width = width, height = height, dashed = dashed and true or false,
+    }
+end
+
+-- The dashed mark of a MarkerBar on its own, `height` px tall: the key that
+-- explains it next to its label.
+local DashMark = Widget:extend{
+    height = 0,
+}
+
+function DashMark:getSize()
+    return Geom:new{ w = markWidth(), h = self.height }
+end
+
+function DashMark:paintTo(bb, x, y)
+    paintMark(bb, x, y, self.height, Colors.cardsColor("active_bar"), true)
+end
+
+function M.buildDashMark(height)
+    return DashMark:new{ height = height }
+end
+
+-- A line from start to end with a dot at `ratio` (0..1): the line up to the
+-- dot in the active bar color, the rest in the inactive one, and a smaller
+-- dot at each end.
+local Timeline = Widget:extend{
+    ratio = 0,
+    width = 0,
+    size  = 0,
+}
+
+function Timeline:getSize()
+    return Geom:new{ w = self.width, h = self.size }
+end
+
+function Timeline:paintTo(bb, x, y)
+    local w, d = self.width, self.size
+    if w <= d or d <= 0 then return end
+    local active, inactive = Colors.cardsColor("active_bar"), Colors.cardsColor("inactive_bar")
+    local line_h = math.max(2, math.floor(d / 4))
+    local line_y = y + math.floor((d - line_h) / 2)
+    local end_d = math.floor(d / 2)
+    local end_y = y + math.floor((d - end_d) / 2)
+    local cx = x + math.floor(d / 2) + math.floor((w - d) * clamp01(self.ratio))
+    paintRoundedRect(bb, x, line_y, w, line_h, inactive, 0)
+    paintRoundedRect(bb, x, line_y, cx - x, line_h, active, 0)
+    paintRoundedRect(bb, x, end_y, end_d, end_d, active, math.floor(end_d / 2))
+    paintRoundedRect(bb, x + w - end_d, end_y, end_d, end_d, inactive, math.floor(end_d / 2))
+    paintRoundedRect(bb, cx - math.floor(d / 2), y, d, d, active, math.floor(d / 2))
+end
+
+function M.buildTimeline(ratio, width, size)
+    return Timeline:new{ ratio = clamp01(ratio), width = width, size = size }
+end
+
 -- A row of dots, one per entry of `flags` (true = filled).
 function M.buildDots(flags, size)
     local color = grayColor(Colors.value())
@@ -865,25 +1010,32 @@ function M.buildDots(flags, size)
     return row
 end
 
--- A stacked value cell: the value (with a "›" when tapping it opens
--- something, a "⇄" with opts.swap when tapping switches it), its label under
--- it, and an optional change line ("▲ 1:05" in bold, then e.g. "vs prev. 7d").
-function M.buildStatCell(fonts, width, value, unit, opts)
-    opts = opts or {}
-    local mark = (opts.chevron and M.chevron(fonts.value)) or (opts.swap and M.swapIcon(fonts.value)) or nil
+-- The bold value of a cell, at most `width` wide, with a "›" when tapping it
+-- opens something (opts.chevron) or a "⇄" when tapping switches it (opts.swap).
+local function valueWithMark(face, width, value, opts)
+    local mark = (opts.chevron and M.chevron(face)) or (opts.swap and M.swapIcon(face)) or nil
     local mark_w = mark and (mark:getSize().w + Size.padding.default) or 0
-    local top = HorizontalGroup:new{
+    local row = HorizontalGroup:new{
         align = "center",
-        TextWidget:new{ text = value, face = fonts.value, fgcolor = Colors.value(), max_width = math.max(1, width - mark_w) },
+        TextWidget:new{ text = value, face = face, fgcolor = Colors.value(), max_width = math.max(1, width - mark_w) },
     }
     if mark then
-        table.insert(top, HorizontalSpan:new{ width = Size.padding.default })
-        table.insert(top, mark)
+        table.insert(row, HorizontalSpan:new{ width = Size.padding.default })
+        table.insert(row, mark)
     end
+    return row
+end
+
+-- A stacked value cell: the value (marked as in valueWithMark), its label
+-- under it, and an optional change line ("▲ 1:05" in bold, then e.g. "vs
+-- prev. 7d"). opts.align = "right" puts it against the right edge.
+function M.buildStatCell(fonts, width, value, unit, opts)
+    opts = opts or {}
+    local align = opts.align or "left"
     local cell = VerticalGroup:new{
-        align = "left",
-        top,
-        TextBoxWidget:new{ text = unit, face = fonts.label, fgcolor = Colors.label(), width = width, alignment = "left" },
+        align = align,
+        valueWithMark(fonts.value, width, value, opts),
+        TextBoxWidget:new{ text = unit, face = fonts.label, fgcolor = Colors.label(), width = width, alignment = align },
     }
     if opts.delta_value then
         local dv = TextWidget:new{ text = opts.delta_value, face = fonts.small, bold = true, fgcolor = Colors.value(), max_width = width }
@@ -896,6 +1048,42 @@ function M.buildStatCell(fonts, width, value, unit, opts)
         table.insert(cell, line)
     end
     return cell
+end
+
+-- A one-line value cell: the value (marked as in valueWithMark), then its
+-- label, which wraps under itself when it doesn't fit. opts.lead: a widget
+-- before the value (e.g. the key of a chart mark); opts.align = "right" puts
+-- the line against the right edge of `width`.
+function M.buildInlineCell(fonts, width, value, unit, opts)
+    opts = opts or {}
+    local gap = Size.padding.default
+    -- Widths are added up from the parts: row:getSize() would cache the
+    -- row's size before the last widgets are in it.
+    local used = 0
+    local row = HorizontalGroup:new{ align = "center" }
+    if opts.lead then
+        table.insert(row, opts.lead)
+        table.insert(row, HorizontalSpan:new{ width = gap })
+        used = opts.lead:getSize().w + gap
+    end
+    local value_w = valueWithMark(fonts.value, width - used, value, opts)
+    table.insert(row, value_w)
+    used = used + value_w:getSize().w
+    local rest = width - used - gap
+    if unit and unit ~= "" and rest > 0 then
+        local label = TextWidget:new{ text = unit, face = fonts.label, fgcolor = Colors.label() }
+        if label:getSize().w > rest then
+            label:free()
+            label = TextBoxWidget:new{
+                text = unit, face = fonts.label, fgcolor = Colors.label(),
+                width = rest, alignment = opts.align or "left",
+            }
+        end
+        table.insert(row, HorizontalSpan:new{ width = gap })
+        table.insert(row, label)
+    end
+    if opts.align ~= "right" then return row end
+    return RightContainer:new{ dimen = Geom:new{ w = width, h = row:getSize().h }, row }
 end
 
 return M
