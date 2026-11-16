@@ -1,9 +1,10 @@
 --[[
 Reading Insights - chapter bar widget for the book progress view.
 
-The horizontal strip of per-chapter blocks under the "This book" section:
-one block per chapter, width proportional to the chapter's page count, the
-current chapter filled to show how far into it the reader is, with arrows on
+The horizontal strip of per-chapter blocks in the "Chapters" section:
+one block per chapter, all the same width, height proportional to the
+chapter's page count, the current chapter filled to show how far into it the
+reader is, with arrows on
 either side when the chapters don't all fit in one row.
 
 Split out of book_stats_view.lua, which had grown to hold this ~150-line
@@ -13,9 +14,7 @@ lib/chapterinfo.lua for where that comes from) and returns a widget, so the
 two halves - working out which chapter you're in, and drawing it - are now
 separate files.
 
-Loaded by main.lua with the shared colors and fonts modules, plus the
-callback that reads the user's chapter-bar height setting (which lives with
-the rest of the book-progress settings in the view).
+Loaded by main.lua with the shared Colors, Fonts and UI modules.
 
   ChapterBar.PAGE_SIZE       default chapter columns per page of the bar
   ChapterBar.readPageSizeSetting() / ChapterBar.savePageSizeSetting(v) / ChapterBar.DEFAULT_PAGE_SIZE
@@ -54,8 +53,6 @@ local VerticalGroup = require("ui/widget/verticalgroup")
 local VerticalSpan = require("ui/widget/verticalspan")
 local Screen = require("device").screen
 
--- Shared color and font settings, passed in as this chunk's arguments by
--- main.lua.
 -- Shared modules, passed in as one named table by main.lua (see there).
 local deps = ...
 local Colors, Fonts, UI =

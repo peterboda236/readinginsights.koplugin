@@ -18,8 +18,9 @@ on every single page turn.
 
 KOReader hands out TOCs in more than one shape, and all of them are
 accepted here: a list of tables with a `page` field (optionally with `depth`,
-in which case only top-level entries count as chapters), or a plain list of
-page numbers (`toc_ticks`). Anything else is treated as "no usable TOC".
+which picks the entries that count as chapters, see getCachedChapterInfo),
+or a plain list of page numbers (`toc_ticks`). Anything else is treated as
+"no usable TOC".
 
   M.computeChapterResult(toc_items, items_are_tables, total, page_counts, pageno)
                                 current chapter + progress ratio from an
@@ -233,7 +234,7 @@ end
 -- Progress inside the current chapter (0..1), computed exactly the way
 -- Bookends does it: the chapter boundaries come from KOReader's own TOC API
 -- (ui.toc:getPreviousChapter / isChapterStart / getNextChapter), which looks at
--- ALL TOC levels at once, not at the single level the chapter chart uses.
+-- ALL TOC levels at once, like the chapter bar's default (level nil) mode.
 -- 0 on the chapter's first page, 1 on its last; a one-page chapter counts as
 -- complete. Returns nil when there is no TOC / chapter info.
 function M.getBookendsChapterRatio(ui, pageno)
