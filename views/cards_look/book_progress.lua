@@ -4,7 +4,8 @@ Appearance > Look).
 
 Builds the same sections as book_stats_view.lua's buildSections (the Classic
 look), each one as a card with an icon in its header: Chapter, Chapters,
-This book, Pace. The tap targets are stored on the popup under the same
+This book, Pace. Chapter and Chapters share one card while they stand next
+to each other in the section order. The tap targets are stored on the popup under the same
 names the Classic builder uses, so ReadingStatsPopup:onTapClose handles both
 looks.
 
@@ -125,14 +126,108 @@ function M.buildSections(stats, fonts, layout, popup, H, avail_h)
         UI.addCard(sections, card, layout)
     end
 
-    -- ===== Chapter: This chapter / Next chapter =========================
-    -- Tapping the card switches time / pages (onTapClose, _chapter_headers).
+    -- ===== Chapter bar (or the skim bar) ================================
+    local chapter_on_prev, chapter_on_next = H.chapterBarPaging(popup, stats, inner_w, 0)
+    local chapter_bar, left_arrow, right_arrow, can_left, can_right = ChapterBar.build(
+        stats.chapter_info, inner_w, 0, popup and popup.chapter_bar_offset or nil,
+        chapter_on_prev, chapter_on_next, true)
+
+    local skim_bar = nil
+    if SkimBar and stats.skim and Opt.readChapterBarStyle() == Opt.CHAPTER_BAR_STYLE_SKIM then
+        local skim_widget = SkimBar.build(stats.skim, inner_w)
+        if skim_widget then
+            skim_bar = FrameContainer:new{
+                bordersize     = 0,
+                padding        = 0,
+                padding_top    = Size.padding.default,
+                padding_bottom = Size.padding.default,
+                margin         = 0,
+                background     = Blitbuffer.COLOR_WHITE,
+                skim_widget,
+            }
+            chapter_bar, left_arrow, right_arrow = skim_bar, nil, nil
+            can_left, can_right = false, false
+        end
+    end
+    local show_chapter_bar = chapter_bar and Opt.readShowChapterBar()
+    local skim_in_book = (show_chapter_bar and skim_bar ~= nil) and true or false
+    local function storeChapterBarOnPopup()
+        if not popup then return end
+        popup._chapter_bar            = chapter_bar
+        popup._chapter_bar_prev_arrow = left_arrow
+        popup._chapter_bar_next_arrow = right_arrow
+        popup._chapter_bar_can_prev   = can_left
+        popup._chapter_bar_can_next   = can_right
+        popup._chapter_bar_on_prev    = chapter_on_prev
+        popup._chapter_bar_on_next    = chapter_on_next
+    end
+
+    -- Whether This book and Pace are drawn: decides below whether Chapter and
+    -- Chapters stand next to each other.
+    local donut_style = Donut ~= nil and Opt.readBookSectionStyle() == Opt.BOOK_SECTION_STYLE_DONUT
+    -- Every value cell has its own switch (Settings > Book progress popup);
+    -- a row is drawn while at least one of its two cells is on.
+    local show_pct    = Opt.readBookCell("read_pct")
+    local show_pages  = Opt.readBookCell("read_pages")
+    local show_tleft  = Opt.readBookCell("time_left")
+    local show_tspent = Opt.readBookCell("time_spent")
+    local show_read_row = donut_style or show_pct or show_pages
+    local show_time_row = donut_style or show_tleft or show_tspent
+    local has_book_rows = show_read_row or show_time_row
+    local show_today  = Opt.readBookCell("today")
+    local show_avg     = Opt.readBookCell("avg_day")
+    local show_pace_today = show_today or show_avg
+    local show_started = (stats.started_days_ago and Opt.readBookCell("started")) and true or false
+    local show_finish  = (stats.finish_days_left and Opt.readBookCell("finish")) and true or false
+    local show_dates_row  = show_started or show_finish
+
     local chapter_view_mode = (popup and popup._chapter_view_mode) or "time"
     local pages_mode = (chapter_view_mode == "pages")
     local show_two_next = Opt.readNextChapterCount() == 2 and stats.has_chapter_after_next
     local show_cur  = Opt.readShowChapterCurrent()
     local show_next = Opt.readShowChapterNext() and stats.has_next_chapter
-    if show_cur or show_next then
+    local show_chapter_card  = show_cur or show_next
+    local show_chapters_card = show_chapter_bar and not skim_in_book
+    -- Chapter and Chapters next to each other in the section order (hidden
+    -- sections skipped) make one card, the chapter bar at its bottom.
+    local merge_chapters = false
+    if show_chapter_card and show_chapters_card then
+        local order = VS.Order.effective("book", {
+            chapter = true, chapters = true,
+            book = has_book_rows or skim_in_book,
+            pace = show_pace_today or show_dates_row,
+        })
+        for i = 2, #order do
+            local a, b = order[i - 1], order[i]
+            if (a == "chapter" and b == "chapters") or (a == "chapters" and b == "chapter") then
+                merge_chapters = true
+            end
+        end
+    end
+
+    -- The chapter bar, then the chapter count row.
+    local function chaptersRows()
+        storeChapterBarOnPopup()
+        local rows = { chapter_bar }
+        local ci = stats.chapter_info
+        if ci and Opt.readShowChapterCountRow() then
+            local left, left_label, right, right_label = H.chapterCountValues(ci, stats, popup)
+            local swap = (popup and not readonly) and { swap = true } or nil
+            local read_cell = H.tappableWrap(
+                statCell(left, left_label, nil, (not stats.at_book_end) and swap or nil), ilayout.col_width)
+            if popup and not stats.at_book_end then popup._chapter_read_cell = read_cell end
+            local avg_cell = H.tappableWrap(statCell(right, right_label, nil, swap), ilayout.col_width)
+            if popup then popup._chapter_avg_cell = avg_cell end
+            table.insert(rows, hDivider())
+            table.insert(rows, VerticalSpan:new{ width = Size.padding.small })
+            table.insert(rows, twoCol(read_cell, avg_cell))
+        end
+        return rows
+    end
+
+    -- ===== Chapter: This chapter / Next chapter =========================
+    -- Tapping the card switches time / pages (onTapClose, _chapter_headers).
+    if show_chapter_card then
         local function splitCell(side1, side2)
             local sub_layout = { col_width = H.splitHalfWidth(ilayout), column_gap = ilayout.column_gap }
             return UI.buildTwoColRow(side1, side2, sub_layout, false, nil, Size.line.thin, divider)
@@ -187,90 +282,44 @@ function M.buildSections(stats, fonts, layout, popup, H, avail_h)
         end
         local switch = (not readonly)
             and UI.buildSegmented({ _("Time"), _("Pages") }, pages_mode and 2 or 1, small) or nil
-        local card = UI.buildCard(cardBody(
-            UI.cardHeader("bookmark", _("Chapter"), fonts.section, inner_w, false, switch),
-            { row }), layout.content_width)
-        local wrap = H.tappableWrap(card, card:getSize().w)
-        if popup then popup._chapter_headers = wrap end
-        addCard(wrap, "chapter")
-    end
-
-    -- ===== Chapter bar (or the skim bar) ================================
-    local chapter_on_prev, chapter_on_next = H.chapterBarPaging(popup, stats, inner_w, 0)
-    local chapter_bar, left_arrow, right_arrow, can_left, can_right = ChapterBar.build(
-        stats.chapter_info, inner_w, 0, popup and popup.chapter_bar_offset or nil,
-        chapter_on_prev, chapter_on_next, true)
-
-    local skim_bar = nil
-    if SkimBar and stats.skim and Opt.readChapterBarStyle() == Opt.CHAPTER_BAR_STYLE_SKIM then
-        local skim_widget = SkimBar.build(stats.skim, inner_w)
-        if skim_widget then
-            skim_bar = FrameContainer:new{
-                bordersize     = 0,
-                padding        = 0,
-                padding_top    = Size.padding.default,
-                padding_bottom = Size.padding.default,
-                margin         = 0,
-                background     = Blitbuffer.COLOR_WHITE,
-                skim_widget,
-            }
-            chapter_bar, left_arrow, right_arrow = skim_bar, nil, nil
-            can_left, can_right = false, false
+        if merge_chapters then
+            -- Only the top part switches time / pages: the bar and the count
+            -- row below it have taps of their own.
+            local top = H.tappableWrap(VerticalGroup:new{
+                align = "left",
+                UI.cardHeader("chapters", _("Chapters"), fonts.section, inner_w, false, switch),
+                VerticalSpan:new{ width = Size.padding.small },
+                row,
+            }, inner_w)
+            if popup then popup._chapter_headers = top end
+            local rows = { hDivider(), VerticalSpan:new{ width = Size.padding.small } }
+            for _idx, w in ipairs(chaptersRows()) do table.insert(rows, w) end
+            addCard(UI.buildCard(cardBody(top, rows), layout.content_width), "chapter")
+        else
+            local card = UI.buildCard(cardBody(
+                UI.cardHeader("bookmark", _("Chapter"), fonts.section, inner_w, false, switch),
+                { row }), layout.content_width)
+            local wrap = H.tappableWrap(card, card:getSize().w)
+            if popup then popup._chapter_headers = wrap end
+            addCard(wrap, "chapter")
         end
-    end
-    local show_chapter_bar = chapter_bar and Opt.readShowChapterBar()
-    local skim_in_book = (show_chapter_bar and skim_bar ~= nil) and true or false
-    local function storeChapterBarOnPopup()
-        if not popup then return end
-        popup._chapter_bar            = chapter_bar
-        popup._chapter_bar_prev_arrow = left_arrow
-        popup._chapter_bar_next_arrow = right_arrow
-        popup._chapter_bar_can_prev   = can_left
-        popup._chapter_bar_can_next   = can_right
-        popup._chapter_bar_on_prev    = chapter_on_prev
-        popup._chapter_bar_on_next    = chapter_on_next
     end
 
     -- ===== Chapters =====================================================
-    if show_chapter_bar and not skim_in_book then
-        storeChapterBarOnPopup()
-        local rows = { chapter_bar }
-        local ci = stats.chapter_info
-        if ci and Opt.readShowChapterCountRow() then
-            local left, left_label, right, right_label = H.chapterCountValues(ci, stats, popup)
-            local swap = (popup and not readonly) and { swap = true } or nil
-            local read_cell = H.tappableWrap(
-                statCell(left, left_label, nil, (not stats.at_book_end) and swap or nil), ilayout.col_width)
-            if popup and not stats.at_book_end then popup._chapter_read_cell = read_cell end
-            local avg_cell = H.tappableWrap(statCell(right, right_label, nil, swap), ilayout.col_width)
-            if popup then popup._chapter_avg_cell = avg_cell end
-            table.insert(rows, hDivider())
-            table.insert(rows, VerticalSpan:new{ width = Size.padding.small })
-            table.insert(rows, twoCol(read_cell, avg_cell))
-        end
+    if show_chapters_card and not merge_chapters then
         addCard(UI.buildCard(cardBody(
-            UI.cardHeader("chapters", _("Chapters"), fonts.section, inner_w, false), rows),
+            UI.cardHeader("chapters", _("Chapters"), fonts.section, inner_w, false), chaptersRows()),
             layout.content_width), "chapters")
     end
 
     -- ===== This book ====================================================
     -- Header tap: Book info (onTapClose, _this_book_header).
-    local donut_style = Donut ~= nil and Opt.readBookSectionStyle() == Opt.BOOK_SECTION_STYLE_DONUT
-    -- Every value cell has its own switch (Settings > Book progress popup);
-    -- a row is drawn while at least one of its two cells is on.
-    local show_pct    = Opt.readBookCell("read_pct")
-    local show_pages  = Opt.readBookCell("read_pages")
-    local show_tleft  = Opt.readBookCell("time_left")
-    local show_tspent = Opt.readBookCell("time_spent")
-    local show_read_row = donut_style or show_pct or show_pages
-    local show_time_row = donut_style or show_tleft or show_tspent
     -- Two cells side by side; with only one of them on it keeps the left
     -- position (the other half stays blank, without a separator).
     local function cellsRow(left, right)
         if left and right then return twoCol(left, right) end
         return UI.buildTwoColRow(left or right, VerticalSpan:new{ width = 0 }, ilayout, true)
     end
-    local has_book_rows = show_read_row or show_time_row
     if has_book_rows or skim_in_book then
         local header = H.tappableWrap(
             UI.cardHeader("book", _("This book"), fonts.section, inner_w, false,
@@ -337,12 +386,6 @@ function M.buildSections(stats, fonts, layout, popup, H, avail_h)
     -- ===== Pace =========================================================
     -- Header tap: Book progress calendar; tap on the first row or the
     -- switch: time / pages (onTapClose, _pace_header / _pace_row).
-    local show_today   = Opt.readBookCell("today")
-    local show_avg     = Opt.readBookCell("avg_day")
-    local show_pace_today = show_today or show_avg
-    local show_started = (stats.started_days_ago and Opt.readBookCell("started")) and true or false
-    local show_finish  = (stats.finish_days_left and Opt.readBookCell("finish")) and true or false
-    local show_dates_row  = show_started or show_finish
     if show_pace_today or show_dates_row then
         local pace_pages = ((popup and popup._pace_view_mode) or "time") == "pages"
         local switch
