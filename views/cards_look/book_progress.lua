@@ -289,19 +289,16 @@ function M.buildSections(stats, fonts, layout, popup, H, avail_h, plain)
             local ratio = stats.chapter_progress_ratio
             local col = VerticalGroup:new{ align = "left", columnTitle(_("This chapter"), width) }
             if donut_style and ratio then
-                local ring_col = VerticalGroup:new{
-                    align = "center",
-                    ring(ratio, formatCount(math.floor(100 * ratio + 0.5)) .. "%"),
-                    TextWidget:new{ text = _("read"), face = fonts.label, fgcolor = Colors.label() },
-                }
+                local ring_w = ring(ratio, formatCount(math.floor(100 * ratio + 0.5)) .. "%")
                 local gap = Size.padding.large
                 table.insert(col, VerticalSpan:new{ width = Size.padding.small + ring_top })
                 table.insert(col, HorizontalGroup:new{
                     align = "center",
-                    ring_col,
+                    ring_w,
                     HorizontalSpan:new{ width = gap },
-                    value(math.max(1, width - ring_col:getSize().w - gap)),
+                    value(math.max(1, width - ring_w:getSize().w - gap)),
                 })
+                table.insert(col, VerticalSpan:new{ width = Size.padding.default })
                 return col
             end
             table.insert(col, value(width))
