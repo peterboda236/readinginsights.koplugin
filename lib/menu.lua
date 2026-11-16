@@ -121,6 +121,19 @@ function M.build(self, deps)
         }
     end
 
+    -- A group whose entries depend on the look: spec_func(is_cards) gives the
+    -- list each time the group opens, so Cards-only entries are left out in
+    -- the Classic look instead of being greyed out.
+    local function lookGroup(text, spec_func)
+        return {
+            text = text,
+            keep_menu_open = true,
+            sub_item_table_func = function()
+                return layout(spec_func(deps.ViewSettings.readLookIsCards()))
+            end,
+        }
+    end
+
     -- Whether/how it's used as a sleep screen is normally set directly in
     -- KOReader's own Settings > Screen > Sleep screen menu (see the
     -- menu_items.screensaver injection at the end of this function).
@@ -1432,18 +1445,38 @@ function M.build(self, deps)
         }
     end
 
-    -- "Progress bar": the thin bar under the book percentage (lib/uikit.lua, UI.withCellBar / UI.buildRowBar),
-    -- in the Cards look also the chapter, next chapters, pace and start-to-finish
-    -- bars (views/cards_look/book_progress.lua). They use the chart's
+    -- "Progress bar": the thin bar under the book percentage (lib/uikit.lua, UI.withCellBar / UI.buildRowBar). They use the chart's
     -- active / inactive bar colors (Colors menu), so there are no separate
     -- color or height settings.
     I.progress_bar = {
         text = _("Progress bar"),
-        help_text = _("Show a thin progress bar under the book percentage. In the Cards look also under \"This chapter\", plus bars for the length of the next chapters, today's reading against the daily average and the way from the start to the expected finish."),
+        help_text = _("Show a thin progress bar under the book percentage."),
         keep_menu_open = true,
         checked_func = function() return deps.ViewSettings.Opt.readShowCellBars() end,
         callback = function()
             deps.ViewSettings.Opt.saveShowCellBars(not deps.ViewSettings.Opt.readShowCellBars())
+        end,
+    }
+
+    -- The Chapter and Pace cards' bars (views/cards_look/book_progress.lua).
+    -- Cards look only: the Chapters and Pace groups list them only there.
+    I.chapter_bars = {
+        text = _("Progress bars"),
+        help_text = _("Show a progress bar under \"This chapter\" and bars for the length of the next chapters."),
+        keep_menu_open = true,
+        checked_func = function() return deps.ViewSettings.Opt.readShowChapterBars() end,
+        callback = function()
+            deps.ViewSettings.Opt.saveShowChapterBars(not deps.ViewSettings.Opt.readShowChapterBars())
+        end,
+    }
+
+    I.pace_bars = {
+        text = _("Progress bars"),
+        help_text = _("Show bars for today's reading against the daily average and for the way from the start to the expected finish."),
+        keep_menu_open = true,
+        checked_func = function() return deps.ViewSettings.Opt.readShowPaceBars() end,
+        callback = function()
+            deps.ViewSettings.Opt.saveShowPaceBars(not deps.ViewSettings.Opt.readShowPaceBars())
         end,
     }
 
@@ -1694,18 +1727,28 @@ function M.build(self, deps)
     local book_progress_sub_item_table = layout({
         I.bp_position, I.bp_style, I.bp_order,
         "-",
-        group(_("Chapters"), {
-            I.this_chapter, I.next_chapter, I.next_count,
-            "-",
-            I.chapter_bar, I.chapter_bar_style, I.chapters_per_page,
-            I.chapter_count_row,
-        }),
+        lookGroup(_("Chapters"), function(is_cards)
+            return {
+                I.this_chapter, I.next_chapter, I.next_count,
+                "-",
+                I.chapter_bar, I.chapter_bar_style, I.chapters_per_page,
+                I.chapter_count_row,
+                is_cards and "-" or nil,
+                is_cards and I.chapter_bars or nil,
+            }
+        end),
         group(_("This book"), {
             I.cell_read_pct, I.cell_read_pages, I.cell_time_left, I.cell_time_spent,
             "-",
             I.progress_bar,
         }),
-        group(_("Pace"), { I.cell_today, I.cell_avg_day, I.cell_started, I.cell_finish }),
+        lookGroup(_("Pace"), function(is_cards)
+            return {
+                I.cell_today, I.cell_avg_day, I.cell_started, I.cell_finish,
+                is_cards and "-" or nil,
+                is_cards and I.pace_bars or nil,
+            }
+        end),
         I.book_heights,
     })
 

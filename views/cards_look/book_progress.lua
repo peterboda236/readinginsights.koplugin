@@ -80,8 +80,10 @@ function M.buildSections(stats, fonts, layout, popup, H, avail_h, plain)
     local ilayout = UI.cardLayout(layout)
     local inner_w = ilayout.content_width
     local divider = Colors.cardsColor("divider")
-    -- Settings > Book progress popup > Progress bar.
-    local show_bars = not plain and Opt.readShowCellBars()
+    -- Settings > Book progress popup > This book / Chapters / Pace > Progress bar(s).
+    local show_book_bar = not plain and Opt.readShowCellBars()
+    local show_chapter_bars = not plain and Opt.readShowChapterBars()
+    local show_pace_bars = not plain and Opt.readShowPaceBars()
     local probe = TextWidget:new{ text = "0", face = fonts.value }
     local value_h = probe:getSize().h
     probe:free()
@@ -248,7 +250,7 @@ function M.buildSections(stats, fonts, layout, popup, H, avail_h, plain)
             can_swap_left and UI.swapIcon(small) or nil)
         count_chip = H.tappableWrap(chip, chip:getSize().w)
         if popup and not stats.at_book_end then popup._chapter_read_cell = count_chip end
-        typical_pages = show_bars and stats.avg_chapter_pages or nil
+        typical_pages = show_chapter_bars and stats.avg_chapter_pages or nil
         local typical = UI.buildInlineCell(card_fonts, inner_w, right.value, right_label, {
             swap = can_swap,
             lead = typical_pages and UI.buildDashMark(math.floor(value_h * 0.7)) or nil,
@@ -302,7 +304,7 @@ function M.buildSections(stats, fonts, layout, popup, H, avail_h, plain)
                 return col
             end
             table.insert(col, value(width))
-            if show_bars and ratio then
+            if show_chapter_bars and ratio then
                 table.insert(col, VerticalSpan:new{ width = Size.padding.small })
                 table.insert(col, UI.buildRoundBar(ratio, width, bar_h))
             end
@@ -321,7 +323,7 @@ function M.buildSections(stats, fonts, layout, popup, H, avail_h, plain)
             if show_two_next then
                 table.insert(chapters, { pages = stats.chapter_after_next_pages_count, time = stats.chapter_after_next_time_hhmm })
             end
-            if show_bars and (typical_pages or show_two_next) then
+            if show_chapter_bars and (typical_pages or show_two_next) then
                 -- The chapter times are pages * the average time per page,
                 -- so the page counts give the bar lengths in both views.
                 local longest = typical_pages or 0
@@ -453,7 +455,7 @@ function M.buildSections(stats, fonts, layout, popup, H, avail_h, plain)
                 table.insert(rows, cellsRow(
                     show_pct and statCell(stats.book_progress, stats.book_progress.value ~= "" and _("read") or "") or nil,
                     show_pages and statCell(stats.book_pages_read, "") or nil))
-                if show_bars and show_pct then
+                if show_book_bar and show_pct then
                     table.insert(rows, VerticalSpan:new{ width = Size.padding.default })
                     table.insert(rows, UI.buildRoundBar(stats.book_progress_ratio, inner_w, bar_h))
                     table.insert(rows, VerticalSpan:new{ width = Size.padding.default })
@@ -503,7 +505,7 @@ function M.buildSections(stats, fonts, layout, popup, H, avail_h, plain)
             local today_n = pace_pages and stats.today_pages_count or stats.today_secs
             local avg_n = pace_pages and stats.avg_pages_per_day_count or stats.avg_secs_per_day
             local content
-            if show_bars and show_today and show_avg and today_n and avg_n and avg_n > 0 then
+            if show_pace_bars and show_today and show_avg and today_n and avg_n and avg_n > 0 then
                 local scale = math.max(today_n, avg_n)
                 content = VerticalGroup:new{
                     align = "left",
@@ -530,7 +532,7 @@ function M.buildSections(stats, fonts, layout, popup, H, avail_h, plain)
                 -- With the progress bars on: a line from the start to the
                 -- expected finish with a dot at today, the two values under
                 -- its ends.
-                local done_days = show_bars and stats.started_days_count or nil
+                local done_days = show_pace_bars and stats.started_days_count or nil
                 local started_tap = H.tappableWrap(statCell(stats.started_days_ago, ""), ilayout.col_width)
                 local finish_tap  = H.tappableWrap(statCell(H.finishDaysValue(stats), "", nil,
                     done_days and { align = "right" } or nil), ilayout.col_width)

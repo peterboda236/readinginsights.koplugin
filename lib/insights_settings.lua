@@ -273,12 +273,19 @@ M.Opt = {
     SHOW_PACE_DATES_KEY      = "reading_insights_book_show_pace_dates",
     SHOW_PACE_DATES_DEFAULT  = true,
 
-    -- Book progress popup: whether the thin (5 px) progress bars under the
-    -- "This chapter" value and under the book percentage are shown (drawn
-    -- with the chart's active / inactive bar colors, see UI.buildRowBar in
-    -- lib/uikit.lua). On by default.
+    -- Book progress popup: whether the thin (5 px) progress bar under the
+    -- book percentage is shown (drawn with the chart's active / inactive bar
+    -- colors, see UI.buildRowBar in lib/uikit.lua). On by default.
     SHOW_CELL_BARS_KEY     = "reading_insights_book_show_cell_bars",
     SHOW_CELL_BARS_DEFAULT = true,
+
+    -- Book progress popup, Cards look only: the bars of the Chapter card
+    -- (This chapter, the next chapters' lengths) and of the Pace card
+    -- (today against the daily average, start to expected finish).
+    SHOW_CHAPTER_BARS_KEY     = "reading_insights_book_show_chapter_bars",
+    SHOW_CHAPTER_BARS_DEFAULT = true,
+    SHOW_PACE_BARS_KEY        = "reading_insights_book_show_pace_bars",
+    SHOW_PACE_BARS_DEFAULT    = true,
 
     -- Book progress popup: which rows / columns are shown. All on by default.
     -- A section whose parts are all off is hidden with its header (see
@@ -1077,6 +1084,22 @@ end
 
 function M.Opt.saveShowCellBars(value)
     M.saveBoolSetting(M.Opt.SHOW_CELL_BARS_KEY, value)
+end
+
+function M.Opt.readShowChapterBars()
+    return M.readBoolSetting(M.Opt.SHOW_CHAPTER_BARS_KEY, M.Opt.SHOW_CHAPTER_BARS_DEFAULT)
+end
+
+function M.Opt.saveShowChapterBars(value)
+    M.saveBoolSetting(M.Opt.SHOW_CHAPTER_BARS_KEY, value)
+end
+
+function M.Opt.readShowPaceBars()
+    return M.readBoolSetting(M.Opt.SHOW_PACE_BARS_KEY, M.Opt.SHOW_PACE_BARS_DEFAULT)
+end
+
+function M.Opt.saveShowPaceBars(value)
+    M.saveBoolSetting(M.Opt.SHOW_PACE_BARS_KEY, value)
 end
 
 -- Reading insights popup's title-bar hamburger menu (Settings > Advanced

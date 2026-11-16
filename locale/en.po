@@ -2092,8 +2092,17 @@ msgstr "of %1"
 msgid "Progress bar"
 msgstr "Progress bar"
 
-msgid "Show a thin progress bar under the book percentage. In the Cards look also under \"This chapter\", plus bars for the length of the next chapters, today's reading against the daily average and the way from the start to the expected finish."
-msgstr "Show a thin progress bar under the book percentage. In the Cards look also under \"This chapter\", plus bars for the length of the next chapters, today's reading against the daily average and the way from the start to the expected finish."
+msgid "Show a thin progress bar under the book percentage."
+msgstr "Show a thin progress bar under the book percentage."
+
+msgid "Progress bars"
+msgstr "Progress bars"
+
+msgid "Show a progress bar under \"This chapter\" and bars for the length of the next chapters."
+msgstr "Show a progress bar under \"This chapter\" and bars for the length of the next chapters."
+
+msgid "Show bars for today's reading against the daily average and for the way from the start to the expected finish."
+msgstr "Show bars for today's reading against the daily average and for the way from the start to the expected finish."
 
 msgid "Loading ratings..."
 msgstr "Loading ratings..."
