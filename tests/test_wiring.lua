@@ -292,6 +292,11 @@ do
     check("alignOnText centres the icon on the cap middle",
           small[1].overlap_offset[2] == math.floor(19.2 - 5 + 0.5))
 
+    -- After a word: on the lowercase middle, 30 - 30 * 0.54 / 2 = 21.9.
+    local after_word = UI.iconOnText("caret", 10, face, true)
+    check("alignOnText centres a mark after a word on the lowercase middle",
+          after_word[1].overlap_offset[2] == math.floor(21.9 - 5 + 0.5))
+
     local big = UI.alignOnText(widget_stub:new{ width = 40, height = 40 }, face)
     check("alignOnText keeps a text-high icon inside the box",
           big[1].overlap_offset[2] == 0)

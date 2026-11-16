@@ -1182,9 +1182,11 @@ function M.build(self, deps)
         },
     }
 
-    -- "This book" section style: the original rows, or a donut (default)
-    -- chart with the read percentage on the left and pages / time read /
-    -- time left stacked on the right (widgets/donutwidget.lua).
+    -- "This book" section style: the original rows (default in the Classic
+    -- look), or a donut (default in the Cards look) chart with the read
+    -- percentage on the left and pages / time read / time left stacked on the
+    -- right (widgets/donutwidget.lua). The Cards look also gives "This
+    -- chapter" a donut with it.
     I.bp_style = {
         text_func = function()
             local Opt = deps.ViewSettings.Opt
@@ -1192,7 +1194,7 @@ function M.build(self, deps)
                 and _("Donut chart") or _("Classic")
             return _("Book section style") .. ": " .. style
         end,
-        help_text = _("How the \"This book\" section looks. \"Classic\" keeps the rows and the progress bar. \"Donut chart\" shows a large donut with the read percentage on the left and the pages, the time read and the reading time left stacked on the right (the progress bar is replaced by the donut)."),
+        help_text = _("How the \"This book\" section looks. \"Classic\" keeps the rows and the progress bar. \"Donut chart\" shows a large donut with the read percentage on the left and the pages, the time read and the reading time left stacked on the right (the progress bar is replaced by the donut). In the Cards look the donut is the default, and \"This chapter\" gets one too."),
         keep_menu_open = true,
         separator = true,
         sub_item_table = {
@@ -1430,12 +1432,14 @@ function M.build(self, deps)
         }
     end
 
-    -- "Progress bar": the thin bar under the book percentage (lib/uikit.lua, UI.withCellBar / UI.buildRowBar). They use the chart's
+    -- "Progress bar": the thin bar under the book percentage (lib/uikit.lua, UI.withCellBar / UI.buildRowBar),
+    -- in the Cards look also the chapter, next chapters, pace and start-to-finish
+    -- bars (views/cards_look/book_progress.lua). They use the chart's
     -- active / inactive bar colors (Colors menu), so there are no separate
     -- color or height settings.
     I.progress_bar = {
         text = _("Progress bar"),
-        help_text = _("Show a thin progress bar under the book percentage."),
+        help_text = _("Show a thin progress bar under the book percentage. In the Cards look also under \"This chapter\", plus bars for the length of the next chapters, today's reading against the daily average and the way from the start to the expected finish."),
         keep_menu_open = true,
         checked_func = function() return deps.ViewSettings.Opt.readShowCellBars() end,
         callback = function()

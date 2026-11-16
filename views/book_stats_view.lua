@@ -1211,8 +1211,11 @@ function ReadingStatsPopup:gatherStats()
                         value = formatCount(days_since_start),
                         unit  = N_("day since started", "days since started", days_since_start),
                     }
+                    s.started_days_count = days_since_start
                     s.started_timestamp = started_ts
                 end
+                s.today_pages_count = today_p or 0
+                s.today_secs = today_t or 0
                 if today_p and today_p > 0 then
                     s.today_pages = {
                         value = formatCount(today_p),
@@ -1404,6 +1407,7 @@ function ReadingStatsPopup:gatherStats()
                 value = formatCount(days_since_start),
                 unit  = N_("day since started", "days since started", days_since_start),
             }
+            stats.started_days_count = days_since_start
             stats.started_timestamp = started_timestamp
         end
 
@@ -1411,6 +1415,7 @@ function ReadingStatsPopup:gatherStats()
             if total_time and total_time > 0 then
                 local avg_secs = total_time / total_days
                 stats.avg_time_per_day_hhmm = Locale.formatTimeHHMM(avg_secs)
+                stats.avg_secs_per_day = avg_secs
             end
             -- Pages per reading day = distinct pages actually read / days
             -- read, the same numerator Bookends' %pages_per_day uses, so
@@ -1421,6 +1426,7 @@ function ReadingStatsPopup:gatherStats()
             local pace_pages = pages_read > 0 and pages_read or current_page_count
             if pace_pages and pace_pages > 0 then
                 local avg_pages = pace_pages / total_days
+                stats.avg_pages_per_day_count = avg_pages
                 stats.avg_pages_per_day = {
                     value = formatNumber(avg_pages, avg_pages >= 10 and 0 or 1),
                     unit  = "",
@@ -1440,6 +1446,8 @@ function ReadingStatsPopup:gatherStats()
             end
         end
 
+        stats.today_pages_count = today_p or 0
+        stats.today_secs = today_t or 0
         if today_p and today_p > 0 then
             stats.today_pages = {
                 value = formatCount(today_p),
@@ -1674,13 +1682,8 @@ function ReadingStatsPopup:onTapClose(arg, ges_ev)
     if ges_ev then
         local x, y = ges_ev.pos.x, ges_ev.pos.y
 
-        if UI.hitTest(self._chapter_headers, x, y) or UI.hitTest(self._chapter_values, x, y) then
-            self._chapter_view_mode = (self._chapter_view_mode == "pages") and "time" or "pages"
-            VS.Opt.savePopupMode("chapter_view", self._chapter_view_mode)
-            self:_rebuildUI()
-            return true
-        end
-
+        -- Before _chapter_headers: in the Cards look the chapter count chip
+        -- sits in the header that switches time / pages.
         if UI.hitTest(self._chapter_read_cell, x, y) then
             self._chapter_read_mode = (self._chapter_read_mode == "left") and "read" or "left"
             VS.Opt.savePopupMode("chapter_read", self._chapter_read_mode)
@@ -1691,6 +1694,13 @@ function ReadingStatsPopup:onTapClose(arg, ges_ev)
         if UI.hitTest(self._chapter_avg_cell, x, y) then
             self._chapter_avg_mode = (self._chapter_avg_mode == "pages") and "time" or "pages"
             VS.Opt.savePopupMode("chapter_avg", self._chapter_avg_mode)
+            self:_rebuildUI()
+            return true
+        end
+
+        if UI.hitTest(self._chapter_headers, x, y) or UI.hitTest(self._chapter_values, x, y) then
+            self._chapter_view_mode = (self._chapter_view_mode == "pages") and "time" or "pages"
+            VS.Opt.savePopupMode("chapter_view", self._chapter_view_mode)
             self:_rebuildUI()
             return true
         end
