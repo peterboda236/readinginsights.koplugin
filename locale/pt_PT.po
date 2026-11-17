@@ -480,6 +480,12 @@ msgstr "página por minuto"
 msgid "pages per minute"
 msgstr "páginas por minuto"
 
+msgid "word per minute"
+msgstr "palavra por minuto"
+
+msgid "words per minute"
+msgstr "palavras por minuto"
+
 msgid "less than"
 msgstr "menos de"
 
@@ -2494,6 +2500,12 @@ msgstr "Iniciado"
 
 msgid "Expected finish"
 msgstr "Conclusão prevista"
+
+msgid "Reading speed"
+msgstr "Velocidade de leitura"
+
+msgid "Show a row with the reading speed (pages per minute and words per minute) at the top of the \"Pace\" section. The words per minute is an estimate, based on the number of words on a sample of the book's pages."
+msgstr "Mostrar uma linha com a velocidade de leitura (páginas por minuto e palavras por minuto) no início da secção \"Ritmo\". As palavras por minuto são uma estimativa, com base no número de palavras de uma amostra de páginas do livro."
 
 msgid "%1 – %2 %3"
 msgstr "%1 – %2 %3"

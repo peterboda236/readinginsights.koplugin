@@ -68,7 +68,7 @@ end
 -- stats: ReadingStatsPopup:gatherStats(); H: helpers from book_stats_view.lua
 -- (tappableWrap, buildValueLine, splitHalfWidth, buildSplitCellValue,
 -- buildPagesSplitValue, resetTapTargets, chapterBarPaging,
--- chapterCountValues, paceTodayValues, finishDaysValue). avail_h: the height the content may
+-- chapterCountValues, paceTodayValues, paceSpeedValues, finishDaysValue). avail_h: the height the content may
 -- take; taller cards go on pages (views/cards_look/pages.lua). plain: no
 -- rings or bars, only the values (the sleep screen's fallback, see the end).
 function M.buildSections(stats, fonts, layout, popup, H, avail_h, plain)
@@ -210,6 +210,8 @@ function M.buildSections(stats, fonts, layout, popup, H, avail_h, plain)
     local show_started = (stats.started_days_ago and Opt.readBookCell("started")) and true or false
     local show_finish  = (stats.finish_days_left and Opt.readBookCell("finish")) and true or false
     local show_dates_row  = show_started or show_finish
+    -- Optional first row of Pace (off by default): pages | words per minute.
+    local show_speed   = Opt.readBookCell("speed")
 
     local chapter_view_mode = (popup and popup._chapter_view_mode) or "time"
     local pages_mode = (chapter_view_mode == "pages")
@@ -225,7 +227,7 @@ function M.buildSections(stats, fonts, layout, popup, H, avail_h, plain)
         local order = VS.Order.effective("book", {
             chapter = true, chapters = true,
             book = has_book_rows or skim_in_book,
-            pace = show_pace_today or show_dates_row,
+            pace = show_speed or show_pace_today or show_dates_row,
         })
         for i = 2, #order do
             local a, b = order[i - 1], order[i]
@@ -478,7 +480,7 @@ function M.buildSections(stats, fonts, layout, popup, H, avail_h, plain)
     -- ===== Pace =========================================================
     -- Header tap: Book progress calendar; tap on the first row or the
     -- switch: time / pages (onTapClose, _pace_header / _pace_row).
-    if show_pace_today or show_dates_row then
+    if show_speed or show_pace_today or show_dates_row then
         local pace_pages = ((popup and popup._pace_view_mode) or "time") == "pages"
         local switch
         if show_pace_today and not readonly then
@@ -497,7 +499,15 @@ function M.buildSections(stats, fonts, layout, popup, H, avail_h, plain)
         if popup then popup._pace_header = header end
 
         local rows = {}
+        -- Reading speed, the first row: pages per minute | words per minute.
+        if show_speed then
+            local ppm_val, ppm_label, wpm_val, wpm_label = H.paceSpeedValues(stats)
+            table.insert(rows, twoCol(statCell(ppm_val, ppm_label), statCell(wpm_val, wpm_label)))
+        end
         if show_pace_today then
+            if show_speed then
+                table.insert(rows, VerticalSpan:new{ width = Size.padding.default })
+            end
             local today_val, today_label, avg_val, avg_label = H.paceTodayValues(stats, pace_pages)
             -- With the progress bars on: today's value over a bar with a mark
             -- at the daily average (on the scale of the larger of the two),
@@ -525,7 +535,7 @@ function M.buildSections(stats, fonts, layout, popup, H, avail_h, plain)
             table.insert(rows, pace_row)
         end
         if show_dates_row then
-            if show_pace_today then
+            if show_speed or show_pace_today then
                 table.insert(rows, VerticalSpan:new{ width = Size.padding.default })
             end
             if show_started and show_finish then

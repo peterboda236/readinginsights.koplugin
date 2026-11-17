@@ -76,6 +76,7 @@ local PopupUtil    = loadModule("lib/popuputil.lua")
 local NativeWidgets = loadModule("lib/native_widgets.lua")
 local BookProgress = loadModule("lib/bookprogress.lua")
 local ChapterInfo  = loadModule("lib/chapterinfo.lua")
+local WordCount    = loadModule("lib/wordcount.lua")
 -- Queries behind the two book-specific popups, kept apart from the widgets
 -- that draw them, the same way the insights and records popups are split.
 local BookStatsData    = loadModule("lib/book_stats_data.lua",    { StatsDb = StatsDb })
@@ -412,6 +413,7 @@ local StatsPopup = loadModule("views/book_stats_view.lua", {
     ChapterInfo = ChapterInfo, ChapterBar = ChapterBar,
     Donut = Donut, SkimBar = SkimBar, UI = UI,
     BookStatsData = BookStatsData, VS = ViewSettings, BookCards = BookProgressCards,
+    WordCount = WordCount,
 })
 -- The last book read, kept when a book is closed so the sleep screen can
 -- draw the book popups from the file manager too (lib/lastbook.lua).

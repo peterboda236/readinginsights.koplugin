@@ -363,7 +363,10 @@ msgid "page per minute"
 msgstr "每分钟页数"
 msgid "pages per minute"
 msgstr "每分钟页数"
-
+msgid "word per minute"
+msgstr "每分钟字数"
+msgid "words per minute"
+msgstr "每分钟字数"
 msgid "less than"
 msgstr "少于"
 msgid "read so far"
@@ -2218,6 +2221,12 @@ msgstr "开始于"
 
 msgid "Expected finish"
 msgstr "预计完成"
+
+msgid "Reading speed"
+msgstr "每分钟页数和字数"
+
+msgid "Show a row with the reading speed (pages per minute and words per minute) at the top of the \"Pace\" section. The words per minute is an estimate, based on the number of words on a sample of the book's pages."
+msgstr "在“阅读速度”区域的最上方显示一行：每分钟页数和每分钟字数。每分钟字数为估算值，依据书中抽样页面的字数计算。"
 
 msgid "%1 – %2 %3"
 msgstr "%1 – %2 %3"

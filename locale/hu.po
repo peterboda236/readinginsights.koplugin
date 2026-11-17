@@ -495,6 +495,12 @@ msgstr "oldal percenként"
 msgid "pages per minute"
 msgstr "oldal percenként"
 
+msgid "word per minute"
+msgstr "szó percenként"
+
+msgid "words per minute"
+msgstr "szó percenként"
+
 msgid "less than"
 msgstr "kevesebb mint"
 
@@ -2505,3 +2511,9 @@ msgstr "Elkezdve"
 
 msgid "Expected finish"
 msgstr "Várható befejezés"
+
+msgid "Reading speed"
+msgstr "Olvasási sebesség"
+
+msgid "Show a row with the reading speed (pages per minute and words per minute) at the top of the \"Pace\" section. The words per minute is an estimate, based on the number of words on a sample of the book's pages."
+msgstr "Egy sor megjelenítése az olvasási sebességgel (oldal percenként és szó percenként) a „Haladás” szakasz legelején. A percenkénti szószám becslés: a könyv néhány mintaoldalán található szavak száma alapján számolódik."

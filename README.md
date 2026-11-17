@@ -162,7 +162,11 @@ the list. Once unlocked, an achievement is never lost. Available everywhere.
 A per-book overlay for the book you're currently reading:
 
 - **Progress** — pages/percentage read, plus pages remaining
-- **Pace** — your average reading speed for this book
+- **Pace** — your average reading speed for this book. An optional first row
+  (*Settings ▸ Book progress popup ▸ Pace ▸ Reading speed*, off by default) shows
+  **pages per minute | words per minute**. The words per minute is an estimate:
+  the words on a sample of the book's pages times the pages per minute (it shows
+  "—" for formats that give no text to count).
 - **Estimated finish** — projected time or date to finish, based on recent pace
 - **Today / averages** — time and pages read today and your daily average
 - **This / next chapter** — estimated reading time (or pages) left
@@ -170,7 +174,8 @@ A per-book overlay for the book you're currently reading:
 
 Every value in the popup can be switched on or off on its own (*Settings ▸ Book
 progress popup*): percentage read, pages read, reading time left, time read so
-far, read today, average per day, started and expected finish. A row whose two
+far, reading speed (off by default), read today, average per day, started and
+expected finish. A row whose two
 cells are both off is not drawn, and a section with no rows left disappears with
 its header.
 

@@ -30,9 +30,12 @@ Sections shown:
                                    (tap the title to open the Book info popup:
                                    cover, title, author, series)
   - Chapter bar                   visual bar chart of all chapters (tappable, swipeable)
-  - Pace                          today's reading time and pages-per-minute rate
-                                   (tap the title to open the Book progress
-                                   calendar)
+  - Pace                          optional first row: pages and words per
+                                   minute (Settings > Book progress popup >
+                                   Pace > Reading speed, off by default); today's
+                                   reading time and the daily average; started
+                                   and expected finish (tap the title to open
+                                   the Book progress calendar)
 
 Controls:
   - Tap anywhere              dismiss
@@ -64,10 +67,10 @@ local Screen = Device.screen
 -- header comment above).
 -- Shared modules, passed in as one named table by main.lua (see there).
 local deps = ...
-local Locale, Colors, Fonts, Prefs, BookProgress, BookCalendar, ChapterInfo, ChapterBar, SkimBar, UI, BookStatsData, VS, Donut, BookCards =
+local Locale, Colors, Fonts, Prefs, BookProgress, BookCalendar, ChapterInfo, ChapterBar, SkimBar, UI, BookStatsData, VS, Donut, BookCards, WordCount =
     deps.Locale, deps.Colors, deps.Fonts, deps.Prefs, deps.BookProgress,
     deps.BookCalendar, deps.ChapterInfo, deps.ChapterBar, deps.SkimBar, deps.UI,
-    deps.BookStatsData, deps.VS, deps.Donut, deps.BookCards
+    deps.BookStatsData, deps.VS, deps.Donut, deps.BookCards, deps.WordCount
 local _            = Locale._
 local N_           = Locale.N_
 local formatNumber = Locale.formatNumber
@@ -515,6 +518,19 @@ local function paceTodayValues(stats, pages)
         stats.avg_time_per_day_hhmm or { value = "—:—", unit = "" }, _("daily avg time")
 end
 
+-- The two values of the reading speed row (the first row of "Pace"), each as
+-- { value, unit } + label: pages per minute | words per minute. "—" while
+-- there is no pace data yet (or, for the words, no text to count them in).
+local function paceSpeedValues(stats)
+    local ppm, wpm = stats.ppm_raw, stats.wpm_raw
+    local ppm_data = ppm and { value = formatNumber(ppm, ppm >= 1 and 1 or 2), unit = "" }
+        or { value = "—", unit = "" }
+    local wpm_data = wpm and { value = formatNumber(wpm, 0), unit = "" }
+        or { value = "—", unit = "" }
+    return ppm_data, N_("page per minute", "pages per minute", ppm or 0),
+        wpm_data, N_("word per minute", "words per minute", wpm or 0)
+end
+
 -- "~77 days of reading left" as { value, unit }.
 local function finishDaysValue(stats)
     return { value = "~" .. formatCount(stats.finish_days_left),
@@ -821,8 +837,12 @@ local function buildSections(stats, fonts, layout, popup)
             local right_cell = valueLine(right, right_label)
             local avg_cell = tappableWrap(right_cell, right_cell:getSize().w)
             if popup then popup._chapter_avg_cell = avg_cell end
-            table.insert(sections, UI.padded(layout.padding_h,
-                Colors.hLine(layout.content_width, Size.line.thin)))
+            -- The line above the count row only belongs to the "Normal"
+            -- divider lines; the sparser styles have none here.
+            if UI.classicLines() then
+                table.insert(sections, UI.padded(layout.padding_h,
+                    Colors.hLine(layout.content_width, Size.line.thin)))
+            end
             table.insert(sections, VerticalSpan:new{ width = Size.padding.small })
             table.insert(sections, UI.padded(layout.padding_h,
                 UI.buildTwoColRow(read_cell, avg_cell, layout)))
@@ -917,8 +937,10 @@ local function buildSections(stats, fonts, layout, popup)
     local show_started = (stats.started_days_ago and Opt.readBookCell("started")) and true or false
     local show_finish  = (stats.finish_days_left and Opt.readBookCell("finish")) and true or false
     local show_dates_row  = show_started or show_finish
+    -- Optional first row (off by default): pages | words per minute.
+    local show_speed   = Opt.readBookCell("speed")
 
-    if show_pace_today or show_dates_row then
+    if show_speed or show_pace_today or show_dates_row then
         sectionSeparator("pace")
 
         local pace_header_content = UI.padded(layout.padding_h,
@@ -935,13 +957,32 @@ local function buildSections(stats, fonts, layout, popup)
             table.insert(sections, VerticalSpan:new{ width = Size.padding.small })
         end
 
+        -- Reading speed: pages per minute | words per minute. When another
+        -- two-column row follows, the divider runs on through the gap
+        -- between the rows (same as between the rows below).
+        if show_speed then
+            local ppm_val, ppm_label, wpm_val, wpm_label = paceSpeedValues(stats)
+            local next_two_col = (show_pace_today and show_today and show_avg)
+                or (not show_pace_today and show_started and show_finish)
+            local speed_joined = next_two_col and true or false
+            table.insert(sections, UI.padded(layout.padding_h, cellsRow(
+                valueLine(ppm_val, ppm_label), valueLine(wpm_val, wpm_label),
+                speed_joined and { join_below = Size.padding.small } or nil)))
+            if not speed_joined or UI.classicLines() then
+                table.insert(sections, VerticalSpan:new{ width = Size.padding.small })
+            end
+        end
+
         if show_pace_today then
             -- When the started / finish row follows as a second two-column
             -- row, the divider runs on through the gap between the rows.
             local pace_joined = show_started and show_finish
             local pace_row_content = cellsRow(
                 show_today and days_col2 or nil, show_avg and pace_col2 or nil,
-                pace_joined and { join_below = Size.padding.small } or nil)
+                (pace_joined or show_speed) and {
+                    join_below = pace_joined and Size.padding.small or nil,
+                    join_above = show_speed or nil,
+                } or nil)
             local pace_row = tappableWrap(pace_row_content, pace_row_content:getSize().w)
             if popup then
                 popup._pace_row = pace_row
@@ -970,7 +1011,7 @@ local function buildSections(stats, fonts, layout, popup)
                     popup._finish_widget  = finish_tap
                 end
                 table.insert(sections, UI.padded(layout.padding_h, UI.buildTwoColRow(started_tap, finish_tap, layout, false,
-                    show_pace_today and { join_above = true } or nil)))
+                    (show_pace_today or show_speed) and { join_above = true } or nil)))
                 table.insert(sections, VerticalSpan:new{ width = Size.padding.small })
             elseif started_widget then
                 local started_full_widget = buildValueLine(
@@ -1086,7 +1127,7 @@ function ReadingStatsPopup:_buildUI()
                 buildPagesSplitValue = buildPagesSplitValue,
                 resetTapTargets = resetTapTargets, chapterBarPaging = chapterBarPaging,
                 chapterCountValues = chapterCountValues, paceTodayValues = paceTodayValues,
-                finishDaysValue = finishDaysValue,
+                paceSpeedValues = paceSpeedValues, finishDaysValue = finishDaysValue,
             }, screen_h - 2 * (border_w + corner_pad))
         else
             sections = buildSections(self._stats, self._fonts, self._layout, self)
@@ -1380,6 +1421,16 @@ function ReadingStatsPopup:gatherStats()
             value = ppm_str,
             unit  = N_("page per minute", "pages per minute", ppm),
         }
+        -- Raw numbers for the reading speed row of "Pace". The words are an
+        -- estimate (words on a sample of pages x pages per minute) and only
+        -- worked out while that row is on: reading the sample costs a moment.
+        stats.ppm_raw = ppm
+        if WordCount and VS.Opt.readBookCell("speed") then
+            local words_per_page = WordCount.perPage(ui, pages)
+            if words_per_page and words_per_page > 0 then
+                stats.wpm_raw = words_per_page * ppm
+            end
+        end
     end
 
     -- single DB connection for all book stats

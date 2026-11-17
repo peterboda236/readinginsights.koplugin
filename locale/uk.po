@@ -495,6 +495,12 @@ msgstr "сторінка на хвилину"
 msgid "pages per minute"
 msgstr "сторінок на хвилину"
 
+msgid "word per minute"
+msgstr "слово на хвилину"
+
+msgid "words per minute"
+msgstr "слів на хвилину"
+
 msgid "less than"
 msgstr "менше ніж"
 
@@ -2546,6 +2552,12 @@ msgstr "Розпочато"
 
 msgid "Expected finish"
 msgstr "Очікуване завершення"
+
+msgid "Reading speed"
+msgstr "Швидкість читання"
+
+msgid "Show a row with the reading speed (pages per minute and words per minute) at the top of the \"Pace\" section. The words per minute is an estimate, based on the number of words on a sample of the book's pages."
+msgstr "Показати рядок зі швидкістю читання (сторінок на хвилину та слів на хвилину) на самому початку розділу «Темп». Кількість слів на хвилину — це оцінка на основі кількості слів на вибраних сторінках книги."
 
 msgid "%1 – %2 %3"
 msgstr "%1 – %2 %3"

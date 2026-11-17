@@ -911,6 +911,8 @@ end
 --   time_left   reading time left        time_spent  time read so far
 --   today       read today               avg_day     average per day
 --   started     started N days ago       finish      expected finish
+--   speed       pages / words per minute (the first row of "Pace"; both cells
+--               are one switch, and it is OFF until it is switched on)
 M.Opt.BOOK_CELL_KEYS = {
     read_pct   = "reading_insights_book_cell_read_pct",
     read_pages = "reading_insights_book_cell_read_pages",
@@ -920,7 +922,12 @@ M.Opt.BOOK_CELL_KEYS = {
     avg_day    = "reading_insights_book_cell_avg_day",
     started    = "reading_insights_book_cell_started",
     finish     = "reading_insights_book_cell_finish",
+    speed      = "reading_insights_book_cell_speed",
 }
+
+-- cells that are off until the reader switches them on (the others follow
+-- their old row switch, which defaults to on)
+local BOOK_CELL_DEFAULT_OFF = { speed = true }
 
 -- cell name -> the row switch it falls back to
 local BOOK_CELL_ROW = {
@@ -935,6 +942,7 @@ function M.Opt.readBookCell(name)
     if not key then return true end
     local v = Prefs.read(key, nil)
     if v ~= nil then return v == true end
+    if BOOK_CELL_DEFAULT_OFF[name] then return false end
     local row_fn = BOOK_CELL_ROW[name]
     if row_fn and M.Opt[row_fn] then return M.Opt[row_fn]() end
     return true

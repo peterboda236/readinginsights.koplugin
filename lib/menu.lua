@@ -1505,9 +1505,10 @@ function M.build(self, deps)
     -- always shown, so the read / time cells are greyed out there.
     do
         local Opt = deps.ViewSettings.Opt
-        local function cellToggle(name, text, donut_forced)
+        local function cellToggle(name, text, donut_forced, help_text)
             return {
                 text = text,
+                help_text = help_text,
                 keep_menu_open = true,
                 enabled_func = donut_forced and function() return not isDonutStyle() end or nil,
                 checked_func = function()
@@ -1524,6 +1525,8 @@ function M.build(self, deps)
         I.cell_avg_day    = cellToggle("avg_day",    _("Average per day"))
         I.cell_started    = cellToggle("started",    _("Started"))
         I.cell_finish     = cellToggle("finish",     _("Expected finish"))
+        I.cell_speed      = cellToggle("speed",      _("Reading speed"), nil,
+            _("Show a row with the reading speed (pages per minute and words per minute) at the top of the \"Pace\" section. The words per minute is an estimate, based on the number of words on a sample of the book's pages."))
     end
 
     -- "Book info" popup: which parts of the small cover + title / author /
@@ -1744,6 +1747,8 @@ function M.build(self, deps)
         }),
         lookGroup(_("Pace"), function(is_cards)
             return {
+                I.cell_speed,
+                "-",
                 I.cell_today, I.cell_avg_day, I.cell_started, I.cell_finish,
                 is_cards and "-" or nil,
                 is_cards and I.pace_bars or nil,
