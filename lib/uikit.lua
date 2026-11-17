@@ -914,7 +914,6 @@ end
 -- mark keeps it visible over the done part, which has the same color.
 local MarkerBar = Widget:extend{
     ratio  = 0,
-    marker = 0,
     width  = 0,
     height = 0,
     dashed = false,

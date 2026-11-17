@@ -1,5 +1,7 @@
 ### 📊 Reading insights plugin
 
+#### Classic look
+
 <img width="255" height="340" alt="FileManager_2026-10-16_090136" src="https://github.com/user-attachments/assets/738dcedb-fb2b-4e1f-af6f-0e898d0b62bd" />
 <img width="255" height="340" alt="FileManager_2026-10-16_090148" src="https://github.com/user-attachments/assets/2cadd5ab-5b2b-4a87-be59-b8073b9fd9b3" />
 <img width="255" height="340" alt="Reader_Sebastian Bergman 6  - Egyetlen igazsag - Hjorth, Michael   Rosenfeldt, Hans #p(458) epub_p222_2026-10-10_164231" src="https://github.com/user-attachments/assets/d180c3ae-e731-48c5-90be-0564d0bb2a3d" />
@@ -15,6 +17,20 @@ More screenshots
 <img width="192" height="256" alt="FileManager_2026-10-10_164220" src="https://github.com/user-attachments/assets/66805663-9ae3-43c3-bf71-877f1c6038ad" />
 <img width="192" height="256" alt="FileManager_2026-07-27_074133" src="https://github.com/user-attachments/assets/de2d7a78-a657-40cf-8628-f0787a827147" />
 <img width="192" height="256" alt="Reader_Sebastian Bergman 6  - Egyetlen igazsag - Hjorth, Michael   Rosenfeldt, Hans #p(458) epub_p222_2026-10-10_164254" src="https://github.com/user-attachments/assets/b887e10c-5a26-4177-88f6-ab938f6baf54" />
+
+#### Cards look
+
+<img width="192" alt="Reading insights, Cards look, page 1" src="https://github.com/user-attachments/assets/d0654a83-e0ac-4bcc-9dae-71983fa023f7" />
+<img width="192" alt="Reading insights, Cards look, page 2" src="https://github.com/user-attachments/assets/ff31d316-89ab-4b87-b7e3-3540b28f0482" />
+<img width="192" alt="Book progress, Cards look" src="https://github.com/user-attachments/assets/db43db9a-5594-4bce-8621-89aa9420ed4b" />
+<img width="192" alt="Reading habits, Cards look" src="https://github.com/user-attachments/assets/c68119f0-cc92-489b-bd7c-5bbe258d0245" />
+
+More Cards screenshots
+
+<img width="192" alt="Reading calendar, Cards look" src="https://github.com/user-attachments/assets/4d9e38b5-ab04-4a41-b7d3-67fed5d148a7" />
+<img width="192" alt="Book progress calendar, Cards look" src="https://github.com/user-attachments/assets/a20dfb0d-a0f0-4ab7-b8f1-5371a8842dc4" />
+<img width="192" alt="Achievements, Cards look" src="https://github.com/user-attachments/assets/25b510e6-677a-4d2e-aeff-b5848b4847bf" />
+<img width="192" alt="8-week trend, Cards look" src="https://github.com/user-attachments/assets/cd840001-b4b7-4dfe-9cb1-94ddd99f6c3c" />
 
 
 A set of reading-stats popups powered by KOReader's own statistics database.
@@ -214,11 +230,11 @@ Everything is queried and drawn before the device actually goes to sleep.
 ## 🃏 Cards look
 
 *Settings ▸ Appearance ▸ Look* switches the popups between two looks:
-**Classic** (the default, as in the screenshots at the top) and **Cards**, with the
-sections in cards. Both show the same data; only the look changes. Cards
-covers Reading insights, Book progress, Reading habits, the Reading calendar
-and its streaks, the Book progress calendar, Achievements and the 8-week
-trend; the other popups look the same in both.
+**Classic** (the default) and **Cards**, with the sections in cards (see the
+screenshots of both at the top). Both show the same data; only the look
+changes. Cards covers Reading insights, Book progress, Reading habits, the
+Reading calendar and its streaks, the Book progress calendar, Achievements and
+the 8-week trend; the other popups look the same in both.
 
 - **Pages** — in Cards, when Reading insights or Book progress doesn't fit the
   screen it is split into pages instead of scrolling: swipe up for the next
@@ -226,23 +242,13 @@ trend; the other popups look the same in both.
   popup), or tap the arrows of the *‹ 1 / 2 ›* footer.
 - **Book progress** — in Cards the "This book" style defaults to the donut
   chart, and *This chapter* gets a donut with the part of the chapter read.
-  With *Progress bar* on, the next chapters show their length as bars (the
-  dashed line is the typical chapter length), *Pace* puts today's reading on a
-  bar with a mark at the daily average, and a line runs from the day you
-  started to the expected finish. On the sleep screen, when the cards don't
-  fit, they are shown without the donuts and bars.
-
-<img width="192" alt="Reading insights, Cards look, page 1" src="https://github.com/user-attachments/assets/d0654a83-e0ac-4bcc-9dae-71983fa023f7" />
-<img width="192" alt="Reading insights, Cards look, page 2" src="https://github.com/user-attachments/assets/ff31d316-89ab-4b87-b7e3-3540b28f0482" />
-<img width="192" alt="Book progress, Cards look" src="https://github.com/user-attachments/assets/db43db9a-5594-4bce-8621-89aa9420ed4b" />
-<img width="192" alt="Reading habits, Cards look" src="https://github.com/user-attachments/assets/c68119f0-cc92-489b-bd7c-5bbe258d0245" />
-
-More Cards screenshots
-
-<img width="192" alt="Reading calendar, Cards look" src="https://github.com/user-attachments/assets/4d9e38b5-ab04-4a41-b7d3-67fed5d148a7" />
-<img width="192" alt="Book progress calendar, Cards look" src="https://github.com/user-attachments/assets/a20dfb0d-a0f0-4ab7-b8f1-5371a8842dc4" />
-<img width="192" alt="Achievements, Cards look" src="https://github.com/user-attachments/assets/25b510e6-677a-4d2e-aeff-b5848b4847bf" />
-<img width="192" alt="8-week trend, Cards look" src="https://github.com/user-attachments/assets/cd840001-b4b7-4dfe-9cb1-94ddd99f6c3c" />
+  *Settings ▸ Book progress popup ▸ Chapters / Pace ▸ Progress bars* (shown
+  only in Cards) add bars: with the Chapters one on, the next chapters show
+  their length as bars (the dashed line is the typical chapter length); with
+  the Pace one on, today's reading sits on a bar with a mark at the daily
+  average, and a line runs from the day you started to the expected finish.
+  On the sleep screen, when the cards don't fit, they are shown without the
+  donuts and bars.
 
 ## 🔄 Updates
 
