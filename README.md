@@ -3,7 +3,7 @@
 #### Classic look
 
 <img width="255" height="340" alt="FileManager_2026-10-16_090136" src="https://github.com/user-attachments/assets/738dcedb-fb2b-4e1f-af6f-0e898d0b62bd" />
-<img width="255" height="340" alt="FileManager_2026-10-16_090148" src="https://github.com/user-attachments/assets/2cadd5ab-5b2b-4a87-be59-b8073b9fd9b3" />
+<img width="255" alt="kép" src="https://github.com/user-attachments/assets/5929a5c9-f3c2-42d2-b18d-3ee11fbd6693" />
 <img width="255" height="340" alt="Reader_Sebastian Bergman 6  - Egyetlen igazsag - Hjorth, Michael   Rosenfeldt, Hans #p(458) epub_p222_2026-10-10_164231" src="https://github.com/user-attachments/assets/d180c3ae-e731-48c5-90be-0564d0bb2a3d" />
 
 <br/><br/>
@@ -11,26 +11,26 @@
 <img width="255" height="340" alt="FileManager_2026-10-10_164145" src="https://github.com/user-attachments/assets/57bd2fc4-29d7-4bd9-b56a-e4cef901a9b0" />
 <img width="255" height="340" alt="FileManager_2026-07-17_152344" src="https://github.com/user-attachments/assets/4a3d2fb9-cc51-4342-a952-36f23bb1925c" />
 
+
 More screenshots
 
-<img width="192" height="256" alt="Book progress popup" src="https://github.com/user-attachments/assets/52f851b7-8955-4739-b3a7-96ff8c2cbfe6" />
+<img width="192"  alt="kép" src="https://github.com/user-attachments/assets/0c06cc51-48a5-45fd-8ed8-51576b974bac" />
 <img width="192" height="256" alt="FileManager_2026-10-10_164220" src="https://github.com/user-attachments/assets/66805663-9ae3-43c3-bf71-877f1c6038ad" />
 <img width="192" height="256" alt="FileManager_2026-07-27_074133" src="https://github.com/user-attachments/assets/de2d7a78-a657-40cf-8628-f0787a827147" />
 <img width="192" height="256" alt="Reader_Sebastian Bergman 6  - Egyetlen igazsag - Hjorth, Michael   Rosenfeldt, Hans #p(458) epub_p222_2026-10-10_164254" src="https://github.com/user-attachments/assets/b887e10c-5a26-4177-88f6-ab938f6baf54" />
 
 #### Cards look
-
-<img width="192" alt="Reading insights, Cards look, page 1" src="https://github.com/user-attachments/assets/d0654a83-e0ac-4bcc-9dae-71983fa023f7" />
-<img width="192" alt="Reading insights, Cards look, page 2" src="https://github.com/user-attachments/assets/ff31d316-89ab-4b87-b7e3-3540b28f0482" />
-<img width="192" alt="Book progress, Cards look" src="https://github.com/user-attachments/assets/db43db9a-5594-4bce-8621-89aa9420ed4b" />
-<img width="192" alt="Reading habits, Cards look" src="https://github.com/user-attachments/assets/c68119f0-cc92-489b-bd7c-5bbe258d0245" />
+<img width="192" alt="Képernyőkép 2026-11-18 130045" src="https://github.com/user-attachments/assets/6bf64ef9-bc7c-4780-83ad-d5979796c971" />
+<img width="192" alt="Képernyőkép 2026-11-18 130053" src="https://github.com/user-attachments/assets/66de7e5e-2d85-49a4-b859-bd798cb63417" />
+<img width="192" alt="Képernyőkép 2026-11-18 130205" src="https://github.com/user-attachments/assets/0dbb67b9-2849-478f-8183-3acb1eff0c64" />
+<img width="192" alt="Képernyőkép 2026-11-18 130120" src="https://github.com/user-attachments/assets/3bb28eb5-1d2a-459c-8893-987129edcba8" />
 
 More Cards screenshots
 
-<img width="192" alt="Reading calendar, Cards look" src="https://github.com/user-attachments/assets/4d9e38b5-ab04-4a41-b7d3-67fed5d148a7" />
-<img width="192" alt="Book progress calendar, Cards look" src="https://github.com/user-attachments/assets/a20dfb0d-a0f0-4ab7-b8f1-5371a8842dc4" />
+<img width="192" alt="Képernyőkép 2026-11-18 130110" src="https://github.com/user-attachments/assets/f477b032-aa62-464a-9b89-1e94a335ffc8" />
+<img width="192" alt="Képernyőkép 2026-11-18 130216" src="https://github.com/user-attachments/assets/8cef7edf-4c7e-4243-a574-593041fed061" />
+<img width="192" alt="Képernyőkép 2026-11-18 130232" src="https://github.com/user-attachments/assets/10354b18-00ef-4201-9dc3-44b69525d598" />
 <img width="192" alt="Achievements, Cards look" src="https://github.com/user-attachments/assets/25b510e6-677a-4d2e-aeff-b5848b4847bf" />
-<img width="192" alt="8-week trend, Cards look" src="https://github.com/user-attachments/assets/cd840001-b4b7-4dfe-9cb1-94ddd99f6c3c" />
 
 
 A set of reading-stats popups powered by KOReader's own statistics database.
