@@ -113,7 +113,7 @@ local Locale = load("lib/locale.lua", { PluginUtil = PluginUtil })
 local DateUtil = load("lib/dateutil.lua")
 local Colors = load("lib/colors.lua", { Locale = Locale, PluginUtil = PluginUtil, Prefs = Prefs })
 local Fonts  = load("lib/fonts.lua",  { Locale = Locale, PluginUtil = PluginUtil, Prefs = Prefs })
-local UI     = load("lib/uikit.lua",  { Colors = Colors })
+local UI     = load("lib/uikit.lua",  { Colors = Colors, PluginUtil = PluginUtil })
 local ViewSettings  = load("lib/insights_settings.lua", { Prefs = Prefs })
 UI.bindSettings(ViewSettings)
 local InsightsCache = load("lib/insights_cache.lua")
@@ -127,11 +127,17 @@ local SkimBar = load("widgets/skimbarwidget.lua", { Colors = Colors })
 local InsightsData = load("lib/insights_data.lua",
     { Locale = Locale, StatsDb = StatsDb, Cache = InsightsCache, VS = ViewSettings,
       Manual = ManualBooks, Prefs = Prefs })
+local TrendCards = load("views/cards_look/trend.lua", { Colors = Colors, UI = UI })
 local Trend = load("views/trend_view.lua",
-    { Colors = Colors, Locale = Locale, VS = ViewSettings, NativeWidgets = NativeWidgets })
+    { Colors = Colors, Locale = Locale, VS = ViewSettings, TrendCards = TrendCards,
+      NativeWidgets = NativeWidgets })
+local HeatmapCards = load("views/cards_look/heatmap.lua", {
+    Locale = Locale, VS = ViewSettings, UI = UI, Data = InsightsData,
+})
 local Heatmap = load("views/heatmap_view.lua", {
     Colors = Colors, Fonts = Fonts, Locale = Locale, VS = ViewSettings, UI = UI,
-    Data = InsightsData, Cache = InsightsCache, NativeWidgets = NativeWidgets,
+    Data = InsightsData, Cache = InsightsCache, HeatmapCards = HeatmapCards,
+    NativeWidgets = NativeWidgets,
 })
 local BookList = load("views/booklist_view.lua", {
     Colors = Colors, Locale = Locale, VS = ViewSettings, UI = UI,
@@ -144,18 +150,24 @@ local RecordsData = load("lib/records_data.lua", { StatsDb = StatsDb })
 local Achievements = load("lib/achievements.lua",
     { StatsDb = StatsDb, RecordsData = RecordsData, Data = InsightsData, Locale = Locale,
       DateUtil = DateUtil })
+local AchievementsCards = load("views/cards_look/achievements.lua",
+    { Locale = Locale, Colors = Colors, Fonts = Fonts, UI = UI })
 local AchievementsView = load("views/achievements_view.lua",
     { Achievements = Achievements, Locale = Locale, ListWidget = ListWidget,
+      VS = ViewSettings, AchievementsCards = AchievementsCards,
       NativeWidgets = NativeWidgets })
 local CoverThumbs  = load("lib/coverthumbs.lua")
 local BookInfoData = load("lib/bookinfo_data.lua",
     { Locale = Locale, BookStatsData = BookStatsData, CoverThumbs = CoverThumbs })
 local CoverFrame   = load("widgets/coverframe.lua", { Colors = Colors })
+local StreakCalendarCards = load("views/cards_look/streak_calendar.lua",
+    { Locale = Locale, Colors = Colors, UI = UI })
 local StreakCalendar = load("views/streak_calendar_view.lua", {
     Locale = Locale, Colors = Colors, Fonts = Fonts, UI = UI,
     Data = InsightsData, Prefs = Prefs, VS = ViewSettings,
     BookList = BookList, BookInfoData = BookInfoData, Ratings = Ratings,
     CoverFrame = CoverFrame, CoverThumbs = CoverThumbs, DateUtil = DateUtil,
+    StreakCalendarCards = StreakCalendarCards,
     NativeWidgets = NativeWidgets,
 })
 local Records = load("views/records_view.lua", {
@@ -181,8 +193,16 @@ local InsightsCharts = load("views/insights_charts.lua", {
     Locale = Locale, Colors = Colors, UI = UI, VS = ViewSettings,
     Trend = Trend, DateUtil = DateUtil,
 })
+local InsightsValues = load("lib/insights_values.lua", { Locale = Locale, VS = ViewSettings })
+local InsightsCards = load("views/cards_look/sections.lua", {
+    Locale = Locale, Colors = Colors, VS = ViewSettings, UI = UI, Data = InsightsData,
+    Achievements = Achievements, Streak = StreakCalendar,
+    Charts = InsightsCharts, Headers = InsightsHeaders, Donut = Donut, Values = InsightsValues,
+})
+local InsightsPages = load("views/cards_look/pages.lua", { Colors = Colors, UI = UI })
 local Insights = load("views/insights_view.lua", {
     Headers = InsightsHeaders, Charts = InsightsCharts,
+    InsightsCards = InsightsCards, Pages = InsightsPages, Values = InsightsValues,
     Locale = Locale, Colors = Colors, Fonts = Fonts,
     PopupUtil = PopupUtil, VS = ViewSettings, Cache = InsightsCache, UI = UI,
     Trend = Trend, Heatmap = Heatmap, BookList = BookList, Data = InsightsData,
@@ -190,23 +210,29 @@ local Insights = load("views/insights_view.lua", {
     Prefs = Prefs, Streak = StreakCalendar, Records = Records,
     YearShelf = YearShelf, NativeWidgets = NativeWidgets,
 })
+local BookCalendarCards = load("views/cards_look/book_calendar.lua", { Colors = Colors, UI = UI })
 local BookCalendar = load("views/book_calendar_view.lua", {
     Locale = Locale, Colors = Colors, Fonts = Fonts, Prefs = Prefs, VS = ViewSettings,
     BookProgress = BookProgress, UI = UI, CalendarData = BookCalendarData,
-    DateUtil = DateUtil,
+    DateUtil = DateUtil, BookCalendarCards = BookCalendarCards,
+})
+local BookProgressCards = load("views/cards_look/book_progress.lua", {
+    Locale = Locale, Colors = Colors, Fonts = Fonts, VS = ViewSettings, UI = UI,
+    ChapterBar = ChapterBar, SkimBar = SkimBar, Donut = Donut, Pages = InsightsPages,
 })
 local StatsPopup = load("views/book_stats_view.lua", {
     Locale = Locale, Colors = Colors, Fonts = Fonts, Prefs = Prefs,
     BookProgress = BookProgress, BookCalendar = BookCalendar,
     ChapterInfo = ChapterInfo, ChapterBar = ChapterBar,
     Donut = Donut, SkimBar = SkimBar, UI = UI,
-    BookStatsData = BookStatsData, VS = ViewSettings,
+    BookStatsData = BookStatsData, VS = ViewSettings, BookCards = BookProgressCards,
 })
 local LastBook = load("lib/lastbook.lua", { StatsPopup = StatsPopup, BookInfoData = BookInfoData })
 -- updater.lua uses `goto continue`, which LuaJIT (KOReader) accepts but
 -- plain Lua 5.1 doesn't parse, so it is stubbed rather than loaded here.
 local Updater = { checkForUpdates = function() end }
 local About   = load("views/about.lua", { Locale = Locale, Updater = Updater, PopupUtil = PopupUtil })
+load("lib/section_order.lua", { Locale = Locale, VS = ViewSettings })
 local Menu    = load("lib/menu.lua", { Locale = Locale })
 local SleepScreen = load("lib/sleepscreen.lua", {
     Locale = Locale, Prefs = Prefs,
@@ -226,20 +252,78 @@ check("all modules load without error", true)
 check("uikit exports the layout helpers", type(UI.buildLayout) == "function")
 check("uikit exports the merged row helpers",
       type(UI.buildTwoColRow) == "function" and type(UI.addSectionWithRow) == "function")
-check("trend exposes Popup + chart builders",
-      Trend.Popup ~= nil and type(Trend.buildLine8WeekChart) == "function"
-      and type(Trend.trendTitle) == "function" and type(Trend.buildContent) == "function")
+check("trend exposes Popup + what the insights view calls",
+      Trend.Popup ~= nil and type(Trend.buildContent) == "function"
+      and type(Trend.buildLine8WeekChart) == "function"
+      and type(Trend.modeOf) == "function" and type(Trend.trendTitle) == "function"
+      and type(Trend.popupOnTap) == "function" and type(Trend.popupOnHold) == "function")
 check("heatmap exposes Popup, builders and bind",
       Heatmap.Popup ~= nil and type(Heatmap.bind) == "function"
       and type(Heatmap.buildRangeHeatmapWidget) == "function"
       and type(Heatmap.getHeatmapPeriodRange) == "function")
-check("booklist exposes Checklist, lists and bind",
-      type(BookList.showFinishedChecklist) == "function" and type(BookList.bind) == "function"
-      and type(BookList.showBooksForPeriod) == "function")
+check("booklist exposes its lists and bind",
+      type(BookList.bind) == "function" and type(BookList.showBookList) == "function"
+      and type(BookList.showBooksForPeriod) == "function"
+      and type(BookList.showFinishedChecklist) == "function")
 check("chapter bar exposes build + settings",
       type(ChapterBar.build) == "function" and type(ChapterBar.readHeightSetting) == "function"
       and ChapterBar.PAGE_SIZE == 25)
 check("menu exposes build", type(Menu.build) == "function")
+check("insights headers + charts expose their builders",
+      type(InsightsHeaders.buildYearHeader) == "function"
+      and type(InsightsHeaders.buildYearRow) == "function"
+      and type(InsightsHeaders.buildWeekNavHeader) == "function"
+      and type(InsightsCharts.buildMonthlyChart) == "function"
+      and type(InsightsCharts.buildWeeklyChart) == "function")
+check("uikit exports tappableCell", type(UI.tappableCell) == "function")
+
+-- UI.alignOnText: the icon sits on the middle of the capital letters, in a
+-- box as tall as the text. Stubbed text: 40 px high, baseline at 30, face
+-- size 30 -> cap height 21.6, cap middle at 30 - 10.8 = 19.2.
+do
+    local saved_size = widget_stub.getSize
+    widget_stub.getSize = function(self) return { w = rawget(self, "width") or 40, h = rawget(self, "height") or 40 } end
+    rawset(widget_stub, "getBaseline", function() return 30 end)
+    local face = { size = 30 }
+
+    local small = UI.iconOnText("caret", 10, face)
+    check("alignOnText box is icon-wide and text-high",
+          small.dimen.w == 10 and small.dimen.h == 40)
+    check("alignOnText centres the icon on the cap middle",
+          small[1].overlap_offset[2] == math.floor(19.2 - 5 + 0.5))
+
+    -- After a word: on the lowercase middle, 30 - 30 * 0.54 / 2 = 21.9.
+    local after_word = UI.iconOnText("caret", 10, face, true)
+    check("alignOnText centres a mark after a word on the lowercase middle",
+          after_word[1].overlap_offset[2] == math.floor(21.9 - 5 + 0.5))
+
+    local big = UI.alignOnText(widget_stub:new{ width = 40, height = 40 }, face)
+    check("alignOnText keeps a text-high icon inside the box",
+          big[1].overlap_offset[2] == 0)
+
+    widget_stub.getSize = saved_size
+    rawset(widget_stub, "getBaseline", nil)
+end
+check("insights values expose what both looks call",
+      type(InsightsValues.streakValues) == "function"
+      and type(InsightsValues.yearlyValues) == "function"
+      and type(InsightsValues.weekData) == "function"
+      and type(InsightsValues.weekValues) == "function"
+      and type(InsightsValues.weekDiff) == "function"
+      and type(InsightsValues.timeGoalValues) == "function"
+      and type(InsightsValues.timeGoalText) == "function"
+      and type(InsightsValues.goalPercent) == "function"
+      and type(InsightsValues.goalPace) == "function"
+      and type(InsightsValues.allTimeValues) == "function")
+check("cards look exposes buildSections + paginate",
+      type(InsightsCards.buildSections) == "function"
+      and type(InsightsPages.paginate) == "function")
+check("look is Classic by default", ViewSettings.readLookIsCards() == false
+      and ViewSettings.readLookSetting() == ViewSettings.LOOK_CLASSIC)
+ViewSettings.saveLookSetting(ViewSettings.LOOK_CARDS)
+check("look switches to Cards", ViewSettings.readLookIsCards() == true)
+ViewSettings.saveLookSetting(ViewSettings.LOOK_CLASSIC)
+check("look switches back to Classic", ViewSettings.readLookIsCards() == false)
 check("insights data exposes its queries and batch helper",
       type(InsightsData.withBatchConnection) == "function"
       and type(InsightsData.getBooksForPeriod) == "function"

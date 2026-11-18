@@ -370,7 +370,7 @@ local function buildMonthlyLineChart(popup_self, monthly_data, layout, fonts)
     }
 end
 
-local function buildMonthlyChart(popup_self, monthly_data, layout, fonts)
+local function buildMonthlyChart(popup_self, monthly_data, layout, fonts, cards)
     if #monthly_data == 0 then return nil end
 
     if VS.readMonthlyStyleSetting() == VS.MONTHLY_STYLE_LINE then
@@ -462,7 +462,7 @@ local function buildMonthlyChart(popup_self, monthly_data, layout, fonts)
                 value_label:free()
             end
             if bar_h > 0 then
-                table.insert(bar_column, Colors.newBar(bar_width, bar_h, bar_color))
+                table.insert(bar_column, (cards and Colors.newTopRoundBar or Colors.newBar)(bar_width, bar_h, bar_color))
             end
             table.insert(bar_column, Colors.newBar(bar_width, baseline_h, bar_color))
 
@@ -548,7 +548,8 @@ end
 -- carry future (drawn empty). Which end of the row the newest day is drawn
 -- at follows the "Bar order" setting (rightmost by default, so time runs
 -- left to right); the data index stays the same either way.
-local function buildWeeklyChart(popup_self, daily_data, layout, fonts, mode)
+-- `cards` (Cards look): all bars in the active bar color, today's hatched.
+local function buildWeeklyChart(popup_self, daily_data, layout, fonts, mode, cards)
     if not daily_data or #daily_data == 0 then return nil end
     mode = VS.normalizeWeeklyChartMode(mode)
     local show_pages = (mode == VS.WEEKLY_CHART_MODE_PAGES)
@@ -699,6 +700,7 @@ local function buildWeeklyChart(popup_self, daily_data, layout, fonts, mode)
 
         local is_today_bar = isTodayEntry(d, i)
         local bar_color = (WEEKLY_CHART_HIGHLIGHT_TODAY and is_today_bar) and Colors.activeBar() or Colors.inactiveBar()
+        if cards then bar_color = Colors.cardsColor("active_bar") end
 
         local val_str
         if d.future then
@@ -719,7 +721,9 @@ local function buildWeeklyChart(popup_self, daily_data, layout, fonts, mode)
         local bar_column = VerticalGroup:new{ align = "center" }
         table.insert(bar_column, centered_label)
         if bar_h > 0 then
-            table.insert(bar_column, Colors.newBar(bar_width, bar_h, bar_color))
+            local hatched = cards and WEEKLY_CHART_HIGHLIGHT_TODAY and is_today_bar and bar_h > 2 * Size.border.default
+            table.insert(bar_column, hatched and Colors.newHatchBar(bar_width, bar_h, bar_color)
+                                             or  (cards and Colors.newTopRoundBar or Colors.newBar)(bar_width, bar_h, bar_color))
         end
         table.insert(bar_column, Colors.newBar(bar_width, baseline_h, bar_color))
 

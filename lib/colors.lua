@@ -51,6 +51,7 @@ local InputDialog = require("ui/widget/inputdialog")
 local LineWidget  = require("ui/widget/linewidget")
 local UIManager    = require("ui/uimanager")
 local Widget      = require("ui/widget/widget")
+local Screen      = require("device").screen
 
 -- Shared modules passed in by main.lua: Locale (translations), PluginUtil
 -- (plugin dir + loader) and Prefs (G_reader_settings wrappers).
@@ -144,7 +145,7 @@ end
 -- Order the "Colors" menu is built in (flat entries only - the 5 heatmap
 -- shades live in their own "Heatmap" submenu, see HEATMAP_KEY_ORDER below).
 local KEY_ORDER = {
-    "active_bar", "inactive_bar", "trend_line", "separator", "label", "value", "section", "small", "header_bg", "cover_shadow",
+    "active_bar", "inactive_bar", "trend_line", "separator", "card_border", "label", "value", "section", "small", "header_bg", "cover_shadow",
 }
 
 -- The year-heatmap shades, grouped together under one "Heatmap" submenu
@@ -188,6 +189,7 @@ local DEFAULTS = {
     inactive_bar = "#AAAAAA", -- Blitbuffer.COLOR_GRAY (KOReader status bar background)
     trend_line   = "#000000",
     separator    = "#888888", -- Blitbuffer.COLOR_DARK_GRAY
+    card_border  = "#888888",
     label        = "#000000",
     value        = "#000000",
     section      = "#000000",
@@ -289,6 +291,22 @@ end
 
 local M = {}
 
+-- Cards look: the color of setting `name`, except the thin dividers inside
+-- the cards, which are light gray until the user changes the separator
+-- color in Settings > Colors.
+local CARDS_DEFAULTS = {
+    divider      = { key = "separator",    hex = "#CCCCCC" },
+}
+local _cards_cache = {}
+
+function M.cardsColor(name)
+    local d = CARDS_DEFAULTS[name]
+    if not d then return M.getColor(name) end
+    if readHex(d.key) ~= DEFAULTS[d.key] then return M.getColor(d.key) end
+    if not _cards_cache[name] then _cards_cache[name] = buildColor(d.hex) end
+    return _cards_cache[name]
+end
+
 function M.getDefaultHex(key)
     return DEFAULTS[key]
 end
@@ -308,12 +326,132 @@ function M.getColor(key)
     return color
 end
 
+-- Corner radius of a bar `w` x `h` with rounded top corners.
+local function topRadius(w, h)
+    return math.min(Screen:scaleBySize(4), math.floor(w / 2), h)
+end
+
+-- How far row `row` (0 = top) of a shape whose top corners have radius `r`
+-- starts in from each side.
+local function cornerInset(r, row)
+    if row >= r then return 0 end
+    local dy = r - row - 0.5
+    return r - math.floor(math.sqrt(r * r - dy * dy) + 0.5)
+end
+
+-- A bar with its two top corners rounded (Cards look), or all four with
+-- `bottom`. Drawn row by row: paintRoundedRect would round the bottom
+-- corners too, and the color may be RGB (paintRectRGB32), as in ColorBar.
+local TopRoundBar = Widget:extend{
+    width  = nil,
+    height = nil,
+    color  = nil,
+    bottom = false,
+    radius = nil,
+}
+
+function TopRoundBar:getSize()
+    return Geom:new{ w = self.width, h = self.height }
+end
+
+function TopRoundBar:paintTo(bb, x, y)
+    local c, w, h = self.color, self.width, self.height
+    if not c or w <= 0 or h <= 0 then return end
+    local function rect(rx, ry, rw, rh)
+        if rw <= 0 or rh <= 0 then return end
+        if Blitbuffer.isColor8(c) then
+            bb:paintRect(rx, ry, rw, rh, c)
+        else
+            bb:paintRectRGB32(rx, ry, rw, rh, c)
+        end
+    end
+    local r = math.min(self.radius or topRadius(w, h), math.floor(w / 2), h)
+    local rb = 0
+    if self.bottom then
+        r = math.min(r, math.floor(h / 2))
+        rb = r
+    end
+    for row = 0, r - 1 do
+        local inset = cornerInset(r, row)
+        rect(x + inset, y + row, w - 2 * inset, 1)
+        if self.bottom then
+            rect(x + inset, y + h - 1 - row, w - 2 * inset, 1)
+        end
+    end
+    rect(x, y + r, w, h - r - rb)
+end
+
+-- A bar drawn as diagonal stripes inside an outline, with its two top
+-- corners rounded (today's bar in the Cards look weekly chart). Both take
+-- the gray of `color`. Drawn row by row: the outline follows the corners,
+-- and the stripes keep hatchRect's pattern, (column + row) % (2 * stripe)
+-- counted from the bar's top-left corner.
+local HatchBar = Widget:extend{
+    width  = nil,
+    height = nil,
+    color  = nil,
+}
+
+function HatchBar:getSize()
+    return Geom:new{ w = self.width, h = self.height }
+end
+
+function HatchBar:paintTo(bb, x, y)
+    local c, w, h = self.color, self.width, self.height
+    if not c or w <= 0 or h <= 0 then return end
+    if not Blitbuffer.isColor8(c) then c = c:getColor8() end
+    local function span(sx, py, len)
+        if len > 0 then bb:paintRect(sx, py, len, 1, c) end
+    end
+    local r   = topRadius(w, h)
+    local bw  = math.min(Size.border.default, math.floor(h / 2))
+    local ri  = math.max(0, r - bw)
+    local sw  = math.ceil(Size.line.thick)
+    local sw2 = 2 * sw
+    for row = 0, h - 1 do
+        local py = y + row
+        local o  = cornerInset(r, row)
+        if row < bw or row >= h - bw or w - 2 * bw <= 0 then
+            span(x + o, py, w - 2 * o)
+        else
+            local i = bw + cornerInset(ri, row - bw)
+            span(x + o, py, i - o)
+            span(x + w - i, py, i - o)
+            local px = i
+            while px < w - i do
+                local phase = (px + row) % sw2
+                if phase < sw then
+                    local run = math.min(sw - phase, w - i - px)
+                    span(x + px, py, run)
+                    px = px + run
+                else
+                    px = px + sw2 - phase
+                end
+            end
+        end
+    end
+end
+
+function M.newHatchBar(width, height, color)
+    return HatchBar:new{ width = width, height = height, color = color }
+end
+
 -- Solid-color rectangle (bar segment, baseline, trend dot, ...) that
 -- always renders the given color correctly - see the ColorBar widget
 -- above. `color` is a Blitbuffer color object, e.g. from getColor()/
 -- activeBar()/inactiveBar().
 function M.newBar(width, height, color)
     return ColorBar:new{ width = width, height = height, color = color }
+end
+
+-- Like newBar, with the two top corners rounded (Cards look bar charts).
+function M.newTopRoundBar(width, height, color)
+    return TopRoundBar:new{ width = width, height = height, color = color }
+end
+
+-- Like newBar, with all four corners rounded (Cards look heatmap cells).
+function M.newRoundBar(width, height, color, radius)
+    return TopRoundBar:new{ width = width, height = height, color = color, bottom = true, radius = radius }
 end
 
 -- Divider lines (Settings > Appearance > Divider lines, see Prefs.readDividerStyle):
@@ -343,8 +481,9 @@ end
 
 -- Vertical divider line: hidden when the dividers are off, otherwise
 -- unchanged (the thickness setting only concerns the horizontal ones).
-function M.vLine(width, height)
-    local bar = ColorBar:new{ width = width, height = height, color = M.separator() }
+-- `color` (optional) replaces the separator color.
+function M.vLine(width, height, color)
+    local bar = ColorBar:new{ width = width, height = height, color = color or M.separator() }
     if M.separatorMode() == "off" then bar.color = nil end
     return bar
 end
@@ -398,6 +537,7 @@ local function labelFor(key)
         inactive_bar = _("Inactive column color"),
         trend_line   = _("Trend chart line color"),
         separator    = _("Separator line color"),
+        card_border  = _("Card border color"),
         label        = _("Label color"),
         value        = _("Value color"),
         section      = _("Section color"),

@@ -11,8 +11,13 @@ Run from the plugin root: lua5.1 tests/test_records.lua
 ]]--
 
 local files = {}
-local CACHE = "/tmp/rec/records.lua"
-package.preload["readinginsights_paths"] = function() return { cacheFile = function(name) return "/tmp/rec/" .. name end } end
+package.preload["datastorage"] = function() return { getSettingsDir = function() return "/tmp/rec" end } end
+-- lib/paths.lua registers itself as this module when main.lua loads it; the
+-- records cache is <settings>/readinginsights/cache/records.lua.
+local CACHE = "/tmp/rec/readinginsights/cache/records.lua"
+package.preload["readinginsights_paths"] = function()
+    return { cacheFile = function(name) return "/tmp/rec/readinginsights/cache/" .. name end }
+end
 package.preload["luasettings"] = function()
     local LS = {}; LS.__index = LS
     function LS:open(p) files[p] = files[p] or {}; return setmetatable({ data = files[p] }, LS) end

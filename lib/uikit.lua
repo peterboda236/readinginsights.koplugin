@@ -39,20 +39,26 @@ local Blitbuffer = require("ffi/blitbuffer")
 local Device = require("device")
 local FrameContainer = require("ui/widget/container/framecontainer")
 local Geom = require("ui/geometry")
+local GestureRange = require("ui/gesturerange")
 local HorizontalGroup = require("ui/widget/horizontalgroup")
 local HorizontalSpan = require("ui/widget/horizontalspan")
+local IconWidget = require("ui/widget/iconwidget")
+local InputContainer = require("ui/widget/container/inputcontainer")
 local LeftContainer = require("ui/widget/container/leftcontainer")
+local RightContainer = require("ui/widget/container/rightcontainer")
+local OverlapGroup = require("ui/widget/overlapgroup")
 local Size = require("ui/size")
 local TextBoxWidget = require("ui/widget/textboxwidget")
 local TextWidget = require("ui/widget/textwidget")
 local VerticalGroup = require("ui/widget/verticalgroup")
 local VerticalSpan = require("ui/widget/verticalspan")
+local Widget = require("ui/widget/widget")
 local Screen = Device.screen
 
 -- Shared modules, passed in as one named table by main.lua (see there).
 local deps = ...
-local Colors =
-    deps.Colors
+local Colors, PluginUtil =
+    deps.Colors, deps.PluginUtil
 
 local M = {}
 
@@ -129,7 +135,8 @@ end
 -- `no_top_pad` / `no_bottom_pad` drop that end's breathing room, so the line
 -- runs flush into the neighbouring row's line (see buildTwoColRow's
 -- `join_above` / `join_below`).
-function M.buildColumnSeparator(column_gap, height, no_top_pad, no_bottom_pad)
+-- `line_w` (optional) is the line's width, Size.line.medium by default.
+function M.buildColumnSeparator(column_gap, height, no_top_pad, no_bottom_pad, line_w, line_color)
     if M.classicLines() then no_top_pad, no_bottom_pad = false, false end
     local v_padding = Size.padding.default
     local top_pad    = no_top_pad    and 0 or v_padding
@@ -139,7 +146,7 @@ function M.buildColumnSeparator(column_gap, height, no_top_pad, no_bottom_pad)
         VerticalGroup:new{
             align = "center",
             VerticalSpan:new{ width = top_pad },
-            Colors.vLine(Size.line.medium, height - top_pad - bottom_pad),
+            Colors.vLine(line_w or Size.line.medium, height - top_pad - bottom_pad, line_color),
             VerticalSpan:new{ width = bottom_pad },
         },
         HorizontalSpan:new{ width = column_gap },
@@ -266,7 +273,8 @@ end
 --   flush_bottom = true the line runs flush to the bottom of the row (used by
 --                     header rows, with M.buildSplitGap carrying the line on
 --                     down to the value row under the header)
-function M.buildTwoColRow(left_widget, right_widget, layout, hide_separator, opts)
+-- `line_w` (optional): width of the vertical line.
+function M.buildTwoColRow(left_widget, right_widget, layout, hide_separator, opts, line_w, line_color)
     opts = (type(opts) == "table" and not M.classicLines()) and opts or {}
     local extra = opts.join_below or 0
     if extra > 0 then
@@ -277,7 +285,7 @@ function M.buildTwoColRow(left_widget, right_widget, layout, hide_separator, opt
     local separator = hide_separator
         and HorizontalSpan:new{ width = layout.separator_width }
         or  M.buildColumnSeparator(layout.column_gap, row_height,
-                opts.join_above and true or false, (extra > 0) or (opts.flush_bottom and true or false))
+                opts.join_above and true or false, (extra > 0) or (opts.flush_bottom and true or false), line_w, line_color)
     return HorizontalGroup:new{
         align = "center",
         M.fixedCol(left_widget,  layout.col_width, row_height),
@@ -393,6 +401,22 @@ function M.addSectionWithRow(sections, header_widget, row, layout, opts)
     end
 end
 
+-- `widget` in a `col_width` wide cell that runs `callback` on a tap.
+function M.tappableCell(widget, col_width, callback)
+    local cell = InputContainer:new{
+        dimen = Geom:new{ x = 0, y = 0, w = col_width, h = widget:getSize().h },
+        widget,
+    }
+    cell.ges_events = {
+        Tap = { GestureRange:new{ ges = "tap", range = cell.dimen } },
+    }
+    function cell:onTap()
+        callback()
+        return true
+    end
+    return cell
+end
+
 -- Is (x, y) inside this widget's laid-out area? Used by the popups' own tap
 -- dispatch, where one handler decides which of several regions was hit.
 function M.hitTest(widget, x, y)
@@ -436,6 +460,629 @@ end
 -- The "nothing to show" placeholder for a value/unit pair.
 function M.emptyValue()
     return { value = "", unit = "" }
+end
+
+-- ---------------------------------------------------------------------
+-- Section cards: a rounded frame in the divider color around a section.
+-- With the divider lines off the frame has no border.
+-- ---------------------------------------------------------------------
+function M.cardBorder()
+    return (Colors.separatorMode() == "off") and 0 or Size.border.default
+end
+
+function M.cardRadius()
+    return Screen:scaleBySize(8)
+end
+
+-- FrameContainer draws its border with paintBorder, which takes a gray
+-- color, so a custom RGB color is drawn in its gray.
+local function grayColor(color)
+    if Blitbuffer.isColor8(color) then return color end
+    return color:getColor8()
+end
+
+local function isGray(color)
+    return Blitbuffer.isColor8(color) or (color.r == color.g and color.g == color.b)
+end
+
+-- A FrameContainer whose border may be any color: a gray one is drawn as
+-- before, a colored one with paintBorderRGB32 over a white border.
+local CardFrame = FrameContainer:extend{}
+
+function CardFrame:paintTo(bb, x, y)
+    FrameContainer.paintTo(self, bb, x, y)
+    if self._rgb_border and self.bordersize > 0 then
+        local size = self:getSize()
+        bb:paintBorderRGB32(x, y, self.width or size.w, self.height or size.h,
+            self.bordersize, self._rgb_border, self.radius)
+    end
+end
+
+-- FrameContainer:new(args), with args.color drawn in its own color.
+function M.cardFrame(args)
+    local color = args.color
+    if color and not isGray(color) then
+        args._rgb_border = color
+        args.color = Blitbuffer.COLOR_WHITE
+    elseif color then
+        args.color = grayColor(color)
+    end
+    return CardFrame:new(args)
+end
+
+-- Fills a rounded rect in `color`, gray or not.
+local function paintRoundedRect(bb, x, y, w, h, color, r)
+    if isGray(color) then
+        bb:paintRoundedRect(x, y, w, h, grayColor(color), r)
+    else
+        bb:paintRoundedRectRGB32(x, y, w, h, color, r)
+    end
+end
+
+-- Width left for the content of a card `width` pixels wide.
+function M.cardInnerWidth(width)
+    return width - 2 * (M.cardBorder() + Size.padding.default)
+end
+
+-- The layout to build a full-width card's content with: no side padding,
+-- content_width/col_width sized to the inside of the card.
+function M.cardLayout(layout)
+    return M.buildLayout(M.cardInnerWidth(layout.content_width), 0, layout.column_gap)
+end
+
+function M.buildCard(content, width)
+    return M.cardFrame{
+        background     = Blitbuffer.COLOR_WHITE,
+        bordersize     = M.cardBorder(),
+        color          = Colors.cardsColor("card_border"),
+        radius         = M.cardRadius(),
+        padding        = 0,
+        padding_top    = Size.padding.small,
+        padding_bottom = Size.padding.small,
+        padding_left   = Size.padding.default,
+        padding_right  = Size.padding.default,
+        M.fixedCol(content, M.cardInnerWidth(width)),
+    }
+end
+
+-- The one gap of the popups: between two columns (layout.column_gap), two
+-- cards side by side or stacked, and above the first card under the title
+-- line.
+function M.gap()
+    return Size.padding.large
+end
+
+-- Appends a full-width card (or a row of cards) and the gap under it; the
+-- first one on the page also gets a gap above it.
+function M.addCard(sections, card, layout)
+    if #sections == 0 then
+        table.insert(sections, VerticalSpan:new{ width = M.gap() })
+    end
+    table.insert(sections, M.padded(layout.padding_h, card))
+    table.insert(sections, VerticalSpan:new{ width = M.gap() })
+end
+
+-- A pill-shaped two-part switch ("Time | Pages"); the `active` part (1 or
+-- 2) is a filled pill inside the outline.
+function M.buildSegmented(labels, active, face)
+    local fg    = grayColor(Colors.value())
+    local inset = Size.padding.tiny
+    local group = HorizontalGroup:new{ align = "center" }
+    local seg_h = 0
+    for i, text in ipairs(labels) do
+        local on = (i == active)
+        local tw = TextWidget:new{ text = text, face = face, fgcolor = on and Blitbuffer.COLOR_WHITE or fg }
+        seg_h = math.max(seg_h, tw:getSize().h)
+        table.insert(group, FrameContainer:new{
+            background     = on and fg or Blitbuffer.COLOR_WHITE,
+            bordersize     = 0,
+            radius         = math.floor(tw:getSize().h / 2),
+            padding        = 0,
+            padding_left   = Size.padding.default,
+            padding_right  = Size.padding.default,
+            tw,
+        })
+    end
+    return FrameContainer:new{
+        background = Blitbuffer.COLOR_WHITE,
+        bordersize = Size.border.default,
+        color      = fg,
+        radius     = math.floor(seg_h / 2) + inset + Size.border.default,
+        padding    = inset,
+        group,
+    }
+end
+
+-- A pill around a short text: filled with white text ("▲ 2 books ahead of
+-- pace", "★ new"), or with `outline` just its border ("Reading time per
+-- month ▾"). `max_width` (optional) caps the whole pill; `after` (optional)
+-- is a widget after the text, e.g. a "⇄".
+function M.buildPill(text, face, outline, max_width, after)
+    local fg  = grayColor(Colors.value())
+    local pad = Size.padding.default
+    local border = outline and Size.border.default or 0
+    local inset  = outline and Size.padding.tiny or 0
+    local after_w = after and (Size.padding.small + after:getSize().w) or 0
+    local tw = TextWidget:new{
+        text = text, face = face, fgcolor = outline and fg or Blitbuffer.COLOR_WHITE,
+        max_width = max_width and math.max(1, max_width - 2 * (pad + border) - after_w) or nil,
+    }
+    local content = tw
+    if after then
+        content = HorizontalGroup:new{ align = "center", tw, HorizontalSpan:new{ width = Size.padding.small }, after }
+    end
+    return FrameContainer:new{
+        background    = outline and Blitbuffer.COLOR_WHITE or fg,
+        bordersize    = border,
+        color         = fg,
+        radius        = math.floor(tw:getSize().h / 2) + inset + border,
+        padding       = inset,
+        padding_left  = pad,
+        padding_right = pad,
+        content,
+    }
+end
+
+-- One of the plugin's own icons (icons/<name>.svg), `size` pixels square.
+function M.icon(name, size)
+    return IconWidget:new{
+        file   = PluginUtil.dir .. "icons/" .. name .. ".svg",
+        width  = size,
+        height = size,
+        alpha  = true,
+    }
+end
+
+-- A line of text in `face`: its height, its baseline (from the top) and the
+-- height of its capital letters (`lowercase`: of its lowercase letters).
+local function textMetrics(face, lowercase)
+    local probe = TextWidget:new{ text = "A", face = face }
+    local h, baseline = probe:getSize().h, probe:getBaseline()
+    probe:free()
+    local face_px = tonumber(face and face.size)
+    local letter_h
+    if lowercase then
+        letter_h = face_px and (face_px * 0.54) or (h * 0.39)
+    else
+        letter_h = face_px and (face_px * 0.72) or (h * 0.52)
+    end
+    return h, baseline, letter_h
+end
+
+-- The room a line of text in `face` has above its capital letters. A widget
+-- without that room (a ring) needs it above itself to start where the
+-- letters of the text next to or above it start.
+function M.capTopRoom(face)
+    local _h, baseline, cap_h = textMetrics(face)
+    return math.max(0, math.floor(baseline - cap_h + 0.5))
+end
+
+-- `widget` (an icon) in a box as tall as a line of text in `face`, centred on
+-- the middle of its capital letters, so in a HorizontalGroup{ align = "center" }
+-- it lines up with that text. Centring on the text's box instead would leave
+-- the icon high, as the box also holds the room below the baseline. With
+-- `lowercase` it is centred on the middle of the lowercase letters instead,
+-- where the "›" glyph sits: for a mark right after a word, next to which the
+-- cap middle looks high.
+function M.alignOnText(widget, face, lowercase)
+    local h, baseline, letter_h = textMetrics(face, lowercase)
+    local size = widget:getSize()
+    local y = math.floor(baseline - letter_h / 2 - size.h / 2 + 0.5)
+    widget.overlap_offset = { 0, math.max(0, math.min(h - size.h, y)) }
+    return OverlapGroup:new{ dimen = Geom:new{ w = size.w, h = h }, widget }
+end
+
+-- One of the plugin's icons, `size` px square, lined up with text in `face`
+-- (`lowercase`: as in alignOnText).
+function M.iconOnText(name, size, face, lowercase)
+    return M.alignOnText(M.icon(name, size), face, lowercase)
+end
+
+-- An icon next to text in `face`. An icon, not the text glyph: the glyph sits
+-- low in its line box and would not line up with the text.
+local function textIcon(name, face, scale, lowercase)
+    local probe = TextWidget:new{ text = "A", face = face }
+    local h = probe:getSize().h
+    probe:free()
+    return M.iconOnText(name, math.floor(h * scale), face, lowercase)
+end
+
+-- "›": tapping opens something. `after_word`: it follows a word (e.g. a card
+-- title) rather than a number, see alignOnText.
+function M.chevron(face, after_word)
+    return textIcon("chevron", face, 0.6, after_word)
+end
+
+-- "⇄": tapping switches what the value shows.
+function M.swapIcon(face)
+    return textIcon("swap", face, 0.45)
+end
+
+-- A card's title row: icon, title, a pen when the card can be long-pressed
+-- (`hold_hint`; "menu" shows a "▾" instead: the card opens a list), and an
+-- optional widget (e.g. a switch) on the right. `after_title` (optional) sits
+-- right after the title, e.g. a "›" when the right side holds a switch.
+function M.cardHeader(icon, title, face, width, hold_hint, right, after_title)
+    local probe = TextWidget:new{ text = title, face = face }
+    local text_h = probe:getSize().h
+    probe:free()
+    local icon_sz = math.floor(text_h * 0.7)
+    local pen_sz  = math.floor(text_h * 0.5)
+    local gap     = Size.padding.default
+    local fixed = 0
+    if icon then fixed = fixed + icon_sz + gap end
+    if hold_hint then fixed = fixed + gap + pen_sz end
+    if right then fixed = fixed + gap + right:getSize().w end
+    if after_title then fixed = fixed + gap + after_title:getSize().w end
+
+    local title_w = TextWidget:new{
+        text = title, face = face, fgcolor = Colors.section(),
+        max_width = math.max(1, width - fixed),
+    }
+    local row = HorizontalGroup:new{ align = "center" }
+    if icon then
+        table.insert(row, M.iconOnText(icon, icon_sz, face))
+        table.insert(row, HorizontalSpan:new{ width = gap })
+    end
+    table.insert(row, title_w)
+    if after_title then
+        table.insert(row, HorizontalSpan:new{ width = gap })
+        table.insert(row, after_title)
+    end
+    if hold_hint then
+        table.insert(row, HorizontalSpan:new{ width = gap })
+        table.insert(row, M.iconOnText(hold_hint == "menu" and "caret" or "pen", pen_sz, face))
+    end
+    if right then
+        -- Measured from the parts, not row:getSize(): that would cache the
+        -- row's layout before the last two widgets are in it.
+        local span = width - fixed - title_w:getSize().w + gap
+        table.insert(row, HorizontalSpan:new{ width = math.max(0, span) })
+        table.insert(row, right)
+    end
+    return row
+end
+
+-- A period / month header for the Cards look: the title centered between
+-- chevron icons; a hidden arrow keeps its slot, so the title doesn't move
+-- while paging. Returns the header, the left / right arrow frames (nil when
+-- hidden), the two slot widths and the header height - what the popups place
+-- their tap zones with.
+function M.buildNavHeader(title_str, width, face, prev_available, next_available)
+    local title_w = TextWidget:new{ text = title_str, face = face, fgcolor = Colors.section() }
+    local icon_sz = math.floor(title_w:getSize().h * 0.7)
+    local pad = Size.padding.default
+    local slot_w = icon_sz + 2 * pad
+
+    local function arrow(icon, visible)
+        if not visible then return HorizontalSpan:new{ width = slot_w }, nil end
+        local frame = FrameContainer:new{
+            bordersize = 0, margin = 0, padding = 0,
+            padding_left = pad, padding_right = pad,
+            M.alignOnText(IconWidget:new{ icon = icon, width = icon_sz, height = icon_sz }, face),
+        }
+        return frame, frame
+    end
+    local left, left_frame   = arrow("chevron.left", prev_available)
+    local right, right_frame = arrow("chevron.right", next_available)
+
+    local rest = math.max(0, width - 2 * slot_w - title_w:getSize().w)
+    local header = FrameContainer:new{
+        bordersize = 0, margin = 0, padding = 0,
+        padding_top = Size.padding.small, padding_bottom = Size.padding.small,
+        HorizontalGroup:new{
+            align = "center",
+            left,
+            HorizontalSpan:new{ width = math.floor(rest / 2) },
+            title_w,
+            HorizontalSpan:new{ width = rest - math.floor(rest / 2) },
+            right,
+        },
+    }
+    return header, left_frame, right_frame, slot_w, slot_w, header:getSize().h
+end
+
+-- A thin rounded outline in the card border color, `width` x `height`; drawn
+-- over a cell to mark it (today in the Cards calendars).
+local Outline = Widget:extend{
+    width  = 0,
+    height = 0,
+}
+
+function Outline:getSize()
+    return Geom:new{ w = self.width, h = self.height }
+end
+
+function Outline:paintTo(bb, x, y)
+    local color = Colors.cardsColor("card_border")
+    if isGray(color) then
+        bb:paintBorder(x, y, self.width, self.height, Size.border.default, grayColor(color), M.cardRadius())
+    else
+        bb:paintBorderRGB32(x, y, self.width, self.height, Size.border.default, color, M.cardRadius())
+    end
+end
+
+function M.buildOutline(width, height)
+    return Outline:new{ width = width, height = height }
+end
+
+-- "5 days · 3 weeks" on one line, or the two on separate lines when that
+-- does not fit `width` (Cards Streaks cards). fonts: value / label.
+function M.buildDaysWeeksLine(fonts, width, d_val, d_unit, w_val, w_unit)
+    if d_val == "" and w_val == "" then
+        return M.buildValueLine(fonts.value, fonts.label, width, d_val, d_unit)
+    end
+    local function partWidth(v, u)
+        local tv = TextWidget:new{ text = v, face = fonts.value }
+        local tu = TextWidget:new{ text = u, face = fonts.label }
+        local w = tu:getSize().w + 1
+        if v ~= "" then w = w + tv:getSize().w + Size.padding.large end
+        tv:free()
+        tu:free()
+        return w
+    end
+    local d_w, w_w = partWidth(d_val, d_unit), partWidth(w_val, w_unit)
+    local dot = TextWidget:new{ text = "\u{00B7}", face = fonts.label, fgcolor = Colors.label() }
+    local gap = Size.padding.default
+    if d_w + w_w + dot:getSize().w + 2 * gap <= width then
+        return HorizontalGroup:new{
+            align = "center",
+            M.buildValueLine(fonts.value, fonts.label, d_w, d_val, d_unit),
+            HorizontalSpan:new{ width = gap },
+            dot,
+            HorizontalSpan:new{ width = gap },
+            M.buildValueLine(fonts.value, fonts.label, w_w, w_val, w_unit),
+        }
+    end
+    dot:free()
+    return VerticalGroup:new{
+        align = "left",
+        M.buildValueLine(fonts.value, fonts.label, width, d_val, d_unit),
+        M.buildValueLine(fonts.value, fonts.label, width, w_val, w_unit),
+    }
+end
+
+-- A round dot `size` pixels wide: filled, or just its outline.
+local Dot = Widget:extend{
+    size   = 0,
+    filled = false,
+    color  = nil,
+}
+
+function Dot:getSize()
+    return Geom:new{ w = self.size, h = self.size }
+end
+
+function Dot:paintTo(bb, x, y)
+    local r = math.floor(self.size / 2)
+    if r <= 0 then return end
+    bb:paintCircle(x + r, y + r, r, self.color, self.filled and r or math.max(1, Size.border.default))
+end
+
+-- A progress bar with round ends: the done part (active bar color) over the
+-- whole bar (inactive bar color).
+local RoundBar = Widget:extend{
+    ratio  = 0,
+    width  = 0,
+    height = 0,
+}
+
+function RoundBar:getSize()
+    return Geom:new{ w = self.width, h = self.height }
+end
+
+function RoundBar:paintTo(bb, x, y)
+    local w, h = self.width, self.height
+    if w <= 0 or h <= 0 then return end
+    local r = math.floor(h / 2)
+    paintRoundedRect(bb, x, y, w, h, Colors.cardsColor("inactive_bar"), r)
+    local done_w = math.floor(w * math.max(0, math.min(1, self.ratio)))
+    if done_w > 0 then
+        paintRoundedRect(bb, x, y, done_w, h, Colors.cardsColor("active_bar"), math.min(r, math.floor(done_w / 2)))
+    end
+end
+
+function M.buildRoundBar(ratio, width, height)
+    return RoundBar:new{ ratio = tonumber(ratio) or 0, width = width, height = height }
+end
+
+local function clamp01(v)
+    return math.max(0, math.min(1, tonumber(v) or 0))
+end
+
+local function markWidth()
+    return math.max(2, Size.line.thick)
+end
+
+-- A vertical line `h` px tall at x, solid or in dashes.
+local function paintMark(bb, x, y, h, color, dashed)
+    local w = markWidth()
+    if not dashed then
+        paintRoundedRect(bb, x, y, w, h, color, 0)
+        return
+    end
+    local dash = math.max(2, math.floor(w * 1.5))
+    local top = y
+    while top < y + h do
+        paintRoundedRect(bb, x, top, w, math.min(dash, y + h - top), color, 0)
+        top = top + 2 * dash
+    end
+end
+
+-- A RoundBar with a mark at `marker` (0..1) that sticks out above and below
+-- the bar, solid or (`dashed`) in dashes. A white gap on both sides of the
+-- mark keeps it visible over the done part, which has the same color.
+local MarkerBar = Widget:extend{
+    ratio  = 0,
+    width  = 0,
+    height = 0,
+    dashed = false,
+}
+
+function MarkerBar:init()
+    self._bar = RoundBar:new{ ratio = self.ratio, width = self.width, height = self.height }
+end
+
+function MarkerBar:getSize()
+    return Geom:new{ w = self.width, h = 3 * self.height }
+end
+
+function MarkerBar:paintTo(bb, x, y)
+    local w, h = self.width, self.height
+    if w <= 0 or h <= 0 then return end
+    self._bar:paintTo(bb, x, y + h)
+    if not self.marker then return end
+    local mark_w = markWidth()
+    local gap = math.max(1, Size.line.medium)
+    local mx = x + math.floor((w - mark_w) * clamp01(self.marker))
+    bb:paintRect(mx - gap, y + h, mark_w + 2 * gap, h, Blitbuffer.COLOR_WHITE)
+    paintMark(bb, mx, y, 3 * h, Colors.cardsColor("active_bar"), self.dashed)
+end
+
+-- `marker` nil: the bar alone, as tall as one with a mark.
+function M.buildMarkerBar(ratio, marker, width, height, dashed)
+    return MarkerBar:new{
+        ratio = clamp01(ratio), marker = marker and clamp01(marker) or nil,
+        width = width, height = height, dashed = dashed and true or false,
+    }
+end
+
+-- The dashed mark of a MarkerBar on its own, `height` px tall: the key that
+-- explains it next to its label.
+local DashMark = Widget:extend{
+    height = 0,
+}
+
+function DashMark:getSize()
+    return Geom:new{ w = markWidth(), h = self.height }
+end
+
+function DashMark:paintTo(bb, x, y)
+    paintMark(bb, x, y, self.height, Colors.cardsColor("active_bar"), true)
+end
+
+function M.buildDashMark(height)
+    return DashMark:new{ height = height }
+end
+
+-- A line from start to end with a dot at `ratio` (0..1): the line up to the
+-- dot in the active bar color, the rest in the inactive one, and a smaller
+-- dot at each end.
+local Timeline = Widget:extend{
+    ratio = 0,
+    width = 0,
+    size  = 0,
+}
+
+function Timeline:getSize()
+    return Geom:new{ w = self.width, h = self.size }
+end
+
+function Timeline:paintTo(bb, x, y)
+    local w, d = self.width, self.size
+    if w <= d or d <= 0 then return end
+    local active, inactive = Colors.cardsColor("active_bar"), Colors.cardsColor("inactive_bar")
+    local line_h = math.max(2, math.floor(d / 4))
+    local line_y = y + math.floor((d - line_h) / 2)
+    local end_d = math.floor(d / 2)
+    local end_y = y + math.floor((d - end_d) / 2)
+    local cx = x + math.floor(d / 2) + math.floor((w - d) * clamp01(self.ratio))
+    paintRoundedRect(bb, x, line_y, w, line_h, inactive, 0)
+    paintRoundedRect(bb, x, line_y, cx - x, line_h, active, 0)
+    paintRoundedRect(bb, x, end_y, end_d, end_d, active, math.floor(end_d / 2))
+    paintRoundedRect(bb, x + w - end_d, end_y, end_d, end_d, inactive, math.floor(end_d / 2))
+    paintRoundedRect(bb, cx - math.floor(d / 2), y, d, d, active, math.floor(d / 2))
+end
+
+function M.buildTimeline(ratio, width, size)
+    return Timeline:new{ ratio = clamp01(ratio), width = width, size = size }
+end
+
+-- A row of dots, one per entry of `flags` (true = filled).
+function M.buildDots(flags, size)
+    local color = grayColor(Colors.value())
+    local row = HorizontalGroup:new{ align = "center" }
+    for i, on in ipairs(flags) do
+        if i > 1 then table.insert(row, HorizontalSpan:new{ width = math.floor(size / 2) }) end
+        table.insert(row, Dot:new{ size = size, filled = on and true or false, color = color })
+    end
+    return row
+end
+
+-- The bold value of a cell, at most `width` wide, with a "›" when tapping it
+-- opens something (opts.chevron) or a "⇄" when tapping switches it (opts.swap).
+local function valueWithMark(face, width, value, opts)
+    local mark = (opts.chevron and M.chevron(face)) or (opts.swap and M.swapIcon(face)) or nil
+    local mark_w = mark and (mark:getSize().w + Size.padding.default) or 0
+    local row = HorizontalGroup:new{
+        align = "center",
+        TextWidget:new{ text = value, face = face, fgcolor = Colors.value(), max_width = math.max(1, width - mark_w) },
+    }
+    if mark then
+        table.insert(row, HorizontalSpan:new{ width = Size.padding.default })
+        table.insert(row, mark)
+    end
+    return row
+end
+
+-- A stacked value cell: the value (marked as in valueWithMark), its label
+-- under it, and an optional change line ("▲ 1:05" in bold, then e.g. "vs
+-- prev. 7d"). opts.align = "right" puts it against the right edge.
+function M.buildStatCell(fonts, width, value, unit, opts)
+    opts = opts or {}
+    local align = opts.align or "left"
+    local cell = VerticalGroup:new{
+        align = align,
+        valueWithMark(fonts.value, width, value, opts),
+        TextBoxWidget:new{ text = unit, face = fonts.label, fgcolor = Colors.label(), width = width, alignment = align },
+    }
+    if opts.delta_value then
+        local dv = TextWidget:new{ text = opts.delta_value, face = fonts.small, bold = true, fgcolor = Colors.value(), max_width = width }
+        local line = HorizontalGroup:new{ align = "center", dv }
+        local rest = width - dv:getSize().w - Size.padding.small
+        if opts.delta_label and rest > 0 then
+            table.insert(line, HorizontalSpan:new{ width = Size.padding.small })
+            table.insert(line, TextWidget:new{ text = opts.delta_label, face = fonts.small, fgcolor = Colors.label(), max_width = rest })
+        end
+        table.insert(cell, line)
+    end
+    return cell
+end
+
+-- A one-line value cell: the value (marked as in valueWithMark), then its
+-- label, which wraps under itself when it doesn't fit. opts.lead: a widget
+-- before the value (e.g. the key of a chart mark); opts.align = "right" puts
+-- the line against the right edge of `width`.
+function M.buildInlineCell(fonts, width, value, unit, opts)
+    opts = opts or {}
+    local gap = Size.padding.default
+    -- Widths are added up from the parts: row:getSize() would cache the
+    -- row's size before the last widgets are in it.
+    local used = 0
+    local row = HorizontalGroup:new{ align = "center" }
+    if opts.lead then
+        table.insert(row, opts.lead)
+        table.insert(row, HorizontalSpan:new{ width = gap })
+        used = opts.lead:getSize().w + gap
+    end
+    local value_w = valueWithMark(fonts.value, width - used, value, opts)
+    table.insert(row, value_w)
+    used = used + value_w:getSize().w
+    local rest = width - used - gap
+    if unit and unit ~= "" and rest > 0 then
+        local label = TextWidget:new{ text = unit, face = fonts.label, fgcolor = Colors.label() }
+        if label:getSize().w > rest then
+            label:free()
+            label = TextBoxWidget:new{
+                text = unit, face = fonts.label, fgcolor = Colors.label(),
+                width = rest, alignment = opts.align or "left",
+            }
+        end
+        table.insert(row, HorizontalSpan:new{ width = gap })
+        table.insert(row, label)
+    end
+    if opts.align ~= "right" then return row end
+    return RightContainer:new{ dimen = Geom:new{ w = width, h = row:getSize().h }, row }
 end
 
 return M

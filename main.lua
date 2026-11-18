@@ -76,6 +76,7 @@ local PopupUtil    = loadModule("lib/popuputil.lua")
 local NativeWidgets = loadModule("lib/native_widgets.lua")
 local BookProgress = loadModule("lib/bookprogress.lua")
 local ChapterInfo  = loadModule("lib/chapterinfo.lua")
+local WordCount    = loadModule("lib/wordcount.lua")
 -- Queries behind the two book-specific popups, kept apart from the widgets
 -- that draw them, the same way the insights and records popups are split.
 local BookStatsData    = loadModule("lib/book_stats_data.lua",    { StatsDb = StatsDb })
@@ -211,7 +212,7 @@ local DateUtil = loadModule("lib/dateutil.lua")
 local _ = Locale._
 local Colors = loadModule("lib/colors.lua", { Locale = Locale, PluginUtil = PluginUtil, Prefs = Prefs })
 local Fonts  = loadModule("lib/fonts.lua",  { Locale = Locale, PluginUtil = PluginUtil, Prefs = Prefs })
-local UI     = loadModule("lib/uikit.lua",  { Colors = Colors })
+local UI     = loadModule("lib/uikit.lua",  { Colors = Colors, PluginUtil = PluginUtil })
 
 local ViewSettings  = loadModule("lib/insights_settings.lua", { Prefs = Prefs })
 UI.bindSettings(ViewSettings)
@@ -259,11 +260,20 @@ local InsightsData = loadModule("lib/insights_data.lua",
 -- reading heatmaps, and the book lists. Loaded before the view because it
 -- receives them; the book lists get what they need from the view the other
 -- way round, through BookList.bind() (see booklist_view.lua).
+-- The "Cards" look of the 8-week trend popup.
+local TrendCards = loadModule("views/cards_look/trend.lua",
+    { Colors = Colors, UI = UI })
 local Trend = loadModule("views/trend_view.lua",
-    { Colors = Colors, Locale = Locale, VS = ViewSettings, NativeWidgets = NativeWidgets })
+    { Colors = Colors, Locale = Locale, VS = ViewSettings, TrendCards = TrendCards,
+      NativeWidgets = NativeWidgets })
+-- The "Cards" look of the Reading habits (heatmap) popup.
+local HeatmapCards = loadModule("views/cards_look/heatmap.lua", {
+    Locale = Locale, VS = ViewSettings, UI = UI, Data = InsightsData,
+})
 local Heatmap = loadModule("views/heatmap_view.lua", {
     Colors = Colors, Fonts = Fonts, Locale = Locale, VS = ViewSettings, UI = UI,
-    Data = InsightsData, Cache = InsightsCache, NativeWidgets = NativeWidgets,
+    Data = InsightsData, Cache = InsightsCache, HeatmapCards = HeatmapCards,
+    NativeWidgets = NativeWidgets,
 })
 local BookList = loadModule("views/booklist_view.lua", {
     Colors = Colors, Locale = Locale, VS = ViewSettings, UI = UI,
@@ -286,8 +296,12 @@ local RecordsData = loadModule("lib/records_data.lua", { StatsDb = StatsDb })
 local Achievements = loadModule("lib/achievements.lua",
     { StatsDb = StatsDb, RecordsData = RecordsData, Data = InsightsData, Locale = Locale,
       DateUtil = DateUtil })
+-- The "Cards" look of the achievements list.
+local AchievementsCards = loadModule("views/cards_look/achievements.lua",
+    { Locale = Locale, Colors = Colors, Fonts = Fonts, UI = UI })
 local AchievementsView = loadModule("views/achievements_view.lua",
     { Achievements = Achievements, Locale = Locale, ListWidget = ListWidget,
+      VS = ViewSettings, AchievementsCards = AchievementsCards,
       NativeWidgets = NativeWidgets })
 
 -- The combined current/best streak popup with its full-history calendar,
@@ -305,11 +319,15 @@ local BookInfoData = loadModule("lib/bookinfo_data.lua",
 -- drawn by widgets/coverframe.lua (the Book card plugin's widget) for the Book
 -- info popup, the Reading calendar's days and the Reading shelf alike.
 local CoverFrame   = loadModule("widgets/coverframe.lua", { Colors = Colors })
+-- The "Cards" look of the Reading calendar (streak) popup.
+local StreakCalendarCards = loadModule("views/cards_look/streak_calendar.lua",
+    { Locale = Locale, Colors = Colors, UI = UI })
 local StreakCalendar = loadModule("views/streak_calendar_view.lua", {
     Locale = Locale, Colors = Colors, Fonts = Fonts, UI = UI,
     Data = InsightsData, Prefs = Prefs, VS = ViewSettings,
     BookList = BookList, BookInfoData = BookInfoData, Ratings = Ratings,
     CoverFrame = CoverFrame, CoverThumbs = CoverThumbs, DateUtil = DateUtil,
+    StreakCalendarCards = StreakCalendarCards,
     NativeWidgets = NativeWidgets,
 })
 
@@ -356,8 +374,20 @@ local InsightsCharts = loadModule("views/insights_charts.lua", {
     Trend = Trend, DateUtil = DateUtil,
 })
 
+-- The values the insights popup shows, shared by its two looks.
+local InsightsValues = loadModule("lib/insights_values.lua", { Locale = Locale, VS = ViewSettings })
+
+-- The "Cards" look of the insights popup and its pages.
+local InsightsCards = loadModule("views/cards_look/sections.lua", {
+    Locale = Locale, Colors = Colors, VS = ViewSettings, UI = UI, Data = InsightsData,
+    Achievements = Achievements, Streak = StreakCalendar,
+    Charts = InsightsCharts, Headers = InsightsHeaders, Donut = Donut, Values = InsightsValues,
+})
+local InsightsPages = loadModule("views/cards_look/pages.lua", { Colors = Colors, UI = UI })
+
 local Insights = loadModule("views/insights_view.lua", {
     Headers = InsightsHeaders, Charts = InsightsCharts,
+    InsightsCards = InsightsCards, Pages = InsightsPages, Values = InsightsValues,
     Locale = Locale, Colors = Colors, Fonts = Fonts,
     PopupUtil = PopupUtil, VS = ViewSettings, Cache = InsightsCache, UI = UI,
     Trend = Trend, Heatmap = Heatmap, BookList = BookList, Data = InsightsData,
@@ -365,17 +395,25 @@ local Insights = loadModule("views/insights_view.lua", {
     Prefs = Prefs, Streak = StreakCalendar, Records = Records,
     YearShelf = YearShelf, NativeWidgets = NativeWidgets,
 })
+-- The "Cards" look of the Book progress calendar.
+local BookCalendarCards = loadModule("views/cards_look/book_calendar.lua", { Colors = Colors, UI = UI })
 local BookCalendar = loadModule("views/book_calendar_view.lua", {
     Locale = Locale, Colors = Colors, Fonts = Fonts, Prefs = Prefs, VS = ViewSettings,
     BookProgress = BookProgress, UI = UI, CalendarData = BookCalendarData,
-    DateUtil = DateUtil,
+    DateUtil = DateUtil, BookCalendarCards = BookCalendarCards,
+})
+-- The "Cards" look of the Book progress popup.
+local BookProgressCards = loadModule("views/cards_look/book_progress.lua", {
+    Locale = Locale, Colors = Colors, Fonts = Fonts, VS = ViewSettings, UI = UI,
+    ChapterBar = ChapterBar, SkimBar = SkimBar, Donut = Donut, Pages = InsightsPages,
 })
 local StatsPopup = loadModule("views/book_stats_view.lua", {
     Locale = Locale, Colors = Colors, Fonts = Fonts, Prefs = Prefs,
     BookProgress = BookProgress, BookCalendar = BookCalendar,
     ChapterInfo = ChapterInfo, ChapterBar = ChapterBar,
     Donut = Donut, SkimBar = SkimBar, UI = UI,
-    BookStatsData = BookStatsData, VS = ViewSettings,
+    BookStatsData = BookStatsData, VS = ViewSettings, BookCards = BookProgressCards,
+    WordCount = WordCount,
 })
 -- The last book read, kept when a book is closed so the sleep screen can
 -- draw the book popups from the file manager too (lib/lastbook.lua).
@@ -384,6 +422,7 @@ local LastBook = loadModule("lib/lastbook.lua",
 local Updater = loadModule("lib/updater.lua", { Locale = Locale })
 local About   = loadModule("views/about.lua",
     { Locale = Locale, Updater = Updater, PopupUtil = PopupUtil })
+local SectionOrder = loadModule("lib/section_order.lua", { Locale = Locale, VS = ViewSettings })
 local Menu    = loadModule("lib/menu.lua", { Locale = Locale })
 
 -- What the device shows while it sleeps: which popup (Insights by default,
@@ -1390,6 +1429,7 @@ function ReadingInsights:_menuDeps()
         Fonts                       = Fonts,
         Locale                      = Locale,
         ViewSettings                = ViewSettings,
+        SectionOrder                = SectionOrder,
         ChapterBar                  = ChapterBar,
         SkimBar                     = SkimBar,
         SCREENSAVER_TYPE_VALUE      = SCREENSAVER_TYPE_VALUE,

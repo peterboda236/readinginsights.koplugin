@@ -121,6 +121,19 @@ function M.build(self, deps)
         }
     end
 
+    -- A group whose entries depend on the look: spec_func(is_cards) gives the
+    -- list each time the group opens, so Cards-only entries are left out in
+    -- the Classic look instead of being greyed out.
+    local function lookGroup(text, spec_func)
+        return {
+            text = text,
+            keep_menu_open = true,
+            sub_item_table_func = function()
+                return layout(spec_func(deps.ViewSettings.readLookIsCards()))
+            end,
+        }
+    end
+
     -- Whether/how it's used as a sleep screen is normally set directly in
     -- KOReader's own Settings > Screen > Sleep screen menu (see the
     -- menu_items.screensaver injection at the end of this function).
@@ -598,8 +611,15 @@ function M.build(self, deps)
             end,
         }
         I.goal_bar = {
-            text = _("Daily / weekly goal bar"),
-            help_text = _("Show a thin progress bar under the daily and weekly goal values."),
+            text_func = function()
+                return deps.ViewSettings.readLookIsCards()
+                    and _("Daily / weekly goal ring") or _("Daily / weekly goal bar")
+            end,
+            help_text_func = function()
+                return deps.ViewSettings.readLookIsCards()
+                    and _("Show a progress ring next to the daily and weekly goal values.")
+                    or  _("Show a thin progress bar under the daily and weekly goal values.")
+            end,
             keep_menu_open = true,
             enabled_func = function() return deps.ViewSettings.readShowTimeGoals() end,
             checked_func = function() return deps.ViewSettings.readShowTimeGoalBar() end,
@@ -619,6 +639,102 @@ function M.build(self, deps)
             separator = true,
             checked_func = function() return Opt.readShowAchievements() end,
             callback = function() Opt.saveShowAchievements(not Opt.readShowAchievements()) end,
+        }
+
+        -- The sections that used to be always drawn, each with its own
+        -- checkbox (Settings > Reading insights popup > Sections). Hiding
+        -- one also takes it out of the "Section order".
+        local function sectionToggle(name, text, help, enabled_func)
+            return {
+                text = text,
+                help_text = help,
+                keep_menu_open = true,
+                enabled_func = enabled_func,
+                checked_func = function() return Opt.readShowSection(name) end,
+                callback = function() Opt.saveShowSection(name, not Opt.readShowSection(name)) end,
+            }
+        end
+        I.sec_week = sectionToggle("week", _("Last 7 days"),
+            _("Show the \"Last 7 days\" (or \"Week\") section with the weekly chart."))
+        I.sec_streaks = sectionToggle("streaks", _("Streaks"),
+            _("Show the current and best daily and weekly streaks."))
+        I.sec_year = sectionToggle("year", _("Yearly & monthly"),
+            _("Show the year header, the yearly figures and the monthly chart."))
+        I.sec_monthly = sectionToggle("monthly", _("Monthly chart"),
+            _("Show the monthly chart under the yearly figures."),
+            function() return Opt.readShowSection("year") end)
+        I.sec_all_time = sectionToggle("all_time", _("All time"),
+            _("Show the all-time totals."))
+    end
+
+    -- Section order of the two popups: "Arrange sections" opens the
+    -- sorter (lib/section_order.lua), "Restore default order" brings the
+    -- original order back. The order applies to both looks (Classic and
+    -- Cards); the default is not stored at all.
+    do
+        local SectionOrder = deps.SectionOrder
+        local VSet = deps.ViewSettings
+        local function orderEntry(view)
+            return {
+                text_func = function()
+                    return _("Section order") .. ": " .. SectionOrder.label(view)
+                end,
+                help_text = _("Choose in which order the sections of the popup are shown. Works in both the Classic and the Cards look."),
+                keep_menu_open = true,
+                sub_item_table = {
+                    {
+                        text = _("Arrange sections"),
+                        keep_menu_open = true,
+                        callback = function(touchmenu_instance)
+                            SectionOrder.open(view, function()
+                                if touchmenu_instance and touchmenu_instance.updateItems then
+                                    touchmenu_instance:updateItems()
+                                end
+                            end)
+                        end,
+                    },
+                    {
+                        text = _("Restore default order"),
+                        keep_menu_open = true,
+                        enabled_func = function() return VSet.Order.isCustom(view) end,
+                        callback = function(touchmenu_instance)
+                            VSet.Order.reset(view)
+                            if touchmenu_instance and touchmenu_instance.updateItems then
+                                touchmenu_instance:updateItems()
+                            end
+                        end,
+                    },
+                },
+            }
+        end
+        I.insights_order = orderEntry("insights")
+        I.bp_order       = orderEntry("book")
+    end
+
+    -- Look of the popups (Settings > Appearance > Look): Classic (default)
+    -- or Cards. One setting for the whole plugin.
+    do
+        local VSet = deps.ViewSettings
+        local function lookEntry(value, text)
+            return {
+                text = text,
+                keep_menu_open = true,
+                radio = true,
+                checked_func = function() return VSet.readLookSetting() == value end,
+                callback = function() VSet.saveLookSetting(value) end,
+            }
+        end
+        I.look = {
+            text_func = function()
+                local v = VSet.readLookIsCards() and _("Cards") or _("Classic")
+                return _("Look") .. ": " .. v
+            end,
+            help_text = _("Two looks for the popups: Classic, the original layout, or Cards, with the sections in cards."),
+            keep_menu_open = true,
+            sub_item_table = {
+                lookEntry(VSet.LOOK_CLASSIC, _("Classic")),
+                lookEntry(VSet.LOOK_CARDS,   _("Cards")),
+            },
         }
     end
 
@@ -1079,9 +1195,11 @@ function M.build(self, deps)
         },
     }
 
-    -- "This book" section style: the original rows, or a donut (default)
-    -- chart with the read percentage on the left and pages / time read /
-    -- time left stacked on the right (widgets/donutwidget.lua).
+    -- "This book" section style: the original rows (default in the Classic
+    -- look), or a donut (default in the Cards look) chart with the read
+    -- percentage on the left and pages / time read / time left stacked on the
+    -- right (widgets/donutwidget.lua). The Cards look also gives "This
+    -- chapter" a donut with it.
     I.bp_style = {
         text_func = function()
             local Opt = deps.ViewSettings.Opt
@@ -1089,7 +1207,7 @@ function M.build(self, deps)
                 and _("Donut chart") or _("Classic")
             return _("Book section style") .. ": " .. style
         end,
-        help_text = _("How the \"This book\" section looks. \"Classic\" keeps the rows and the progress bar. \"Donut chart\" shows a large donut with the read percentage on the left and the pages, the time read and the reading time left stacked on the right (the progress bar is replaced by the donut)."),
+        help_text = _("How the \"This book\" section looks. \"Classic\" keeps the rows and the progress bar. \"Donut chart\" shows a large donut with the read percentage on the left and the pages, the time read and the reading time left stacked on the right (the progress bar is replaced by the donut). In the Cards look the donut is the default, and \"This chapter\" gets one too."),
         keep_menu_open = true,
         separator = true,
         sub_item_table = {
@@ -1340,6 +1458,28 @@ function M.build(self, deps)
         end,
     }
 
+    -- The Chapter and Pace cards' bars (views/cards_look/book_progress.lua).
+    -- Cards look only: the Chapters and Pace groups list them only there.
+    I.chapter_bars = {
+        text = _("Progress bars"),
+        help_text = _("Show a progress bar under \"This chapter\" and bars for the length of the next chapters."),
+        keep_menu_open = true,
+        checked_func = function() return deps.ViewSettings.Opt.readShowChapterBars() end,
+        callback = function()
+            deps.ViewSettings.Opt.saveShowChapterBars(not deps.ViewSettings.Opt.readShowChapterBars())
+        end,
+    }
+
+    I.pace_bars = {
+        text = _("Progress bars"),
+        help_text = _("Show bars for today's reading against the daily average and for the way from the start to the expected finish."),
+        keep_menu_open = true,
+        checked_func = function() return deps.ViewSettings.Opt.readShowPaceBars() end,
+        callback = function()
+            deps.ViewSettings.Opt.saveShowPaceBars(not deps.ViewSettings.Opt.readShowPaceBars())
+        end,
+    }
+
     I.read_today = {
         text = _("Read today row"),
         help_text = _("Show the row with today's reading time and the average time per day in the \"Pace\" section. If this and the started / expected finish row are both off, the whole \"Pace\" section is hidden."),
@@ -1359,6 +1499,35 @@ function M.build(self, deps)
             deps.ViewSettings.Opt.saveShowPaceDates(not deps.ViewSettings.Opt.readShowPaceDates())
         end,
     }
+
+    -- Every value cell of the rows above on its own. A row disappears when
+    -- both of its cells are off. In the donut style the pages and times are
+    -- always shown, so the read / time cells are greyed out there.
+    do
+        local Opt = deps.ViewSettings.Opt
+        local function cellToggle(name, text, donut_forced, help_text)
+            return {
+                text = text,
+                help_text = help_text,
+                keep_menu_open = true,
+                enabled_func = donut_forced and function() return not isDonutStyle() end or nil,
+                checked_func = function()
+                    return (donut_forced and isDonutStyle()) or Opt.readBookCell(name)
+                end,
+                callback = function() Opt.saveBookCell(name, not Opt.readBookCell(name)) end,
+            }
+        end
+        I.cell_read_pct   = cellToggle("read_pct",   _("Percentage read"), true)
+        I.cell_read_pages = cellToggle("read_pages", _("Pages read"), true)
+        I.cell_time_left  = cellToggle("time_left",  _("Reading time left"), true)
+        I.cell_time_spent = cellToggle("time_spent", _("Time read so far"), true)
+        I.cell_today      = cellToggle("today",      _("Read today"))
+        I.cell_avg_day    = cellToggle("avg_day",    _("Average per day"))
+        I.cell_started    = cellToggle("started",    _("Started"))
+        I.cell_finish     = cellToggle("finish",     _("Expected finish"))
+        I.cell_speed      = cellToggle("speed",      _("Reading speed"), nil,
+            _("Show a row with the reading speed (pages per minute and words per minute) at the top of the \"Pace\" section. The words per minute is an estimate, based on the number of words on a sample of the book's pages."))
+    end
 
     -- "Book info" popup: which parts of the small cover + title / author /
     -- series popup are shown. The cover look (rounded corners, shadow, border)
@@ -1519,7 +1688,8 @@ function M.build(self, deps)
     -- Settings menu layout, top to bottom:
     --
     --   Date & time                how dates, times and weeks are shown
-    --   Appearance                 colors, fonts and the look of covers
+    --   Appearance                 Classic / Cards look, colors, fonts and
+    --                              the look of covers
     --   -------------------------
     --   one group per view         Reading insights popup, Heatmap & time of
     --                              day, Book progress popup, Book progress
@@ -1534,11 +1704,23 @@ function M.build(self, deps)
     local insights_popup_sub_item_table = layout({
         I.hamburger,
         "-",
-        I.goal, I.goal_bar, I.reading_goal, I.achievements, I.ach_refresh,
+        -- Everything the popup shows can be switched here, in the order the
+        -- sections appear on the page.
+        group(_("Sections"), {
+            I.goal, I.goal_bar,
+            I.sec_week, I.weekly_extra_row, I.weekly_vs_prev,
+            I.sec_streaks,
+            I.sec_year, I.sec_monthly,
+            I.reading_goal, I.achievements,
+            I.sec_all_time,
+        }),
+        I.ach_refresh,
+        "-",
+        I.insights_order,
         "-",
         group(_("Week"), {
             I.weekly_view,
-            I.weekly_style, I.today_side, I.weekly_extra_row, I.weekly_vs_prev,
+            I.weekly_style, I.today_side,
             I.trend_order,
         }),
         group(_("Months"), { I.monthly_style, I.monthly_layout }),
@@ -1546,16 +1728,32 @@ function M.build(self, deps)
     })
 
     local book_progress_sub_item_table = layout({
-        I.bp_position, I.bp_style,
+        I.bp_position, I.bp_style, I.bp_order,
         "-",
-        group(_("Chapters"), {
-            I.this_chapter, I.next_chapter, I.next_count,
+        lookGroup(_("Chapters"), function(is_cards)
+            return {
+                I.this_chapter, I.next_chapter, I.next_count,
+                "-",
+                I.chapter_bar, I.chapter_bar_style, I.chapters_per_page,
+                I.chapter_count_row,
+                is_cards and "-" or nil,
+                is_cards and I.chapter_bars or nil,
+            }
+        end),
+        group(_("This book"), {
+            I.cell_read_pct, I.cell_read_pages, I.cell_time_left, I.cell_time_spent,
             "-",
-            I.chapter_bar, I.chapter_bar_style, I.chapters_per_page,
-            I.chapter_count_row,
+            I.progress_bar,
         }),
-        group(_("This book"), { I.read_row, I.time_row, I.progress_bar }),
-        group(_("Pace"), { I.read_today, I.pace_dates }),
+        lookGroup(_("Pace"), function(is_cards)
+            return {
+                I.cell_speed,
+                "-",
+                I.cell_today, I.cell_avg_day, I.cell_started, I.cell_finish,
+                is_cards and "-" or nil,
+                is_cards and I.pace_bars or nil,
+            }
+        end),
         I.book_heights,
     })
 
@@ -1563,7 +1761,7 @@ function M.build(self, deps)
         I.sleep_screen,
         "-",
         I.date_time,
-        group(_("Appearance"), { I.colors, I.fonts, I.covers, I.divider_lines }),
+        group(_("Appearance"), { I.look, I.colors, I.fonts, I.covers, I.divider_lines }),
         "-",
         {
             text = _("Reading insights popup"),

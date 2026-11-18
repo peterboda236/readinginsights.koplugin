@@ -1,7 +1,9 @@
 ### 📊 Reading insights plugin
 
+#### Classic look
+
 <img width="255" height="340" alt="FileManager_2026-10-16_090136" src="https://github.com/user-attachments/assets/738dcedb-fb2b-4e1f-af6f-0e898d0b62bd" />
-<img width="255" height="340" alt="FileManager_2026-10-16_090148" src="https://github.com/user-attachments/assets/2cadd5ab-5b2b-4a87-be59-b8073b9fd9b3" />
+<img width="255" alt="kép" src="https://github.com/user-attachments/assets/5929a5c9-f3c2-42d2-b18d-3ee11fbd6693" />
 <img width="255" height="340" alt="Reader_Sebastian Bergman 6  - Egyetlen igazsag - Hjorth, Michael   Rosenfeldt, Hans #p(458) epub_p222_2026-10-10_164231" src="https://github.com/user-attachments/assets/d180c3ae-e731-48c5-90be-0564d0bb2a3d" />
 
 <br/><br/>
@@ -9,12 +11,26 @@
 <img width="255" height="340" alt="FileManager_2026-10-10_164145" src="https://github.com/user-attachments/assets/57bd2fc4-29d7-4bd9-b56a-e4cef901a9b0" />
 <img width="255" height="340" alt="FileManager_2026-07-17_152344" src="https://github.com/user-attachments/assets/4a3d2fb9-cc51-4342-a952-36f23bb1925c" />
 
+
 More screenshots
 
-<img width="192" height="256" alt="Book progress popup" src="https://github.com/user-attachments/assets/52f851b7-8955-4739-b3a7-96ff8c2cbfe6" />
+<img width="192"  alt="kép" src="https://github.com/user-attachments/assets/0c06cc51-48a5-45fd-8ed8-51576b974bac" />
 <img width="192" height="256" alt="FileManager_2026-10-10_164220" src="https://github.com/user-attachments/assets/66805663-9ae3-43c3-bf71-877f1c6038ad" />
 <img width="192" height="256" alt="FileManager_2026-07-27_074133" src="https://github.com/user-attachments/assets/de2d7a78-a657-40cf-8628-f0787a827147" />
 <img width="192" height="256" alt="Reader_Sebastian Bergman 6  - Egyetlen igazsag - Hjorth, Michael   Rosenfeldt, Hans #p(458) epub_p222_2026-10-10_164254" src="https://github.com/user-attachments/assets/b887e10c-5a26-4177-88f6-ab938f6baf54" />
+
+#### Cards look
+<img width="192" alt="Képernyőkép 2026-11-18 130045" src="https://github.com/user-attachments/assets/6bf64ef9-bc7c-4780-83ad-d5979796c971" />
+<img width="192" alt="Képernyőkép 2026-11-18 130053" src="https://github.com/user-attachments/assets/66de7e5e-2d85-49a4-b859-bd798cb63417" />
+<img width="192" alt="Képernyőkép 2026-11-18 130205" src="https://github.com/user-attachments/assets/0dbb67b9-2849-478f-8183-3acb1eff0c64" />
+<img width="192" alt="Képernyőkép 2026-11-18 130120" src="https://github.com/user-attachments/assets/3bb28eb5-1d2a-459c-8893-987129edcba8" />
+
+More Cards screenshots
+
+<img width="192" alt="Képernyőkép 2026-11-18 130110" src="https://github.com/user-attachments/assets/f477b032-aa62-464a-9b89-1e94a335ffc8" />
+<img width="192" alt="Képernyőkép 2026-11-18 130216" src="https://github.com/user-attachments/assets/8cef7edf-4c7e-4243-a574-593041fed061" />
+<img width="192" alt="Képernyőkép 2026-11-18 130232" src="https://github.com/user-attachments/assets/10354b18-00ef-4201-9dc3-44b69525d598" />
+<img width="192" alt="Achievements, Cards look" src="https://github.com/user-attachments/assets/25b510e6-677a-4d2e-aeff-b5848b4847bf" />
 
 
 A set of reading-stats popups powered by KOReader's own statistics database.
@@ -47,6 +63,11 @@ A full-screen overview of your whole reading history.
   The reading goal and the achievements can each be switched on or off
   separately (Settings → Reading insights popup); both
   are on by default.
+
+  The other sections can be switched on or off too (*Settings ▸ Reading insights
+  popup ▸ Sections*): **Last 7 days / Week**, **Streaks**, **Yearly & monthly**
+  (with a separate switch for just the **Monthly chart**) and **All time**. All
+  are on by default; a hidden section also drops out of the *Section order*.
 
 **Controls:** swipe to change year, tap headers/bars to drill in, long-press
 the title bar to force a data reload.
@@ -141,17 +162,28 @@ the list. Once unlocked, an achievement is never lost. Available everywhere.
 A per-book overlay for the book you're currently reading:
 
 - **Progress** — pages/percentage read, plus pages remaining
-- **Pace** — your average reading speed for this book
+- **Pace** — your average reading speed for this book. An optional first row
+  (*Settings ▸ Book progress popup ▸ Pace ▸ Reading speed*, off by default) shows
+  **pages per minute | words per minute**. The words per minute is an estimate:
+  the words on a sample of the book's pages times the pages per minute (it shows
+  "—" for formats that give no text to count).
 - **Estimated finish** — projected time or date to finish, based on recent pace
 - **Today / averages** — time and pages read today and your daily average
 - **This / next chapter** — estimated reading time (or pages) left
 - **Chapter breakdown** — progress and time per chapter, when available
 
+Every value in the popup can be switched on or off on its own (*Settings ▸ Book
+progress popup*): percentage read, pages read, reading time left, time read so
+far, reading speed (off by default), read today, average per day, started and
+expected finish. A row whose two
+cells are both off is not drawn, and a section with no rows left disappears with
+its header.
+
 Many rows toggle between time/pages or percent/page on tap. Tap the "Pace"
 title to open the **Book progress calendar** — a month grid coloured like a
 heatmap, showing your progress each day plus the start and estimated finish
-dates. Tap the "This book" title to open the **Book info** popup. Book view
-only.
+dates. Tap the "This book" title (in the Cards look, anywhere on its card) to
+open the **Book info** popup. Book view only.
 
 ## 📕 Book info
 
@@ -168,8 +200,8 @@ had no stars in the file manager gets them), and above the description the
 off, or the book has none) the popup is only as wide as its longest line needs.
 
 Open it from *Tools → Reading insights → Book info*, from a gesture
-("Reading insights: book info"), or by tapping the "This book" title in the
-Book progress popup (closing it then brings the Book progress popup back).
+("Reading insights: book info"), or by tapping the "This book" title (in the
+Cards look, its card) in the Book progress popup (closing it then brings the Book progress popup back).
 Book view only. In the book lists (e.g. the books behind a month) a **tap** on a
 book opens its Book info popup, a **long press** opens its statistics.
 
@@ -199,6 +231,29 @@ settings → Sleep screen*:
   overflow is cropped).
 
 Everything is queried and drawn before the device actually goes to sleep.
+
+## 🃏 Cards look
+
+*Settings ▸ Appearance ▸ Look* switches the popups between two looks:
+**Classic** (the default) and **Cards**, with the sections in cards (see the
+screenshots of both at the top). Both show the same data; only the look
+changes. Cards covers Reading insights, Book progress, Reading habits, the
+Reading calendar and its streaks, the Book progress calendar, Achievements and
+the 8-week trend; the other popups look the same in both.
+
+- **Pages** — in Cards, when Reading insights or Book progress doesn't fit the
+  screen it is split into pages instead of scrolling: swipe up for the next
+  page, swipe down for the previous one (on the first page it closes the
+  popup), or tap the arrows of the *‹ 1 / 2 ›* footer.
+- **Book progress** — in Cards the "This book" style defaults to the donut
+  chart, and *This chapter* gets a donut with the part of the chapter read.
+  *Settings ▸ Book progress popup ▸ Chapters / Pace ▸ Progress bars* (shown
+  only in Cards) add bars: with the Chapters one on, the next chapters show
+  their length as bars (the dashed line is the typical chapter length); with
+  the Pace one on, today's reading sits on a bar with a mark at the daily
+  average, and a line runs from the day you started to the expected finish.
+  On the sleep screen, when the cards don't fit, they are shown without the
+  donuts and bars.
 
 ## 🔄 Updates
 
@@ -247,15 +302,16 @@ moved here automatically):
 
 - **Date & time** — 12/24-hour clock, first day of the week, week numbers and
   the date format.
-- **Appearance** — **Colors** (a hex colour, or a touch colour wheel, for every
-  bar, line and label the popups draw) and **Fonts** (your own font and size
-  for each text role).
+- **Appearance** — **Look** (*Classic* or *Cards*, see
+  [Cards look](#-cards-look)), **Colors** (a hex colour, or a touch colour
+  wheel, for every bar, line and label the popups draw) and **Fonts** (your own
+  font and size for each text role).
 - **Reading insights popup** — which sections it shows (goals, achievements,
-  hamburger menu), the *Last 7 days* and *Months* chart styles, and the bar
-  chart heights.
+  hamburger menu), the *Section order*, the *Last 7 days* and *Months* chart
+  styles, and the bar chart heights.
 - **Reading habits** — the calendar range and the time-of-day view.
-- **Book progress popup** — its position and "This book" style (classic rows
-  or a donut chart), then one group per section: *This book*, *Pace* and
+- **Book progress popup** — its position, "This book" style (classic rows
+  or a donut chart; the donut is the default in the Cards look) and *Section order*, then one group per section: *This book*, *Pace* and
   *Chapters* (chapter columns, chapter bar, chapters per page), plus *Bar chart height*.
 - **Book info** — show or hide the cover, its rounded corners, shadow and
   border, and the author and series lines, and the **cover size**: *small* (the
@@ -267,6 +323,19 @@ moved here automatically):
 - **Advanced settings** — the sleep screen, full-screen refresh on
   open/close, long durations as days, and *Menu items* (which popups the Tools
   menu lists).
+
+**Section order** — *Reading insights popup ▸ Section order* and *Book progress
+popup ▸ Section order* decide in which order the sections are drawn, in both the
+Classic and the Cards look (and on the sleep screen). *Arrange sections* opens
+KOReader's own sorting screen: tap a row to pick it up, move it with the arrows
+at the bottom and save with the check mark. In Reading insights the order is:
+*Daily / weekly goal*, *Last 7 days* (or *Week*), *Streaks*, *Yearly & monthly*,
+*Reading goal / Achievements* (one entry - the two share a row in the Cards look)
+and *All time*; in Book progress: *This chapter / Next chapter*, *Chapters*,
+*This book* and *Pace*. That is also the default (the Cards look puts *Reading
+goal / Achievements* before *Yearly & monthly*); *Restore default order* (in the
+menu, or in the ☰ menu of the sorting screen) brings it back. A section that is
+switched off or has nothing to show simply stays out, wherever it is in the list.
 
 The popups are also registered with `Dispatcher`, so you can assign them to
 gestures under *Settings → Taps and gestures*.

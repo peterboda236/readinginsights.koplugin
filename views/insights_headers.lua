@@ -45,7 +45,11 @@ local function buildAlignedSectionHeader(font_section, text, layout, background)
         UI.buildSectionHeader(font_section, text, layout.content_width, 0, background))
 end
 
-local function buildYearHeader(popup_self, font_section, font_label, layout, year_range, selected_year)
+-- The year row without its background: previous year | selected year | next
+-- year. `buildCenter(year_label, tappable)` (optional) builds what stands in
+-- the middle around the year's text (the Cards look adds an icon and a "›");
+-- `tappable` = a tap on it opens the year shelf.
+local function buildYearRow(popup_self, font_section, font_label, layout, year_range, selected_year, buildCenter)
     local prev_available = selected_year > year_range.min_year
     local next_available = selected_year < year_range.max_year
 
@@ -78,15 +82,17 @@ local function buildYearHeader(popup_self, font_section, font_label, layout, yea
     -- centre year itself opens the year shelf: the covers of the books read
     -- that year, month by month (see showYearShelf). Not on the sleep screen
     -- (readonly), where a tap must not navigate anywhere.
-    local year_widget = year_label
+    local tappable_year = YearShelf and not popup_self.readonly
+    local center = buildCenter and buildCenter(year_label, tappable_year) or year_label
+    local year_widget = center
     local year_tap_pad = 0
-    if YearShelf and not popup_self.readonly then
+    if tappable_year then
         year_tap_pad = Screen:scaleBySize(16)
-        local year_size = year_label:getSize()
+        local year_size = center:getSize()
         local year_inner = HorizontalGroup:new{
             align = "center",
             HorizontalSpan:new{ width = year_tap_pad },
-            year_label,
+            center,
             HorizontalSpan:new{ width = year_tap_pad },
         }
         local year_tappable = InputContainer:new{
@@ -159,13 +165,13 @@ local function buildYearHeader(popup_self, font_section, font_label, layout, yea
     local right_slot, right_w = makeSlot(selected_year + 1, "\xe2\x80\xba", false, next_available,
         function() popup_self:onGoToNextYear() end)
 
-    local year_w    = year_label:getSize().w + 2 * year_tap_pad
+    local year_w    = center:getSize().w + 2 * year_tap_pad
     local remaining = layout.content_width - left_w - right_w - year_w
     if remaining < 0 then remaining = 0 end
     local side_l = math.floor(remaining / 2)
     local side_r = remaining - side_l
 
-    local header_content = HorizontalGroup:new{
+    return HorizontalGroup:new{
         align = "center",
         left_slot,
         HorizontalSpan:new{ width = side_l },
@@ -173,7 +179,9 @@ local function buildYearHeader(popup_self, font_section, font_label, layout, yea
         HorizontalSpan:new{ width = side_r },
         right_slot,
     }
+end
 
+local function buildYearHeader(popup_self, font_section, font_label, layout, year_range, selected_year)
     -- padding_left/right were layout.padding_h here (baked into the
     -- background-painted area, so the background bled out to the screen
     -- edge). Moved to an external UI.padded wrap at the call site instead,
@@ -186,7 +194,7 @@ local function buildYearHeader(popup_self, font_section, font_label, layout, yea
         padding_bottom = Size.padding.small,
         padding_left   = 0,
         padding_right  = 0,
-        header_content,
+        buildYearRow(popup_self, font_section, font_label, layout, year_range, selected_year),
     }
 end
 
@@ -305,7 +313,7 @@ end
 -- middle jumps back to the current week (the chart is still toggled
 -- between time and pages by tapping its caption or the values). Weeks are paged with these two slots or by swiping over the
 -- weekly section; the year is paged only by swiping over the monthly chart.
-local function buildWeekNavHeader(popup_self, font_section, font_label, layout)
+local function buildWeekNavHeader(popup_self, font_section, font_label, layout, opts)
     local offset   = popup_self.week_offset or 0
     local can_prev = popup_self:_weekInRange(offset - 1)
     local can_next = offset < 0
@@ -327,6 +335,16 @@ local function buildWeekNavHeader(popup_self, font_section, font_label, layout)
 
     local arrow_w = measure("\xe2\x80\xb9", font_label)
 
+    -- The "▾" after the shown week (Cards look), sized like the one in the
+    -- "Last 7 days" card header (UI.cardHeader); a tap on it lists the week views.
+    local caret_sz, caret_gap, caret_w = 0, Size.padding.default, 0
+    if opts and opts.menu_caret and not readonly then
+        local probe = TextWidget:new{ text = "0", face = font_section }
+        caret_sz = math.floor(probe:getSize().h * 0.5)
+        probe:free()
+        caret_w = caret_gap + caret_sz
+    end
+
     -- The centre (shown week) and the two neighbours get their own detail
     -- level, so a long centre label - worst case a week across New Year,
     -- "2025. dec. 29. - 2026. jan. 4." - keeps its full range with the year
@@ -340,7 +358,7 @@ local function buildWeekNavHeader(popup_self, font_section, font_label, layout)
         local next_text = formatWeekRange(next_s, next_e, side_tier)
         local side_w = math.max(measure(prev_text, font_label), measure(next_text, font_label))
         local slot_w = arrow_w + gap + side_w + inner_pad
-        local center_w = measure(center_text, font_section)
+        local center_w = measure(center_text, font_section) + caret_w
         return center_text, prev_text, next_text, slot_w, center_w
     end
 
@@ -404,10 +422,12 @@ local function buildWeekNavHeader(popup_self, font_section, font_label, layout)
     if not readonly then
         local tap_pad = Screen:scaleBySize(16)
         local sz = center_label:getSize()
+        -- With the caret, the right tap padding moves behind it.
+        local right_pad = (caret_w > 0) and 0 or tap_pad
         local inner = HorizontalGroup:new{ align = "center",
-            HorizontalSpan:new{ width = tap_pad }, center_label, HorizontalSpan:new{ width = tap_pad } }
+            HorizontalSpan:new{ width = tap_pad }, center_label, HorizontalSpan:new{ width = right_pad } }
         local tappable = InputContainer:new{
-            dimen = Geom:new{ x = 0, y = 0, w = sz.w + 2 * tap_pad, h = sz.h },
+            dimen = Geom:new{ x = 0, y = 0, w = sz.w + tap_pad + right_pad, h = sz.h },
             inner,
         }
         tappable.ges_events = {
@@ -424,6 +444,24 @@ local function buildWeekNavHeader(popup_self, font_section, font_label, layout)
             w  = tappable,
             fn = function() popup_self:showWeeklyViewPicker() end,
         })
+        if caret_w > 0 then
+            local caret_box = InputContainer:new{
+                dimen = Geom:new{ x = 0, y = 0, w = caret_w + tap_pad, h = sz.h },
+                HorizontalGroup:new{ align = "center",
+                    HorizontalSpan:new{ width = caret_gap },
+                    UI.iconOnText("caret", caret_sz, font_section),
+                    HorizontalSpan:new{ width = tap_pad } },
+            }
+            caret_box.ges_events = {
+                Tap = { GestureRange:new{ ges = "tap", range = caret_box.dimen } },
+            }
+            function caret_box:onTap()
+                popup_self:showWeeklyViewPicker()
+                return true
+            end
+            center_widget = HorizontalGroup:new{ align = "center", tappable, caret_box }
+            center_w = center_w + caret_w
+        end
     end
 
     local remaining = layout.content_width - 2 * slot_w - center_w
@@ -452,5 +490,6 @@ end
 return {
     buildAlignedSectionHeader = buildAlignedSectionHeader,
     buildYearHeader           = buildYearHeader,
+    buildYearRow              = buildYearRow,
     buildWeekNavHeader        = buildWeekNavHeader,
 }

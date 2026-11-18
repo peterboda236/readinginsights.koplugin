@@ -150,6 +150,24 @@ msgstr "Поточна серія"
 msgid "Best streak"
 msgstr "Найкраща серія"
 
+msgid "Chapter"
+msgstr "Розділ"
+
+msgid "Streaks"
+msgstr "Серії"
+
+msgid "Current"
+msgstr "Поточна"
+
+msgid "Best"
+msgstr "Найкраща"
+
+msgid "%1 day to beat your record"
+msgstr "Днів до нового рекорду: %1"
+
+msgid "%1 days to beat your record"
+msgstr "Днів до нового рекорду: %1"
+
 msgid "Days read per month"
 msgstr "Днів читання на місяць"
 
@@ -477,6 +495,12 @@ msgstr "сторінка на хвилину"
 msgid "pages per minute"
 msgstr "сторінок на хвилину"
 
+msgid "word per minute"
+msgstr "слово на хвилину"
+
+msgid "words per minute"
+msgstr "слів на хвилину"
+
 msgid "less than"
 msgstr "менше ніж"
 
@@ -518,6 +542,9 @@ msgstr "Колір лінії графіка тренду"
 
 msgid "Separator line color"
 msgstr "Колір лінії роздільника"
+
+msgid "Card border color"
+msgstr "Колір рамки карток"
 
 msgid "Label color"
 msgstr "Колір мітки"
@@ -1853,8 +1880,8 @@ msgstr "Класичний"
 msgid "Donut chart"
 msgstr "Кільцева діаграма"
 
-msgid "How the \"This book\" section looks. \"Classic\" keeps the rows and the progress bar. \"Donut chart\" shows a large donut with the read percentage on the left and the pages, the time read and the reading time left stacked on the right (the progress bar is replaced by the donut)."
-msgstr "Вигляд розділу «Ця книга». «Класичний» зберігає рядки та смугу прогресу. «Кільцева діаграма» показує ліворуч велику кільцеву діаграму з відсотком прочитаного, а праворуч одне під одним — сторінки, час читання та час читання, що залишився (смугу прогресу замінює діаграма)."
+msgid "How the \"This book\" section looks. \"Classic\" keeps the rows and the progress bar. \"Donut chart\" shows a large donut with the read percentage on the left and the pages, the time read and the reading time left stacked on the right (the progress bar is replaced by the donut). In the Cards look the donut is the default, and \"This chapter\" gets one too."
+msgstr "Вигляд розділу «Ця книга». «Класичний» зберігає рядки та смугу прогресу. «Кільцева діаграма» показує ліворуч велику кільцеву діаграму з відсотком прочитаного, а праворуч одне під одним — сторінки, час читання та час читання, що залишився (смугу прогресу замінює діаграма). У вигляді карток кільцева діаграма є типовою, і «Ця глава» теж її отримує."
 
 msgid "Show Book info"
 msgstr "Показати відомості про книгу"
@@ -1939,6 +1966,9 @@ msgstr "За %1 читання немає"
 
 msgid "of yearly goal"
 msgstr "від річної мети"
+
+msgid "new"
+msgstr "нове"
 
 msgid "Latest"
 msgstr "Останнє"
@@ -2093,11 +2123,38 @@ msgstr "Смуга денної / тижневої мети"
 msgid "Show a thin progress bar under the daily and weekly goal values."
 msgstr "Показувати тонку смугу прогресу під значеннями денної та тижневої мети."
 
+msgid "Look"
+msgstr "Вигляд"
+
+msgid "Cards"
+msgstr "Картки"
+
+msgid "Two looks for the popups: Classic, the original layout, or Cards, with the sections in cards."
+msgstr "Два вигляди вікон: Класичний, початковий вигляд, або Картки, з розділами в картках."
+
+msgid "Daily / weekly goal ring"
+msgstr "Кільце денної / тижневої мети"
+
+msgid "Show a progress ring next to the daily and weekly goal values."
+msgstr "Показувати кільце прогресу поруч зі значеннями денної та тижневої мети."
+
+msgid "of %1"
+msgstr "з %1"
+
 msgid "Progress bar"
 msgstr "Смуга прогресу"
 
 msgid "Show a thin progress bar under the book percentage."
 msgstr "Показувати тонку смугу прогресу під відсотком прочитаного в книзі."
+
+msgid "Progress bars"
+msgstr "Смуги прогресу"
+
+msgid "Show a progress bar under \"This chapter\" and bars for the length of the next chapters."
+msgstr "Показувати смугу прогресу під «Ця глава» і смуги для довжини наступних глав."
+
+msgid "Show bars for today's reading against the daily average and for the way from the start to the expected finish."
+msgstr "Показувати смуги для сьогоднішнього читання порівняно з денним середнім і для шляху від початку до очікуваного завершення."
 
 msgid "Rating (0-5 stars)"
 msgstr "Оцінка (0–5 зірок)"
@@ -2435,6 +2492,72 @@ msgstr "Темна рамка в нічному режимі"
 
 msgid "In night mode, draw the cover frame in near-black (as Bookshelf does) instead of white, so it stays subtle. Needs \"Cover border\" to be on."
 msgstr "У нічному режимі малює рамку обкладинки майже чорною (як у Bookshelf) замість білої, щоб вона була непомітною. Потрібна увімкнена «Рамка обкладинки»."
+
+msgid "Section order"
+msgstr "Порядок розділів"
+
+msgid "Arrange sections"
+msgstr "Упорядкувати розділи"
+
+msgid "Restore default order"
+msgstr "Відновити типовий порядок"
+
+msgid "Yearly & monthly"
+msgstr "Річна та місячна"
+
+msgid "Custom"
+msgstr "Власний"
+
+msgid "Choose in which order the sections of the popup are shown. Works in both the Classic and the Cards look."
+msgstr "Виберіть, у якому порядку показувати розділи вікна. Працює і в класичному вигляді, і в картках."
+
+msgid "Sections"
+msgstr "Розділи"
+
+msgid "Monthly chart"
+msgstr "Місячна діаграма"
+
+msgid "Show the \"Last 7 days\" (or \"Week\") section with the weekly chart."
+msgstr "Показує розділ \"Останні 7 днів\" (або \"Тиждень\") із тижневою діаграмою."
+
+msgid "Show the current and best daily and weekly streaks."
+msgstr "Показує поточну та найкращу денну й тижневу серії."
+
+msgid "Show the year header, the yearly figures and the monthly chart."
+msgstr "Показує вибір року, річні показники та місячну діаграму."
+
+msgid "Show the monthly chart under the yearly figures."
+msgstr "Показує місячну діаграму під річними показниками."
+
+msgid "Show the all-time totals."
+msgstr "Показує загальні підсумки за весь час."
+
+msgid "Percentage read"
+msgstr "Прочитано у відсотках"
+
+msgid "Reading time left"
+msgstr "Залишилось часу читання"
+
+msgid "Time read so far"
+msgstr "Час читання наразі"
+
+msgid "Read today"
+msgstr "Прочитано сьогодні"
+
+msgid "Average per day"
+msgstr "У середньому за день"
+
+msgid "Started"
+msgstr "Розпочато"
+
+msgid "Expected finish"
+msgstr "Очікуване завершення"
+
+msgid "Reading speed"
+msgstr "Швидкість читання"
+
+msgid "Show a row with the reading speed (pages per minute and words per minute) at the top of the \"Pace\" section. The words per minute is an estimate, based on the number of words on a sample of the book's pages."
+msgstr "Показати рядок зі швидкістю читання (сторінок на хвилину та слів на хвилину) на самому початку розділу «Темп». Кількість слів на хвилину — це оцінка на основі кількості слів на вибраних сторінках книги."
 
 msgid "%1 – %2 %3"
 msgstr "%1 – %2 %3"

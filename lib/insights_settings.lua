@@ -141,7 +141,9 @@ M.Opt = {
     -- built so the whole page ends up as close to exactly one screen tall
     -- as possible. The charts grow into whatever vertical space the other
     -- sections leave over, and - the point of the exercise - the page never
-    -- becomes taller than the screen, so the scroll bar never appears.
+    -- becomes taller than the screen, so the scroll bar never appears. In
+    -- the Cards look the open popup stops at AUTO_MIN_SCROLL and puts the
+    -- sections on pages instead.
     --
     -- false: the two fixed values above are used, exactly as before (a
     -- value that's too large then makes the page scroll again, which is
@@ -154,6 +156,10 @@ M.Opt = {
     -- a chart the user couldn't also have dialed in by hand.
     AUTO_MIN = 10,
     AUTO_MAX = 200,
+    -- Cards look: lowest auto height in the open popup; below it the
+    -- sections are put on pages (the sleep screen still goes down to
+    -- AUTO_MIN).
+    AUTO_MIN_SCROLL = 60,
 
     -- Heights currently in force in auto mode: set by _buildUI's fit loop
     -- right before it (re)builds the sections, read back by the two chart
@@ -267,12 +273,19 @@ M.Opt = {
     SHOW_PACE_DATES_KEY      = "reading_insights_book_show_pace_dates",
     SHOW_PACE_DATES_DEFAULT  = true,
 
-    -- Book progress popup: whether the thin (5 px) progress bars under the
-    -- "This chapter" value and under the book percentage are shown (drawn
-    -- with the chart's active / inactive bar colors, see UI.buildRowBar in
-    -- lib/uikit.lua). On by default.
+    -- Book progress popup: whether the thin (5 px) progress bar under the
+    -- book percentage is shown (drawn with the chart's active / inactive bar
+    -- colors, see UI.buildRowBar in lib/uikit.lua). On by default.
     SHOW_CELL_BARS_KEY     = "reading_insights_book_show_cell_bars",
     SHOW_CELL_BARS_DEFAULT = true,
+
+    -- Book progress popup, Cards look only: the bars of the Chapter card
+    -- (This chapter, the next chapters' lengths) and of the Pace card
+    -- (today against the daily average, start to expected finish).
+    SHOW_CHAPTER_BARS_KEY     = "reading_insights_book_show_chapter_bars",
+    SHOW_CHAPTER_BARS_DEFAULT = true,
+    SHOW_PACE_BARS_KEY        = "reading_insights_book_show_pace_bars",
+    SHOW_PACE_BARS_DEFAULT    = true,
 
     -- Book progress popup: which rows / columns are shown. All on by default.
     -- A section whose parts are all off is hidden with its header (see
@@ -566,7 +579,8 @@ function M.saveShowTimeGoals(value)
 end
 
 -- Whether the thin (5 px) progress bar under the daily / weekly goal values
--- is drawn (default: on).
+-- (Classic look) or the progress ring next to them (Cards look) is drawn
+-- (default: on).
 function M.readShowTimeGoalBar()
     return Prefs.read(M.SETTINGS_KEY_SHOW_TIME_GOAL_BAR, true) ~= false
 end
@@ -717,6 +731,26 @@ function M.saveMonthlyStyleSetting(value)
     Prefs.save(M.SETTINGS_KEY_MONTHLY_STYLE, value)
 end
 
+-- Look of the popups, one setting for the whole plugin
+-- (Settings > Appearance > Look):
+-- "classic" (default) or "cards" (views/cards_look/sections.lua).
+M.SETTINGS_KEY_LOOK = "reading_insights_look"
+M.LOOK_CLASSIC = "classic"
+M.LOOK_CARDS   = "cards"
+
+function M.readLookSetting()
+    if Prefs.read(M.SETTINGS_KEY_LOOK, nil) == M.LOOK_CARDS then return M.LOOK_CARDS end
+    return M.LOOK_CLASSIC
+end
+
+function M.saveLookSetting(value)
+    Prefs.save(M.SETTINGS_KEY_LOOK, value)
+end
+
+function M.readLookIsCards()
+    return M.readLookSetting() == M.LOOK_CARDS
+end
+
 -- Style of the "Last 7 days" chart (Settings > Reading insights popup >
 -- "Last 7 days chart style"): "bars" (default) or "line" (smooth line with a
 -- dot per day, like the yearly chart).
@@ -837,6 +871,89 @@ function M.Opt.saveShowAchievements(value)
     Prefs.save(M.Opt.SHOW_ACH_ROW_KEY, value and true or false)
 end
 
+-- Reading insights popup: on/off switches for the sections that used to be
+-- always drawn (Settings > Reading insights popup > "Sections"). All on by
+-- default, so nothing changes for anyone who doesn't touch them. A section
+-- that is off is neither built nor does it take part in the section order.
+--   week      "Last 7 days" / "Week"
+--   streaks   current & best streak
+--   year      yearly stats row (and the year header) + monthly chart
+--   monthly   just the monthly chart under the yearly stats row
+--   all_time  all-time totals
+M.Opt.SECTION_KEYS = {
+    week     = "reading_insights_show_section_week",
+    streaks  = "reading_insights_show_section_streaks",
+    year     = "reading_insights_show_section_year",
+    monthly  = "reading_insights_show_section_monthly",
+    all_time = "reading_insights_show_section_all_time",
+}
+
+function M.Opt.readShowSection(name)
+    local key = M.Opt.SECTION_KEYS[name]
+    if not key then return true end
+    return M.readBoolSetting(key, true)
+end
+
+function M.Opt.saveShowSection(name, value)
+    local key = M.Opt.SECTION_KEYS[name]
+    if not key then return end
+    M.saveBoolSetting(key, value and true or false)
+end
+
+-- Book progress popup: every value cell of the two-column rows can be
+-- switched off on its own (Settings > Book progress popup). A cell that was
+-- never touched follows the old per-row switch (read row / reading time row /
+-- read today row / started-expected finish row), so an existing setup looks
+-- exactly the same; the first change of a cell stores its own value. A row
+-- whose cells are all off is not drawn, and a section whose rows are all off
+-- is hidden with its header, as before.
+--   read_pct    percentage read          read_pages  pages read
+--   time_left   reading time left        time_spent  time read so far
+--   today       read today               avg_day     average per day
+--   started     started N days ago       finish      expected finish
+--   speed       pages / words per minute (the first row of "Pace"; both cells
+--               are one switch, and it is OFF until it is switched on)
+M.Opt.BOOK_CELL_KEYS = {
+    read_pct   = "reading_insights_book_cell_read_pct",
+    read_pages = "reading_insights_book_cell_read_pages",
+    time_left  = "reading_insights_book_cell_time_left",
+    time_spent = "reading_insights_book_cell_time_spent",
+    today      = "reading_insights_book_cell_today",
+    avg_day    = "reading_insights_book_cell_avg_day",
+    started    = "reading_insights_book_cell_started",
+    finish     = "reading_insights_book_cell_finish",
+    speed      = "reading_insights_book_cell_speed",
+}
+
+-- cells that are off until the reader switches them on (the others follow
+-- their old row switch, which defaults to on)
+local BOOK_CELL_DEFAULT_OFF = { speed = true }
+
+-- cell name -> the row switch it falls back to
+local BOOK_CELL_ROW = {
+    read_pct = "readShowBookReadRow", read_pages = "readShowBookReadRow",
+    time_left = "readShowBookTimeRow", time_spent = "readShowBookTimeRow",
+    today = "readShowPaceToday", avg_day = "readShowPaceToday",
+    started = "readShowPaceDates", finish = "readShowPaceDates",
+}
+
+function M.Opt.readBookCell(name)
+    local key = M.Opt.BOOK_CELL_KEYS[name]
+    if not key then return true end
+    local v = Prefs.read(key, nil)
+    if v ~= nil then return v == true end
+    if BOOK_CELL_DEFAULT_OFF[name] then return false end
+    local row_fn = BOOK_CELL_ROW[name]
+    if row_fn and M.Opt[row_fn] then return M.Opt[row_fn]() end
+    return true
+end
+
+function M.Opt.saveBookCell(name, value)
+    local key = M.Opt.BOOK_CELL_KEYS[name]
+    if not key then return end
+    Prefs.save(key, value and true or false)
+end
+
 function M.Opt.readGoalDisplay()
     local v = Prefs.read(M.Opt.GOAL_DISPLAY_KEY, nil)
     if v == M.Opt.GOAL_DISPLAY_REMAINING then return M.Opt.GOAL_DISPLAY_REMAINING end
@@ -940,9 +1057,10 @@ end
 
 function M.Opt.readBookSectionStyle()
     local v = Prefs.read(M.Opt.BOOK_SECTION_STYLE_KEY, nil)
-    -- Default (nothing saved yet) is the classic style; an explicit "donut"
-    -- choice is saved and kept.
+    -- Default (nothing saved yet): the donut in the Cards look, the classic
+    -- style otherwise. An explicit choice is saved and kept.
     if v == M.Opt.BOOK_SECTION_STYLE_DONUT then return M.Opt.BOOK_SECTION_STYLE_DONUT end
+    if v == nil and M.readLookIsCards() then return M.Opt.BOOK_SECTION_STYLE_DONUT end
     return M.Opt.BOOK_SECTION_STYLE_CLASSIC
 end
 
@@ -974,6 +1092,22 @@ end
 
 function M.Opt.saveShowCellBars(value)
     M.saveBoolSetting(M.Opt.SHOW_CELL_BARS_KEY, value)
+end
+
+function M.Opt.readShowChapterBars()
+    return M.readBoolSetting(M.Opt.SHOW_CHAPTER_BARS_KEY, M.Opt.SHOW_CHAPTER_BARS_DEFAULT)
+end
+
+function M.Opt.saveShowChapterBars(value)
+    M.saveBoolSetting(M.Opt.SHOW_CHAPTER_BARS_KEY, value)
+end
+
+function M.Opt.readShowPaceBars()
+    return M.readBoolSetting(M.Opt.SHOW_PACE_BARS_KEY, M.Opt.SHOW_PACE_BARS_DEFAULT)
+end
+
+function M.Opt.saveShowPaceBars(value)
+    M.saveBoolSetting(M.Opt.SHOW_PACE_BARS_KEY, value)
 end
 
 -- Reading insights popup's title-bar hamburger menu (Settings > Advanced
@@ -1099,6 +1233,181 @@ end
 
 function M.Opt.saveAchievementRefresh(value)
     Prefs.save(M.Opt.ACH_REFRESH_KEY, value)
+end
+
+-- ---------------------------------------------------------------------
+-- Section order (Settings > Reading insights popup > "Section order" and
+-- Settings > Book progress popup > "Section order").
+--
+-- Which order the sections of a popup are drawn in, for both looks (Classic
+-- and Cards). The default is the order the popups always had (the Cards
+-- look of the insights popup has its own, see cards_default); it is not
+-- stored at all - only a changed order is saved, and restoring the default
+-- simply deletes the setting. A saved list is always repaired on reading:
+-- ids this version doesn't know are dropped and sections that are missing
+-- from it (a section added by a later version) go to the end, so an old
+-- or hand-edited setting can never hide a section.
+--
+-- The popups build their sections in a fixed order and record where each
+-- one starts (`marks`, see the builders); Order.reorderGroup then rearranges
+-- the finished widget list. With the default order it does nothing at all.
+--
+-- Ids (the two popups are separate lists):
+--   insights: time_goals (Daily / weekly goal), week (Last 7 days / Week),
+--             streaks, year (yearly stats + monthly chart), goal_ach (Reading
+--             goal and Achievements, which share one row in the Cards look),
+--             all_time
+--   book:     chapter (This / Next chapter), chapters (the chapter bar),
+--             book (This book), pace
+-- ---------------------------------------------------------------------
+M.Order = {
+    VIEWS = {
+        insights = {
+            key     = "reading_insights_section_order",
+            default = { "time_goals", "week", "streaks", "year", "goal_ach", "all_time" },
+            cards_default = { "time_goals", "week", "streaks", "goal_ach", "year", "all_time" },
+        },
+        book = {
+            key     = "reading_insights_book_section_order",
+            default = { "chapter", "chapters", "book", "pace" },
+        },
+    },
+}
+
+local function defaultOrder(v)
+    return (v.cards_default and M.readLookIsCards()) and v.cards_default or v.default
+end
+
+-- The saved order of `view`, repaired (see above); always a complete list.
+function M.Order.read(view)
+    local v = M.Order.VIEWS[view]
+    if not v then return {} end
+    local saved = Prefs.read(v.key, nil)
+    local known, seen, out = {}, {}, {}
+    for _idx, id in ipairs(v.default) do known[id] = true end
+    if type(saved) == "table" then
+        for _idx, id in ipairs(saved) do
+            if known[id] and not seen[id] then
+                seen[id] = true
+                table.insert(out, id)
+            end
+        end
+    end
+    for _idx, id in ipairs(defaultOrder(v)) do
+        if not seen[id] then table.insert(out, id) end
+    end
+    return out
+end
+
+function M.Order.isCustom(view)
+    local v = M.Order.VIEWS[view]
+    if not v then return false end
+    local cur = M.Order.read(view)
+    for i, id in ipairs(defaultOrder(v)) do
+        if cur[i] ~= id then return true end
+    end
+    return false
+end
+
+-- Saves `list` (ids, repaired the same way as on reading). An order equal to
+-- the default is stored as "nothing saved".
+function M.Order.save(view, list)
+    local v = M.Order.VIEWS[view]
+    if not v then return end
+    Prefs.save(v.key, list)
+    if not M.Order.isCustom(view) then Prefs.save(v.key, nil) end
+end
+
+function M.Order.reset(view)
+    local v = M.Order.VIEWS[view]
+    if v then Prefs.save(v.key, nil) end
+end
+
+-- id -> position (1 = first) in the saved order.
+function M.Order.rank(view)
+    local rank = {}
+    for i, id in ipairs(M.Order.read(view)) do rank[id] = i end
+    return rank
+end
+
+-- The saved order restricted to the sections that are actually on the page
+-- (`present`: id -> true), e.g. {"week", "year", "all_time"}.
+function M.Order.effective(view, present)
+    local out = {}
+    for _idx, id in ipairs(M.Order.read(view)) do
+        if present[id] then table.insert(out, id) end
+    end
+    return out
+end
+
+-- Rearranges the widgets of `group` (a VerticalGroup that is still being
+-- built - nothing has measured it yet) into the saved order of `view`.
+--
+--   marks   { { id = ..., first = <index in group where the section's first
+--           widget is>, lead = true|nil, sep = true|nil }, ... } in the order
+--           the sections were built. A section runs up to the next mark.
+--           Widgets before the first mark (a width strut) stay where they are.
+--           lead: the section starts with the gap UI.addCard puts above the
+--                 first card of a page; it is taken off and re-added by
+--                 opts.makeLead() at the top of whichever section is first.
+--           sep:  the section starts with the divider line that goes
+--                 between sections; taken off and re-added between sections
+--                 by opts.makeSeparator().
+--   opts    { makeLead = fn, makeSeparator = fn }
+--
+-- Also rewrites group._breaks (the page-break positions of the Cards look)
+-- when the group has them. Does nothing when the sections are already in
+-- the saved order, so the default order reproduces the original page
+-- exactly.
+function M.Order.reorderGroup(group, marks, view, opts)
+    if not marks or #marks < 2 then return end
+    opts = opts or {}
+    local rank = M.Order.rank(view)
+    local function rk(id) return rank[id] or math.huge end
+
+    local sorted = true
+    for i = 2, #marks do
+        if rk(marks[i].id) < rk(marks[i - 1].id) then sorted = false break end
+    end
+    if sorted then return end
+
+    local n = #group
+    local head = {}
+    for i = 1, marks[1].first - 1 do head[#head + 1] = group[i] end
+
+    local blocks, had_lead = {}, false
+    for i, m in ipairs(marks) do
+        local last = marks[i + 1] and (marks[i + 1].first - 1) or n
+        local items = {}
+        for j = m.first, last do items[#items + 1] = group[j] end
+        if m.lead then table.remove(items, 1); had_lead = true end
+        if m.sep  then table.remove(items, 1) end
+        blocks[i] = { id = m.id, items = items, idx = i }
+    end
+    table.sort(blocks, function(a, b)
+        local ra, rb = rk(a.id), rk(b.id)
+        if ra ~= rb then return ra < rb end
+        return a.idx < b.idx
+    end)
+
+    -- Empty the group without freeing the widgets (VerticalGroup:clear()
+    -- would free them), then lay everything out again.
+    for i = n, 1, -1 do group[i] = nil end
+    if group.resetLayout then group:resetLayout() end
+
+    for _idx, w in ipairs(head) do table.insert(group, w) end
+    local breaks = group._breaks and {} or nil
+    for k, b in ipairs(blocks) do
+        if breaks then table.insert(breaks, #group + 1) end
+        if k == 1 and had_lead and opts.makeLead then
+            table.insert(group, opts.makeLead())
+        end
+        if k > 1 and opts.makeSeparator then
+            table.insert(group, opts.makeSeparator())
+        end
+        for _j, w in ipairs(b.items) do table.insert(group, w) end
+    end
+    if breaks then group._breaks = breaks end
 end
 
 return M

@@ -135,6 +135,24 @@ msgstr "Série actuelle"
 msgid "Best streak"
 msgstr "Meilleure série"
 
+msgid "Chapter"
+msgstr "Chapitre"
+
+msgid "Streaks"
+msgstr "Séries"
+
+msgid "Current"
+msgstr "Actuelle"
+
+msgid "Best"
+msgstr "Meilleure"
+
+msgid "%1 day to beat your record"
+msgstr "Nouveau record dans %1 jour"
+
+msgid "%1 days to beat your record"
+msgstr "Nouveau record dans %1 jours"
+
 msgid "Days read per month"
 msgstr "Jours de lecture par mois"
 
@@ -462,6 +480,12 @@ msgstr "page par minute"
 msgid "pages per minute"
 msgstr "pages par minute"
 
+msgid "word per minute"
+msgstr "mot par minute"
+
+msgid "words per minute"
+msgstr "mots par minute"
+
 msgid "less than"
 msgstr "moins de"
 
@@ -503,6 +527,9 @@ msgstr "Couleur de la ligne du graphique de tendance"
 
 msgid "Separator line color"
 msgstr "Couleur de la ligne de séparation"
+
+msgid "Card border color"
+msgstr "Couleur de la bordure des cartes"
 
 msgid "Label color"
 msgstr "Couleur des libellés"
@@ -1804,8 +1831,8 @@ msgstr "Classique"
 msgid "Donut chart"
 msgstr "Graphique en anneau"
 
-msgid "How the \"This book\" section looks. \"Classic\" keeps the rows and the progress bar. \"Donut chart\" shows a large donut with the read percentage on the left and the pages, the time read and the reading time left stacked on the right (the progress bar is replaced by the donut)."
-msgstr "Apparence de la section « Ce livre ». « Classique » conserve les lignes et la barre de progression. « Graphique en anneau » affiche à gauche un grand anneau avec le pourcentage lu et, à droite, les uns sous les autres, les pages, le temps de lecture écoulé et le temps de lecture restant (la barre de progression est remplacée par l'anneau)."
+msgid "How the \"This book\" section looks. \"Classic\" keeps the rows and the progress bar. \"Donut chart\" shows a large donut with the read percentage on the left and the pages, the time read and the reading time left stacked on the right (the progress bar is replaced by the donut). In the Cards look the donut is the default, and \"This chapter\" gets one too."
+msgstr "Apparence de la section « Ce livre ». « Classique » conserve les lignes et la barre de progression. « Graphique en anneau » affiche à gauche un grand anneau avec le pourcentage lu et, à droite, les uns sous les autres, les pages, le temps de lecture écoulé et le temps de lecture restant (la barre de progression est remplacée par l'anneau). Dans l'apparence Cartes, l'anneau est le choix par défaut et « Chapitre actuel » en reçoit un aussi."
 
 msgid "Show Book info"
 msgstr "Afficher les infos du livre"
@@ -1890,6 +1917,9 @@ msgstr "Aucune lecture le %1"
 
 msgid "of yearly goal"
 msgstr "de l'objectif annuel"
+
+msgid "new"
+msgstr "nouveau"
 
 msgid "Latest"
 msgstr "Dernier"
@@ -2044,11 +2074,38 @@ msgstr "Barre d'objectif quotidien / hebdomadaire"
 msgid "Show a thin progress bar under the daily and weekly goal values."
 msgstr "Afficher une fine barre de progression sous les objectifs quotidien et hebdomadaire."
 
+msgid "Look"
+msgstr "Apparence"
+
+msgid "Cards"
+msgstr "Cartes"
+
+msgid "Two looks for the popups: Classic, the original layout, or Cards, with the sections in cards."
+msgstr "Deux apparences pour les fenêtres : Classique, la mise en page d'origine, ou Cartes, avec les sections dans des cartes."
+
+msgid "Daily / weekly goal ring"
+msgstr "Anneau d'objectif quotidien / hebdomadaire"
+
+msgid "Show a progress ring next to the daily and weekly goal values."
+msgstr "Afficher un anneau de progression à côté des objectifs quotidien et hebdomadaire."
+
+msgid "of %1"
+msgstr "sur %1"
+
 msgid "Progress bar"
 msgstr "Barre de progression"
 
 msgid "Show a thin progress bar under the book percentage."
 msgstr "Afficher une fine barre de progression sous le pourcentage du livre."
+
+msgid "Progress bars"
+msgstr "Barres de progression"
+
+msgid "Show a progress bar under \"This chapter\" and bars for the length of the next chapters."
+msgstr "Afficher une barre de progression sous « Chapitre actuel » et des barres pour la longueur des chapitres suivants."
+
+msgid "Show bars for today's reading against the daily average and for the way from the start to the expected finish."
+msgstr "Afficher des barres pour la lecture du jour comparée à la moyenne quotidienne et pour le chemin du début à la fin prévue."
 
 msgid "Rating (0-5 stars)"
 msgstr "Note (0 à 5 étoiles)"
@@ -2383,6 +2440,72 @@ msgstr "Cadre sombre en mode nuit"
 
 msgid "In night mode, draw the cover frame in near-black (as Bookshelf does) instead of white, so it stays subtle. Needs \"Cover border\" to be on."
 msgstr "En mode nuit, dessine le cadre de la couverture en presque noir (comme Bookshelf) au lieu de blanc, pour qu’il reste discret. Nécessite « Cadre de la couverture »."
+
+msgid "Section order"
+msgstr "Ordre des sections"
+
+msgid "Arrange sections"
+msgstr "Réorganiser les sections"
+
+msgid "Restore default order"
+msgstr "Rétablir l'ordre par défaut"
+
+msgid "Yearly & monthly"
+msgstr "Annuel et mensuel"
+
+msgid "Custom"
+msgstr "Personnalisé"
+
+msgid "Choose in which order the sections of the popup are shown. Works in both the Classic and the Cards look."
+msgstr "Choisissez l'ordre d'affichage des sections de la fenêtre. Fonctionne dans l'apparence Classique comme dans l'apparence Cartes."
+
+msgid "Sections"
+msgstr "Sections"
+
+msgid "Monthly chart"
+msgstr "Graphique mensuel"
+
+msgid "Show the \"Last 7 days\" (or \"Week\") section with the weekly chart."
+msgstr "Affiche la section \"7 derniers jours\" (ou \"Semaine\") avec le graphique hebdomadaire."
+
+msgid "Show the current and best daily and weekly streaks."
+msgstr "Affiche les séries quotidiennes et hebdomadaires en cours et la meilleure."
+
+msgid "Show the year header, the yearly figures and the monthly chart."
+msgstr "Affiche le sélecteur d'année, les chiffres annuels et le graphique mensuel."
+
+msgid "Show the monthly chart under the yearly figures."
+msgstr "Affiche le graphique mensuel sous les chiffres annuels."
+
+msgid "Show the all-time totals."
+msgstr "Affiche les totaux de tous les temps."
+
+msgid "Percentage read"
+msgstr "Pourcentage lu"
+
+msgid "Reading time left"
+msgstr "Temps de lecture restant"
+
+msgid "Time read so far"
+msgstr "Temps de lecture écoulé"
+
+msgid "Read today"
+msgstr "Lu aujourd'hui"
+
+msgid "Average per day"
+msgstr "Moyenne par jour"
+
+msgid "Started"
+msgstr "Commencé"
+
+msgid "Expected finish"
+msgstr "Fin prévue"
+
+msgid "Reading speed"
+msgstr "Vitesse de lecture"
+
+msgid "Show a row with the reading speed (pages per minute and words per minute) at the top of the \"Pace\" section. The words per minute is an estimate, based on the number of words on a sample of the book's pages."
+msgstr "Afficher une ligne avec la vitesse de lecture (pages par minute et mots par minute) tout en haut de la section « Rythme ». Les mots par minute sont une estimation, fondée sur le nombre de mots d'un échantillon de pages du livre."
 
 msgid "%1 – %2 %3"
 msgstr "%1 – %2 %3"

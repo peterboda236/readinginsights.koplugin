@@ -135,6 +135,24 @@ msgstr "Aktuális széria"
 msgid "Best streak"
 msgstr "Leghosszabb széria"
 
+msgid "Chapter"
+msgstr "Fejezet"
+
+msgid "Streaks"
+msgstr "Szériák"
+
+msgid "Current"
+msgstr "Aktuális"
+
+msgid "Best"
+msgstr "Leghosszabb"
+
+msgid "%1 day to beat your record"
+msgstr "%1 nap az új rekordig"
+
+msgid "%1 days to beat your record"
+msgstr "%1 nap az új rekordig"
+
 msgid "Days read per month"
 msgstr "Havi olvasott napok"
 
@@ -477,6 +495,12 @@ msgstr "oldal percenként"
 msgid "pages per minute"
 msgstr "oldal percenként"
 
+msgid "word per minute"
+msgstr "szó percenként"
+
+msgid "words per minute"
+msgstr "szó percenként"
+
 msgid "less than"
 msgstr "kevesebb mint"
 
@@ -518,6 +542,9 @@ msgstr "Trend diagram vonalának színe"
 
 msgid "Separator line color"
 msgstr "Elválasztó vonal színe"
+
+msgid "Card border color"
+msgstr "Kártyakeret színe"
 
 msgid "Label color"
 msgstr "Fejlécek színe"
@@ -1802,8 +1829,8 @@ msgstr "Klasszikus"
 msgid "Donut chart"
 msgstr "Kördiagram"
 
-msgid "How the \"This book\" section looks. \"Classic\" keeps the rows and the progress bar. \"Donut chart\" shows a large donut with the read percentage on the left and the pages, the time read and the reading time left stacked on the right (the progress bar is replaced by the donut)."
-msgstr "A „Könyv” szekció megjelenése. A „Klasszikus” megtartja a sorokat és a folyamatjelző sávot. A „Kördiagram” bal oldalt egy nagy kördiagramot mutat az elolvasott százalékkal, jobb oldalt egymás alatt az oldalszámot, az eddigi olvasási időt és a hátralévő időt (a folyamatjelző sávot a kördiagram váltja fel)."
+msgid "How the \"This book\" section looks. \"Classic\" keeps the rows and the progress bar. \"Donut chart\" shows a large donut with the read percentage on the left and the pages, the time read and the reading time left stacked on the right (the progress bar is replaced by the donut). In the Cards look the donut is the default, and \"This chapter\" gets one too."
+msgstr "A „Könyv” szekció megjelenése. A „Klasszikus” megtartja a sorokat és a folyamatjelző sávot. A „Kördiagram” bal oldalt egy nagy kördiagramot mutat az elolvasott százalékkal, jobb oldalt egymás alatt az oldalszámot, az eddigi olvasási időt és a hátralévő időt (a folyamatjelző sávot a kördiagram váltja fel). Kártya nézetben a kördiagram az alapértelmezett, és az „Aktuális fejezet” is kap egyet."
 
 msgid "Show Book info"
 msgstr "Könyvinformáció megnyitása"
@@ -1897,6 +1924,9 @@ msgstr "Nincs olvasás ezen a napon: %1"
 
 msgid "of yearly goal"
 msgstr "az éves célból"
+
+msgid "new"
+msgstr "új"
 
 msgid "Latest"
 msgstr "Legutolsó"
@@ -2057,11 +2087,38 @@ msgstr "Napi / heti cél sáv"
 msgid "Show a thin progress bar under the daily and weekly goal values."
 msgstr "Vékony folyamatsáv megjelenítése a napi és heti cél értékei alatt."
 
+msgid "Look"
+msgstr "Megjelenés"
+
+msgid "Cards"
+msgstr "Kártyák"
+
+msgid "Two looks for the popups: Classic, the original layout, or Cards, with the sections in cards."
+msgstr "Az ablakok két megjelenése: Klasszikus, az eredeti elrendezés, vagy Kártyák, a részek kártyákon."
+
+msgid "Daily / weekly goal ring"
+msgstr "Napi / heti cél gyűrű"
+
+msgid "Show a progress ring next to the daily and weekly goal values."
+msgstr "Folyamatgyűrű megjelenítése a napi és heti cél értékei mellett."
+
+msgid "of %1"
+msgstr "cél: %1"
+
 msgid "Progress bar"
 msgstr "Folyamatsáv"
 
 msgid "Show a thin progress bar under the book percentage."
 msgstr "Vékony folyamatsáv megjelenítése a könyv százaléka alatt."
+
+msgid "Progress bars"
+msgstr "Folyamatsávok"
+
+msgid "Show a progress bar under \"This chapter\" and bars for the length of the next chapters."
+msgstr "Folyamatsáv megjelenítése az „Aktuális fejezet” alatt, és sávok a következő fejezetek hosszához."
+
+msgid "Show bars for today's reading against the daily average and for the way from the start to the expected finish."
+msgstr "Sávok megjelenítése a mai olvasáshoz a napi átlaghoz képest, és az úthoz a kezdéstől a várható befejezésig."
 
 msgid "Loading ratings..."
 msgstr "Értékelések betöltése..."
@@ -2394,3 +2451,69 @@ msgstr "Sötét keret éjszakai módban"
 
 msgid "In night mode, draw the cover frame in near-black (as Bookshelf does) instead of white, so it stays subtle. Needs \"Cover border\" to be on."
 msgstr "Éjszakai módban a borító keretét közel feketére festi (mint a Bookshelf) fehér helyett, így visszafogott marad. A „Borító kerete” bekapcsolását igényli."
+
+msgid "Section order"
+msgstr "Szekciók sorrendje"
+
+msgid "Arrange sections"
+msgstr "Szekciók rendezése"
+
+msgid "Restore default order"
+msgstr "Alapértelmezett sorrend visszaállítása"
+
+msgid "Yearly & monthly"
+msgstr "Éves és havi"
+
+msgid "Custom"
+msgstr "Egyéni"
+
+msgid "Choose in which order the sections of the popup are shown. Works in both the Classic and the Cards look."
+msgstr "Válaszd ki, milyen sorrendben jelenjenek meg az ablak szekciói. Klasszikus és kártya nézetben is működik."
+
+msgid "Sections"
+msgstr "Szekciók"
+
+msgid "Monthly chart"
+msgstr "Havi grafikon"
+
+msgid "Show the \"Last 7 days\" (or \"Week\") section with the weekly chart."
+msgstr "Megjeleníti a „Elmúlt 7 nap” (vagy „Hét”) szekciót a heti grafikonnal."
+
+msgid "Show the current and best daily and weekly streaks."
+msgstr "Megjeleníti az aktuális és a legjobb napi és heti szériát."
+
+msgid "Show the year header, the yearly figures and the monthly chart."
+msgstr "Megjeleníti az évválasztót, az éves számokat és a havi grafikont."
+
+msgid "Show the monthly chart under the yearly figures."
+msgstr "Megjeleníti a havi grafikont az éves számok alatt."
+
+msgid "Show the all-time totals."
+msgstr "Megjeleníti az „Összesen” szekciót."
+
+msgid "Percentage read"
+msgstr "Elolvasott százalék"
+
+msgid "Reading time left"
+msgstr "Hátralévő olvasási idő"
+
+msgid "Time read so far"
+msgstr "Eddigi olvasási idő"
+
+msgid "Read today"
+msgstr "Ma olvasott"
+
+msgid "Average per day"
+msgstr "Napi átlag"
+
+msgid "Started"
+msgstr "Elkezdve"
+
+msgid "Expected finish"
+msgstr "Várható befejezés"
+
+msgid "Reading speed"
+msgstr "Olvasási sebesség"
+
+msgid "Show a row with the reading speed (pages per minute and words per minute) at the top of the \"Pace\" section. The words per minute is an estimate, based on the number of words on a sample of the book's pages."
+msgstr "Egy sor megjelenítése az olvasási sebességgel (oldal percenként és szó percenként) a „Haladás” szakasz legelején. A percenkénti szószám becslés: a könyv néhány mintaoldalán található szavak száma alapján számolódik."

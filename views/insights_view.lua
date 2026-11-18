@@ -82,6 +82,11 @@ local ButtonDialog, InfoMessage, SpinWidget, DoubleSpinWidget =
 -- The charts and header rows this view lays out (views/insights_charts.lua,
 -- views/insights_headers.lua - split out of this file).
 local Charts, Headers = deps.Charts, deps.Headers
+-- The values both looks show (lib/insights_values.lua).
+local Values = deps.Values
+-- The "Cards" look (Settings > Appearance > Look) and its pages
+-- (views/cards_look/sections.lua, views/cards_look/pages.lua).
+local Cards, Pages = deps.InsightsCards, deps.Pages
 local buildMonthlyChart, buildWeeklyChart = Charts.buildMonthlyChart, Charts.buildWeeklyChart
 local buildAlignedSectionHeader, buildYearHeader, buildWeekNavHeader =
     Headers.buildAlignedSectionHeader, Headers.buildYearHeader, Headers.buildWeekNavHeader
@@ -179,27 +184,14 @@ end
 local function getCachedLayout()
     local screen_w = Screen:getWidth()
     if not _cached_layout or _cached_layout.full_width ~= screen_w then
-        _cached_layout = UI.buildLayout(screen_w, Size.padding.large, Size.padding.large)
+        _cached_layout = UI.buildLayout(screen_w, Size.padding.large, UI.gap())
     end
     return _cached_layout
 end
 
 local buildValueLine = UI.buildValueLine
 
-local function tappableCell(widget, col_width, callback)
-    local cell = InputContainer:new{
-        dimen = Geom:new{ x = 0, y = 0, w = col_width, h = widget:getSize().h },
-        widget,
-    }
-    cell.ges_events = {
-        Tap = { GestureRange:new{ ges = "tap", range = cell.dimen } },
-    }
-    function cell:onTap()
-        callback()
-        return true
-    end
-    return cell
-end
+local tappableCell = UI.tappableCell
 
 -- Builds the reading-goal section header text, e.g. "Reading goal"
 -- (en) / "Olvasási cél" (hu). Deliberately year-agnostic: the section
@@ -224,59 +216,8 @@ local function buildGoalEditTitle(year)
 end
 
 local function buildYearlyRow(popup_self, yearly_stats, fonts, layout)
-    -- Days of the shown year so far (the whole year once it is over): what the
-    -- daily averages and the "of days read" percentage divide by.
-    local selected_year = popup_self.selected_year or tonumber(os.date("%Y"))
-    local current_year  = tonumber(os.date("%Y"))
-    local days_in_year
-    if selected_year == current_year then
-        days_in_year = tonumber(os.date("%j"))
-    else
-        local is_leap = (selected_year % 4 == 0 and selected_year % 100 ~= 0)
-                     or (selected_year % 400 == 0)
-        days_in_year = is_leap and 366 or 365
-    end
-
-    local left_value = ""
-    local left_unit  = ""
-    local right_value, right_unit
-    local mode = popup_self.mode
-
-    if mode == VS.INSIGHTS_MODE_HOURS then
-        -- Reading time | daily average time.
-        local yr_secs = yearly_stats.duration or 0
-        left_value, left_unit = splitDurationValueUnit(yr_secs, _("reading time"))
-        local avg_secs = (days_in_year > 0) and (yr_secs / days_in_year) or 0
-        right_value, right_unit = splitDurationValueUnit(avg_secs, _("daily avg time"))
-    elseif mode == VS.INSIGHTS_MODE_PAGES then
-        -- Pages read | daily average pages.
-        local pg = yearly_stats.pages or 0
-        left_value = formatCount(pg)
-        left_unit  = N_("page read", "pages read", pg)
-        local avg_pg = (days_in_year > 0) and (pg / days_in_year) or 0
-        local avg_rounded
-        if avg_pg >= 10 then
-            avg_rounded = math.floor(avg_pg + 0.5)
-        else
-            avg_rounded = math.floor(avg_pg * 10 + 0.5) / 10
-        end
-        right_value = formatNumber(avg_rounded, avg_rounded ~= math.floor(avg_rounded) and 1 or 0)
-        right_unit  = N_("daily avg page", "daily avg pages", avg_rounded)
-    elseif mode == VS.INSIGHTS_MODE_BOOKS then
-        left_value = formatCount(yearly_stats.books_started)
-        left_unit  = N_("book", "books", yearly_stats.books_started)
-        local avg_days = yearly_stats.avg_days_per_book or 0
-        right_value = formatCount(avg_days)
-        right_unit  = N_("day/book avg", "days/book avg", avg_days)
-    else
-        left_value = formatCount(yearly_stats.days)
-        left_unit  = N_("day read", "days read", yearly_stats.days)
-        local pct = (days_in_year > 0)
-            and math.floor((yearly_stats.days / days_in_year) * 100 + 0.5)
-            or 0
-        right_value = pct .. "%"
-        right_unit  = _("of days read")
-    end
+    local left_value, left_unit, right_value, right_unit =
+        Values.yearlyValues(popup_self.selected_year, popup_self.mode, yearly_stats)
 
     local left_line = buildValueLine(
         fonts.value, fonts.label, layout.col_width, left_value, left_unit)
@@ -343,6 +284,46 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
     popup_self._today_bar_widget = nil   -- set again by the weekly chart
     local sections = VerticalGroup:new{ align = "left" }
 
+    -- Section order (Settings > Reading insights popup > Section order). The
+    -- sections are always built in the same order below; newBlock() records
+    -- where each one starts and VS.Order.reorderGroup() rearranges them at
+    -- the end (nothing happens with the default order).
+    --
+    -- Which dividers a section draws depends on its neighbour: the original
+    -- last section (All time) has no closing line, and the yearly chart and
+    -- the reading goal run into each other. So the order, restricted to the
+    -- sections that are really on the page, is worked out first: isLast()
+    -- and nextId() let a section decide about its closing line.
+    local marks = {}
+    local function newBlock(id) table.insert(marks, { id = id, first = #sections + 1 }) end
+    local order_goal_shown = VS.Opt.readShowReadingGoal()
+    local order_ach_shown  = VS.Opt.readShowAchievements() and Achievements ~= nil
+    -- Settings > Reading insights popup > Sections: each of these sections
+    -- can be switched off.
+    local show_week     = VS.Opt.readShowSection("week")
+    local show_streaks  = VS.Opt.readShowSection("streaks")
+    local show_year     = VS.Opt.readShowSection("year")
+    local show_monthly  = VS.Opt.readShowSection("monthly")
+    local show_all_time = VS.Opt.readShowSection("all_time")
+    local order_cal_mode   = VS.readWeeklyViewIsCalendar()
+    local _wlw, _wdaily, order_has_week = Values.weekData(order_cal_mode,
+        order_cal_mode and popup_self._cal_week or nil, last_week_stats, last_week_daily)
+    local order = VS.Order.effective("insights", {
+        time_goals = VS.readShowTimeGoals() and true or false,
+        week       = (show_week and order_has_week) and true or false,
+        streaks    = show_streaks and true or false,
+        year       = show_year and true or false,
+        goal_ach   = (order_goal_shown or order_ach_shown) and true or false,
+        all_time   = show_all_time and true or false,
+    })
+    local function isLast(id) return order[#order] == id end
+    local function nextId(id)
+        for i, v in ipairs(order) do
+            if v == id then return order[i + 1] end
+        end
+    end
+    local custom_order = VS.Order.isCustom("insights")
+
     -- "Daily goal | Weekly goal": time read today / this calendar week against
     -- a goal in minutes. Long press on the section edits the goals. Today's
     -- and this week's seconds come from the last-7-days data already loaded
@@ -351,20 +332,8 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
     popup_self._timegoal_hold_targets = {}
     if VS.readShowTimeGoals() then
 
-        local daily_goal_secs  = VS.readDailyGoalMinutes()  * 60
-        local weekly_goal_secs = VS.readWeeklyGoalMinutes() * 60
-
-        local today_secs, week_secs = 0, 0
-        if last_week_daily then
-            local week_start_wd = Data.weekStartWday()
-            local wday = tonumber(os.date("%w"))
-            local days_into_week = (week_start_wd == 0) and wday or ((wday + 6) % 7)
-            for i = 1, math.min(days_into_week + 1, #last_week_daily) do
-                local secs = (last_week_daily[i] and last_week_daily[i].seconds) or 0
-                week_secs = week_secs + secs
-                if i == 1 then today_secs = secs end
-            end
-        end
+        local today_secs, week_secs, daily_goal_secs, weekly_goal_secs =
+            Values.timeGoalValues(last_week_daily, last_week_daily and Data.weekStartWday())
 
         local function addTimeGoalHold(widget, fn)
             table.insert(popup_self._timegoal_hold_targets, { w = widget, fn = fn })
@@ -372,13 +341,7 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
         local function editDaily()  popup_self:editTimeGoal("daily")  end
         local function editWeekly() popup_self:editTimeGoal("weekly") end
 
-        -- Same duration format as the rest of the plugin (follows KOReader's
-        -- "Duration format" setting): "0:23 / 0:30" classic, "23m / 30m" etc.
-        local function goalText(done, goal)
-            local txt = Locale.formatDuration(done, true) .. " / " .. Locale.formatDuration(goal, true)
-            if goal > 0 and done >= goal then txt = txt .. "  \u{2713}" end  -- goal met
-            return txt
-        end
+        local goalText = Values.timeGoalText
 
         local daily_header_w  = UI.buildSectionHeader(fonts.section, _("Daily goal"),  layout.col_width, 0, HEADER_BG())
         local weekly_header_w = UI.buildSectionHeader(fonts.section, _("Weekly goal"), layout.col_width, 0, HEADER_BG())
@@ -484,7 +447,9 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
             valueCell(goalText(week_secs,  weekly_goal_secs), editWeekly, showWeeklyStreak, week_secs, weekly_goal_secs),
             layout, false, { join_above = true })
 
-        UI.addSectionWithRow(sections, goal_header, goal_row, layout, { gap_above_row = true, split_header = true })
+        newBlock("time_goals")
+        UI.addSectionWithRow(sections, goal_header, goal_row, layout,
+            { gap_above_row = true, split_header = true, no_bottom_line = isLast("time_goals") })
     end
 
     do
@@ -496,48 +461,14 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
         popup_self._week_swipe_targets = {}
         -- Long-press targets that flip between the two week views.
         popup_self._week_hold_targets = {}
-        local cal = cal_mode and popup_self._cal_week or nil
-        local lw, week_daily
-        if cal_mode then
-            lw = (cal and cal.stats) or { avg_seconds = 0, avg_pages = 0, total_seconds = 0,
-                                          total_pages = 0, days = 7, prev_seconds = 0, prev_pages = 0 }
-            week_daily = cal and cal.daily or nil
-        else
-            lw = last_week_stats or { avg_seconds = 0, avg_pages = 0 }
-            week_daily = last_week_daily
-        end
-        -- The calendar view is always shown, even for a week without any
-        -- reading: its header is what pages to the other weeks.
-        local has_week = cal_mode or lw.avg_seconds > 0 or lw.avg_pages > 0
-        if has_week then
+        local lw, week_daily, has_week = Values.weekData(cal_mode,
+            cal_mode and popup_self._cal_week or nil, last_week_stats, last_week_daily)
+        if has_week and show_week then
             local days_n = lw.days or 7
-
-            local avg_secs = lw.avg_seconds or 0
-            local week_time_val, week_time_unit_full = splitDurationValueUnit(avg_secs, _("daily avg time"))
-
-            local avg_pages_rounded
-            if lw.avg_pages >= 10 then
-                avg_pages_rounded = math.floor(lw.avg_pages + 0.5)
-            else
-                avg_pages_rounded = math.floor(lw.avg_pages * 10 + 0.5) / 10
-            end
-            local week_pages_val  = formatNumber(avg_pages_rounded, avg_pages_rounded ~= math.floor(avg_pages_rounded) and 1 or 0)
-            local week_pages_unit = N_("daily avg page", "daily avg pages", avg_pages_rounded)
-
-            local total_secs = lw.total_seconds or (lw.avg_seconds or 0) * 7
-            local total_time_val, total_time_unit = splitDurationValueUnit(total_secs, _("reading time"))
-
-            local total_pages_raw = math.floor((lw.total_pages or (lw.avg_pages or 0) * 7) + 0.5)
-            local total_pages_val = formatCount(total_pages_raw)
-            local total_pages_unit = N_("page read", "pages read", total_pages_raw)
+            local total_secs, total_pages_raw, time_cells, pages_cells = Values.weekValues(lw)
 
             local weekly_chart_mode = VS.normalizeWeeklyChartMode(popup_self.weekly_chart_mode)
             local pages_mode = (weekly_chart_mode == VS.WEEKLY_CHART_MODE_PAGES)
-
-            local time_cells  = { total_time_val, total_time_unit, "time_total",
-                                  week_time_val, week_time_unit_full, "time_avg" }
-            local pages_cells = { total_pages_val, total_pages_unit, "pages_total",
-                                  week_pages_val, week_pages_unit, "pages_avg" }
 
             -- One 2-column row: total on the left, daily average on the right.
             local function weekRow(c, row_opts)
@@ -576,10 +507,8 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
             -- (like the yearly figures above the monthly chart), after a thin divider: change of the total and of the daily
             -- average against the 7 days before the last 7 days.
             if VS.readWeeklyVsPrev() then
-                local cur_total, prev_total, fmt_delta
+                local fmt_delta
                 if pages_mode then
-                    cur_total  = total_pages_raw
-                    prev_total = math.floor((lw.prev_pages or 0) + 0.5)
                     fmt_delta = function(d, decimals)
                         local a = math.abs(d)
                         local txt = decimals and formatNumber(math.floor(a * 10 + 0.5) / 10, 1)
@@ -587,8 +516,6 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
                         return (d < 0 and "-" or "+") .. txt
                     end
                 else
-                    cur_total  = math.floor(total_secs + 0.5)
-                    prev_total = math.floor((lw.prev_seconds or 0) + 0.5)
                     -- Honours KOReader's "duration_format" (classic / modern /
                     -- letters) and the "long durations as days" option via
                     -- splitDurationValueUnit(), same as the rest of the popup.
@@ -600,8 +527,8 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
                         return ((d < 0 and a > 0) and "-" or "+") .. val, unit
                     end
                 end
-                local diff_total = cur_total - prev_total
-                local diff_avg   = diff_total / days_n
+                local diff_total, diff_avg =
+                    Values.weekDiff(lw, pages_mode, total_secs, total_pages_raw, days_n)
                 local d_total_val, d_total_unit, d_avg_val, d_avg_unit
                 if pages_mode then
                     d_total_val  = fmt_delta(diff_total)
@@ -740,27 +667,17 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
                 last_week_content = track(last_week_content)
             end
 
+            newBlock("week")
             UI.addSectionWithRow(sections,
                 tappable_last_week_header,
-                last_week_content, layout, { pad_row = false, gap_above_row = true })
+                last_week_content, layout,
+                { pad_row = false, gap_above_row = true, no_bottom_line = isLast("week") })
         end
     end
 
-    local function streakDisplay(n, unit_label, empty_label)
-        if n < 2 then return "", empty_label end
-        return formatCount(n), unit_label(n)
-    end
-
-    -- Compact unit labels ("days"/"weeks" instead of "days in a row") so that
-    -- the days/weeks values fit side by side within a single Current/Best column.
-    local cd_val, cd_unit = streakDisplay(streaks.current_days,
-        function(n) return N_("day",  "days",  n) end, _("No streak"))
-    local cw_val, cw_unit = streakDisplay(streaks.current_weeks,
-        function(n) return N_("week", "weeks", n) end, _("No streak"))
-    local bd_val, bd_unit = streakDisplay(streaks.best_days,
-        function(n) return N_("day",  "days",  n) end, _("No streak"))
-    local bw_val, bw_unit = streakDisplay(streaks.best_weeks,
-        function(n) return N_("week", "weeks", n) end, _("No streak"))
+    if show_streaks then
+    local cd_val, cd_unit, cw_val, cw_unit, bd_val, bd_unit, bw_val, bw_unit =
+        Values.streakValues(streaks)
 
     -- Single data row: each Current/Best column is split into a days sub-cell
     -- and a weeks sub-cell (tappable, each shows its own date range), giving
@@ -863,13 +780,12 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
         },
     }
 
+    newBlock("streaks")
     UI.addSectionWithRow(sections,
         streak_combined_header,
-        streak_rows, layout, { pad_row = false, gap_above_row = true, split_header = true })
-
-    local year_header = UI.padded(layout.padding_h,
-        buildYearHeader(popup_self, fonts.section, fonts.label, layout, year_range, popup_self.selected_year))
-    local yearly_row  = buildYearlyRow(popup_self, yearly_stats, fonts, layout)
+        streak_rows, layout,
+        { pad_row = false, gap_above_row = true, split_header = true, no_bottom_line = isLast("streaks") })
+    end -- if show_streaks
 
     popup_self._year_swipe_targets = {}
     -- A horizontal swipe over any widget wrapped with this pages the year
@@ -885,7 +801,14 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
         table.insert(popup_self._year_swipe_targets, box)
         return box
     end
-    local chart = buildMonthlyChart(popup_self, monthly_data, layout, fonts)
+    -- The chart and the reading goal below it run into each other (a thin
+    -- line, or none) only while the goal row really follows the year.
+    local year_joined_to_goal = show_year and order_goal_shown and nextId("year") == "goal_ach"
+    if show_year then
+    local year_header = UI.padded(layout.padding_h,
+        buildYearHeader(popup_self, fonts.section, fonts.label, layout, year_range, popup_self.selected_year))
+    local yearly_row  = buildYearlyRow(popup_self, yearly_stats, fonts, layout)
+    local chart = show_monthly and buildMonthlyChart(popup_self, monthly_data, layout, fonts) or nil
     -- The few pixels the auto-fit could not hand out as whole bar points
     -- (see _buildUI's fit) go here, under the monthly chart, so the page
     -- ends exactly at the bottom of the screen. The bars themselves stay
@@ -903,6 +826,7 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
 
     year_header = trackYearSwipe(year_header)
     yearly_row  = trackYearSwipe(yearly_row)
+    newBlock("year")
     UI.addSectionWithRow(sections, year_header, yearly_row, layout, { pad_row = false, no_bottom_line = not (chart and UI.classicLines()), bottom_line_thin = true, gap_above_row = true })
 
     if chart then
@@ -957,9 +881,14 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
         UI.addSectionWithRow(sections, tappable_chart_header, chart, layout,
             { add_divider = true, no_top_line = true,
               -- no thin line under the chart; the thick section line stays
-              no_bottom_line = VS.Opt.readShowReadingGoal() and not UI.classicLines(),
-              bottom_line_thin = VS.Opt.readShowReadingGoal() })
+              no_bottom_line = year_joined_to_goal and not UI.classicLines(),
+              bottom_line_thin = year_joined_to_goal })
+    elseif custom_order and not year_joined_to_goal and not isLast("year") then
+        -- No chart, so nothing drew the line under the section.
+        table.insert(sections, UI.padded(layout.padding_h,
+            Colors.hLine(layout.content_width, Size.line.thick)))
     end
+    end -- if show_year
 
     -- Long-press targets for the reading-goal section (its headers and
     -- cells). Reset every build so onHold never tests a hold against the
@@ -975,6 +904,7 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
     local show_ach  = VS.Opt.readShowAchievements() and Achievements ~= nil
 
     if show_goal or show_ach then
+        newBlock("goal_ach")
         local goal_year      = popup_self.selected_year
         local finished_count = goal_finished_count or 0
         local goal_value     = VS.readReadingGoal(goal_year)
@@ -1086,10 +1016,7 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
             -- No header of its own: "24 / 30 books finished" | "80% of
             -- yearly goal". Tapping either cell opens the finished books,
             -- long press opens the finished-books menu.
-            local percent = 0
-            if goal_value > 0 then
-                percent = math.floor(finished_count / goal_value * 100 + 0.5)
-            end
+            local percent = Values.goalPercent(finished_count, goal_value)
             local left_value = formatCount(finished_count) .. " / " .. formatCount(goal_value)
             local left_line  = buildValueLine(fonts.value, fonts.label, layout.col_width,
                 left_value, N_("book finished", "books finished", finished_count))
@@ -1103,30 +1030,22 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
             -- Pace uses the day of the year and whole books only (floor), so
             -- "On track" covers less than a book either way. Text without a
             -- number is plain label-font text; only numbers are bold.
-            local this_year = tonumber(os.date("%Y"))
             local function plainText(txt)
                 return buildValueLine(fonts.value, fonts.label, layout.col_width, "", txt)
             end
-            if goal_value > 0 and goal_year < this_year then
-                right_line = plainText(finished_count >= goal_value
-                    and _("Goal reached") or _("Goal not reached"))
-            elseif goal_value > 0 and goal_year == this_year then
-                local y = goal_year
-                local leap = (y % 4 == 0 and y % 100 ~= 0) or (y % 400 == 0)
-                local expected = goal_value * tonumber(os.date("%j")) / (leap and 366 or 365)
-                local diff = finished_count - expected
-                local n = math.floor(math.abs(diff))
-                if finished_count >= goal_value then
-                    right_line = plainText(_("Goal reached"))
-                elseif n == 0 then
-                    right_line = plainText(_("On track"))
-                elseif diff > 0 then
-                    right_line = buildValueLine(fonts.value, fonts.label, layout.col_width,
-                        formatCount(n), N_("book ahead of pace", "books ahead of pace", n))
-                else
-                    right_line = buildValueLine(fonts.value, fonts.label, layout.col_width,
-                        formatCount(n), N_("book behind pace", "books behind pace", n))
-                end
+            local state, n = Values.goalPace(finished_count, goal_value, goal_year)
+            if state == "reached" then
+                right_line = plainText(_("Goal reached"))
+            elseif state == "not_reached" then
+                right_line = plainText(_("Goal not reached"))
+            elseif state == "on_track" then
+                right_line = plainText(_("On track"))
+            elseif state == "ahead" then
+                right_line = buildValueLine(fonts.value, fonts.label, layout.col_width,
+                    formatCount(n), N_("book ahead of pace", "books ahead of pace", n))
+            elseif state == "behind" then
+                right_line = buildValueLine(fonts.value, fonts.label, layout.col_width,
+                    formatCount(n), N_("book behind pace", "books behind pace", n))
             end
 
             local left_cell  = dataCell(left_line, openFinished)
@@ -1137,8 +1056,10 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
             table.insert(sections, VerticalSpan:new{ width = Size.padding.small })
             table.insert(sections, trackYearSwipe(wrapRow(UI.buildTwoColRow(left_cell, right_cell, layout))))
             table.insert(sections, VerticalSpan:new{ width = Size.padding.small })
-            table.insert(sections, UI.padded(layout.padding_h,
-                Colors.hLine(layout.content_width, Size.line.thick)))
+            if show_ach or not isLast("goal_ach") then
+                table.insert(sections, UI.padded(layout.padding_h,
+                    Colors.hLine(layout.content_width, Size.line.thick)))
+            end
         end
 
         if show_ach then
@@ -1174,18 +1095,13 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
             UI.addSectionWithRow(sections,
                 paddedTwoColHeader(ach_title, latest_title, HEADER_BG()),
                 wrapRow(UI.buildTwoColRow(left_cell, right_cell, layout, false, { join_above = true })),
-                layout, { pad_row = false, gap_above_row = true, split_header = true })
+                layout, { pad_row = false, gap_above_row = true, split_header = true,
+                          no_bottom_line = isLast("goal_ach") })
         end
     end -- if show_goal or show_ach
 
-    do
-        local all_hours = all_time_stats and all_time_stats.hours or 0
-        local all_pages = all_time_stats and all_time_stats.pages or 0
-
-        local all_secs_approx = (all_time_stats and all_time_stats.duration) or (all_hours * 3600)
-        local all_time_val, all_time_unit = splitDurationValueUnit(all_secs_approx, _("reading time"))
-        local all_pages_val  = formatCount(all_pages)
-        local all_pages_unit = N_("page read", "pages read", all_pages)
+    if show_all_time then
+        local all_time_val, all_time_unit, all_pages_val, all_pages_unit = Values.allTimeValues(all_time_stats)
 
         local left_line  = buildValueLine(fonts.value, fonts.label, layout.col_width, all_time_val,  all_time_unit)
         local right_line = buildValueLine(fonts.value, fonts.label, layout.col_width, all_pages_val, all_pages_unit)
@@ -1234,11 +1150,13 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
             return true
         end
 
+        newBlock("all_time")
         UI.addSectionWithRow(sections,
             tappable_total_read_header,
-            all_time_row, layout, { no_bottom_line = true, gap_above_row = true })
+            all_time_row, layout, { no_bottom_line = isLast("all_time"), gap_above_row = true })
     end
 
+    VS.Order.reorderGroup(sections, marks, "insights")
     return sections
 end
 
@@ -1585,7 +1503,7 @@ function ReadingInsightsPopup:showWeeklyTrendPopup(metric)
         local box = FrameContainer:new{
             background     = Blitbuffer.COLOR_WHITE,
             bordersize     = Size.border.window,
-            radius         = Size.radius.window,
+            radius         = VS.readLookIsCards() and UI.cardRadius() or Size.radius.window,
             padding_top    = inner_padding,
             padding_bottom = inner_padding,
             padding_left   = inner_padding,
@@ -2037,13 +1955,20 @@ function ReadingInsightsPopup:_buildUI()
     -- Extra pixels in force during the latest buildContent() (see the fit).
     local built_extra = 0
 
-    local function buildContent()
+    local cards = VS.readLookIsCards()
+    -- Cards only: width the page is laid out for - the screen, or less the
+    -- scroll bar once the page turns out taller than the screen (see below).
+    local content_w = screen_w
+
+    -- `paginate` (Cards only): show only the current page of the sections
+    -- (see views/cards_look/pages.lua) instead of all of them.
+    local function buildContent(paginate)
         VS.Opt.built_weekly  = false
         VS.Opt.built_monthly = false
         if not auto_fit then VS.Opt.monthly_extra_px = 0 end
         built_extra = VS.Opt.monthly_extra_px or 0
 
-        local sections = buildInsightsSections(
+        local sections = (cards and Cards.buildSections or buildInsightsSections)(
             self,
             self._streaks    or { current_days=0, best_days=0, current_weeks=0, best_weeks=0 },
             self._yearly     or { days=0, pages=0, duration=0 },
@@ -2084,6 +2009,15 @@ function ReadingInsightsPopup:_buildUI()
         local title_bar_h = title_bar_inner:getSize().h
         self._title_bar_height = title_bar_h
         self.title_bar = title_bar_inner
+
+        if paginate then
+            local group = VerticalGroup:new{
+                align = "left",
+                title_bar_inner,
+                Pages.paginate(self, sections, screen_h - title_bar_h, fonts, content_w),
+            }
+            return group, group:getSize().h
+        end
 
         -- Manual mode keeps the generous title-bar-tall bottom spacer it
         -- always had (the page is expected to scroll there anyway); auto
@@ -2149,7 +2083,11 @@ function ReadingInsightsPopup:_buildUI()
             if delta_points == 0 then break end
 
             local current = VS.Opt.auto_height or VS.DEFAULT_MONTHLY_BAR_HEIGHT
-            local new_height = math.max(VS.Opt.AUTO_MIN,
+            -- Cards: the open popup goes on pages rather than flatten the
+            -- charts; the sleep screen has one screen only, so it may shrink
+            -- them all the way.
+            local min_height = (cards and not self.readonly) and VS.Opt.AUTO_MIN_SCROLL or VS.Opt.AUTO_MIN
+            local new_height = math.max(min_height,
                 math.min(VS.Opt.AUTO_MAX, current + delta_points))
 
             -- Clamped, so another build would produce the exact same page:
@@ -2210,7 +2148,10 @@ function ReadingInsightsPopup:_buildUI()
         VS.Opt.settings_sig = sig
     end
 
-    if content_h > screen_h then
+    -- Cards: only the sleep screen shrinks its text, the open popup goes on
+    -- pages instead.
+    local shrink_text = not (cards and not self.readonly)
+    if content_h > screen_h and shrink_text then
         local FONT_SCALE_MIN = 0.5
         local remembered     = VS.Opt.font_scale
         local scale          = 1
@@ -2240,18 +2181,55 @@ function ReadingInsightsPopup:_buildUI()
             if scale <= FONT_SCALE_MIN then break end
         end
         VS.Opt.font_scale = best  -- nil when it never fitted: don't pin a bad guess
-    else
+    elseif shrink_text then
         VS.Opt.font_scale = nil
     end
 
+    -- Cards: still taller than the screen, the open popup shows the
+    -- sections on pages (see views/cards_look/pages.lua).
+    self._page_count = 1
+    if cards and content_h > screen_h and not self.readonly then
+        local discarded = content
+        content, content_h = buildContent(true)
+        pcall(function() if discarded.free then discarded:free() end end)
+    end
+    if self._page_count <= 1 then self._page = 1 end
+
     local ScrollableContainer = require("ui/widget/container/scrollablecontainer")
+
+    -- Cards: a page taller than the screen (a single section taller than
+    -- the screen, or the sleep screen at its smallest text) gets a scroll
+    -- bar on the right, which takes width from the page: lay it out again
+    -- that much narrower, or its right edge would be cut off. Making it
+    -- narrower can only make it taller, so it still scrolls afterwards.
+    if cards and content_h > screen_h then
+        content_w = screen_w - ScrollableContainer:getScrollbarWidth()
+        layout = UI.buildLayout(content_w, Size.padding.large, UI.gap())
+        local discarded = content
+        content, content_h = buildContent(self._page_count > 1)
+        pcall(function() if discarded.free then discarded:free() end end)
+    end
 
     self.scroll_container = ScrollableContainer:new{
         dimen               = Geom:new{ w = screen_w, h = screen_h },
         show_parent         = self,
         scroll_bar_position = "right",
+        -- Cards: a scrolling page would otherwise keep the popup's own
+        -- gestures: long press (the container scrolls with press-and-drag;
+        -- it still scrolls with a drag or an up/down swipe), sideways swipes
+        -- (year / week) and a swipe down at the top of the page (close).
+        ignore_events       = cards and { "hold", "hold_pan", "hold_release" } or nil,
         content,
     }
+    if cards then
+        local onScrollableSwipe = self.scroll_container.onScrollableSwipe
+        self.scroll_container.onScrollableSwipe = function(sc, arg, ges)
+            local dir = ges and ges.direction
+            if dir == "east" or dir == "west" then return false end
+            if dir == "south" and (sc._scroll_offset_y or 0) <= 0 then return false end
+            return onScrollableSwipe(sc, arg, ges)
+        end
+    end
 
     self.popup_frame = FrameContainer:new{
         background = Blitbuffer.COLOR_WHITE,
@@ -2807,24 +2785,54 @@ function ReadingInsightsPopup:onSwipe(arg, ges_ev)
     --   - on the year header, its stats row, the monthly chart or the
     --     reading goal row
     --                                                -> page the year
-    -- A sideways swipe anywhere else is ignored.
+    -- A sideways swipe anywhere else is ignored. Cards: only inside the year
+    -- card or the reading goal card (the Achievements card next to the goal
+    -- card is in the band, so the band is not used there).
     if west or east then
         if VS.readWeeklyViewIsCalendar() and inside(self._week_swipe_targets) then
             if west then return self:onGoToNextWeek() end
             return self:onGoToPrevWeek()
         end
-        if inYearZone() then
+        local in_year
+        if VS.readLookIsCards() then
+            in_year = inside(self._year_swipe_targets)
+        else
+            in_year = inYearZone()
+        end
+        if in_year then
             if west then return self:onGoToNextYear() end
             return self:onGoToPrevYear()
         end
         return true
     end
+    -- Cards on more than one page: up / down turns the page, down on the
+    -- first page still closes.
+    local pages = self._page_count or 1
+    if pages > 1 and (dir == "north" or dir == "up") then
+        if (self._page or 1) < pages then
+            return self:_goToPage((self._page or 1) + 1)
+        end
+        return true
+    end
     if dir == "south" or dir == "down" then
         if self.readonly then return true end
+        if pages > 1 and (self._page or 1) > 1 then
+            return self:_goToPage(self._page - 1)
+        end
         UIManager:close(self)
         return true
     end
     return false
+end
+
+-- Cards: shows page `page` of the sections (see views/cards_look/pages.lua).
+function ReadingInsightsPopup:_goToPage(page)
+    self._page = page
+    self:_buildUI()
+    UIManager:setDirty(self, function()
+        return "ui", self.popup_frame.dimen
+    end)
+    return true
 end
 
 -- Hold dispatch by touch position:

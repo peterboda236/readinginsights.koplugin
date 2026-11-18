@@ -97,6 +97,24 @@ msgstr "当前连续阅读"
 msgid "Best streak"
 msgstr "最长连续阅读"
 
+msgid "Chapter"
+msgstr "章节"
+
+msgid "Streaks"
+msgstr "连续阅读"
+
+msgid "Current"
+msgstr "当前"
+
+msgid "Best"
+msgstr "最长"
+
+msgid "%1 day to beat your record"
+msgstr "再读%1天即破纪录"
+
+msgid "%1 days to beat your record"
+msgstr "再读%1天即破纪录"
+
 msgid "Days read per month"
 msgstr "每月阅读天数"
 msgid "Reading time per month"
@@ -345,7 +363,10 @@ msgid "page per minute"
 msgstr "每分钟页数"
 msgid "pages per minute"
 msgstr "每分钟页数"
-
+msgid "word per minute"
+msgstr "每分钟字数"
+msgid "words per minute"
+msgstr "每分钟字数"
 msgid "less than"
 msgstr "少于"
 msgid "read so far"
@@ -376,6 +397,9 @@ msgid "Trend chart line color"
 msgstr "趋势图线条颜色"
 msgid "Separator line color"
 msgstr "分隔线颜色"
+
+msgid "Card border color"
+msgstr "卡片边框颜色"
 msgid "Label color"
 msgstr "标签文字颜色"
 msgid "Value color"
@@ -1531,8 +1555,8 @@ msgstr "经典"
 msgid "Donut chart"
 msgstr "环形图"
 
-msgid "How the \"This book\" section looks. \"Classic\" keeps the rows and the progress bar. \"Donut chart\" shows a large donut with the read percentage on the left and the pages, the time read and the reading time left stacked on the right (the progress bar is replaced by the donut)."
-msgstr "“本书”区域的显示样式。“经典”保留原有的行和进度条。“环形图”在左侧显示带有已读百分比的大号环形图，右侧自上而下依次显示页数、已读时间和剩余阅读时间（进度条由环形图取代）。"
+msgid "How the \"This book\" section looks. \"Classic\" keeps the rows and the progress bar. \"Donut chart\" shows a large donut with the read percentage on the left and the pages, the time read and the reading time left stacked on the right (the progress bar is replaced by the donut). In the Cards look the donut is the default, and \"This chapter\" gets one too."
+msgstr "“本书”区域的显示样式。“经典”保留原有的行和进度条。“环形图”在左侧显示带有已读百分比的大号环形图，右侧自上而下依次显示页数、已读时间和剩余阅读时间（进度条由环形图取代）。卡片外观下默认使用环形图，“本章”也会显示环形图。"
 
 msgid "Show Book info"
 msgstr "显示图书信息"
@@ -1617,6 +1641,9 @@ msgstr "%1 没有阅读记录"
 
 msgid "of yearly goal"
 msgstr "年度目标"
+
+msgid "new"
+msgstr "新"
 
 msgid "Latest"
 msgstr "最新"
@@ -1771,11 +1798,38 @@ msgstr "每日/每周目标进度条"
 msgid "Show a thin progress bar under the daily and weekly goal values."
 msgstr "在每日和每周目标数值下方显示一条细进度条。"
 
+msgid "Look"
+msgstr "外观"
+
+msgid "Cards"
+msgstr "卡片"
+
+msgid "Two looks for the popups: Classic, the original layout, or Cards, with the sections in cards."
+msgstr "弹窗有两种外观：经典（原始布局）或卡片（各部分显示在卡片中）。"
+
+msgid "Daily / weekly goal ring"
+msgstr "每日/每周目标进度环"
+
+msgid "Show a progress ring next to the daily and weekly goal values."
+msgstr "在每日和每周目标数值旁显示进度环。"
+
+msgid "of %1"
+msgstr "目标 %1"
+
 msgid "Progress bar"
 msgstr "进度条"
 
 msgid "Show a thin progress bar under the book percentage."
 msgstr "在全书百分比下方显示一条细进度条。"
+
+msgid "Progress bars"
+msgstr "进度条"
+
+msgid "Show a progress bar under \"This chapter\" and bars for the length of the next chapters."
+msgstr "在“本章”下方显示进度条，并显示下一章长度的进度条。"
+
+msgid "Show bars for today's reading against the daily average and for the way from the start to the expected finish."
+msgstr "显示今日阅读与日均对比的进度条，以及从开始到预计读完的进度条。"
 
 msgid "Rating (0-5 stars)"
 msgstr "评分（0-5 星）"
@@ -2107,6 +2161,72 @@ msgstr "夜间模式下使用深色边框"
 
 msgid "In night mode, draw the cover frame in near-black (as Bookshelf does) instead of white, so it stays subtle. Needs \"Cover border\" to be on."
 msgstr "夜间模式下，封面边框使用接近黑色（与 Bookshelf 相同）而非白色，更为低调。需要开启“封面边框”。"
+
+msgid "Section order"
+msgstr "分区顺序"
+
+msgid "Arrange sections"
+msgstr "排列分区"
+
+msgid "Restore default order"
+msgstr "恢复默认顺序"
+
+msgid "Yearly & monthly"
+msgstr "年度与月度"
+
+msgid "Custom"
+msgstr "自定义"
+
+msgid "Choose in which order the sections of the popup are shown. Works in both the Classic and the Cards look."
+msgstr "选择窗口中各分区的显示顺序。经典外观和卡片外观均适用。"
+
+msgid "Sections"
+msgstr "分区"
+
+msgid "Monthly chart"
+msgstr "月度图表"
+
+msgid "Show the \"Last 7 days\" (or \"Week\") section with the weekly chart."
+msgstr "显示带有周图表的\"过去 7 天\"（或\"周\"）分区。"
+
+msgid "Show the current and best daily and weekly streaks."
+msgstr "显示当前和最佳的每日与每周连续阅读。"
+
+msgid "Show the year header, the yearly figures and the monthly chart."
+msgstr "显示年份选择、年度数据和月度图表。"
+
+msgid "Show the monthly chart under the yearly figures."
+msgstr "在年度数据下方显示月度图表。"
+
+msgid "Show the all-time totals."
+msgstr "显示累计总数据。"
+
+msgid "Percentage read"
+msgstr "已读百分比"
+
+msgid "Reading time left"
+msgstr "预估剩余阅读时长"
+
+msgid "Time read so far"
+msgstr "至今阅读时长"
+
+msgid "Read today"
+msgstr "今日已读"
+
+msgid "Average per day"
+msgstr "日均"
+
+msgid "Started"
+msgstr "开始于"
+
+msgid "Expected finish"
+msgstr "预计完成"
+
+msgid "Reading speed"
+msgstr "每分钟页数和字数"
+
+msgid "Show a row with the reading speed (pages per minute and words per minute) at the top of the \"Pace\" section. The words per minute is an estimate, based on the number of words on a sample of the book's pages."
+msgstr "在“阅读速度”区域的最上方显示一行：每分钟页数和每分钟字数。每分钟字数为估算值，依据书中抽样页面的字数计算。"
 
 msgid "%1 – %2 %3"
 msgstr "%1 – %2 %3"
