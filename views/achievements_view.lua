@@ -71,6 +71,7 @@ function M.show(on_close)
                     -- so the title starts at the same x on every row.
                     icon = def.icon,
                     text = title,
+                    desc = desc,
                     -- Earned in bold, locked greyed and normal weight.
                     bold = earned,
                     dim  = not earned,
@@ -111,7 +112,7 @@ function M.show(on_close)
     local earned  = Achievements.earnedCount()
     local pct     = total > 0 and math.floor(earned / total * 100 + 0.5) or 0
     local title   = _("Achievements") .. "  " .. earned .. "/" .. total .. " (" .. pct .. "%)"
-    local card_row, cards_header
+    local card_row, card_row_height, cards_header
     if cards then
         title = _("Achievements")
         local has_new = false
@@ -119,6 +120,7 @@ function M.show(on_close)
             if it.is_new then has_new = true break end
         end
         card_row = Cards.row
+        card_row_height = Cards.rowHeight
         cards_header = function(width)
             return Cards.summary(width, earned, total, has_new)
         end
@@ -149,6 +151,7 @@ function M.show(on_close)
         sort_labels      = sort_labels,
         no_checkbox      = true,
         card_row         = card_row,
+        card_row_height  = card_row_height,
         cards_header     = cards_header,
         -- Extra rows under the sort orders in the title-bar menu: show all
         -- achievements, only earned, or only locked (still-to-do) ones.

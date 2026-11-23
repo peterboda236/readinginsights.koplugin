@@ -81,6 +81,8 @@ local _ = Locale._
 
 local M = {}
 
+local ROW_FACE = "smallinfofont"
+
 M.DEFAULT_SORT = "recent_desc"
 
 -- The four orders offered by the title bar's sort menu, in menu order.
@@ -313,7 +315,7 @@ function BookListItem:init()
         GestureRange:new{ ges = "hold", range = self.dimen },
     }
 
-    local face = self.face or Font:getFace("smallinfofont")
+    local face = self.face or Font:getFace(ROW_FACE)
     -- Greyed rows (e.g. a not-yet-earned achievement in the achievements
     -- list). nil fgcolor renders as the default black, so a row without
     -- item.dim looks exactly as before.
@@ -526,13 +528,22 @@ function BookListWidget:init()
     M.fitTitle(self)
 
     -- cards_header: a widget on top of every page (the Cards look of the
-    -- achievements list); fewer rows fit under it.
-    if self.cards_header then
-        local probe = self.cards_header(self.item_width)
-        local header_h = probe:getSize().h + self.item_margin
-        probe:free()
+    -- achievements list); fewer rows fit under it. card_row_height: that
+    -- look's rows can be taller than the list's own, so they are re-paged
+    -- into the room the rows had.
+    if self.cards_header or self.card_row_height then
+        local rows_h = self.items_per_page * (self.item_height + self.item_margin)
+        local header_h = 0
+        if self.cards_header then
+            local probe = self.cards_header(self.item_width)
+            header_h = probe:getSize().h + self.item_margin
+            probe:free()
+        end
+        if self.card_row_height then
+            self.item_height = self.card_row_height(self.face or Font:getFace(ROW_FACE))
+        end
         local line_h = self.item_height + self.item_margin
-        self.items_per_page = math.max(1, self.items_per_page - math.ceil(header_h / line_h))
+        self.items_per_page = math.max(1, math.floor((rows_h - header_h) / line_h))
         self.pages = math.max(1, math.ceil(#self.item_table / self.items_per_page))
         self.show_page = math.min(self.show_page, self.pages)
         self:_populateItems()
