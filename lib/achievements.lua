@@ -61,150 +61,153 @@ local STORE_PATH = require("readinginsights_paths").dataFile("achievements.lua")
 --          unique glyph.
 --   title  short name (translatable)
 --   desc   one-line description of the condition (translatable)
+--   metric, goal  earned once metrics[metric] >= goal; the list shows the
+--          progress towards it while locked
 --   check  function(metrics) -> boolean, given the table from M.computeMetrics()
+--          (yes/no achievements; built from metric/goal for the others)
 -- The order here is the LOCKED display order; the list re-sorts earned ones
 -- by earn time.
 M.CATALOGUE = {
     -- Finished books (count, total) --------------------------------------
     { id = "first_book",     icon = "★", title = _("First book"),
       desc = _("Finish your first book"),
-      check = function(m) return m.finished_books >= 1 end },
+      metric = "finished_books", goal = 1 },
     { id = "books_5",        icon = "☆", title = _("Five books"),
       desc = _("Finish 5 books"),
-      check = function(m) return m.finished_books >= 5 end },
+      metric = "finished_books", goal = 5 },
     { id = "bookworm_10",    icon = "✩", title = _("Bookworm"),
       desc = _("Finish 10 books"),
-      check = function(m) return m.finished_books >= 10 end },
+      metric = "finished_books", goal = 10 },
     { id = "books_25",       icon = "✪", title = _("Collector"),
       desc = _("Finish 25 books"),
-      check = function(m) return m.finished_books >= 25 end },
+      metric = "finished_books", goal = 25 },
     { id = "bibliophile_50", icon = "✫", title = _("Bibliophile"),
       desc = _("Finish 50 books"),
-      check = function(m) return m.finished_books >= 50 end },
+      metric = "finished_books", goal = 50 },
     { id = "books_100",      icon = "✬", title = _("Century of books"),
       desc = _("Finish 100 books"),
-      check = function(m) return m.finished_books >= 100 end },
+      metric = "finished_books", goal = 100 },
     { id = "books_250",      icon = "✭", title = _("Library"),
       desc = _("Finish 250 books"),
-      check = function(m) return m.finished_books >= 250 end },
+      metric = "finished_books", goal = 250 },
     -- Finished books (time-bound / other) --------------------------------
     { id = "finished_month_3", icon = "✮", title = _("Prolific month"),
       desc = _("Finish 3 books in one calendar month"),
-      check = function(m) return m.finished_max_month >= 3 end },
+      metric = "finished_max_month", goal = 3 },
     { id = "finished_year_10", icon = "✯", title = _("Ten a year"),
       desc = _("Finish 10 books in one year"),
-      check = function(m) return m.finished_max_year >= 10 end },
+      metric = "finished_max_year", goal = 10 },
     { id = "finished_year_50", icon = "❂", title = _("Fifty a year"),
       desc = _("Finish 50 books in one year"),
-      check = function(m) return m.finished_max_year >= 50 end },
+      metric = "finished_max_year", goal = 50 },
     { id = "finished_same_day", icon = "✓", title = _("In one sitting"),
       desc = _("Finish a book on the day you started it"),
       check = function(m) return m.finished_same_day end },
     { id = "long_book_500",  icon = "▮", title = _("Brick"),
       desc = _("Finish a book of 500+ pages"),
-      check = function(m) return m.finished_book_max_pages >= 500 end },
+      metric = "finished_book_max_pages", goal = 500 },
     { id = "long_book_1000", icon = "▬", title = _("Tome"),
       desc = _("Finish a book of 1000+ pages"),
-      check = function(m) return m.finished_book_max_pages >= 1000 end },
+      metric = "finished_book_max_pages", goal = 1000 },
 
     -- Reading time (total) - the Records milestone ladder -----------------
     { id = "hours_1",     icon = "○", title = _("First hour"),
       desc = _("Read for 1 hour in total"),
-      check = function(m) return m.total_hours >= 1 end },
+      metric = "total_hours", goal = 1 },
     { id = "hours_5",     icon = "◔", title = _("Five hours"),
       desc = _("Read for 5 hours in total"),
-      check = function(m) return m.total_hours >= 5 end },
+      metric = "total_hours", goal = 5 },
     { id = "hours_10",    icon = "◑", title = _("Ten hours"),
       desc = _("Read for 10 hours in total"),
-      check = function(m) return m.total_hours >= 10 end },
+      metric = "total_hours", goal = 10 },
     { id = "hours_25",    icon = "◕", title = _("Twenty-five hours"),
       desc = _("Read for 25 hours in total"),
-      check = function(m) return m.total_hours >= 25 end },
+      metric = "total_hours", goal = 25 },
     { id = "hours_50",    icon = "●", title = _("Fifty hours"),
       desc = _("Read for 50 hours in total"),
-      check = function(m) return m.total_hours >= 50 end },
+      metric = "total_hours", goal = 50 },
     { id = "hours_100",   icon = "◉", title = _("100 hours"),
       desc = _("Read for 100 hours in total"),
-      check = function(m) return m.total_hours >= 100 end },
+      metric = "total_hours", goal = 100 },
     { id = "hours_250",   icon = "◎", title = _("250 hours"),
       desc = _("Read for 250 hours in total"),
-      check = function(m) return m.total_hours >= 250 end },
+      metric = "total_hours", goal = 250 },
     { id = "hours_500",   icon = "⊙", title = _("500 hours"),
       desc = _("Read for 500 hours in total"),
-      check = function(m) return m.total_hours >= 500 end },
+      metric = "total_hours", goal = 500 },
     { id = "hours_1000",  icon = "⊕", title = _("1000 hours"),
       desc = _("Read for 1000 hours in total"),
-      check = function(m) return m.total_hours >= 1000 end },
+      metric = "total_hours", goal = 1000 },
     { id = "hours_2500",  icon = "⊗", title = _("2500 hours"),
       desc = _("Read for 2500 hours in total"),
-      check = function(m) return m.total_hours >= 2500 end },
+      metric = "total_hours", goal = 2500 },
     { id = "hours_5000",  icon = "◆", title = _("5000 hours"),
       desc = _("Read for 5000 hours in total"),
-      check = function(m) return m.total_hours >= 5000 end },
+      metric = "total_hours", goal = 5000 },
     { id = "hours_10000", icon = "◈", title = _("10000 hours"),
       desc = _("Read for 10000 hours in total"),
-      check = function(m) return m.total_hours >= 10000 end },
+      metric = "total_hours", goal = 10000 },
     -- Reading time (time-bound) -------------------------------------------
     { id = "hours_month_50", icon = "◇", title = _("Intense month"),
       desc = _("Read for 50 hours in one calendar month"),
-      check = function(m) return m.hours_max_month >= 50 end },
+      metric = "hours_max_month", goal = 50 },
     { id = "hours_year_100", icon = "❖", title = _("100 hours in a year"),
       desc = _("Read for 100 hours in one year"),
-      check = function(m) return m.hours_max_year >= 100 end },
+      metric = "hours_max_year", goal = 100 },
     { id = "hours_year_500", icon = "▣", title = _("500 hours in a year"),
       desc = _("Read for 500 hours in one year"),
-      check = function(m) return m.hours_max_year >= 500 end },
+      metric = "hours_max_year", goal = 500 },
 
     -- Pages (total) --------------------------------------------------------
     { id = "pages_total_1000",   icon = "▤", title = _("1000 pages"),
       desc = _("Read 1000 pages in total"),
-      check = function(m) return m.total_pages >= 1000 end },
+      metric = "total_pages", goal = 1000 },
     { id = "pages_total_10000",  icon = "▦", title = _("10000 pages"),
       desc = _("Read 10000 pages in total"),
-      check = function(m) return m.total_pages >= 10000 end },
+      metric = "total_pages", goal = 10000 },
     { id = "pages_total_50000",  icon = "▩", title = _("50000 pages"),
       desc = _("Read 50000 pages in total"),
-      check = function(m) return m.total_pages >= 50000 end },
+      metric = "total_pages", goal = 50000 },
     { id = "pages_total_100000", icon = "▧", title = _("100000 pages"),
       desc = _("Read 100000 pages in total"),
-      check = function(m) return m.total_pages >= 100000 end },
+      metric = "total_pages", goal = 100000 },
     -- Pages (single day) ----------------------------------------------------
     { id = "pages_300",  icon = "△", title = _("Page turner"),
       desc = _("Read 300 pages in a single day"),
-      check = function(m) return m.max_day_pages >= 300 end },
+      metric = "max_day_pages", goal = 300 },
     { id = "pages_500",  icon = "▲", title = _("Devourer"),
       desc = _("Read 500 pages in a single day"),
-      check = function(m) return m.max_day_pages >= 500 end },
+      metric = "max_day_pages", goal = 500 },
     { id = "pages_1000", icon = "▼", title = _("Unstoppable"),
       desc = _("Read 1000 pages in a single day"),
-      check = function(m) return m.max_day_pages >= 1000 end },
+      metric = "max_day_pages", goal = 1000 },
 
     -- Daily streaks ---------------------------------------------------------
     { id = "streak_3",   icon = "▷", title = _("Getting into it"),
       desc = _("Read on 3 days in a row"),
-      check = function(m) return m.best_streak_days >= 3 end },
+      metric = "best_streak_days", goal = 3 },
     { id = "streak_7",   icon = "▶", title = _("Weekly streak"),
       desc = _("Read on 7 days in a row"),
-      check = function(m) return m.best_streak_days >= 7 end },
+      metric = "best_streak_days", goal = 7 },
     { id = "streak_14",  icon = "◀", title = _("Two weeks"),
       desc = _("Read on 14 days in a row"),
-      check = function(m) return m.best_streak_days >= 14 end },
+      metric = "best_streak_days", goal = 14 },
     { id = "streak_30",  icon = "◁", title = _("Monthly streak"),
       desc = _("Read on 30 days in a row"),
-      check = function(m) return m.best_streak_days >= 30 end },
+      metric = "best_streak_days", goal = 30 },
     { id = "streak_100", icon = "➤", title = _("Hundred-day streak"),
       desc = _("Read on 100 days in a row"),
-      check = function(m) return m.best_streak_days >= 100 end },
+      metric = "best_streak_days", goal = 100 },
     { id = "streak_365", icon = "➜", title = _("A full year"),
       desc = _("Read on 365 days in a row"),
-      check = function(m) return m.best_streak_days >= 365 end },
+      metric = "best_streak_days", goal = 365 },
     -- Weekly streaks / persistence -------------------------------------------
     { id = "weekly_4",   icon = "♪", title = _("Monthly rhythm"),
       desc = _("A 4-week reading streak"),
-      check = function(m) return m.best_weekly_streak >= 4 end },
+      metric = "best_weekly_streak", goal = 4 },
     { id = "weekly_12",  icon = "♫", title = _("Quarter"),
       desc = _("A 12-week reading streak"),
-      check = function(m) return m.best_weekly_streak >= 12 end },
+      metric = "best_weekly_streak", goal = 12 },
     { id = "month_all_days", icon = "♬", title = _("Perfect month"),
       desc = _("Read on every day of a calendar month"),
       check = function(m) return m.month_all_days end },
@@ -215,19 +218,19 @@ M.CATALOGUE = {
     -- Single day / single session --------------------------------------------
     { id = "marathon_3h", icon = "♦", title = _("Marathon"),
       desc = _("Read for 3 hours in a single day"),
-      check = function(m) return m.max_day_secs >= 3 * 3600 end },
+      metric = "max_day_secs", goal = 3 * 3600 },
     { id = "day_5h",      icon = "♢", title = _("Absorbed"),
       desc = _("Read for 5 hours in a single day"),
-      check = function(m) return m.max_day_secs >= 5 * 3600 end },
+      metric = "max_day_secs", goal = 5 * 3600 },
     { id = "day_6h",      icon = "♠", title = _("Marathon day"),
       desc = _("Read for 6 hours in a single day"),
-      check = function(m) return m.max_day_secs >= 6 * 3600 end },
+      metric = "max_day_secs", goal = 6 * 3600 },
     { id = "session_1h",  icon = "♤", title = _("One sitting"),
       desc = _("Read for 1 hour without a break"),
-      check = function(m) return m.max_session_secs >= 3600 end },
+      metric = "max_session_secs", goal = 3600 },
     { id = "session_2h",  icon = "♣", title = _("Deep session"),
       desc = _("Read for 2 hours without a break"),
-      check = function(m) return m.max_session_secs >= 2 * 3600 end },
+      metric = "max_session_secs", goal = 2 * 3600 },
     { id = "midnight_crossing", icon = "♧", title = _("Past midnight"),
       desc = _("Read on both sides of midnight in one session"),
       check = function(m) return m.midnight_crossing end },
@@ -244,10 +247,10 @@ M.CATALOGUE = {
       check = function(m) return m.read_lunch end },
     { id = "all_hours",   icon = "✺", title = _("Around the clock"),
       desc = _("Read in every hour of the day at some point"),
-      check = function(m) return m.distinct_hours >= 24 end },
+      metric = "distinct_hours", goal = 24 },
     { id = "all_weekdays", icon = "✷", title = _("Full week"),
       desc = _("Read on every day of the week at some point"),
-      check = function(m) return m.distinct_weekdays >= 7 end },
+      metric = "distinct_weekdays", goal = 7 },
     { id = "dec31",       icon = "❄", title = _("New Year's Eve reader"),
       desc = _("Read on 31 December"),
       check = function(m) return m.read_dec31 end },
@@ -258,44 +261,44 @@ M.CATALOGUE = {
     -- Pace / depth ------------------------------------------------------------
     { id = "fast_reader",  icon = "➣", title = _("Speed reader"),
       desc = _("Average over 60 pages per hour in a book"),
-      check = function(m) return m.max_book_pace_pph >= 60 end },
+      metric = "max_book_pace_pph", goal = 60 },
     { id = "devoted_book", icon = "❤", title = _("Devoted"),
       desc = _("Spend over 20 hours on a single book"),
-      check = function(m) return m.max_book_secs >= 20 * 3600 end },
+      metric = "max_book_secs", goal = 20 * 3600 },
 
     -- Variety -------------------------------------------------------------------
     { id = "authors_5",   icon = "♥", title = _("Well-read"),
       desc = _("Finish books by 5 different authors"),
-      check = function(m) return m.distinct_finished_authors >= 5 end },
+      metric = "distinct_finished_authors", goal = 5 },
     { id = "authors_25",  icon = "♡", title = _("Literary"),
       desc = _("Finish books by 25 different authors"),
-      check = function(m) return m.distinct_finished_authors >= 25 end },
+      metric = "distinct_finished_authors", goal = 25 },
     { id = "distinct_books_50", icon = "❦", title = _("Explorer"),
       desc = _("Open 50 different books"),
-      check = function(m) return m.distinct_books >= 50 end },
+      metric = "distinct_books", goal = 50 },
 
     -- Extended tiers / new themes (+20) ---------------------------------------
     { id = "books_500", icon = "✦", title = _("Grand library"),
       desc = _("Finish 500 books"),
-      check = function(m) return m.finished_books >= 500 end },
+      metric = "finished_books", goal = 500 },
     { id = "distinct_books_100", icon = "✧", title = _("Adventurer"),
       desc = _("Open 100 different books"),
-      check = function(m) return m.distinct_books >= 100 end },
+      metric = "distinct_books", goal = 100 },
     { id = "distinct_books_250", icon = "✤", title = _("Cartographer"),
       desc = _("Open 250 different books"),
-      check = function(m) return m.distinct_books >= 250 end },
+      metric = "distinct_books", goal = 250 },
     { id = "authors_50", icon = "✥", title = _("Well-versed"),
       desc = _("Finish books by 50 different authors"),
-      check = function(m) return m.distinct_finished_authors >= 50 end },
+      metric = "distinct_finished_authors", goal = 50 },
     { id = "days_100", icon = "◒", title = _("100 reading days"),
       desc = _("Read on 100 different days"),
-      check = function(m) return m.total_reading_days >= 100 end },
+      metric = "total_reading_days", goal = 100 },
     { id = "days_365", icon = "◓", title = _("365 reading days"),
       desc = _("Read on 365 different days"),
-      check = function(m) return m.total_reading_days >= 365 end },
+      metric = "total_reading_days", goal = 365 },
     { id = "days_1000", icon = "⊘", title = _("1000 reading days"),
       desc = _("Read on 1000 different days"),
-      check = function(m) return m.total_reading_days >= 1000 end },
+      metric = "total_reading_days", goal = 1000 },
     { id = "every_month", icon = "⊞", title = _("Every month"),
       desc = _("Read in every month of one year"),
       check = function(m) return m.any_year_all_months end },
@@ -307,34 +310,51 @@ M.CATALOGUE = {
       check = function(m) return m.full_week_mon_sun end },
     { id = "veteran_years", icon = "⊡", title = _("Veteran"),
       desc = _("Your reading history spans 5 calendar years"),
-      check = function(m) return m.span_years >= 5 end },
+      metric = "span_years", goal = 5 },
     { id = "reading_anniversary", icon = "❁", title = _("Reading anniversary"),
       desc = _("One year since your first reading"),
-      check = function(m) return m.history_span_days >= 365 end },
+      metric = "history_span_days", goal = 365 },
     { id = "session_3h", icon = "▻", title = _("Iron focus"),
       desc = _("Read for 3 hours without a break"),
-      check = function(m) return m.max_session_secs >= 3 * 3600 end },
+      metric = "max_session_secs", goal = 3 * 3600 },
     { id = "session_pages_100", icon = "◅", title = _("Sprint"),
       desc = _("Read 100 pages in one session"),
-      check = function(m) return m.max_session_pages >= 100 end },
+      metric = "max_session_pages", goal = 100 },
     { id = "pages_month_5000", icon = "◧", title = _("Big month"),
       desc = _("Read 5000 pages in one calendar month"),
-      check = function(m) return m.pages_max_month >= 5000 end },
+      metric = "pages_max_month", goal = 5000 },
     { id = "hours_week_20", icon = "◨", title = _("Big week"),
       desc = _("Read 20 hours in one week"),
-      check = function(m) return m.max_week_hours >= 20 end },
+      metric = "max_week_hours", goal = 20 },
     { id = "comeback", icon = "↺", title = _("Comeback"),
       desc = _("Read again after a 30-day break"),
       check = function(m) return m.had_comeback end },
     { id = "author_loyalty", icon = "❧", title = _("Author loyalty"),
       desc = _("Finish 5 books by the same author"),
-      check = function(m) return m.max_books_one_author >= 5 end },
+      metric = "max_books_one_author", goal = 5 },
 }
 
 -- Quick "is this key in the catalogue" set, so a stale entry left in the
 -- file for an achievement that's since been removed doesn't get counted.
 local CATALOGUE_IDS = {}
-for _idx, a in ipairs(M.CATALOGUE) do CATALOGUE_IDS[a.id] = true end
+for _idx, a in ipairs(M.CATALOGUE) do
+    CATALOGUE_IDS[a.id] = true
+    if a.metric then
+        local metric, goal = a.metric, a.goal
+        a.check = function(m) return (m[metric] or 0) >= goal end
+    end
+end
+
+-- Seconds in one unit of the metrics that are durations; the others are counts.
+M.METRIC_SECONDS = {
+    total_hours      = 3600,
+    hours_max_year   = 3600,
+    hours_max_month  = 3600,
+    max_week_hours   = 3600,
+    max_day_secs     = 1,
+    max_session_secs = 1,
+    max_book_secs    = 1,
+}
 
 -- ---------------------------------------------------------------------
 -- Persistence
@@ -1280,10 +1300,17 @@ function M.recompute()
     local s0 = openStore()
 
     local newly = {}
+    -- The metric values of the still-locked ones, for the list. The check
+    -- has just loaded them, so this runs no query of its own.
+    local progress = {}
     for _idx, a in ipairs(M.CATALOGUE) do
         if not earned[a.id] then
             local ok_c, got = pcall(a.check, m)
-            if ok_c and got then newly[#newly + 1] = a.id end
+            if ok_c and got then
+                newly[#newly + 1] = a.id
+            elseif ok_c and a.metric then
+                progress[a.id] = m[a.metric] or 0
+            end
         end
     end
 
@@ -1321,6 +1348,7 @@ function M.recompute()
         if migrate then s:saveSetting("dates_version", DATES_VERSION) end
         s:saveSetting("earned", earned)
         s:saveSetting("new", new_set)
+        s:saveSetting("progress", progress)
         s:saveSetting("evaluated_ts", now)
         s:saveSetting("evaluated_date", os.date("%Y-%m-%d", now))
         -- The database's "fingerprint" at the moment of evaluation, so
@@ -1348,6 +1376,11 @@ end
 -- opening. Returns whether a full re-evaluation ran.
 function M.refreshIfChanged(mode)
     local s = openStore()
+    -- Files written before the progress was kept get one full run.
+    if s and s:readSetting("evaluated_ts") ~= nil and s:readSetting("progress") == nil then
+        M.recompute()
+        return true
+    end
     if mode == "daily" and s
        and s:readSetting("evaluated_date") == os.date("%Y-%m-%d") then
         return false  -- already evaluated today
@@ -1367,10 +1400,14 @@ end
 -- ---------------------------------------------------------------------
 -- Earned ones first, sorted by earn time descending, then the locked
 -- ones in catalogue order. Each item:
--- { def = <catalogue entry>, earned = bool, earned_ts = ts|nil }.
+-- { def = <catalogue entry>, earned = bool, earned_ts = ts|nil,
+--   progress = metric value|nil (locked ones with a goal) }.
 function M.list()
     local earned  = M.getEarned()
     local new_set = M.getNew()
+    local s = openStore()
+    local progress = s and s:readSetting("progress")
+    if type(progress) ~= "table" then progress = {} end
     local earned_items, locked_items = {}, {}
     for _idx, a in ipairs(M.CATALOGUE) do
         local ts = earned[a.id]
@@ -1380,7 +1417,7 @@ function M.list()
                 is_new = new_set[a.id] and true or false,
             })
         else
-            table.insert(locked_items, { def = a, earned = false })
+            table.insert(locked_items, { def = a, earned = false, progress = tonumber(progress[a.id]) })
         end
     end
     table.sort(earned_items, function(x, y)

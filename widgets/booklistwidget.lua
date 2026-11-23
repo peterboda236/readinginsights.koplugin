@@ -56,6 +56,7 @@ local ButtonDialog    = require("ui/widget/buttondialog")
 local CenterContainer = require("ui/widget/container/centercontainer")
 local CheckMark       = require("ui/widget/checkmark")
 local Font            = require("ui/font")
+local FocusManager    = require("ui/widget/focusmanager")
 local FrameContainer  = require("ui/widget/container/framecontainer")
 local Geom            = require("ui/geometry")
 local GestureRange    = require("ui/gesturerange")
@@ -529,8 +530,8 @@ function BookListWidget:init()
 
     -- cards_header: a widget on top of every page (the Cards look of the
     -- achievements list); fewer rows fit under it. card_row_height: that
-    -- look's rows can be taller than the list's own, so they are re-paged
-    -- into the room the rows had.
+    -- look's rows each have their own height, so they are re-paged into
+    -- the room the rows had, as many per page as fit.
     if self.cards_header or self.card_row_height then
         local rows_h = self.items_per_page * (self.item_height + self.item_margin)
         local header_h = 0
@@ -540,11 +541,12 @@ function BookListWidget:init()
             probe:free()
         end
         if self.card_row_height then
-            self.item_height = self.card_row_height(self.face or Font:getFace(ROW_FACE))
+            self.rows_room = rows_h - header_h
+        else
+            local line_h = self.item_height + self.item_margin
+            self.items_per_page = math.max(1, math.floor((rows_h - header_h) / line_h))
         end
-        local line_h = self.item_height + self.item_margin
-        self.items_per_page = math.max(1, math.floor((rows_h - header_h) / line_h))
-        self.pages = math.max(1, math.ceil(#self.item_table / self.items_per_page))
+        self:_paginate()
         self.show_page = math.min(self.show_page, self.pages)
         self:_populateItems()
     end
@@ -620,12 +622,40 @@ function BookListWidget:applySort()
     for _idx, item in ipairs(rest)   do table.insert(items, item) end
 end
 
+function BookListWidget:rowHeight(item)
+    if self.card_row_height then
+        return self.card_row_height(item, self.face or Font:getFace(ROW_FACE))
+    end
+    return self.item_height
+end
+
+-- Sets self.pages. With card_row_height, each page takes rows in order
+-- until the next one would not fit in rows_room; page_starts holds the
+-- index of each page's first row.
+function BookListWidget:_paginate()
+    if not self.card_row_height then
+        self.pages = math.max(1, math.ceil(#self.item_table / self.items_per_page))
+        return
+    end
+    self.page_starts = { 1 }
+    local used = 0
+    for idx, item in ipairs(self.item_table) do
+        local h = self:rowHeight(item) + self.item_margin
+        if used > 0 and used + h > self.rows_room then
+            table.insert(self.page_starts, idx)
+            used = 0
+        end
+        used = used + h
+    end
+    self.pages = #self.page_starts
+end
+
 -- Re-sorts, re-pages and redraws after the caller changed item_table (a
 -- book added or deleted in the manual list, a row's text updated).
 function BookListWidget:updateItems(item_table)
     if item_table then self.item_table = item_table end
     self:applySort()
-    self.pages = math.max(1, math.ceil(#self.item_table / self.items_per_page))
+    self:_paginate()
     if self.show_page > self.pages then self.show_page = self.pages end
     self:_populateItems()
 end
@@ -694,8 +724,14 @@ function BookListWidget:_populateItems()
     self.main_content:clear()
     self.layout = { self.layout[#self.layout] } -- keep the footer row
 
-    local idx_offset = (self.show_page - 1) * self.items_per_page
-    local page_last  = math.min(idx_offset + self.items_per_page, #self.item_table)
+    local idx_offset, page_last
+    if self.page_starts then
+        idx_offset = self.page_starts[self.show_page] - 1
+        page_last  = (self.page_starts[self.show_page + 1] or #self.item_table + 1) - 1
+    else
+        idx_offset = (self.show_page - 1) * self.items_per_page
+        page_last  = math.min(idx_offset + self.items_per_page, #self.item_table)
+    end
     if self.cards_header then
         table.insert(self.main_content, VerticalSpan:new{ width = self.item_margin })
         table.insert(self.main_content, self.cards_header(self.item_width))
@@ -703,7 +739,7 @@ function BookListWidget:_populateItems()
     for idx = idx_offset + 1, page_last do
         table.insert(self.main_content, VerticalSpan:new{ width = self.item_margin })
         local row = BookListItem:new{
-            height      = self.item_height,
+            height      = self:rowHeight(self.item_table[idx]),
             width       = self.item_width,
             item        = self.item_table[idx],
             index       = idx,
@@ -714,7 +750,9 @@ function BookListWidget:_populateItems()
         table.insert(self.layout, #self.layout, { row })
         table.insert(self.main_content, row)
     end
-    self:moveFocusTo(1, 1)
+    -- Like KOReader's own lists: no focus border on the first row of a
+    -- touch device; it shows once the keys move the focus.
+    self:moveFocusTo(1, 1, FocusManager.FOCUS_ONLY_ON_NT)
 
     self.footer_page:setText(
         Tmpl(C_("Pagination", "%1 / %2"), self.show_page, self.pages),

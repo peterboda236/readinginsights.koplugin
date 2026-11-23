@@ -7,7 +7,8 @@ keeps its title bar, sort / filter menu, paging and taps; in the Cards look
 every page starts with a summary card ("37 / 81 earned", a bar, "★ new") and
 each achievement is a card of its own: card border color when earned, light
 gray when still locked. A card shows the name (with "★" and the unlock date)
-on top and how to earn it below, so it needs no tap to read.
+on top and how to earn it below, so it needs no tap to read. A locked one
+with a goal shows "5,000 / 10,000" in the date's place and a bar below.
 
 Loaded once by main.lua and handed to the achievements view as `deps.AchievementsCards`.
 ]]--
@@ -38,6 +39,10 @@ local function smallFace()
     return Fonts.getFace("records_small")
 end
 
+local function barHeight()
+    return Screen:scaleBySize(6)
+end
+
 -- The summary card, `width` wide.
 function M.summary(width, earned, total, has_new)
     local inner_w = UI.cardInnerWidth(width)
@@ -64,27 +69,42 @@ function M.summary(width, earned, total, has_new)
         VerticalSpan:new{ width = Size.padding.small },
         line,
         VerticalSpan:new{ width = gap },
-        UI.buildRoundBar(total > 0 and earned / total or 0, inner_w, Screen:scaleBySize(6)),
+        UI.buildRoundBar(total > 0 and earned / total or 0, inner_w, barHeight()),
         VerticalSpan:new{ width = Size.padding.small },
     }, width)
 end
 
+-- Line heights per face and weight, measured once: the list pages all its
+-- cards by their heights.
+local line_heights = {}
+
 local function lineHeight(face, bold)
-    local probe = TextWidget:new{ text = " ", face = face, bold = bold }
-    local h = probe:getSize().h
-    probe:free()
-    return h
+    local by_face = line_heights[face]
+    if not by_face then
+        by_face = {}
+        line_heights[face] = by_face
+    end
+    local key = bold and "bold" or "regular"
+    if not by_face[key] then
+        local probe = TextWidget:new{ text = " ", face = face, bold = bold }
+        by_face[key] = probe:getSize().h
+        probe:free()
+    end
+    return by_face[key]
 end
 
--- The height of one achievement card for the list's row `face`.
-function M.rowHeight(face)
+-- The height of `item`'s card for the list's row `face`.
+function M.rowHeight(item, face)
+    local bar_h = item.progress and (Size.padding.small + barHeight() + UI.capTopRoom(face)) or 0
     return 2 * (UI.cardBorder() + Size.padding.small)
-        + lineHeight(face, true) + lineHeight(smallFace())
+        + lineHeight(face, true) + lineHeight(smallFace()) + bar_h
 end
 
 -- One achievement as a card exactly `width` x `height`: the glyph in a
 -- fixed column; the name, "★" for a new one and the unlock date on the
--- first line; the description (cut with "…" when too long) below.
+-- first line (a locked one's progress in the date's place); the
+-- description (cut with "…" when too long) below, and the progress bar
+-- under it.
 function M.row(item, width, height, face, fgcolor)
     local border = UI.cardBorder()
     local pad = Size.padding.default
@@ -99,8 +119,10 @@ function M.row(item, width, height, face, fgcolor)
         table.insert(right, UI.buildPill(STAR, small))
         table.insert(right, HorizontalSpan:new{ width = gap })
     end
-    if item.mandatory and item.mandatory ~= "" then
-        table.insert(right, TextWidget:new{ text = item.mandatory, face = small, fgcolor = sub_color })
+    local p = item.progress
+    local right_text = (item.mandatory ~= "" and item.mandatory) or (p and p.text)
+    if right_text then
+        table.insert(right, TextWidget:new{ text = right_text, face = small, fgcolor = sub_color })
     end
     local right_w = right:getSize().w
 
@@ -127,6 +149,13 @@ function M.row(item, width, height, face, fgcolor)
         table.insert(lines, TextWidget:new{
             text = item.desc, face = small, fgcolor = sub_color, max_width = text_w,
         })
+    end
+    if p then
+        table.insert(lines, VerticalSpan:new{ width = Size.padding.small })
+        table.insert(lines, UI.buildRoundBar(p.ratio, text_w, barHeight()))
+        -- The title's letters start this far below the card's top padding;
+        -- the same room under the bar keeps both edges even.
+        table.insert(lines, VerticalSpan:new{ width = UI.capTopRoom(face) })
     end
 
     local row = HorizontalGroup:new{

@@ -386,4 +386,23 @@ for _, col in ipairs{ 120, 233, 480 } do
     check("layout content width matches for " .. col, lay.content_width == full)
 end
 
+-- Cards rows are paged by their own heights: as many as fit, the rest move
+-- on in order, and a row taller than the room still gets a page.
+local function pageStarts(heights, room)
+    local items = {}
+    for i, h in ipairs(heights) do items[i] = { h = h } end
+    local pager = setmetatable({
+        item_table = items, item_margin = 2, rows_room = room,
+        card_row_height = function(item) return item.h end,
+    }, { __index = ListWidget.Widget })
+    pager:_paginate()
+    return table.concat(pager.page_starts, ","), pager.pages
+end
+local starts, pages = pageStarts({ 20, 30, 20, 20, 30 }, 70)
+check("rows of mixed height fill each page", starts == "1,3,5" and pages == 3)
+starts, pages = pageStarts({ 20, 30 }, 10)
+check("a row taller than the room gets its own page", starts == "1,2" and pages == 2)
+starts, pages = pageStarts({}, 70)
+check("an empty list is one page", starts == "1" and pages == 1)
+
 print("\nALL WIRING TESTS PASSED")

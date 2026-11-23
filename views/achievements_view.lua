@@ -40,6 +40,22 @@ local current_filter = FILTER_ALL
 
 local M = {}
 
+-- The Cards look's progress line of a locked achievement with a goal:
+-- { ratio = 0..1, text = "5,000 / 10,000" }, or nil.
+local function progressOf(it)
+    local def = it.def
+    if not (it.progress and def.goal) then return nil end
+    local secs = Achievements.METRIC_SECONDS[def.metric]
+    local function fmt(v)
+        if secs then return Locale.formatDuration(v * secs, true) end
+        return Locale.formatCount(math.floor(v))
+    end
+    return {
+        ratio = math.max(0, math.min(1, it.progress / def.goal)),
+        text  = fmt(it.progress) .. " / " .. fmt(def.goal),
+    }
+end
+
 function M.show(on_close)
     local items = Achievements.list()
     local cards = Cards and VS and VS.readLookIsCards()
@@ -77,6 +93,7 @@ function M.show(on_close)
                     dim  = not earned,
                     mandatory = value,
                     is_new    = it.is_new,
+                    progress  = cards and progressOf(it) or nil,
                     -- Keeps earned (sort_time > 0, newest first) above locked
                     -- (sort_time 0) under the default order; ties -> title.
                     sort_title = title,
