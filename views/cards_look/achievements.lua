@@ -57,7 +57,16 @@ function M.summary(width, earned, total, has_new)
         face = Fonts.getFace("achievements_label"), fgcolor = Colors.label(),
         max_width = math.max(1, inner_w - v:getSize().w - gap - pill_w),
     }
-    local line = HorizontalGroup:new{ align = "center", v, HorizontalSpan:new{ width = gap }, label }
+    -- Different faces: centring their boxes leaves the digits lower than
+    -- the label's letters, so the two share a baseline instead.
+    local dy = v:getBaseline() - label:getBaseline()
+    local count = HorizontalGroup:new{
+        align = "top",
+        VerticalGroup:new{ VerticalSpan:new{ width = math.max(0, -dy) }, v },
+        HorizontalSpan:new{ width = gap },
+        VerticalGroup:new{ VerticalSpan:new{ width = math.max(0, dy) }, label },
+    }
+    local line = HorizontalGroup:new{ align = "center", count }
     if pill then
         table.insert(line, HorizontalSpan:new{ width = inner_w - v:getSize().w - gap - label:getSize().w - pill:getSize().w })
         table.insert(line, pill)

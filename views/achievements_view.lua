@@ -98,11 +98,11 @@ function M.show(on_close)
                     -- (sort_time 0) under the default order; ties -> title.
                     sort_title = title,
                     sort_time  = (earned and it.earned_ts) or 0,
-                    callback = function()
+                    callback = not cards and function()
                         UIManager:show(InfoMessage:new{
                             text = def.icon .. "  " .. title .. "\n\n" .. desc,
                         })
-                    end,
+                    end or nil,
                 }
             end
         end
