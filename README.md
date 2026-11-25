@@ -30,7 +30,7 @@ More Cards screenshots
 <img width="192" alt="Képernyőkép 2026-11-18 130110" src="https://github.com/user-attachments/assets/f477b032-aa62-464a-9b89-1e94a335ffc8" />
 <img width="192" alt="Képernyőkép 2026-11-18 130216" src="https://github.com/user-attachments/assets/8cef7edf-4c7e-4243-a574-593041fed061" />
 <img width="192" alt="Képernyőkép 2026-11-18 130232" src="https://github.com/user-attachments/assets/10354b18-00ef-4201-9dc3-44b69525d598" />
-<img width="192" alt="Achievements, Cards look" src="https://github.com/user-attachments/assets/25b510e6-677a-4d2e-aeff-b5848b4847bf" />
+<img width="192" alt="Achievements, Cards look" src="https://github.com/user-attachments/assets/8ee746a8-86ed-4fc3-9240-db0145d1ab0d" />
 
 
 A set of reading-stats popups powered by KOReader's own statistics database.
@@ -156,6 +156,8 @@ A few examples:
 Open the list from the Achievements cell, or via *Tools → Reading insights →
 Achievements*. Newly earned ones are marked with a **★** until you open
 the list. Once unlocked, an achievement is never lost. Available everywhere.
+In the Cards look each achievement shows its description, and a locked one
+its progress (e.g. 6 / 365) with a bar.
 
 ## 📖 Book progress
 
@@ -305,7 +307,8 @@ moved here automatically):
 - **Appearance** — **Look** (*Classic* or *Cards*, see
   [Cards look](#-cards-look)), **Colors** (a hex colour, or a touch colour
   wheel, for every bar, line and label the popups draw) and **Fonts** (your own
-  font and size for each text role).
+  font and size for each text role; *Fonts → Achievements* sets the list's
+  title font, plus its description, value and label fonts in the Cards look).
 - **Reading insights popup** — which sections it shows (goals, achievements,
   hamburger menu), the *Section order*, the *Last 7 days* and *Months* chart
   styles, and the bar chart heights.
