@@ -700,6 +700,9 @@ msgstr "查看阅读习惯"
 msgid "Sub-values (date / book title)"
 msgstr "附属信息（日期/书名）"
 
+msgid "Description / date / progress"
+msgstr "描述/日期/进度"
+
 msgid "Reading goal section"
 msgstr "阅读目标板块"
 msgid "Shows the number of books finished this year next to your yearly goal. Long press the goal value to change it."

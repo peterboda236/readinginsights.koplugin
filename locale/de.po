@@ -938,6 +938,9 @@ msgstr "Lesegewohnheiten anzeigen"
 msgid "Sub-values (date / book title)"
 msgstr "Unterwerte (Datum / Buchtitel)"
 
+msgid "Description / date / progress"
+msgstr "Beschreibung / Datum / Fortschritt"
+
 msgid "Reading goal section"
 msgstr "Bereich „Leseziel“"
 

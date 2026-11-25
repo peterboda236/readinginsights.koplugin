@@ -929,6 +929,9 @@ msgstr "Show Reading habits"
 msgid "Sub-values (date / book title)"
 msgstr "Sub-values (date / book title)"
 
+msgid "Description / date / progress"
+msgstr "Description / date / progress"
+
 msgid "Reading goal section"
 msgstr "Reading goal section"
 

@@ -17,8 +17,9 @@ Exit status is 0 only if everything passed.
 | `test_insights_values.lua` | `lib/insights_values`: the values both looks of the Reading insights popup show — the year row in each mode, average-pages rounding, the week figures, the daily / weekly time goal for either first weekday, the reading goal's percentage and pace, streak and all-time texts, empty data. |
 | `test_daybounds.lua` | The local-midnight arithmetic used by the range-filtered queries: the 23- and 25-hour DST days, month/year boundaries, a leap day. Run under `TZ=Europe/Budapest` so a DST-observing zone is actually exercised. |
 | `test_streaks.lua` | `lib/insights_data`'s weekly-streak week adjacency: week-start dates across month and year boundaries, and the New-Year edge of the `%Y-%W` labels. |
+| `test_achievements.lua` | `lib/achievements`: the checks built from each entry's metric/goal, the progress of the locked ones kept by `recompute()` and returned by `list()`, and the one-time re-evaluation of a file saved without progress. |
 | `test_records.lua` | `lib/records_data`: the milestone ladder's edges, the record queries, streak boundaries, empty history, and the DB fingerprint choosing between cache and full recompute. |
-| `test_wiring.lua` | Loads every module the way `main.lua` does, with KOReader's UI stubbed, and checks the wiring: no module receives nil where it expects another, every export exists under the name its caller uses. |
+| `test_wiring.lua` | Loads every module the way `main.lua` does, with KOReader's UI stubbed, and checks the wiring: no module receives nil where it expects another, every export exists under the name its caller uses. Also the Cards look's paging of rows by their own heights. |
 
 ## What this does not cover
 

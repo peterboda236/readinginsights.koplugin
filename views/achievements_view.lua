@@ -25,8 +25,8 @@ local UIManager = require("ui/uimanager")
 
 -- Shared modules, passed in as one named table by main.lua (see there).
 local deps = ...
-local Achievements, Locale, ListWidget, VS, Cards =
-    deps.Achievements, deps.Locale, deps.ListWidget, deps.VS, deps.AchievementsCards
+local Achievements, Locale, ListWidget, VS, Cards, Fonts =
+    deps.Achievements, deps.Locale, deps.ListWidget, deps.VS, deps.AchievementsCards, deps.Fonts
 local InfoMessage = deps.NativeWidgets.InfoMessage
 local _ = Locale._
 
@@ -39,6 +39,22 @@ local FILTER_ALL, FILTER_EARNED, FILTER_LOCKED = "all", "earned", "locked"
 local current_filter = FILTER_ALL
 
 local M = {}
+
+-- The Cards look's progress line of a locked achievement with a goal:
+-- { ratio = 0..1, text = "5,000 / 10,000" }, or nil.
+local function progressOf(it)
+    local def = it.def
+    if not (it.progress and def.goal) then return nil end
+    local secs = Achievements.METRIC_SECONDS[def.metric]
+    local function fmt(v)
+        if secs then return Locale.formatDuration(v * secs, true) end
+        return Locale.formatCount(math.floor(v))
+    end
+    return {
+        ratio = math.max(0, math.min(1, it.progress / def.goal)),
+        text  = fmt(it.progress) .. " / " .. fmt(def.goal),
+    }
+end
 
 function M.show(on_close)
     local items = Achievements.list()
@@ -71,20 +87,22 @@ function M.show(on_close)
                     -- so the title starts at the same x on every row.
                     icon = def.icon,
                     text = title,
+                    desc = desc,
                     -- Earned in bold, locked greyed and normal weight.
                     bold = earned,
                     dim  = not earned,
                     mandatory = value,
                     is_new    = it.is_new,
+                    progress  = cards and progressOf(it) or nil,
                     -- Keeps earned (sort_time > 0, newest first) above locked
                     -- (sort_time 0) under the default order; ties -> title.
                     sort_title = title,
                     sort_time  = (earned and it.earned_ts) or 0,
-                    callback = function()
+                    callback = not cards and function()
                         UIManager:show(InfoMessage:new{
                             text = def.icon .. "  " .. title .. "\n\n" .. desc,
                         })
-                    end,
+                    end or nil,
                 }
             end
         end
@@ -111,7 +129,7 @@ function M.show(on_close)
     local earned  = Achievements.earnedCount()
     local pct     = total > 0 and math.floor(earned / total * 100 + 0.5) or 0
     local title   = _("Achievements") .. "  " .. earned .. "/" .. total .. " (" .. pct .. "%)"
-    local card_row, cards_header
+    local card_row, card_row_height, cards_header
     if cards then
         title = _("Achievements")
         local has_new = false
@@ -119,6 +137,7 @@ function M.show(on_close)
             if it.is_new then has_new = true break end
         end
         card_row = Cards.row
+        card_row_height = Cards.rowHeight
         cards_header = function(width)
             return Cards.summary(width, earned, total, has_new)
         end
@@ -148,7 +167,9 @@ function M.show(on_close)
         sort_setting_key = SORT_KEY,
         sort_labels      = sort_labels,
         no_checkbox      = true,
+        face             = Fonts.getFace("achievements_title"),
         card_row         = card_row,
+        card_row_height  = card_row_height,
         cards_header     = cards_header,
         -- Extra rows under the sort orders in the title-bar menu: show all
         -- achievements, only earned, or only locked (still-to-do) ones.

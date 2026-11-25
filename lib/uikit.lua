@@ -474,6 +474,13 @@ function M.cardRadius()
     return Screen:scaleBySize(8)
 end
 
+-- Side padding inside a card: about as wide as the gap above the first
+-- line's letters at the default fonts (the top padding plus the room above
+-- capital letters), so the content sits as far from every edge.
+function M.cardPaddingH()
+    return Screen:scaleBySize(8)
+end
+
 -- FrameContainer draws its border with paintBorder, which takes a gray
 -- color, so a custom RGB color is drawn in its gray.
 local function grayColor(color)
@@ -521,7 +528,7 @@ end
 
 -- Width left for the content of a card `width` pixels wide.
 function M.cardInnerWidth(width)
-    return width - 2 * (M.cardBorder() + Size.padding.default)
+    return width - 2 * (M.cardBorder() + M.cardPaddingH())
 end
 
 -- The layout to build a full-width card's content with: no side padding,
@@ -539,8 +546,8 @@ function M.buildCard(content, width)
         padding        = 0,
         padding_top    = Size.padding.small,
         padding_bottom = Size.padding.small,
-        padding_left   = Size.padding.default,
-        padding_right  = Size.padding.default,
+        padding_left   = M.cardPaddingH(),
+        padding_right  = M.cardPaddingH(),
         M.fixedCol(content, M.cardInnerWidth(width)),
     }
 end
