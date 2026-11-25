@@ -19,6 +19,12 @@ Centralises the font choices used by every popup, so there is exactly one
   records_label     "Records" popup row labels (left-hand side of each row)
   records_small     "Records" popup sub-values (date / book title under a value)
 
+  achievements_title  Achievements list: name and icon of each achievement
+  achievements_small  Achievements list: description, date, progress, and
+                      the top card's header
+  achievements_value  Achievements list: the top card's earned count
+  achievements_label  Achievements list: the top card's "/ 81 earned"
+
   bookinfo_title    "Book info" popup: book title
   bookinfo_author   "Book info" popup: author line
   bookinfo_series   "Book info" popup: series / #index line
@@ -58,9 +64,11 @@ Exposes:
                           validate + persist; return true/false
   resetToDefault(key)    restore the original in-code defaults (both name
                           and size) for one role
-  buildMenu(on_change)   KOReader sub_item_table for the "Fonts" menu;
+  buildMenu(on_change, is_cards)
+                         KOReader sub_item_table for the "Fonts" menu;
                          on_change() is called after any font is changed
-                         or reset, so the caller can refresh open popups
+                         or reset, so the caller can refresh open popups;
+                         is_cards() tells whether the Cards look is on
 ]]--
 
 local CheckButton     = require("ui/widget/checkbutton")
@@ -94,11 +102,15 @@ local _ = Locale._
 local INSIGHTS_KEYS = { "insights_section", "insights_value", "insights_label", "insights_small" }
 local STATS_KEYS     = { "stats_section", "stats_value", "stats_label", "stats_arrow" }
 local RECORDS_KEYS   = { "records_value", "records_label", "records_small" }
+local ACHIEVEMENTS_KEYS = { "achievements_title", "achievements_small", "achievements_value", "achievements_label" }
+-- The Classic list draws every row in the title font; the others are the Cards look's.
+local ACHIEVEMENTS_CLASSIC_KEYS = { "achievements_title" }
 local BOOKINFO_KEYS  = { "bookinfo_title", "bookinfo_author", "bookinfo_series", "bookinfo_description", "bookinfo_stats" }
 local KEY_ORDER = {}
 for _, k in ipairs(INSIGHTS_KEYS) do table.insert(KEY_ORDER, k) end
 for _, k in ipairs(STATS_KEYS)     do table.insert(KEY_ORDER, k) end
 for _, k in ipairs(RECORDS_KEYS)   do table.insert(KEY_ORDER, k) end
+for _, k in ipairs(ACHIEVEMENTS_KEYS) do table.insert(KEY_ORDER, k) end
 for _, k in ipairs(BOOKINFO_KEYS)  do table.insert(KEY_ORDER, k) end
 
 -- These match what was previously hard-coded directly in insights_view.lua
@@ -124,6 +136,13 @@ local DEFAULTS = {
     records_value    = { file = "NotoSans-Bold.ttf",    fallback = "tfont",             size = 22 },
     records_label    = { file = "NotoSans-Regular.ttf", fallback = "x_smallinfofont",   size = 20 },
     records_small    = { file = "NotoSans-Regular.ttf", fallback = "xx_smallinfofont",  size = 15 },
+
+    -- Achievements list: the title is KOReader's smallinfofont, the rest
+    -- the Records roles it used before it had its own.
+    achievements_title = { file = "NotoSans-Regular.ttf", fallback = "smallinfofont",    size = 22 },
+    achievements_small = { file = "NotoSans-Regular.ttf", fallback = "xx_smallinfofont", size = 15 },
+    achievements_value = { file = "NotoSans-Bold.ttf",    fallback = "tfont",            size = 22 },
+    achievements_label = { file = "NotoSans-Regular.ttf", fallback = "x_smallinfofont",  size = 20 },
 
     -- Book info popup. The font files are the Book card plugin's own
     -- defaults for its title / series lines (bold, bold); the author line is
@@ -626,6 +645,11 @@ function labelFor(key)
         records_label    = _("Labels"),
         records_small    = _("Sub-values (date / book title)"),
 
+        achievements_title = _("Title"),
+        achievements_small = _("Description / date / progress"),
+        achievements_value = _("Values (big numbers)"),
+        achievements_label = _("Labels"),
+
         bookinfo_title   = _("Title"),
         bookinfo_author  = _("Author"),
         bookinfo_series  = _("Series"),
@@ -762,7 +786,7 @@ end
 -- is invoked every time a font is changed or reset, so the caller can e.g.
 -- close/refresh any currently open popup. The menu itself is always kept
 -- in sync via the touchmenu_instance KOReader passes into every callback.
-function M.buildMenu(on_change)
+function M.buildMenu(on_change, is_cards)
     local sub_item_table = {
         {
             text = Locale.insightsTitle(),
@@ -778,6 +802,14 @@ function M.buildMenu(on_change)
             text = _("Records"),
             keep_menu_open = true,
             sub_item_table = groupSubItemTable(RECORDS_KEYS, on_change),
+        },
+        {
+            text = _("Achievements"),
+            keep_menu_open = true,
+            sub_item_table_func = function()
+                local cards = is_cards and is_cards()
+                return groupSubItemTable(cards and ACHIEVEMENTS_KEYS or ACHIEVEMENTS_CLASSIC_KEYS, on_change)
+            end,
         },
         {
             text = _("Book info"),

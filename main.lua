@@ -302,7 +302,7 @@ local AchievementsCards = loadModule("views/cards_look/achievements.lua",
 local AchievementsView = loadModule("views/achievements_view.lua",
     { Achievements = Achievements, Locale = Locale, ListWidget = ListWidget,
       VS = ViewSettings, AchievementsCards = AchievementsCards,
-      NativeWidgets = NativeWidgets })
+      NativeWidgets = NativeWidgets, Fonts = Fonts })
 
 -- The combined current/best streak popup with its full-history calendar,
 -- opened both from the insights page's streak cells and straight from the

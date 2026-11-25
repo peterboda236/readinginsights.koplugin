@@ -36,7 +36,7 @@ local STAR = "\u{2605}"
 local M = {}
 
 local function smallFace()
-    return Fonts.getFace("records_small")
+    return Fonts.getFace("achievements_small")
 end
 
 local function barHeight()
@@ -49,12 +49,12 @@ function M.summary(width, earned, total, has_new)
     local gap = Size.padding.default
     local small = smallFace()
 
-    local v = TextWidget:new{ text = formatCount(earned), face = Fonts.getFace("records_value"), fgcolor = Colors.value() }
+    local v = TextWidget:new{ text = formatCount(earned), face = Fonts.getFace("achievements_value"), fgcolor = Colors.value() }
     local pill = has_new and UI.buildPill(STAR .. " " .. _("new"), small) or nil
     local pill_w = pill and (pill:getSize().w + gap) or 0
     local label = TextWidget:new{
         text = "/ " .. formatCount(total) .. " " .. _("earned"),
-        face = Fonts.getFace("records_label"), fgcolor = Colors.label(),
+        face = Fonts.getFace("achievements_label"), fgcolor = Colors.label(),
         max_width = math.max(1, inner_w - v:getSize().w - gap - pill_w),
     }
     local line = HorizontalGroup:new{ align = "center", v, HorizontalSpan:new{ width = gap }, label }
@@ -65,7 +65,7 @@ function M.summary(width, earned, total, has_new)
 
     return UI.buildCard(VerticalGroup:new{
         align = "left",
-        UI.cardHeader("trophy", _("Achievements"), Fonts.getBoldFace("records_small"), inner_w),
+        UI.cardHeader("trophy", _("Achievements"), Fonts.getBoldFace("achievements_small"), inner_w),
         VerticalSpan:new{ width = Size.padding.small },
         line,
         VerticalSpan:new{ width = gap },
@@ -107,7 +107,7 @@ end
 -- under it.
 function M.row(item, width, height, face, fgcolor)
     local border = UI.cardBorder()
-    local pad = Size.padding.default
+    local pad = UI.cardPaddingH()
     local gap = Size.padding.default
     local inner_w = width - 2 * (border + pad)
     local inner_h = height - 2 * border

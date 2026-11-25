@@ -528,11 +528,20 @@ function BookListWidget:init()
     self.sort_disabled = disabled
     M.fitTitle(self)
 
+    -- A row font taller than the rows (the achievements list's font
+    -- setting) makes the rows taller.
+    local text_row_h = 0
+    if self.face and not self.card_row_height then
+        local probe = TextWidget:new{ text = " ", face = self.face }
+        text_row_h = probe:getSize().h + 2 * Size.padding.small
+        probe:free()
+    end
+
     -- cards_header: a widget on top of every page (the Cards look of the
     -- achievements list); fewer rows fit under it. card_row_height: that
     -- look's rows each have their own height, so they are re-paged into
     -- the room the rows had, as many per page as fit.
-    if self.cards_header or self.card_row_height then
+    if self.cards_header or self.card_row_height or text_row_h > self.item_height then
         local rows_h = self.items_per_page * (self.item_height + self.item_margin)
         local header_h = 0
         if self.cards_header then
@@ -543,6 +552,7 @@ function BookListWidget:init()
         if self.card_row_height then
             self.rows_room = rows_h - header_h
         else
+            self.item_height = math.max(self.item_height, text_row_h)
             local line_h = self.item_height + self.item_margin
             self.items_per_page = math.max(1, math.floor((rows_h - header_h) / line_h))
         end
@@ -629,6 +639,13 @@ function BookListWidget:rowHeight(item)
     return self.item_height
 end
 
+function BookListWidget:rowGap()
+    if self.card_row then
+        return self.item_margin + Size.padding.small
+    end
+    return self.item_margin
+end
+
 -- Sets self.pages. With card_row_height, each page takes rows in order
 -- until the next one would not fit in rows_room; page_starts holds the
 -- index of each page's first row.
@@ -640,7 +657,7 @@ function BookListWidget:_paginate()
     self.page_starts = { 1 }
     local used = 0
     for idx, item in ipairs(self.item_table) do
-        local h = self:rowHeight(item) + self.item_margin
+        local h = self:rowHeight(item) + self:rowGap()
         if used > 0 and used + h > self.rows_room then
             table.insert(self.page_starts, idx)
             used = 0
@@ -737,13 +754,14 @@ function BookListWidget:_populateItems()
         table.insert(self.main_content, self.cards_header(self.item_width))
     end
     for idx = idx_offset + 1, page_last do
-        table.insert(self.main_content, VerticalSpan:new{ width = self.item_margin })
+        table.insert(self.main_content, VerticalSpan:new{ width = self:rowGap() })
         local row = BookListItem:new{
             height      = self:rowHeight(self.item_table[idx]),
             width       = self.item_width,
             item        = self.item_table[idx],
             index       = idx,
             show_parent = self,
+            face        = self.face,
             no_checkbox = self.no_checkbox,
             card_row    = self.card_row,
         }

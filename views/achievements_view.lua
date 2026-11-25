@@ -25,8 +25,8 @@ local UIManager = require("ui/uimanager")
 
 -- Shared modules, passed in as one named table by main.lua (see there).
 local deps = ...
-local Achievements, Locale, ListWidget, VS, Cards =
-    deps.Achievements, deps.Locale, deps.ListWidget, deps.VS, deps.AchievementsCards
+local Achievements, Locale, ListWidget, VS, Cards, Fonts =
+    deps.Achievements, deps.Locale, deps.ListWidget, deps.VS, deps.AchievementsCards, deps.Fonts
 local InfoMessage = deps.NativeWidgets.InfoMessage
 local _ = Locale._
 
@@ -167,6 +167,7 @@ function M.show(on_close)
         sort_setting_key = SORT_KEY,
         sort_labels      = sort_labels,
         no_checkbox      = true,
+        face             = Fonts.getFace("achievements_title"),
         card_row         = card_row,
         card_row_height  = card_row_height,
         cards_header     = cards_header,

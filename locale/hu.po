@@ -950,6 +950,9 @@ msgstr "Olvasási szokások megjelenítése"
 msgid "Sub-values (date / book title)"
 msgstr "Alértékek (dátum / könyvcím)"
 
+msgid "Description / date / progress"
+msgstr "Leírás / dátum / haladás"
+
 msgid "Reading goal section"
 msgstr "Olvasási cél szakasz"
 

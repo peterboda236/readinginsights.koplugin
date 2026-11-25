@@ -155,7 +155,7 @@ local AchievementsCards = load("views/cards_look/achievements.lua",
 local AchievementsView = load("views/achievements_view.lua",
     { Achievements = Achievements, Locale = Locale, ListWidget = ListWidget,
       VS = ViewSettings, AchievementsCards = AchievementsCards,
-      NativeWidgets = NativeWidgets })
+      NativeWidgets = NativeWidgets, Fonts = Fonts })
 local CoverThumbs  = load("lib/coverthumbs.lua")
 local BookInfoData = load("lib/bookinfo_data.lua",
     { Locale = Locale, BookStatsData = BookStatsData, CoverThumbs = CoverThumbs })
@@ -385,6 +385,17 @@ for _, col in ipairs{ 120, 233, 480 } do
     check("layout round-trip keeps col_width " .. col, lay.col_width == col)
     check("layout content width matches for " .. col, lay.content_width == full)
 end
+
+-- The Achievements fonts start out as the fonts the list used before.
+for role, was in pairs{ achievements_small = "records_small", achievements_value = "records_value",
+                        achievements_label = "records_label" } do
+    check(role .. " defaults to " .. was,
+          Fonts.getDefaultName(role) == Fonts.getDefaultName(was)
+          and Fonts.getDefaultSize(role) == Fonts.getDefaultSize(was))
+end
+check("achievements_title defaults to smallinfofont (NotoSans-Regular 22)",
+      Fonts.getDefaultName("achievements_title") == "NotoSans-Regular.ttf"
+      and Fonts.getDefaultSize("achievements_title") == 22)
 
 -- Cards rows are paged by their own heights: as many as fit, the rest move
 -- on in order, and a row taller than the room still gets a page.

@@ -973,6 +973,9 @@ msgstr "Показати звички читання"
 msgid "Sub-values (date / book title)"
 msgstr "Додаткові значення (дата / назва книги)"
 
+msgid "Description / date / progress"
+msgstr "Опис / дата / прогрес"
+
 msgid "Reading goal section"
 msgstr "Розділ цілі читання"
 

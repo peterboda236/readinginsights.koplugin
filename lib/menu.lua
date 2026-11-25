@@ -346,7 +346,7 @@ function M.build(self, deps)
         text = _("Fonts"),
         keep_menu_open = true,
         separator = true,
-        sub_item_table = deps.Fonts.buildMenu(),
+        sub_item_table = deps.Fonts.buildMenu(nil, deps.ViewSettings.readLookIsCards),
     }
 
     -- "Menu items": tick the popups that should be listed under Tools >
