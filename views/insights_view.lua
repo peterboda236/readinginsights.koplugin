@@ -1415,7 +1415,34 @@ local function manualBooksForYear(year)
     return out
 end
 
+-- Puts the reader's own "finished on" dates (see VS.readFinishedDates) on
+-- the books of a finished list. The records are copied first: the query's
+-- list is cached and shared, and must keep the date the DB gave.
+local function applyFinishedDates(books, year)
+    local dates = VS.readFinishedDates(year)
+    if not next(dates) then return books end
+    local out = {}
+    for _idx, b in ipairs(books) do
+        local ts = not b.manual and tonumber(dates[tostring(b.id_book)]) or nil
+        if ts then
+            local c = {}
+            for k, v in pairs(b) do c[k] = v end
+            c.last_read = ts
+            c.date_overridden = true
+            b = c
+        end
+        table.insert(out, b)
+    end
+    return sortByLastRead(out)
+end
+
+local getFinishedBooksForYearCombined_raw
+
 local function getFinishedBooksForYearCombined(popup_self, year)
+    return applyFinishedDates(getFinishedBooksForYearCombined_raw(popup_self, year), year)
+end
+
+getFinishedBooksForYearCombined_raw = function(popup_self, year)
     local base_books = Data.getFinishedBooksForYear(year)
     local overrides = VS.readFinishedOverrides(year)
 
@@ -1456,9 +1483,26 @@ local function getFinishedBooksForYearCombined(popup_self, year)
     end
     if #missing_ids > 0 then
         local candidates = Data.getBooksForYearByIds(year, missing_ids)
+        local found = {}
         for _, b in ipairs(candidates) do
             local id_str = tostring(b.id_book)
+            found[id_str] = true
             if overrides[id_str] == true and not by_id[id_str] then
+                table.insert(result, b)
+            end
+        end
+        -- A book whose finished date was moved into this year from another
+        -- one has no reading entries here, so the query above can't find
+        -- it: it is listed from its plain book row, under the date set.
+        local dates = VS.readFinishedDates(year)
+        local moved_ids = {}
+        for _, id_str in ipairs(missing_ids) do
+            if not found[id_str] and dates[id_str] then
+                moved_ids[#moved_ids + 1] = id_str
+            end
+        end
+        if #moved_ids > 0 then
+            for _, b in ipairs(Data.getBookRowsByIds(moved_ids)) do
                 table.insert(result, b)
             end
         end

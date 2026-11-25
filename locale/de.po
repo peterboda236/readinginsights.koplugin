@@ -2518,3 +2518,15 @@ msgstr "no"
 
 msgid "weekday lowercase"
 msgstr "no"
+
+msgid "Date finished (%1)"
+msgstr "Abschlussdatum (%1)"
+
+msgid "Restore last read date"
+msgstr "Letztes Lesedatum wiederherstellen"
+
+msgid "Moved to %1"
+msgstr "Verschoben nach %1"
+
+msgid "There is no reading data in %1"
+msgstr "Im Jahr %1 gibt es keine Lesedaten"

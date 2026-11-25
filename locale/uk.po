@@ -2570,3 +2570,15 @@ msgstr "%1 %2 – %3 %4"
 
 msgid "range months lowercase"
 msgstr "no"
+
+msgid "Date finished (%1)"
+msgstr "Дата завершення (%1)"
+
+msgid "Restore last read date"
+msgstr "Відновити дату останнього читання"
+
+msgid "Moved to %1"
+msgstr "Переміщено до %1"
+
+msgid "There is no reading data in %1"
+msgstr "За %1 рік немає даних про читання"

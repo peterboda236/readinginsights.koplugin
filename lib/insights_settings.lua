@@ -445,6 +445,25 @@ function M.saveFinishedOverrides(year, overrides)
     Prefs.save(M.finishedOverridesSettingsKey(year), overrides)
 end
 
+-- Per-book, per-year manual "finished on" dates. Set by a long press on a
+-- row of the "Mark book finished" checklist. Maps id_book (as a string) to
+-- a timestamp (noon of the chosen day); a book with no entry here simply
+-- uses the date the statistics DB gave (its last reading entry of that
+-- year). Restoring the DB date just deletes the entry.
+function M.finishedDatesSettingsKey(year)
+    return "reading_insights_finished_dates_" .. tostring(year)
+end
+
+function M.readFinishedDates(year)
+    local raw = Prefs.read(M.finishedDatesSettingsKey(year), nil)
+    if type(raw) ~= "table" then return {} end
+    return raw
+end
+
+function M.saveFinishedDates(year, dates)
+    Prefs.save(M.finishedDatesSettingsKey(year), dates)
+end
+
 -- Week start day for both reading heatmaps (Settings ▸ Date
 -- & time ▸ "First day of week" - Monday or Sunday). This is the same global
 -- Book progress calendar keys off, so it now lives in the shared

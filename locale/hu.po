@@ -2520,3 +2520,15 @@ msgstr "Olvasási sebesség"
 
 msgid "Show a row with the reading speed (pages per minute and words per minute) at the top of the \"Pace\" section. The words per minute is an estimate, based on the number of words on a sample of the book's pages."
 msgstr "Egy sor megjelenítése az olvasási sebességgel (oldal percenként és szó percenként) a „Haladás” szakasz legelején. A percenkénti szószám becslés: a könyv néhány mintaoldalán található szavak száma alapján számolódik."
+
+msgid "Date finished (%1)"
+msgstr "Befejezés dátuma (%1)"
+
+msgid "Restore last read date"
+msgstr "Utolsó olvasási dátum visszaállítása"
+
+msgid "Moved to %1"
+msgstr "Áthelyezve ide: %1"
+
+msgid "There is no reading data in %1"
+msgstr "%1 évben nincs olvasási adat"
