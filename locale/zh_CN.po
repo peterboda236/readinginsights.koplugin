@@ -2239,3 +2239,15 @@ msgstr "no"
 
 msgid "weekday lowercase"
 msgstr "no"
+
+msgid "Date finished (%1)"
+msgstr "完成日期 (%1)"
+
+msgid "Restore last read date"
+msgstr "恢复上次阅读日期"
+
+msgid "Moved to %1"
+msgstr "已移至 %1"
+
+msgid "There is no reading data in %1"
+msgstr "%1 年没有阅读数据"

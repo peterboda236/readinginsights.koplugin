@@ -585,6 +585,13 @@ end
 -- (VS.saveFinishedOverrides), so the goal count and the finished-books
 -- list both reflect it as soon as this list is accepted.
 --
+-- A long press on a row changes the day the book was finished (or restores
+-- the last reading entry the statistics DB has) - see editFinishedDate. A
+-- date in another year moves the book to that year's list, provided the
+-- statistics DB has reading data in that year (for any book); the book is
+-- then listed there from its plain book row, even with no entries of its
+-- own in that year.
+--
 -- The bottom bar's check mark keeps those changes; its "X" (and the title
 -- bar's, and a swipe down) puts the overrides back exactly as they were
 -- when the list was opened.
@@ -597,22 +604,73 @@ function M.showFinishedChecklist(insights_popup, year)
 
     local books, base_finished
 
+    local dates = VS.readFinishedDates(year)
+    local db_last_read = {}   -- id_str -> the last reading entry the statistics DB has
     local function loadFromDB()
-        books = insights_popup:getBooksForYear(year)
+        -- Copies: the year's list may be a cached one, and the dates below
+        -- are written onto the records.
+        books = {}
+        local present = {}
+        for _idx, b in ipairs(insights_popup:getBooksForYear(year)) do
+            local c = {}
+            for k, v in pairs(b) do c[k] = v end
+            books[#books + 1] = c
+            present[tostring(c.id_book)] = true
+        end
+        -- Books whose finished date was moved into this year from another
+        -- one: no reading entries here, so they are not in the list above.
+        local moved_ids = {}
+        for id_str, v in pairs(VS.readFinishedOverrides(year)) do
+            if v == true and dates[id_str] and not present[id_str] then
+                moved_ids[#moved_ids + 1] = id_str
+            end
+        end
+        if #moved_ids > 0 then
+            for _idx, b in ipairs(Data.getBookRowsByIds(moved_ids)) do
+                books[#books + 1] = b
+            end
+        end
         base_finished = {}
         for _idx, b in ipairs(getFinishedBooksForYear(year)) do
             base_finished[tostring(b.id_book)] = true
+        end
+        db_last_read = {}
+        for _idx, b in ipairs(books) do
+            local id_str = tostring(b.id_book)
+            if (b.last_read or 0) > 0 then db_last_read[id_str] = b.last_read end
+            local ts = tonumber(dates[id_str])
+            if ts then b.last_read = ts end
         end
     end
     loadFromDB()
 
     local overrides = VS.readFinishedOverrides(year)
 
+    -- A book with a "finished on" date set here is finished in this year, so
+    -- it is always ticked: if its tick is missing (nothing stored for it, or
+    -- it was lost), it is put back before anything is shown.
+    do
+        local healed = false
+        for _idx, b in ipairs(books) do
+            local id_str = tostring(b.id_book)
+            if dates[id_str] ~= nil and overrides[id_str] == nil and not base_finished[id_str] then
+                overrides[id_str] = true
+                healed = true
+            end
+        end
+        if healed then VS.saveFinishedOverrides(year, overrides) end
+    end
+
     -- Snapshot for the cancel button. Every tap saves immediately (so
     -- nothing is lost if the reader walks away or the device sleeps), and
     -- cancelling simply writes this copy back.
     local original = {}
     for k, v in pairs(overrides) do original[k] = v end
+    local original_dates = {}
+    for k, v in pairs(dates) do original_dates[k] = v end
+    -- Other years' overrides/dates touched by moving a book there; each
+    -- holds the opening state too, for the cancel button.
+    local other_years = {}
 
     local function isFinished(id_str)
         local ov = overrides[id_str]
@@ -626,10 +684,148 @@ function M.showFinishedChecklist(insights_popup, year)
     -- query's own verdict, which matters when reviewing why the goal count
     -- says what it says.
     local function rowText(book, id_str)
-        local overridden = overrides[id_str] ~= nil
-            and overrides[id_str] ~= (base_finished[id_str] == true)
+        local overridden = (overrides[id_str] ~= nil
+            and overrides[id_str] ~= (base_finished[id_str] == true))
+            or dates[id_str] ~= nil
         local text = book.title or _("Unknown")
         return overridden and (text .. " *") or text
+    end
+
+    -- Long press on a row: the day the book was finished, typed in the
+    -- configured date format (the same field the manual book editor uses).
+    -- "Restore" drops the reader's date and goes back to the last reading
+    -- entry the statistics DB has for that year. Saved at once, like the
+    -- ticks; the cancel button writes the opening state back.
+    local function editFinishedDate(book, id_str, on_done)
+        local InputDialog = require("ui/widget/inputdialog")
+        local date_hint = Locale.dateFormatHint()
+        local dialog
+        local function apply(ts)
+            if ts then
+                dates[id_str] = ts
+                book.last_read = ts
+            else
+                dates[id_str] = nil
+                book.last_read = db_last_read[id_str] or book.last_read
+            end
+            VS.saveFinishedDates(year, dates)
+            Cache.clearGoalCacheForYear(year)
+            if on_done then on_done() end
+        end
+        -- The date was typed for another year: the book moves to that
+        -- year's list. It is only listed in a year it has reading entries
+        -- in, so that's checked by the caller. There it is ticked as
+        -- finished with this date; here it is unticked and keeps the DB's
+        -- date again.
+        local function moveToYear(ts, new_year)
+            new_year = tostring(new_year)
+            local other = other_years[new_year]
+            if not other then
+                other = {
+                    overrides = VS.readFinishedOverrides(new_year),
+                    dates     = VS.readFinishedDates(new_year),
+                }
+                other.orig_overrides, other.orig_dates = {}, {}
+                for k, v in pairs(other.overrides) do other.orig_overrides[k] = v end
+                for k, v in pairs(other.dates) do other.orig_dates[k] = v end
+                other_years[new_year] = other
+            end
+            local in_target = false
+            for _idx, b in ipairs(getFinishedBooksForYear(new_year)) do
+                if tostring(b.id_book) == id_str then in_target = true; break end
+            end
+            if in_target then
+                other.overrides[id_str] = nil
+            else
+                other.overrides[id_str] = true
+            end
+            other.dates[id_str] = ts
+            VS.saveFinishedOverrides(new_year, other.overrides)
+            VS.saveFinishedDates(new_year, other.dates)
+
+            if base_finished[id_str] then
+                overrides[id_str] = false
+            else
+                overrides[id_str] = nil
+            end
+            dates[id_str] = nil
+            book.last_read = db_last_read[id_str] or 0
+            VS.saveFinishedOverrides(year, overrides)
+            VS.saveFinishedDates(year, dates)
+            Cache.clearGoalCacheForYear(year)
+            Cache.clearGoalCacheForYear(new_year)
+            UIManager:show(InfoMessage:new{ text = T(_("Moved to %1"), new_year) })
+            if on_done then on_done() end
+        end
+        -- Restore: back to the last reading entry the statistics DB has for
+        -- the book. When that entry lies in another year than this list's
+        -- (the book was moved here from there), the book goes back to that
+        -- year; otherwise just the date set here is dropped.
+        local function restore()
+            local ok, last = pcall(Data.getBookLastReadTimestamp, book.id_book)
+            local last_year = ok and last and tostring(os.date("%Y", last)) or nil
+            if last_year and last_year ~= tostring(year) then
+                moveToYear(nil, last_year)
+            else
+                apply(nil)
+            end
+        end
+        dialog = InputDialog:new{
+            modal       = true,
+            title       = book.title or _("Unknown"),
+            description = T(_("Date finished (%1)"), date_hint),
+            input       = Locale.formatDateFromTS(book.last_read, true),
+            input_hint  = date_hint,
+            buttons = {
+                {
+                    {
+                        text     = _("Restore last read date"),
+                        enabled  = dates[id_str] ~= nil,
+                        callback = function()
+                            UIManager:close(dialog)
+                            restore()
+                        end,
+                    },
+                },
+                {
+                    {
+                        text     = _("Cancel"),
+                        id       = "close",
+                        callback = function() UIManager:close(dialog) end,
+                    },
+                    {
+                        text = _("Save"),
+                        is_enter_default = true,
+                        callback = function()
+                            local typed = dialog:getInputText() or ""
+                            local iso = Locale.parseDateInput(typed)
+                            local ts = iso and Manual.parseDate(iso)
+                            if not ts then
+                                UIManager:show(InfoMessage:new{
+                                    text = T(_("Please enter the date as %1"), date_hint) })
+                                return
+                            end
+                            local new_year = tostring(os.date("%Y", ts))
+                            if new_year ~= tostring(year) then
+                                local ok, years = pcall(Data.getStatsYears)
+                                if not ok or not years[new_year] then
+                                    UIManager:show(InfoMessage:new{
+                                        text = T(_("There is no reading data in %1"), new_year) })
+                                    return
+                                end
+                                UIManager:close(dialog)
+                                moveToYear(ts, new_year)
+                                return
+                            end
+                            UIManager:close(dialog)
+                            apply(ts)
+                        end,
+                    },
+                },
+            },
+        }
+        UIManager:show(dialog)
+        dialog:onShowKeyboard()
     end
 
     local widget            -- the list below; the rows' long press asks it for its display mode
@@ -660,15 +856,35 @@ function M.showFinishedChecklist(insights_popup, year)
             checked_func = function() return isFinished(id_str) end,
             -- Long press while the rating column is shown: edit the rating.
             hold_callback = function(_item, refresh)
-                if not widget or widget.display_mode ~= "rating" then return end
-                rateStatsBook(book, function(n)
-                    item.values      = valueTable(book)
-                    item.sort_rating = n
+                if widget and widget.display_mode == "rating" then
+                    rateStatsBook(book, function(n)
+                        item.values      = valueTable(book)
+                        item.sort_rating = n
+                        if refresh then refresh() end
+                    end)
+                    return
+                end
+                -- Any other column: change the day this book was finished.
+                editFinishedDate(book, id_str, function()
+                    item.text      = rowText(book, id_str)
+                    item.mandatory = dateText(book.last_read)
+                    item.values    = valueTable(book)
+                    item.sort_time = book.last_read or 0
                     if refresh then refresh() end
                 end)
             end,
             callback     = function()
                 local new_state = not isFinished(id_str)
+                -- Unticking a book drops the date set for it: there is no
+                -- finished day left to keep.
+                if not new_state and dates[id_str] ~= nil then
+                    dates[id_str] = nil
+                    book.last_read = db_last_read[id_str] or book.last_read
+                    VS.saveFinishedDates(year, dates)
+                    item.mandatory = dateText(book.last_read)
+                    item.values    = valueTable(book)
+                    item.sort_time = book.last_read or 0
+                end
                 if new_state == (base_finished[id_str] == true) then
                     overrides[id_str] = nil
                 else
@@ -727,6 +943,11 @@ function M.showFinishedChecklist(insights_popup, year)
         }},
         cancel_callback  = function()
             VS.saveFinishedOverrides(year, original)
+            VS.saveFinishedDates(year, original_dates)
+            for other_year, other in pairs(other_years) do
+                VS.saveFinishedOverrides(other_year, other.orig_overrides)
+                VS.saveFinishedDates(other_year, other.orig_dates)
+            end
         end,
         close_callback   = function()
             refreshGoalSection(insights_popup, year)

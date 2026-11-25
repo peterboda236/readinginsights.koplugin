@@ -2515,3 +2515,15 @@ msgstr "%1 %2 – %3 %4"
 
 msgid "range months lowercase"
 msgstr "no"
+
+msgid "Date finished (%1)"
+msgstr "Date de fin de lecture (%1)"
+
+msgid "Restore last read date"
+msgstr "Rétablir la date de dernière lecture"
+
+msgid "Moved to %1"
+msgstr "Déplacé vers %1"
+
+msgid "There is no reading data in %1"
+msgstr "Il n’y a aucune donnée de lecture en %1"

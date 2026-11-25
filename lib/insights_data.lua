@@ -1618,6 +1618,84 @@ function M.getFinishedBooksAllYears(shared_conn)
     end)
 end
 
+-- The years the statistics DB has any reading entry in (any book), as a set
+-- { ["2025"] = true }. Walks the years between the first and the last entry
+-- and asks each for a single row (indexed range, so cheap).
+local function statsYears(conn)
+    local years = {}
+    local first, last
+    StatsDb.withStatement(conn, "SELECT MIN(start_time), MAX(start_time) FROM page_stat", function(stmt)
+        for row in stmt:rows() do
+            first, last = tonumber(row[1]), tonumber(row[2])
+        end
+    end)
+    if not first or not last then return years end
+    local y0, y1 = tonumber(os.date("%Y", first)), tonumber(os.date("%Y", last))
+    for y = y0, y1 do
+        local lo = os.time{ year = y,     month = 1, day = 1, hour = 0 }
+        local hi = os.time{ year = y + 1, month = 1, day = 1, hour = 0 }
+        local found = false
+        local sql = string.format(
+            "SELECT 1 FROM page_stat WHERE start_time >= %d AND start_time < %d LIMIT 1", lo, hi)
+        StatsDb.withStatement(conn, sql, function(stmt)
+            for _row in stmt:rows() do found = true end
+        end)
+        if found then years[tostring(y)] = true end
+    end
+    return years
+end
+
+function M.getStatsYears()
+    return StatsDb.withDb({}, statsYears)
+end
+
+-- The timestamp of a book's very last reading entry in the statistics DB
+-- (whatever the year), or nil when it has none. This is the date the
+-- "restore" button of the finished-books checklist goes back to.
+function M.getBookLastReadTimestamp(id_book)
+    id_book = tonumber(id_book)
+    if not id_book then return nil end
+    return StatsDb.withDb(nil, function(conn)
+        local last
+        local sql = string.format("SELECT MAX(start_time) FROM page_stat WHERE id_book = %d", math.floor(id_book))
+        StatsDb.withStatement(conn, sql, function(stmt)
+            for row in stmt:rows() do last = tonumber(row[1]) end
+        end)
+        return last
+    end)
+end
+
+-- Plain book rows (no activity figures) for the given ids: the finished
+-- lists need these for a book whose finished date was moved to a year the
+-- book itself has no reading entries in.
+function M.getBookRowsByIds(ids)
+    local out = {}
+    local clean = {}
+    for _idx, id in ipairs(ids or {}) do
+        id = tonumber(id)
+        if id then clean[#clean + 1] = math.floor(id) end
+    end
+    if #clean == 0 then return out end
+    local sql = "SELECT id, title, authors, md5 FROM book WHERE id IN ("
+        .. table.concat(clean, ",") .. ")"
+    return StatsDb.withDb(out, function(conn)
+        StatsDb.withStatement(conn, sql, function(stmt)
+            for row in stmt:rows() do
+                table.insert(out, {
+                    id_book  = tonumber(row[1]),
+                    title    = row[2] or _("Unknown"),
+                    authors  = row[3] or "",
+                    md5      = row[4],
+                    duration = 0,
+                    pages    = 0,
+                    last_read = 0,
+                })
+            end
+        end)
+        return out
+    end)
+end
+
 -- When a book counts as finished, for lists that are not the finished-books
 -- list (month, year, all-books, day): the timestamp of the entry it was
 -- finished on, or nil when it doesn't count as finished. The same rules as
@@ -1670,11 +1748,26 @@ function M.getFinishedTimestamp(id_book)
         local best
         for year, year_last in pairs(per_year) do
             local v = VS.readFinishedOverrides(year)[key]
+            -- A date the reader set by hand (long press in the "Mark book
+            -- finished" checklist) replaces the one from the statistics DB.
+            local manual_ts = tonumber(VS.readFinishedDates(year)[key])
             if auto and year == auto_year and v ~= false then
-                if not best or last_time > best then best = last_time end
+                local t = manual_ts or last_time
+                if not best or t > best then best = t end
             end
             if v == true and year_last then
-                if not best or year_last > best then best = year_last end
+                local t = manual_ts or year_last
+                if not best or t > best then best = t end
+            end
+        end
+        -- Years the book has no entries in, but whose list the reader moved
+        -- its finished date to (see statsYears above).
+        for year in pairs(statsYears(conn)) do
+            if not per_year[year] then
+                local ts = tonumber(VS.readFinishedDates(year)[key])
+                if ts and VS.readFinishedOverrides(year)[key] == true then
+                    if not best or ts > best then best = ts end
+                end
             end
         end
         return best
