@@ -369,9 +369,14 @@ local InsightsHeaders = loadModule("views/insights_headers.lua", {
     Locale = Locale, Colors = Colors, UI = UI, Data = InsightsData,
     YearShelf = YearShelf,
 })
+-- The radar chart of the "Last 7 days" section (Cards look, Chart style =
+-- Radar).
+local Radar = loadModule("widgets/radarchartwidget.lua",
+    { Colors = Colors })
+
 local InsightsCharts = loadModule("views/insights_charts.lua", {
     Locale = Locale, Colors = Colors, UI = UI, VS = ViewSettings,
-    Trend = Trend, DateUtil = DateUtil,
+    Trend = Trend, DateUtil = DateUtil, Radar = Radar,
 })
 
 -- The values the insights popup shows, shared by its two looks.

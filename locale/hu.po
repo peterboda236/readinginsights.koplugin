@@ -2027,6 +2027,18 @@ msgstr "Havi diagram stílusa"
 msgid "Line with dots"
 msgstr "Vonal pontokkal"
 
+msgid "Radar"
+msgstr "Radar"
+
+msgid "Day labels"
+msgstr "Napok felirata"
+
+msgid "Dates"
+msgstr "Dátumok"
+
+msgid "Day names"
+msgstr "Napnevek"
+
 msgid "Bars"
 msgstr "Oszlopok"
 

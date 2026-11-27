@@ -27,8 +27,8 @@ local Screen = Device.screen
 
 -- Shared modules, passed in as one named table by main.lua (see there).
 local deps = ...
-local Locale, Colors, UI, VS, Trend, DateUtil =
-    deps.Locale, deps.Colors, deps.UI, deps.VS, deps.Trend, deps.DateUtil
+local Locale, Colors, UI, VS, Trend, DateUtil, Radar =
+    deps.Locale, deps.Colors, deps.UI, deps.VS, deps.Trend, deps.DateUtil, deps.Radar
 
 local formatNumber = Locale.formatNumber
 local isLandscapeScreen = UI.isLandscapeScreen
@@ -540,6 +540,54 @@ local function buildMonthlyChart(popup_self, monthly_data, layout, fonts, cards)
     return chart
 end
 
+-- Entries without an is_today flag (the last-7-days series) have today
+-- at index 1.
+local function isTodayEntry(d, i)
+    if d.is_today ~= nil then return d.is_today end
+    return i == 1
+end
+
+-- "YYYY-MM-DD" of a day entry (the calendar-week series carries it, the
+-- last-7-days series only its local midnight), nil for padding entries.
+local function entryDate(d)
+    if d.date_str then return d.date_str end
+    if d.midnight_ts then return os.date("%Y-%m-%d", d.midnight_ts) end
+    return nil
+end
+
+-- Text under a day's column, per the "Day labels" setting: the date without
+-- the year in the configured date format ("10-20" / "10. 20." / "10/20"
+-- ...), or the entry's own label - the weekday, and "Today" / "Yesterday"
+-- in the last 7 days. Padding entries have neither.
+local function dayAxisText(d)
+    local ds = entryDate(d)
+    if ds and VS.readWeeklyDayLabels() == VS.WEEKLY_DAY_LABELS_DATES then
+        return Locale.formatShortNumericDate(ds)
+    end
+    return d.label or ""
+end
+
+-- What a tap on a day's column does: opens the list of the books read on
+-- that day (today included) - the same list the streak calendar shows
+-- for a tapped day. Days still to come do nothing.
+local function entryTapAction(popup_self, d, i)
+    if d.future then return nil end
+    local ds = entryDate(d)
+    if not ds and isTodayEntry(d, i) then ds = os.date("%Y-%m-%d") end
+    if not ds then return nil end
+    return function() popup_self:showBooksForDay(ds, d.midnight_ts) end
+end
+
+-- The value shown with a day: pages read, or the reading time; nothing for
+-- a day still to come.
+local function dayValueText(d, show_pages)
+    if d.future then return "" end
+    if show_pages then
+        return string.format("%d", math.floor((tonumber(d.pages) or 0) + 0.5))
+    end
+    return Locale.formatDurationLabel(tonumber(d.seconds) or 0)
+end
+
 -- Weekly bar chart: 7 bars, index 1 = the newest day, index 7 = the oldest.
 -- Last-7-days view: index 1 = today, index 7 = 6 days ago, labels "Today",
 -- "Yesterday", then weekday abbreviations. Current-week view: index 1 = the
@@ -554,47 +602,6 @@ local function buildWeeklyChart(popup_self, daily_data, layout, fonts, mode, car
     mode = VS.normalizeWeeklyChartMode(mode)
     local show_pages = (mode == VS.WEEKLY_CHART_MODE_PAGES)
     popup_self._today_bar_widget = nil
-
-    -- Entries without an is_today flag (the last-7-days series) have today
-    -- at index 1.
-    local function isTodayEntry(d, i)
-        if d.is_today ~= nil then return d.is_today end
-        return i == 1
-    end
-
-    -- "YYYY-MM-DD" of a day entry (the calendar-week series carries it, the
-    -- last-7-days series only its local midnight), nil for padding entries.
-    local function entryDate(d)
-        if d.date_str then return d.date_str end
-        if d.midnight_ts then return os.date("%Y-%m-%d", d.midnight_ts) end
-        return nil
-    end
-
-    -- Text under a day's column: in the calendar-week view (its entries
-    -- carry date_str) the date without the year, in the configured date
-    -- format ("10. 20." / "10/20" ...) - the columns always run in week
-    -- order, so the weekday adds little there. The last-7-days entries keep
-    -- "Today" / "Yesterday" / weekday.
-    -- With the ISO date format every last-7-days column shows its date
-    -- ("10-20") instead of Today / Yesterday / the weekday.
-    local function dayAxisText(d, i)
-        if d.date_str then return Locale.formatShortNumericDate(d.date_str) end
-        if d.midnight_ts and d.is_today == nil and Locale.isIsoDateFormat() then
-            return Locale.formatShortNumericDate(os.date("%Y-%m-%d", d.midnight_ts))
-        end
-        return d.label or ""
-    end
-
-    -- What a tap on a day's column does: opens the list of the books read on
-    -- that day (today included) - the same list the streak calendar shows
-    -- for a tapped day. Days still to come do nothing.
-    local function entryTapAction(d, i)
-        if d.future then return nil end
-        local ds = entryDate(d)
-        if not ds and isTodayEntry(d, i) then ds = os.date("%Y-%m-%d") end
-        if not ds then return nil end
-        return function() popup_self:showBooksForDay(ds, d.midnight_ts) end
-    end
 
     -- Pad to exactly 7 entries.
     while #daily_data < 7 do
@@ -622,17 +629,11 @@ local function buildWeeklyChart(popup_self, daily_data, layout, fonts, mode, car
             local d = daily_data[i]
             local v = show_pages and (tonumber(d.pages) or 0) or (tonumber(d.seconds) or 0)
             ratios[pos] = v / max_v
-            if d.future then
-                n_future = n_future + 1
-                value_strs[pos] = ""
-            elseif show_pages then
-                value_strs[pos] = string.format("%d", math.floor((tonumber(d.pages) or 0) + 0.5))
-            else
-                value_strs[pos] = Locale.formatDurationLabel(tonumber(d.seconds) or 0)
-            end
-            axis_strs[pos] = dayAxisText(d, i)
+            if d.future then n_future = n_future + 1 end
+            value_strs[pos] = dayValueText(d, show_pages)
+            axis_strs[pos] = dayAxisText(d)
             highlight[pos] = (WEEKLY_CHART_HIGHLIGHT_TODAY and isTodayEntry(d, i))
-            on_tap[pos] = entryTapAction(d, i)
+            on_tap[pos] = entryTapAction(popup_self, d, i)
             if isTodayEntry(d, i) and not d.future then today_pos = pos end
         end
         -- Days still to come in the current week get no dot: they sit at
@@ -702,17 +703,7 @@ local function buildWeeklyChart(popup_self, daily_data, layout, fonts, mode, car
         local bar_color = (WEEKLY_CHART_HIGHLIGHT_TODAY and is_today_bar) and Colors.activeBar() or Colors.inactiveBar()
         if cards then bar_color = Colors.cardsColor("active_bar") end
 
-        local val_str
-        if d.future then
-            val_str = ""
-        elseif show_pages then
-            local pages = math.floor((tonumber(d.pages) or 0) + 0.5)
-            val_str = string.format("%d", pages)
-        else
-            local secs = tonumber(d.seconds) or 0
-            val_str = Locale.formatDurationLabel(secs)
-        end
-        local value_label   = TextWidget:new{ text = val_str, face = font_small, fgcolor = Colors.small() }
+        local value_label   = TextWidget:new{ text = dayValueText(d, show_pages), face = font_small, fgcolor = Colors.small() }
         local centered_label = CenterContainer:new{
             dimen  = Geom:new{ w = bar_width, h = label_height },
             value_label,
@@ -732,7 +723,7 @@ local function buildWeeklyChart(popup_self, daily_data, layout, fonts, mode, car
             bar_column,
         }
 
-        local tap_action = entryTapAction(d, i)
+        local tap_action = entryTapAction(popup_self, d, i)
         if tap_action then
             local tappable_bar = InputContainer:new{
                 dimen = Geom:new{ x = 0, y = 0, w = bar_width, h = total_bar_height },
@@ -757,7 +748,7 @@ local function buildWeeklyChart(popup_self, daily_data, layout, fonts, mode, car
         end
 
         local day_label_widget = TextWidget:new{
-            text = dayAxisText(d, i), face = font_small, fgcolor = Colors.small(),
+            text = dayAxisText(d), face = font_small, fgcolor = Colors.small(),
             bold = (WEEKLY_CHART_HIGHLIGHT_TODAY and is_today_bar) and true or false,
         }
         table.insert(day_labels_row, CenterContainer:new{
@@ -784,7 +775,50 @@ local function buildWeeklyChart(popup_self, daily_data, layout, fonts, mode, car
     }
 end
 
+-- Weekly radar chart (Cards look, Chart style = Radar), `width` wide: the
+-- oldest day on the top spoke, the newest one just left of it, so the days
+-- run clockwise. Tapping a day's label opens that day's book list; a long
+-- press on today's label opens today's timeline, as on today's bar.
+local function buildWeeklyRadar(popup_self, daily_data, width, fonts, mode)
+    if not daily_data or #daily_data == 0 then return nil end
+    local show_pages = (VS.normalizeWeeklyChartMode(mode) == VS.WEEKLY_CHART_MODE_PAGES)
+    popup_self._today_bar_widget = nil
+    while #daily_data < 7 do
+        table.insert(daily_data, { hours = 0, seconds = 0, pages = 0, label = "" })
+    end
+
+    local num = 7
+    local max_v = 0
+    for _, d in ipairs(daily_data) do
+        local v = show_pages and (tonumber(d.pages) or 0) or (tonumber(d.seconds) or 0)
+        if v > max_v then max_v = v end
+    end
+    if max_v < 0.1 then max_v = 1 end
+
+    local ratios, labels, values, on_tap = {}, {}, {}, {}
+    local highlight
+    for k = 1, num do
+        local i = num + 1 - k
+        local d = daily_data[i]
+        local v = show_pages and (tonumber(d.pages) or 0) or (tonumber(d.seconds) or 0)
+        ratios[k] = (not d.future) and (v / max_v) or false
+        labels[k] = { dayAxisText(d) }
+        values[k] = dayValueText(d, show_pages)
+        on_tap[k] = entryTapAction(popup_self, d, i)
+        if WEEKLY_CHART_HIGHLIGHT_TODAY and isTodayEntry(d, i) and not d.future then highlight = k end
+    end
+
+    return Radar.build{
+        width = width, ratios = ratios, labels = labels, values = values,
+        highlight = highlight, face = fonts.small, on_tap = on_tap,
+        on_widget = function(k, w)
+            if k == highlight then popup_self._today_bar_widget = w end
+        end,
+    }
+end
+
 return {
     buildMonthlyChart = buildMonthlyChart,
     buildWeeklyChart  = buildWeeklyChart,
+    buildWeeklyRadar  = buildWeeklyRadar,
 }

@@ -771,22 +771,47 @@ function M.readLookIsCards()
 end
 
 -- Style of the "Last 7 days" chart (Settings > Reading insights popup >
--- "Last 7 days chart style"): "bars" (default) or "line" (smooth line with a
--- dot per day, like the yearly chart).
+-- "Last 7 days chart style"): "bars" (default), "line" (smooth line with a
+-- dot per day, like the yearly chart) or "radar" (Cards look only: one axis
+-- per day, the section's values next to it).
 M.SETTINGS_KEY_WEEKLY_STYLE = "reading_insights_weekly_chart_style"
 
 M.WEEKLY_STYLE_BARS = "bars"
 
 M.WEEKLY_STYLE_LINE = "line"
 
+M.WEEKLY_STYLE_RADAR = "radar"
+
 function M.readWeeklyStyleSetting()
     local v = Prefs.read(M.SETTINGS_KEY_WEEKLY_STYLE, nil)
-    if v == M.WEEKLY_STYLE_LINE then return M.WEEKLY_STYLE_LINE end
+    if v == M.WEEKLY_STYLE_LINE then return v end
+    -- Radar is drawn only in the Cards look; Classic shows bars instead.
+    if v == M.WEEKLY_STYLE_RADAR and M.readLookIsCards() then return v end
     return M.WEEKLY_STYLE_BARS
 end
 
 function M.saveWeeklyStyleSetting(value)
     Prefs.save(M.SETTINGS_KEY_WEEKLY_STYLE, value)
+end
+
+-- Labels of the week section's days (Settings > Reading insights popup >
+-- Week > "Day labels"), in every chart style and both week views: "dates"
+-- (default, "11-24" in the configured date format) or "names" ("Mon" ...,
+-- "Yesterday" / "Today" in the last 7 days).
+M.SETTINGS_KEY_WEEKLY_DAY_LABELS = "reading_insights_weekly_day_labels"
+
+M.WEEKLY_DAY_LABELS_DATES = "dates"
+
+M.WEEKLY_DAY_LABELS_NAMES = "names"
+
+function M.readWeeklyDayLabels()
+    local v = Prefs.read(M.SETTINGS_KEY_WEEKLY_DAY_LABELS, nil)
+    if v == M.WEEKLY_DAY_LABELS_NAMES then return v end
+    return M.WEEKLY_DAY_LABELS_DATES
+end
+
+function M.saveWeeklyDayLabels(value)
+    Prefs.save(M.SETTINGS_KEY_WEEKLY_DAY_LABELS, value)
 end
 
 function M.readInsightsMode()

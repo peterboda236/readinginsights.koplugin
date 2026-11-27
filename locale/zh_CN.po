@@ -1738,6 +1738,18 @@ msgstr "月度图表样式"
 msgid "Line with dots"
 msgstr "带点折线"
 
+msgid "Radar"
+msgstr "雷达图"
+
+msgid "Day labels"
+msgstr "日期标签"
+
+msgid "Dates"
+msgstr "日期"
+
+msgid "Day names"
+msgstr "星期名称"
+
 msgid "Bars"
 msgstr "柱状"
 

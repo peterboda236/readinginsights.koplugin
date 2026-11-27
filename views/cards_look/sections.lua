@@ -44,6 +44,10 @@ local M = {}
 
 local tappableCell = UI.tappableCell
 
+-- Chart style = Radar: the part of the week card's width the radar takes,
+-- the values beside it get the rest.
+local RADAR_WIDTH_RATIO = 0.55
+
 -- The year row of the Reading insights page (views/insights_headers.lua),
 -- with the chart icon before the year and a "›" after it when a tap opens the
 -- year shelf; no background fill.
@@ -250,13 +254,14 @@ function M.buildSections(popup_self, streaks, yearly_stats, year_range, monthly_
             end
 
             -- One value cell (tap: 8-week trend), with its delta under it.
-            local function weekCell(value, unit, metric, delta)
-                local cell = UI.buildStatCell(fonts, ilayout.col_width, value, unit, {
+            local function weekCell(value, unit, metric, delta, width)
+                width = width or ilayout.col_width
+                local cell = UI.buildStatCell(fonts, width, value, unit, {
                     chevron     = not popup_self.readonly,
                     delta_value = delta and delta[1],
                     delta_label = delta and delta[2],
                 })
-                return tappableCell(cell, ilayout.col_width, function() popup_self:showWeeklyTrendPopup(metric) end)
+                return tappableCell(cell, width, function() popup_self:showWeeklyTrendPopup(metric) end)
             end
 
             -- One 2-column row: total on the left, daily average on the right.
@@ -271,11 +276,15 @@ function M.buildSections(popup_self, streaks, yearly_stats, year_range, monthly_
             -- Time | Pages switch). With the optional second row (the other
             -- metric) the vertical divider runs unbroken between the rows.
             local two_rows = VS.readWeeklyExtraRow()
-            local last_week_rows = { weekRow(pages_mode and pages_cells or time_cells,
-                two_rows and { join_below = Size.padding.small } or nil, deltas) }
-            if two_rows then
-                table.insert(last_week_rows, weekRow(pages_mode and time_cells or pages_cells,
-                    { join_above = true }))
+            local radar = VS.readWeeklyStyleSetting() == VS.WEEKLY_STYLE_RADAR
+            local last_week_rows = {}
+            if not radar then
+                table.insert(last_week_rows, weekRow(pages_mode and pages_cells or time_cells,
+                    two_rows and { join_below = Size.padding.small } or nil, deltas))
+                if two_rows then
+                    table.insert(last_week_rows, weekRow(pages_mode and time_cells or pages_cells,
+                        { join_above = true }))
+                end
             end
 
             -- Time | Pages switch: a tap flips the chart and the rows above it.
@@ -331,7 +340,35 @@ function M.buildSections(popup_self, streaks, yearly_stats, year_range, monthly_
                     switch_cell,
                 })
             end
-            local weekly_chart = buildWeeklyChart(popup_self, week_daily, ilayout, fonts, weekly_chart_mode, true)
+            local weekly_chart
+            if radar then
+                -- Radar on the left, the values stacked on its right, one
+                -- under the other in the order of the rows they replace.
+                local radar_w = math.floor(ilayout.content_width * RADAR_WIDTH_RATIO)
+                local values_w = ilayout.content_width - radar_w - UI.gap()
+                local chart = Charts.buildWeeklyRadar(popup_self, week_daily, radar_w, fonts, weekly_chart_mode)
+                if chart then
+                    local values = VerticalGroup:new{ align = "left" }
+                    local function addCells(c, d)
+                        for k = 0, 1 do
+                            if #values > 0 then
+                                table.insert(values, VerticalSpan:new{ width = Size.padding.default })
+                            end
+                            table.insert(values, weekCell(c[1 + 3 * k], c[2 + 3 * k], c[3 + 3 * k], d and d[k + 1], values_w))
+                        end
+                    end
+                    addCells(pages_mode and pages_cells or time_cells, deltas)
+                    if two_rows then addCells(pages_mode and time_cells or pages_cells) end
+                    weekly_chart = HorizontalGroup:new{
+                        align = "center",
+                        chart,
+                        HorizontalSpan:new{ width = UI.gap() },
+                        values,
+                    }
+                end
+            else
+                weekly_chart = buildWeeklyChart(popup_self, week_daily, ilayout, fonts, weekly_chart_mode, true)
+            end
             if weekly_chart then
                 table.insert(body, VerticalSpan:new{ width = Size.padding.small })
                 table.insert(body, weekly_chart)
