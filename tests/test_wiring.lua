@@ -20,8 +20,10 @@ local function stub() return setmetatable({}, stub_meta) end
 
 local widget_stub
 widget_stub = setmetatable({
-    new = function(self, o) o = o or {}; return setmetatable(o, { __index = widget_stub, __call = function() return {} end }) end,
-    extend = function(self, o) o = o or {}; o.new = widget_stub.new; o.extend = widget_stub.extend; return o end,
+    -- An instance looks its methods up in its own class first (a class made
+    -- with extend), then in the stub.
+    new = function(self, o) o = o or {}; return setmetatable(o, { __index = self, __call = function() return {} end }) end,
+    extend = function(self, o) o = o or {}; o.new = widget_stub.new; o.extend = widget_stub.extend; return setmetatable(o, { __index = self }) end,
     getSize = function() return { w = 10, h = 10 } end,
     free = function() end,
 }, stub_meta)
@@ -189,9 +191,10 @@ local InsightsHeaders = load("views/insights_headers.lua", {
     Locale = Locale, Colors = Colors, UI = UI, Data = InsightsData,
     YearShelf = YearShelf,
 })
+local Radar = load("widgets/radarchartwidget.lua", { Colors = Colors })
 local InsightsCharts = load("views/insights_charts.lua", {
     Locale = Locale, Colors = Colors, UI = UI, VS = ViewSettings,
-    Trend = Trend, DateUtil = DateUtil,
+    Trend = Trend, DateUtil = DateUtil, Radar = Radar,
 })
 local InsightsValues = load("lib/insights_values.lua", { Locale = Locale, VS = ViewSettings })
 local InsightsCards = load("views/cards_look/sections.lua", {
@@ -274,8 +277,87 @@ check("insights headers + charts expose their builders",
       and type(InsightsHeaders.buildYearRow) == "function"
       and type(InsightsHeaders.buildWeekNavHeader) == "function"
       and type(InsightsCharts.buildMonthlyChart) == "function"
-      and type(InsightsCharts.buildWeeklyChart) == "function")
+      and type(InsightsCharts.buildWeeklyChart) == "function"
+      and type(InsightsCharts.buildWeeklyRadar) == "function"
+      and type(Radar.build) == "function")
 check("uikit exports tappableCell", type(UI.tappableCell) == "function")
+
+-- Radar week chart: the labels follow the "Day labels" setting, the days run
+-- clockwise from the oldest, a day with nothing read sits at the centre and
+-- a day still to come has no point.
+do
+    local captured
+    local RadarCharts = load("views/insights_charts.lua", {
+        Locale = Locale, Colors = Colors, UI = UI, VS = ViewSettings,
+        Trend = Trend, DateUtil = DateUtil,
+        Radar = { build = function(opts) captured = opts; return {} end },
+    })
+    local fonts = { small = {} }
+    local pages_mode = ViewSettings.WEEKLY_CHART_MODE_PAGES
+    local today = os.time{ year = 2026, month = 11, day = 27, hour = 12 }
+
+    -- Last 7 days, newest first, as getLastWeekAll returns them.
+    local function last7()
+        local names = { "Today", "Yesterday", "Wed", "Tue", "Mon", "Sun", "Sat" }
+        local pages = { 0, 40, 18, 25, 0, 30, 12 }
+        local days = {}
+        for i = 1, 7 do
+            days[i] = { label = names[i], midnight_ts = today - (i - 1) * 86400, pages = pages[i], seconds = 0 }
+        end
+        return days
+    end
+
+    RadarCharts.buildWeeklyRadar({}, last7(), 300, fonts, pages_mode)
+    check("radar labels are dates by default, oldest day first",
+          captured.labels[1][1] == "11-21" and captured.labels[7][1] == "11-27")
+    check("radar marks today (the last spoke) and shows each day's value",
+          captured.highlight == 7 and captured.values[6] == "40" and captured.values[7] == "0")
+    check("radar ratios: the week's highest value is 1, a day with nothing read 0",
+          captured.ratios[6] == 1 and captured.ratios[7] == 0 and captured.ratios[3] == 0
+          and captured.ratios[1] == 12 / 40)
+
+    ViewSettings.saveWeeklyDayLabels(ViewSettings.WEEKLY_DAY_LABELS_NAMES)
+    RadarCharts.buildWeeklyRadar({}, last7(), 300, fonts, pages_mode)
+    check("radar labels are day names with Day names",
+          captured.labels[1][1] == "Sat" and captured.labels[6][1] == "Yesterday"
+          and captured.labels[7][1] == "Today")
+
+    -- Current week, Mon..Sun, today Friday: newest (Sun) first.
+    local week = {}
+    local wnames = { "Sun", "Sat", "Fri", "Thu", "Wed", "Tue", "Mon" }
+    for i = 1, 7 do
+        local mid = today + (3 - i) * 86400
+        week[i] = { label = wnames[i], date_str = os.date("%Y-%m-%d", mid), midnight_ts = mid,
+                    is_today = (i == 3), future = (i < 3), pages = (i < 3) and 0 or 5, seconds = 0 }
+    end
+    RadarCharts.buildWeeklyRadar({}, week, 300, fonts, pages_mode)
+    check("current-week radar: Monday on top, today marked, days to come without a point",
+          captured.labels[1][1] == "Mon" and captured.highlight == 5
+          and captured.ratios[6] == false and captured.ratios[7] == false
+          and captured.values[7] == "")
+    ViewSettings.saveWeeklyDayLabels(ViewSettings.WEEKLY_DAY_LABELS_DATES)
+    RadarCharts.buildWeeklyRadar({}, week, 300, fonts, pages_mode)
+    check("current-week radar labels are dates by default",
+          captured.labels[1][1] == "11-23" and captured.labels[7][1] == "11-29")
+
+    local chart = Radar.build{
+        width = 300, ratios = { 0.5, 1, 0, 0.25, false, 0, 1 },
+        labels = { {"a"}, {"b"}, {"c"}, {"d"}, {"e"}, {"f"}, {"g"} },
+        values = { "1", "2", "0", "1", "", "0", "2" },
+        highlight = 3, face = {},
+    }
+    local plot = chart and chart[1]
+    local pts = plot and plot:shapePoints(0, 0)
+    local function dist(p) return math.sqrt((p.x - plot.cx) ^ 2 + (p.y - plot.cy) ^ 2) end
+    check("radar puts a day with nothing read at the centre",
+          pts and pts[3].x == plot.cx and pts[3].y == plot.cy
+          and pts[6].x == plot.cx and pts[6].y == plot.cy)
+    check("radar puts the week's highest value on the outer ring",
+          pts and math.abs(dist(pts[2]) - plot.radius) < 1e-6
+          and math.abs(dist(pts[1]) - plot.radius / 2) < 1e-6)
+    check("radar keeps a day still to come without a point",
+          plot and plot.ratios[5] == false and pts[5].x == plot.cx and pts[5].y == plot.cy)
+end
 
 -- UI.alignOnText: the icon sits on the middle of the capital letters, in a
 -- box as tall as the text. Stubbed text: 40 px high, baseline at 30, face
@@ -324,6 +406,25 @@ ViewSettings.saveLookSetting(ViewSettings.LOOK_CARDS)
 check("look switches to Cards", ViewSettings.readLookIsCards() == true)
 ViewSettings.saveLookSetting(ViewSettings.LOOK_CLASSIC)
 check("look switches back to Classic", ViewSettings.readLookIsCards() == false)
+check("week chart style is Bars by default",
+      ViewSettings.readWeeklyStyleSetting() == ViewSettings.WEEKLY_STYLE_BARS)
+ViewSettings.saveWeeklyStyleSetting(ViewSettings.WEEKLY_STYLE_RADAR)
+check("Radar week chart falls back to Bars in the Classic look",
+      ViewSettings.readWeeklyStyleSetting() == ViewSettings.WEEKLY_STYLE_BARS)
+ViewSettings.saveLookSetting(ViewSettings.LOOK_CARDS)
+check("Radar week chart is kept in the Cards look",
+      ViewSettings.readWeeklyStyleSetting() == ViewSettings.WEEKLY_STYLE_RADAR)
+ViewSettings.saveLookSetting(ViewSettings.LOOK_CLASSIC)
+ViewSettings.saveWeeklyStyleSetting(ViewSettings.WEEKLY_STYLE_BARS)
+check("week day labels are dates by default",
+      ViewSettings.readWeeklyDayLabels() == ViewSettings.WEEKLY_DAY_LABELS_DATES)
+ViewSettings.saveWeeklyDayLabels(ViewSettings.WEEKLY_DAY_LABELS_NAMES)
+check("week day labels switch to day names",
+      ViewSettings.readWeeklyDayLabels() == ViewSettings.WEEKLY_DAY_LABELS_NAMES)
+ViewSettings.saveWeeklyDayLabels("bogus")
+check("an unknown week day labels value reads as dates",
+      ViewSettings.readWeeklyDayLabels() == ViewSettings.WEEKLY_DAY_LABELS_DATES)
+ViewSettings.saveWeeklyDayLabels(ViewSettings.WEEKLY_DAY_LABELS_DATES)
 check("insights data exposes its queries and batch helper",
       type(InsightsData.withBatchConnection) == "function"
       and type(InsightsData.getBooksForPeriod) == "function"

@@ -2014,6 +2014,18 @@ msgstr "Monatsdiagramm-Stil"
 msgid "Line with dots"
 msgstr "Linie mit Punkten"
 
+msgid "Radar"
+msgstr "Radar"
+
+msgid "Day labels"
+msgstr "Tagesbeschriftung"
+
+msgid "Dates"
+msgstr "Datum"
+
+msgid "Day names"
+msgstr "Wochentage"
+
 msgid "Bars"
 msgstr "Balken"
 
