@@ -2014,6 +2014,18 @@ msgstr "Style du graphique mensuel"
 msgid "Line with dots"
 msgstr "Ligne avec points"
 
+msgid "Radar"
+msgstr "Radar"
+
+msgid "Day labels"
+msgstr "Libellés des jours"
+
+msgid "Dates"
+msgstr "Dates"
+
+msgid "Day names"
+msgstr "Noms des jours"
+
 msgid "Bars"
 msgstr "Barres"
 

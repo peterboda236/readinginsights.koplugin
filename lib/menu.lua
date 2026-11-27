@@ -957,11 +957,12 @@ function M.build(self, deps)
         }
     end
 
-    -- "Last 7 days" chart style: bars (default) or line with dots.
+    -- "Last 7 days" chart style: bars (default), line with dots or radar.
     do
-        local VSet = deps.ViewSettings
-        local BARS = VSet.WEEKLY_STYLE_BARS
-        local LINE = VSet.WEEKLY_STYLE_LINE
+        local VSet  = deps.ViewSettings
+        local BARS  = VSet.WEEKLY_STYLE_BARS
+        local LINE  = VSet.WEEKLY_STYLE_LINE
+        local RADAR = VSet.WEEKLY_STYLE_RADAR
         local function weeklyStyleEntry(value, text)
             return {
                 text = text,
@@ -975,15 +976,53 @@ function M.build(self, deps)
         end
         I.weekly_style = {
             text_func = function()
-                local v = VSet.readWeeklyStyleSetting() == LINE
-                    and _("Line with dots")
-                    or  _("Bars")
+                local style = VSet.readWeeklyStyleSetting()
+                local v = (style == LINE and _("Line with dots"))
+                    or (style == RADAR and _("Radar"))
+                    or _("Bars")
                 return _("Chart style") .. ": " .. v
             end,
             keep_menu_open = true,
+            sub_item_table_func = function()
+                local items = {
+                    weeklyStyleEntry(BARS, _("Bars")),
+                    weeklyStyleEntry(LINE, _("Line with dots")),
+                }
+                if VSet.readLookIsCards() then
+                    table.insert(items, weeklyStyleEntry(RADAR, _("Radar")))
+                end
+                return items
+            end,
+        }
+    end
+
+    -- Labels of the week section's days: dates (default) or day names.
+    do
+        local VSet  = deps.ViewSettings
+        local DATES = VSet.WEEKLY_DAY_LABELS_DATES
+        local NAMES = VSet.WEEKLY_DAY_LABELS_NAMES
+        local function dayLabelsEntry(value, text)
+            return {
+                text = text,
+                keep_menu_open = true,
+                radio = true,
+                checked_func = function()
+                    return VSet.readWeeklyDayLabels() == value
+                end,
+                callback = function() VSet.saveWeeklyDayLabels(value) end,
+            }
+        end
+        I.weekly_day_labels = {
+            text_func = function()
+                local v = VSet.readWeeklyDayLabels() == NAMES
+                    and _("Day names")
+                    or  _("Dates")
+                return _("Day labels") .. ": " .. v
+            end,
+            keep_menu_open = true,
             sub_item_table = {
-                weeklyStyleEntry(BARS, _("Bars")),
-                weeklyStyleEntry(LINE, _("Line with dots")),
+                dayLabelsEntry(DATES, _("Dates")),
+                dayLabelsEntry(NAMES, _("Day names")),
             },
         }
     end
@@ -1720,7 +1759,7 @@ function M.build(self, deps)
         "-",
         group(_("Week"), {
             I.weekly_view,
-            I.weekly_style, I.today_side,
+            I.weekly_style, I.weekly_day_labels, I.today_side,
             I.trend_order,
         }),
         group(_("Months"), { I.monthly_style, I.monthly_layout }),

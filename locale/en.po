@@ -2017,6 +2017,18 @@ msgstr "Months chart style"
 msgid "Line with dots"
 msgstr "Line with dots"
 
+msgid "Radar"
+msgstr "Radar"
+
+msgid "Day labels"
+msgstr "Day labels"
+
+msgid "Dates"
+msgstr "Dates"
+
+msgid "Day names"
+msgstr "Day names"
+
 msgid "Bars"
 msgstr "Bars"
 

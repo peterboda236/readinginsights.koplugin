@@ -2063,6 +2063,18 @@ msgstr "Стиль місячної діаграми"
 msgid "Line with dots"
 msgstr "Лінія з точками"
 
+msgid "Radar"
+msgstr "Радар"
+
+msgid "Day labels"
+msgstr "Підписи днів"
+
+msgid "Dates"
+msgstr "Дати"
+
+msgid "Day names"
+msgstr "Назви днів"
+
 msgid "Bars"
 msgstr "Стовпці"
 
