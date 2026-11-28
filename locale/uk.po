@@ -882,6 +882,9 @@ msgstr "Формат дати"
 msgid "Month as short text"
 msgstr "Місяць коротким текстом"
 
+msgid "Show the month in dates as its short name (\"Nov\") instead of a number."
+msgstr "Показує місяць у датах короткою назвою («Лис») замість числа."
+
 msgid "Book progress calendar cell content"
 msgstr "Вміст комірки календаря прогресу книги"
 
