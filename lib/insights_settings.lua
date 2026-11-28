@@ -772,7 +772,7 @@ end
 
 -- Style of the "Last 7 days" chart (Settings > Reading insights popup >
 -- "Last 7 days chart style"): "bars" (default), "line" (smooth line with a
--- dot per day, like the yearly chart) or "radar" (Cards look only: one axis
+-- dot per day, like the yearly chart) or "radar" (both looks: one axis
 -- per day, the section's values next to it).
 M.SETTINGS_KEY_WEEKLY_STYLE = "reading_insights_weekly_chart_style"
 
@@ -784,9 +784,7 @@ M.WEEKLY_STYLE_RADAR = "radar"
 
 function M.readWeeklyStyleSetting()
     local v = Prefs.read(M.SETTINGS_KEY_WEEKLY_STYLE, nil)
-    if v == M.WEEKLY_STYLE_LINE then return v end
-    -- Radar is drawn only in the Cards look; Classic shows bars instead.
-    if v == M.WEEKLY_STYLE_RADAR and M.readLookIsCards() then return v end
+    if v == M.WEEKLY_STYLE_LINE or v == M.WEEKLY_STYLE_RADAR then return v end
     return M.WEEKLY_STYLE_BARS
 end
 

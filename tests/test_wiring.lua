@@ -409,8 +409,8 @@ check("look switches back to Classic", ViewSettings.readLookIsCards() == false)
 check("week chart style is Bars by default",
       ViewSettings.readWeeklyStyleSetting() == ViewSettings.WEEKLY_STYLE_BARS)
 ViewSettings.saveWeeklyStyleSetting(ViewSettings.WEEKLY_STYLE_RADAR)
-check("Radar week chart falls back to Bars in the Classic look",
-      ViewSettings.readWeeklyStyleSetting() == ViewSettings.WEEKLY_STYLE_BARS)
+check("Radar week chart is kept in the Classic look",
+      ViewSettings.readWeeklyStyleSetting() == ViewSettings.WEEKLY_STYLE_RADAR)
 ViewSettings.saveLookSetting(ViewSettings.LOOK_CARDS)
 check("Radar week chart is kept in the Cards look",
       ViewSettings.readWeeklyStyleSetting() == ViewSettings.WEEKLY_STYLE_RADAR)

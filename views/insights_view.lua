@@ -295,7 +295,14 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
     -- sections that are really on the page, is worked out first: isLast()
     -- and nextId() let a section decide about its closing line.
     local marks = {}
-    local function newBlock(id) table.insert(marks, { id = id, first = #sections + 1 }) end
+    -- Where each section starts: the pages (see views/cards_look/pages.lua,
+    -- used when the page really does not fit the screen) break only there.
+    local breaks = {}
+    sections._breaks = breaks
+    local function newBlock(id)
+        table.insert(breaks, #sections + 1)
+        table.insert(marks, { id = id, first = #sections + 1 })
+    end
     local order_goal_shown = VS.Opt.readShowReadingGoal()
     local order_ach_shown  = VS.Opt.readShowAchievements() and Achievements ~= nil
     -- Settings > Reading insights popup > Sections: each of these sections
@@ -488,14 +495,57 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
             -- With the optional second row (the other metric) the vertical
             -- divider runs unbroken through the gap between the two rows.
             local two_rows = VS.readWeeklyExtraRow()
-            local last_week_rows = { weekRow(pages_mode and pages_cells or time_cells,
-                two_rows and { join_below = Size.padding.small } or nil) }
-            if two_rows then
-                table.insert(last_week_rows, weekRow(pages_mode and time_cells or pages_cells,
-                    { join_above = true }))
+            local radar = VS.readWeeklyStyleSetting() == VS.WEEKLY_STYLE_RADAR
+            local last_week_rows = {}
+            if not radar then
+                table.insert(last_week_rows, weekRow(pages_mode and pages_cells or time_cells,
+                    two_rows and { join_below = Size.padding.small } or nil))
+                if two_rows then
+                    table.insert(last_week_rows, weekRow(pages_mode and time_cells or pages_cells,
+                        { join_above = true }))
+                end
             end
 
-            local weekly_chart = buildWeeklyChart(popup_self, week_daily, layout, fonts, weekly_chart_mode)
+            local weekly_chart
+            if radar then
+                -- Radar on the left, the values stacked on its right, one
+                -- under the other in the order of the rows they replace.
+                local radar_w  = math.floor(layout.content_width * 0.55)
+                local values_w = layout.content_width - radar_w - UI.gap()
+                local chart = Charts.buildWeeklyRadar(popup_self, week_daily, radar_w, fonts, weekly_chart_mode)
+                if chart then
+                    local values = VerticalGroup:new{ align = "left" }
+                    local function addCells(c)
+                        for k = 0, 1 do
+                            if #values > 0 then
+                                table.insert(values, VerticalSpan:new{ width = Size.padding.default })
+                            end
+                            local metric = c[3 + 3 * k]
+                            table.insert(values, tappableCell(
+                                buildValueLine(fonts.value, fonts.label, values_w, c[1 + 3 * k], c[2 + 3 * k]),
+                                values_w, function() popup_self:showWeeklyTrendPopup(metric) end))
+                        end
+                    end
+                    addCells(pages_mode and pages_cells or time_cells)
+                    if two_rows then addCells(pages_mode and time_cells or pages_cells) end
+                    weekly_chart = HorizontalGroup:new{
+                        align = "center",
+                        chart,
+                        HorizontalSpan:new{ width = UI.gap() },
+                        values,
+                    }
+                else
+                    -- Nothing to draw: the usual value rows instead.
+                    table.insert(last_week_rows, weekRow(pages_mode and pages_cells or time_cells,
+                        two_rows and { join_below = Size.padding.small } or nil))
+                    if two_rows then
+                        table.insert(last_week_rows, weekRow(pages_mode and time_cells or pages_cells,
+                            { join_above = true }))
+                    end
+                end
+            else
+                weekly_chart = buildWeeklyChart(popup_self, week_daily, layout, fonts, weekly_chart_mode)
+            end
             local last_week_content = VerticalGroup:new{ align = "left" }
             for idx, row in ipairs(last_week_rows) do
                 if idx > 1 and UI.classicLines() then
@@ -2130,7 +2180,9 @@ function ReadingInsightsPopup:_buildUI()
             -- Cards: the open popup goes on pages rather than flatten the
             -- charts; the sleep screen has one screen only, so it may shrink
             -- them all the way.
-            local min_height = (cards and not self.readonly) and VS.Opt.AUTO_MIN_SCROLL or VS.Opt.AUTO_MIN
+            -- Classic: same, the page goes on pages only after the text
+            -- has been shrunk as far as CLASSIC_FONT_SCALE_MIN (below).
+            local min_height = (not self.readonly) and VS.Opt.AUTO_MIN_SCROLL or VS.Opt.AUTO_MIN
             local new_height = math.max(min_height,
                 math.min(VS.Opt.AUTO_MAX, current + delta_points))
 
@@ -2196,7 +2248,11 @@ function ReadingInsightsPopup:_buildUI()
     -- pages instead.
     local shrink_text = not (cards and not self.readonly)
     if content_h > screen_h and shrink_text then
-        local FONT_SCALE_MIN = 0.5
+        -- Classic (open popup): below this the text would get too small, so
+        -- the sections go on pages instead (the pager shows up only then).
+        -- The sleep screen has one screen only and may shrink further.
+        local CLASSIC_FONT_SCALE_MIN = 0.8
+        local FONT_SCALE_MIN = (not cards and not self.readonly) and CLASSIC_FONT_SCALE_MIN or 0.5
         local remembered     = VS.Opt.font_scale
         local scale          = 1
         local best           = nil   -- smallest-change scale that fitted
@@ -2232,7 +2288,14 @@ function ReadingInsightsPopup:_buildUI()
     -- Cards: still taller than the screen, the open popup shows the
     -- sections on pages (see views/cards_look/pages.lua).
     self._page_count = 1
-    if cards and content_h > screen_h and not self.readonly then
+    if content_h > screen_h and not self.readonly then
+        -- Classic: the text was shrunk as far as it may and the page still
+        -- does not fit: back to the configured sizes, on pages.
+        if not cards and font_scale < 0.999 then
+            font_scale = 1
+            fonts = getCachedFonts()
+            VS.Opt.font_scale = nil
+        end
         local discarded = content
         content, content_h = buildContent(true)
         pcall(function() if discarded.free then discarded:free() end end)
@@ -2265,7 +2328,7 @@ function ReadingInsightsPopup:_buildUI()
         ignore_events       = cards and { "hold", "hold_pan", "hold_release" } or nil,
         content,
     }
-    if cards then
+    if cards or self._page_count > 1 then
         local onScrollableSwipe = self.scroll_container.onScrollableSwipe
         self.scroll_container.onScrollableSwipe = function(sc, arg, ges)
             local dir = ges and ges.direction

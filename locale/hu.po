@@ -866,6 +866,12 @@ msgstr "24 óra feletti időtartamok napokban"
 msgid "Date format"
 msgstr "Dátumformátum"
 
+msgid "Month as short text"
+msgstr "Hónap rövid szövegként"
+
+msgid "Show the month in dates as its short name (\"Nov\") instead of a number."
+msgstr "A dátumokban a hónapot rövid nevével (\"nov.\") mutatja szám helyett."
+
 msgid "Book progress calendar cell content"
 msgstr "Könyv haladási naptár cella tartalma"
 

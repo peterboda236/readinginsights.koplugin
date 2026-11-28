@@ -285,6 +285,41 @@ local function defaultDateFormat()
     return DATE_FORMAT_YMD_DASH
 end
 
+-- Month as short text (Settings > Date & time > "Month as short text"): the
+-- month of every date is written with its short name ("Nov", "Dec", in the
+-- interface language: "nov.", "Nov", "nov"...) instead of a number, in the
+-- order of the chosen date format:
+--   YYYY-MM-DD     2026-Nov-28
+--   YYYY. MM. DD.  2026. Nov 28.      (Hungarian: 2026. nov. 28.)
+--   DD/MM/YYYY     28 Nov 2026
+--   MM/DD/YYYY     Nov 28, 2026
+-- Off by default.
+local SETTINGS_KEY_DATE_MONTH_TEXT = "reading_insights_date_month_text"
+
+local function readDateMonthTextSetting()
+    if G_reader_settings and G_reader_settings.has and G_reader_settings.isTrue then
+        if G_reader_settings:has(SETTINGS_KEY_DATE_MONTH_TEXT) then
+            return G_reader_settings:isTrue(SETTINGS_KEY_DATE_MONTH_TEXT)
+        end
+    end
+    return false
+end
+
+local function saveDateMonthTextSetting(value)
+    if G_reader_settings and G_reader_settings.saveSetting then
+        if value then
+            G_reader_settings:makeTrue(SETTINGS_KEY_DATE_MONTH_TEXT)
+        else
+            G_reader_settings:makeFalse(SETTINGS_KEY_DATE_MONTH_TEXT)
+        end
+    end
+end
+
+-- Short month name for a date written with a text month; assigned below,
+-- once the translated names exist. `strip_dot`: without the abbreviation
+-- dot ("nov." -> "nov"), for the formats that join it with dashes.
+local monthTextName
+
 local function readDateFormatSetting()
     local v
     if G_reader_settings and G_reader_settings.readSetting then
@@ -301,8 +336,18 @@ local function saveDateFormatSetting(value)
     end
 end
 
+-- The same patterns with a text month, for the hint of the date fields.
+local DATE_FORMAT_TEXT_HINTS = {
+    [DATE_FORMAT_YMD_DASH] = "YYYY-Mon-DD",
+    [DATE_FORMAT_YMD_DOT]  = "YYYY. Mon DD.",
+    [DATE_FORMAT_DMY]      = "DD Mon YYYY",
+    [DATE_FORMAT_MDY]      = "Mon DD, YYYY",
+}
+
 local function dateFormatHint()
-    return DATE_FORMAT_HINTS[readDateFormatSetting()]
+    local fmt = readDateFormatSetting()
+    if readDateMonthTextSetting() then return DATE_FORMAT_TEXT_HINTS[fmt] end
+    return DATE_FORMAT_HINTS[fmt]
 end
 
 -- The Hungarian pattern is written "2026. 07. 20." (a space after each dot,
@@ -310,6 +355,16 @@ end
 -- 2026. 07. 20."). no_trailing_dot is therefore accepted but ignored; it is
 -- kept only so existing callers keep working.
 local function formatYMDAs(fmt, y, m, d, no_trailing_dot)
+    if readDateMonthTextSetting() then
+        if fmt == DATE_FORMAT_YMD_DASH then
+            return string.format("%04d-%s-%02d", y, monthTextName(m, true), d)
+        elseif fmt == DATE_FORMAT_YMD_DOT then
+            return string.format("%04d. %s %d.", y, monthTextName(m), d)
+        elseif fmt == DATE_FORMAT_MDY then
+            return string.format("%s %d, %04d", monthTextName(m), d, y)
+        end
+        return string.format("%d %s %04d", d, monthTextName(m), y)
+    end
     if fmt == DATE_FORMAT_YMD_DASH then
         return string.format("%04d-%02d-%02d", y, m, d)
     elseif fmt == DATE_FORMAT_YMD_DOT then
@@ -394,6 +449,12 @@ local function shortMonthName(m)
     return MONTH_NAMES_SHORT_FOR_DATE[m]
 end
 
+monthTextName = function(m, strip_dot)
+    local name = MONTH_NAMES_SHORT_FOR_DATE[m] or tostring(m)
+    if strip_dot then name = (name:gsub("%.$", "")) end
+    return name
+end
+
 -- Full month names, from the same msgids the views already translate. The
 -- trailing space in "May " is the existing msgid (kept so the .po files keep
 -- matching); the translations don't carry it.
@@ -414,6 +475,9 @@ local function formatMonthYear(year, month)
     if f == DATE_FORMAT_YMD_DOT then
         return string.format("%04d. %s", year, name)
     elseif f == DATE_FORMAT_YMD_DASH then
+        if readDateMonthTextSetting() then
+            return string.format("%04d-%s", year, monthTextName(month, true))
+        end
         -- ISO 8601 reduced precision: year-month, no month name.
         return string.format("%04d-%02d", year, month)
     end
@@ -427,6 +491,9 @@ end
 local function formatYearShortMonth(year, month)
     local f = readDateFormatSetting()
     if f == DATE_FORMAT_YMD_DASH then
+        if readDateMonthTextSetting() then
+            return string.format("%04d-%s", year, monthTextName(month, true))
+        end
         return string.format("%04d-%02d", year, month)
     end
     local name = MONTH_NAMES_SHORT_FOR_DATE[month] or tostring(month)
@@ -449,8 +516,8 @@ end
 -- no leading zeros and no year - for places that list many dates in a row
 -- (e.g. the streak history bar list) where a full formatDate() would take up
 -- too much space and a bare numeric "9.22"/"22.9" reads ambiguously. Always
--- month-then-day, whatever the configured full date format's day/month order
--- is, since the translated month name already disambiguates the two. With the
+-- month-then-day, except with DD/MM/YYYY (day-then-month, like the full date);
+-- the translated month name already disambiguates the two. With the
 -- ISO format (YYYY-MM-DD) it is the unambiguous numeric "MM-DD" instead.
 local function formatShortMonthDay(date_str)
     if date_str == nil then return "" end
@@ -459,10 +526,15 @@ local function formatShortMonthDay(date_str)
     if not y then return s end
     m, d = tonumber(m), tonumber(d)
     -- ISO format: plain MM-DD, no month name ("10-06").
-    if readDateFormatSetting() == DATE_FORMAT_YMD_DASH then
+    if readDateFormatSetting() == DATE_FORMAT_YMD_DASH and not readDateMonthTextSetting() then
         return string.format("%02d-%02d", m, d)
     end
     local mon = MONTH_NAMES_SHORT_FOR_DATE[m] or tostring(m)
+    -- DD/MM/YYYY: day first ("28 Nov"), every other format month first
+    -- ("Nov 28"), the same order as the full date.
+    if readDateFormatSetting() == DATE_FORMAT_DMY then
+        return d .. " " .. mon
+    end
     return mon .. " " .. formatDayOfMonth(d)
 end
 
@@ -480,6 +552,9 @@ local function formatShortNumericDate(date_str)
     if not y then return s end
     m, d = tonumber(m), tonumber(d)
     local fmt = readDateFormatSetting()
+    if readDateMonthTextSetting() then
+        return formatShortMonthDay(date_str)
+    end
     if fmt == DATE_FORMAT_YMD_DOT then
         return string.format("%02d. %02d.", m, d)
     elseif fmt == DATE_FORMAT_YMD_DASH then
@@ -491,8 +566,10 @@ local function formatShortNumericDate(date_str)
 end
 
 -- True while the ISO date format (YYYY-MM-DD) is the active one.
+-- (False with "Month as short text": the numeric ISO labels are then spelled
+-- with month names, like the other formats.)
 local function isIsoDateFormat()
-    return readDateFormatSetting() == DATE_FORMAT_YMD_DASH
+    return readDateFormatSetting() == DATE_FORMAT_YMD_DASH and not readDateMonthTextSetting()
 end
 
 -- Month label under the yearly chart's columns: with the ISO date format the
@@ -526,6 +603,33 @@ local function parseDateInput(str)
             else
                 d, m = a, b
             end
+        end
+    end
+    if not y then
+        -- A text month, in any order: "2026-Nov-28", "28 Nov 2026",
+        -- "Nov 28, 2026", "2026. nov. 28." (short or full name, any case).
+        local function norm(w) return lowerFirst((w:gsub("%.$", ""))):lower() end
+        local month, nums = nil, {}
+        for tok in s:gmatch("[^%s%-%.,/]+") do
+            if tok:match("^%d+$") then
+                nums[#nums + 1] = tok
+            else
+                local t = norm(tok)
+                for i = 1, 12 do
+                    if t == norm(MONTH_NAMES_SHORT_FOR_DATE[i])
+                       or t == norm((MONTH_NAMES_FULL_FOR_DATE[i]:gsub("%s+$", ""))) then
+                        month = i
+                        break
+                    end
+                end
+                if not month then return nil end
+            end
+        end
+        if month and #nums == 2 then
+            local a, b = nums[1], nums[2]
+            if #a == 4 and #b <= 2 then y, d = a, b
+            elseif #b == 4 and #a <= 2 then y, d = b, a end
+            m = month
         end
     end
     if not y then return nil end
@@ -759,6 +863,8 @@ return {
     dateFormatHint             = dateFormatHint,
     readDateFormatSetting      = readDateFormatSetting,
     saveDateFormatSetting      = saveDateFormatSetting,
+    readDateMonthTextSetting   = readDateMonthTextSetting,
+    saveDateMonthTextSetting   = saveDateMonthTextSetting,
     DATE_FORMATS               = {
         DATE_FORMAT_YMD_DASH,
         DATE_FORMAT_YMD_DOT,
