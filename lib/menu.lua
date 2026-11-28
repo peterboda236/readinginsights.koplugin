@@ -1179,6 +1179,7 @@ function M.build(self, deps)
         -- every date format.
         table.insert(date_time_sub_item_table, {
             text = _("Month as short text"),
+            help_text = _("Show the month in dates as its short name (\"Nov\") instead of a number."),
             keep_menu_open = true,
             checked_func = function()
                 return deps.Locale.readDateMonthTextSetting()

@@ -848,6 +848,9 @@ msgstr "Date format"
 msgid "Month as short text"
 msgstr "Month as short text"
 
+msgid "Show the month in dates as its short name (\"Nov\") instead of a number."
+msgstr "Show the month in dates as its short name (\"Nov\") instead of a number."
+
 msgid "Book progress calendar cell content"
 msgstr "Book progress calendar cell content"
 
