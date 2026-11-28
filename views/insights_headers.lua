@@ -208,6 +208,15 @@ local function weekMonthLabel(m)
     return name
 end
 
+-- With "Month as short text" (Settings > Date & time) the week labels write
+-- the month as a name in every date format; this one is without the dot.
+local function monthText(m)
+    return (Locale.shortMonthName(m):gsub("%.$", ""))
+end
+local function monthTextOn()
+    return Locale.readDateMonthTextSetting and Locale.readDateMonthTextSetting()
+end
+
 local function parseWeekDate(date_str)
     local y, m, d = tostring(date_str):match("^(%d+)-(%d+)-(%d+)$")
     if not y then return nil end
@@ -220,6 +229,13 @@ local function formatWeekDay(date_str)
     local y, m, d = parseWeekDate(date_str)
     if not y then return tostring(date_str) end
     local fmt = Locale.readDateFormatSetting and Locale.readDateFormatSetting()
+    if monthTextOn() then
+        if fmt == "mdy_slash" then return string.format("%s %d", monthText(m), d) end
+        if fmt ~= "ymd_dash" and fmt ~= "ymd_dot" then
+            return string.format("%d %s", d, monthText(m))
+        end
+        fmt = "ymd_dot"
+    end
     if fmt == "ymd_dot" then
         return string.format("%s %d.", weekMonthLabel(m), d)
     elseif fmt == "ymd_dash" then
@@ -261,6 +277,35 @@ local function formatWeekRange(start_date, end_date, tier)
     local cross_yr  = (sy ~= ey)
     local with_year = (tier == 1) and (cross_yr or sy ~= tonumber(os.date("%Y")))
     local fmt = Locale.readDateFormatSetting and Locale.readDateFormatSetting()
+
+    if monthTextOn() then
+        if fmt == "ymd_dash" then fmt = "ymd_dot" end
+        if fmt ~= "ymd_dot" then
+            -- Day first (UK) or month first (US), the month as a name:
+            --   12–18 Oct   26 Oct – 1 Nov   12–18 Oct 2025
+            --   Oct 12–18   Oct 26 – Nov 1   Oct 12–18, 2025
+            local mdy = (fmt == "mdy_slash")
+            local function dm(day, mo)
+                if mdy then return string.format("%s %d", monthText(mo), day) end
+                return string.format("%d %s", day, monthText(mo))
+            end
+            local function full(yr, mo, day)
+                if mdy then return string.format("%s %d, %d", monthText(mo), day, yr) end
+                return string.format("%d %s %d", day, monthText(mo), yr)
+            end
+            if with_year and cross_yr then
+                return full(sy, sm, sd) .. sp_dash .. full(ey, em, ed)
+            end
+            local ys = with_year and ((mdy and ", " or " ") .. sy) or ""
+            if sm == em then
+                if mdy then
+                    return string.format("%s %d%s%d%s", monthText(sm), sd, dash, ed, ys)
+                end
+                return string.format("%d%s%d %s%s", sd, dash, ed, monthText(sm), ys)
+            end
+            return dm(sd, sm) .. sp_dash .. dm(ed, em) .. ys
+        end
+    end
 
     if fmt == "ymd_dot" then
         if with_year and cross_yr then

@@ -845,6 +845,9 @@ msgstr "Show long durations (24h+) as days"
 msgid "Date format"
 msgstr "Date format"
 
+msgid "Month as short text"
+msgstr "Month as short text"
+
 msgid "Book progress calendar cell content"
 msgstr "Book progress calendar cell content"
 

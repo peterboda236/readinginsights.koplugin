@@ -866,6 +866,9 @@ msgstr "24 óra feletti időtartamok napokban"
 msgid "Date format"
 msgstr "Dátumformátum"
 
+msgid "Month as short text"
+msgstr "Hónap rövid szövegként"
+
 msgid "Book progress calendar cell content"
 msgstr "Könyv haladási naptár cella tartalma"
 

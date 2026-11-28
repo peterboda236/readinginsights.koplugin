@@ -1377,7 +1377,7 @@ local function periodTitle(start_t, end_t)
     -- Month abbreviations are already lower-cased where the language
     -- wants it (see MONTH_NAMES_SHORT above).
     local m1, m2 = MONTH_NAMES_SHORT[st.month], MONTH_NAMES_SHORT[et.month]
-    if Locale.readDateFormatSetting() == "ymd_dash" then
+    if Locale.isIsoDateFormat() then
         -- ISO: "2026-04 – 2026-10", the year on both ends so a range that
         -- crosses New Year reads the same way as one inside a year.
         return Locale.formatYearShortMonth(st.year, st.month)

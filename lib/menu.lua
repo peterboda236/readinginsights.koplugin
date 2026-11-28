@@ -984,14 +984,11 @@ function M.build(self, deps)
             end,
             keep_menu_open = true,
             sub_item_table_func = function()
-                local items = {
+                return {
                     weeklyStyleEntry(BARS, _("Bars")),
                     weeklyStyleEntry(LINE, _("Line with dots")),
+                    weeklyStyleEntry(RADAR, _("Radar")),
                 }
-                if VSet.readLookIsCards() then
-                    table.insert(items, weeklyStyleEntry(RADAR, _("Radar")))
-                end
-                return items
             end,
         }
     end
@@ -1177,6 +1174,18 @@ function M.build(self, deps)
             end,
             keep_menu_open = true,
             sub_item_table = date_format_sub_item_table,
+        })
+        -- The month as a short name ("Nov", "Dec") instead of a number, in
+        -- every date format.
+        table.insert(date_time_sub_item_table, {
+            text = _("Month as short text"),
+            keep_menu_open = true,
+            checked_func = function()
+                return deps.Locale.readDateMonthTextSetting()
+            end,
+            callback = function()
+                deps.Locale.saveDateMonthTextSetting(not deps.Locale.readDateMonthTextSetting())
+            end,
         })
     end
 

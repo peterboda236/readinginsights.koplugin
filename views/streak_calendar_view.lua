@@ -878,12 +878,12 @@ local function weekLabel(start)
     -- ISO format, week across New Year: both ends in full ("2026-12-28 \xE2\x80\x93
     -- 2027-01-03"), as the Reading insights week header writes it - a bare
     -- "12-28 \xE2\x80\x93 01-03" would not say which year the 01-03 is in.
-    if start:sub(1, 4) ~= last:sub(1, 4) and Locale.readDateFormatSetting() == "ymd_dash" then
+    if start:sub(1, 4) ~= last:sub(1, 4) and Locale.isIsoDateFormat() then
         return start .. " \xE2\x80\x93 " .. last
     end
     local first_s = Locale.formatShortMonthDay(start)
     -- ISO format: always "MM-DD \xE2\x80\x93 MM-DD" ("10-06 \xE2\x80\x93 10-12"), also within one month.
-    if start:sub(1, 7) == last:sub(1, 7) and Locale.readDateFormatSetting() ~= "ymd_dash" then
+    if start:sub(1, 7) == last:sub(1, 7) and not Locale.isIsoDateFormat() then
         local last_s = Locale.formatDayOfMonth(tonumber(last:sub(9, 10)))
         return first_s .. " \xE2\x80\x93 " .. last_s
     end
