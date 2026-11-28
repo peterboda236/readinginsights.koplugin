@@ -534,6 +534,14 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, year_ran
                         HorizontalSpan:new{ width = UI.gap() },
                         values,
                     }
+                else
+                    -- Nothing to draw: the usual value rows instead.
+                    table.insert(last_week_rows, weekRow(pages_mode and pages_cells or time_cells,
+                        two_rows and { join_below = Size.padding.small } or nil))
+                    if two_rows then
+                        table.insert(last_week_rows, weekRow(pages_mode and time_cells or pages_cells,
+                            { join_above = true }))
+                    end
                 end
             else
                 weekly_chart = buildWeeklyChart(popup_self, week_daily, layout, fonts, weekly_chart_mode)

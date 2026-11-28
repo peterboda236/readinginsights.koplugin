@@ -117,8 +117,9 @@ end
 
 -- The week the "Last 7 days" section shows: the rolling last 7 days, or (the
 -- calendar view) the calendar week `cal` being paged. Returns its stats, its
--- per-day rows and whether the section is shown - the calendar view always
--- is, even for a week without reading: its header pages to the other weeks.
+-- per-day rows and whether the section is shown - always, in both views, even
+-- for a week without reading (zeros and an empty chart): the section does not
+-- disappear, and the calendar view's header pages to the other weeks.
 function M.weekData(cal_mode, cal, last_week_stats, last_week_daily)
     local lw, week_daily
     if cal_mode then
@@ -129,8 +130,7 @@ function M.weekData(cal_mode, cal, last_week_stats, last_week_daily)
         lw = last_week_stats or { avg_seconds = 0, avg_pages = 0 }
         week_daily = last_week_daily
     end
-    local has_week = cal_mode or lw.avg_seconds > 0 or lw.avg_pages > 0
-    return lw, week_daily, has_week
+    return lw, week_daily, true
 end
 
 -- The week's figures: total_secs, total_pages_raw (whole pages), and the two
