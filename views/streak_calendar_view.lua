@@ -884,7 +884,13 @@ local function weekLabel(start)
     local first_s = Locale.formatShortMonthDay(start)
     -- ISO format: always "MM-DD \xE2\x80\x93 MM-DD" ("10-06 \xE2\x80\x93 10-12"), also within one month.
     if start:sub(1, 7) == last:sub(1, 7) and not Locale.isIsoDateFormat() then
-        local last_s = Locale.formatDayOfMonth(tonumber(last:sub(9, 10)))
+        local last_d = tonumber(last:sub(9, 10))
+        -- DD/MM/YYYY: "22 \xE2\x80\x93 28 Sep", the month once at the end.
+        if Locale.readDateFormatSetting() == "dmy_slash" then
+            return tonumber(start:sub(9, 10)) .. " \xE2\x80\x93 " .. last_d .. " "
+                .. Locale.shortMonthName(tonumber(start:sub(6, 7)))
+        end
+        local last_s = Locale.formatDayOfMonth(last_d)
         return first_s .. " \xE2\x80\x93 " .. last_s
     end
     return first_s .. " \xE2\x80\x93 " .. Locale.formatShortMonthDay(last)

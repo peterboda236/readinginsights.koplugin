@@ -516,8 +516,8 @@ end
 -- no leading zeros and no year - for places that list many dates in a row
 -- (e.g. the streak history bar list) where a full formatDate() would take up
 -- too much space and a bare numeric "9.22"/"22.9" reads ambiguously. Always
--- month-then-day, whatever the configured full date format's day/month order
--- is, since the translated month name already disambiguates the two. With the
+-- month-then-day, except with DD/MM/YYYY (day-then-month, like the full date);
+-- the translated month name already disambiguates the two. With the
 -- ISO format (YYYY-MM-DD) it is the unambiguous numeric "MM-DD" instead.
 local function formatShortMonthDay(date_str)
     if date_str == nil then return "" end
@@ -530,6 +530,11 @@ local function formatShortMonthDay(date_str)
         return string.format("%02d-%02d", m, d)
     end
     local mon = MONTH_NAMES_SHORT_FOR_DATE[m] or tostring(m)
+    -- DD/MM/YYYY: day first ("28 Nov"), every other format month first
+    -- ("Nov 28"), the same order as the full date.
+    if readDateFormatSetting() == DATE_FORMAT_DMY then
+        return d .. " " .. mon
+    end
     return mon .. " " .. formatDayOfMonth(d)
 end
 
@@ -548,9 +553,6 @@ local function formatShortNumericDate(date_str)
     m, d = tonumber(m), tonumber(d)
     local fmt = readDateFormatSetting()
     if readDateMonthTextSetting() then
-        if fmt == DATE_FORMAT_DMY then
-            return string.format("%d %s", d, monthTextName(m))
-        end
         return formatShortMonthDay(date_str)
     end
     if fmt == DATE_FORMAT_YMD_DOT then
